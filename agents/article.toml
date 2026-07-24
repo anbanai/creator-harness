@@ -642,7 +642,7 @@ article agent 已完成执行。请检查 output/ 目录下的产出文件，生
 """
 
 [mcp_servers.creator]
-url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
+url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]

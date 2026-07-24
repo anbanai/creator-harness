@@ -56,7 +56,7 @@ Key skill groups:
 
 ### MCP Server
 
-The installer registers `https://api.creator.anbanai.com/mcp` with Bearer token auth via `ANBAN_API_KEY`. Key MCP tools:
+The installer registers the fixed official endpoint `https://creator.anbanai.com/mcp` with Bearer token auth via `ANBAN_API_KEY`. The endpoint is an implementation detail, not a user or installer option; users configure only the API key. Key MCP tools:
 
 - `list_projects`, `get_project_profile`, `list_drafts`, `list_published_articles`, `list_project_titles`
 - `render_template`, `convert_markdown`

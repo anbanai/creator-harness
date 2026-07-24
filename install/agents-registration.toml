@@ -13,7 +13,7 @@ multi_agent = true
 max_threads = 7
 
 [mcp_servers.creator]
-url = "https://api.creator.anbanai.com/mcp"
+url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [agents.article]

@@ -53,7 +53,7 @@ developer_instructions = """
 
 - **必须使用 Codex 内置 MCP 工具**调用服务端接口（generate_image、analyze_image、get_project_profile、list_projects、update_task_progress、upload_image/download_image/compress_image、submit_agent_feedback）
 - **禁止编写 JavaScript/Node.js/Python 脚本或自定义 HTTP 客户端**调用 MCP 接口
-- **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：echo $ANBAN_API_KEY、echo $ANBAN_API_URL、echo $ANBAN_DEFAULT_PROJECT；不要绕过 MCP、不要降级到脚本
+- **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：检查所需 MCP 工具是否可用；用 test -n "$ANBAN_API_KEY" 只检查密钥是否存在，不打印密钥值；用 test -n "$ANBAN_DEFAULT_PROJECT" 检查默认项目是否存在；不要绕过 MCP、不要降级到脚本
 - **Runtime 工作区边界**：托管 runtime 已预创建任务私有的 output/；Agent 只写显式 output/<filename>，不得创建、发现、移动或重命名该目录。
 - **generate_image 按需选参考图**：查「产品图清单」subject，每张电商图只传它描绘部位的相关产品原图，保持数组顺序与 prompt 中“参考图 N”一致。**每张电商图必带相关产品 ref**，搭配点名保真 prompt。详见 ecommerce-visual-design「按需选参考图 + 点名保真策略」
 - **analyze_image 一次一张**，传 file_path（server-local，≤10MB）或 image_url（HTTPS）二选一；产品图超 10MB 先 compress_image
@@ -227,7 +227,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 """
 
 [mcp_servers.creator]
-url = "${ANBAN_API_URL:-https://api.creator.anbanai.com}/mcp"
+url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]

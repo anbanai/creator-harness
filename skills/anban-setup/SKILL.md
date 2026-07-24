@@ -39,7 +39,8 @@ description: Use when user mentions "初始化", "anban-setup", "第一次使用
 `.claude-plugin/plugin.json` 已声明官方 `userConfig`：
 
 - `api_key`：必填、敏感字段，映射到 MCP Authorization header。
-- `api_url`：可选，默认 `https://api.creator.anbanai.com`。
+
+官方插件会自动连接固定端点 `https://creator.anbanai.com/mcp`。该端点是实现细节，不是用户配置项；用户只需配置 `api_key`。
 
 认证失败时，提示用户打开插件配置填写或更新 `api_key`。不要把 API Key 写入项目文件，也不要把密钥打印到日志或最终回答。
 
@@ -48,17 +49,14 @@ description: Use when user mentions "初始化", "anban-setup", "第一次使用
 Codex 使用环境变量与安装器写入的 `[mcp_servers.creator]` 配置：
 
 - `ANBAN_API_KEY`：必填 Bearer token。
-- `ANBAN_API_URL`：可选，默认 `https://api.creator.anbanai.com`。
+
+安装器会自动注册固定端点 `https://creator.anbanai.com/mcp`。该端点不是安装选项；用户只需配置 `ANBAN_API_KEY`。
 
 优先引导用户在 shell 启动文件中设置 `ANBAN_API_KEY`，再重启 Codex。不要自动覆盖 `~/.codex/config.toml`；用户明确要求手动注册 MCP 时，使用 `bearer_token_env_var = "ANBAN_API_KEY"` 合并现有配置。
 
 ## 项目级配置
 
 API Key 设置完成后，可根据需要提示用户补充项目级配置。
-
-### 服务地址（可选）
-
-Claude Code 在插件配置中修改 `api_url`；Codex 设置 `ANBAN_API_URL` 环境变量。
 
 ### 默认项目（可选）
 
@@ -99,10 +97,7 @@ Codex 在 shell 启动文件或项目环境中设置同名变量。任何已有�
 ## 常见问题
 
 **Q: 重启后 `list_projects` 仍然失败？**
-A: Claude Code 检查插件 `api_key`/`api_url`；Codex 检查 `ANBAN_API_KEY`/`ANBAN_API_URL`。同时确认网络可访问服务地址。
-
-**Q: 想切换到另一个 API 地址？**
-A: Claude Code 修改插件 `api_url`；Codex 修改 `ANBAN_API_URL`。然后重启当前宿主。
+A: Claude Code 检查插件 `api_key`，Codex 用 `test -n "$ANBAN_API_KEY"` 检查密钥是否存在；不要打印密钥值。同时确认 MCP 工具已注入且网络可访问官方服务，然后保留并报告原始认证或连接错误。
 
 **Q: 已有 API Key 但忘了存在哪里？**
 A: Claude Code 打开插件配置重新设置；Codex 检查 shell 启动文件中的 `ANBAN_API_KEY`。不要在对话、日志或项目文件中输出密钥值。

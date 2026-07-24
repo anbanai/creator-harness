@@ -57,12 +57,11 @@ Add to `~/.zshrc` (or `~/.bashrc`):
 
 ```sh
 export ANBAN_API_KEY="<your-api-key-from-creator.anbanai.com>"
-# Optional overrides:
-# export ANBAN_API_URL="https://api.creator.anbanai.com"  # default
-# export ANBAN_DEFAULT_PROJECT="<project-id>"             # skip list_projects
+# Optional project selection:
+# export ANBAN_DEFAULT_PROJECT="<project-id>"  # skip list_projects
 ```
 
-Then `source ~/.zshrc` (or restart your terminal).
+Then `source ~/.zshrc` (or restart your terminal). The plugin automatically connects to the fixed official endpoint `https://creator.anbanai.com/mcp`; this is an implementation detail, not an installation option. Only the API key is required for MCP authentication.
 
 ### 4. Restart Codex
 
@@ -153,7 +152,7 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 - Confirm `~/.codex/config.toml` has `[mcp_servers.creator]` (the subagent installer adds it; set it manually only if you skipped that step):
   ```toml
   [mcp_servers.creator]
-  url = "https://api.creator.anbanai.com/mcp"
+  url = "https://creator.anbanai.com/mcp"
   bearer_token_env_var = "ANBAN_API_KEY"
   ```
 

@@ -60,7 +60,7 @@ maxTurns: 120
 - **Read 工具不用于图像视觉分析**——在本环境中 Read 上传图像到 CDN，不提供视觉内容
 - **MCP 工具不可用时**执行以下诊断步骤：
   1. 检查工具列表是否包含 `generate_image`、`analyze_image`、`download_image`、`update_task_progress`
-  2. 用 `test -n "$ANBAN_API_KEY"` 只检查密钥是否存在，不打印密钥值；`ANBAN_API_URL` 为空时按 `.mcp.json` 默认值 `https://api.creator.anbanai.com` 理解，可记录 `ANBAN_DEFAULT_PROJECT` 是否存在
+  2. 用 `test -n "$ANBAN_API_KEY"` 只检查密钥是否存在，不打印密钥值；用 `test -n "$ANBAN_DEFAULT_PROJECT"` 检查默认项目是否存在
   3. 如果 `ANBAN_API_KEY` 为空，报告缺少变量并停止
   4. 如果 `ANBAN_DEFAULT_PROJECT` 为空，调用 `list_projects` 自动选择项目；无法唯一判断时报告可选项目并停止等待配置
   5. 如果环境变量存在但工具调用失败，记录完整错误信息（状态码、响应体）后停止

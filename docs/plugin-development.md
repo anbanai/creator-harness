@@ -82,9 +82,11 @@ with-Skill, and without-Skill cases.
 
 ## MCP and artifacts
 
-`.mcp.json` connects to `${user_config.api_url}/mcp`; its Authorization header
-uses the sensitive `${user_config.api_key}` value. Never print keys, bearer
-tokens, private draft URLs, or authorization headers.
+`.mcp.json` connects to the fixed official endpoint
+`https://creator.anbanai.com/mcp`; the endpoint is a plugin implementation
+detail and is not user-configurable. Its Authorization header uses the sensitive
+`${user_config.api_key}` value. Never print keys, bearer tokens, private draft
+URLs, or authorization headers.
 
 MCP owns tool schemas and server-side side effects. In particular:
 

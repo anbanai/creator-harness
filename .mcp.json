@@ -2,7 +2,7 @@
   "mcpServers": {
     "creator": {
       "type": "http",
-      "url": "${user_config.api_url}/mcp",
+      "url": "https://creator.anbanai.com/mcp",
       "headers": {
         "Authorization": "Bearer ${user_config.api_key}"
       },

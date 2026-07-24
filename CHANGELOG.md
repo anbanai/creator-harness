@@ -4,6 +4,13 @@ All notable changes to the Anban Creator Claude Code plugin are documented here.
 
 This project follows semantic versioning for the plugin package. Patch releases cover documentation, compatibility, hook, and workflow contract fixes that do not change the public agent or MCP behavior.
 
+## [4.0.6] - 2026-07-24
+
+### Fixed
+
+- Connected every official Claude Code and Codex adapter directly to the fixed hosted MCP endpoint.
+- Removed the service-address installation option so users configure only their API Key.
+
 ## [4.0.5] - 2026-07-24
 
 ### Fixed

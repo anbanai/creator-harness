@@ -2,7 +2,7 @@
   "name": "anban",
   "displayName": "Anban Creator",
   "description": "Anban Creator plugin for WeChat, Seednote, Montage, ecommerce, and agent-assisted publishing workflows",
-  "version": "4.0.5",
+  "version": "4.0.6",
   "author": {
     "name": "anbanai",
     "url": "https://github.com/anbanai"
@@ -40,12 +40,6 @@
       "description": "API Key from https://creator.anbanai.com/settings used to authenticate the Anban Creator MCP server.",
       "required": true,
       "sensitive": true
-    },
-    "api_url": {
-      "type": "string",
-      "title": "Anban API URL",
-      "description": "Base URL for the Anban Creator API. Use the default for the official hosted service.",
-      "default": "https://api.creator.anbanai.com"
     }
   }
 }
