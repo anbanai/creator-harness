@@ -96,14 +96,29 @@ reg_path, tmp_path, legacy_article_agent = sys.argv[1], sys.argv[2], sys.argv[3]
 reg_lines = open(reg_path).read().splitlines()
 tmp_lines = open(tmp_path).read().splitlines()
 
-HEADER_RE = re.compile(r'^\s*(\[[^\]]+\])\s*$')
+HEADER_RE = re.compile(r'^\s*(\[[^\]]+\])\s*(?:#.*)?$')
 KV_RE = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=')
+
+def structural_toml_lines(lines):
+    multiline_delimiter = None
+    for index, line in enumerate(lines):
+        if multiline_delimiter is not None:
+            yield index, line, False
+            if line.count(multiline_delimiter) % 2 == 1:
+                multiline_delimiter = None
+            continue
+
+        yield index, line, True
+        for delimiter in ('"""', "'''"):
+            if line.count(delimiter) % 2 == 1:
+                multiline_delimiter = delimiter
+                break
 
 legacy_header = f'[agents.{legacy_article_agent}]'
 filtered_lines = []
 skip_legacy_table = False
-for line in tmp_lines:
-    header_match = HEADER_RE.match(line)
+for _, line, structural in structural_toml_lines(tmp_lines):
+    header_match = HEADER_RE.match(line) if structural else None
     if header_match:
         skip_legacy_table = header_match.group(1) == legacy_header
     if not skip_legacy_table:
@@ -115,12 +130,12 @@ tmp_lines = filtered_lines
 creator_header = '[mcp_servers.creator]'
 creator_endpoint = 'https://creator.anbanai.com/mcp'
 current_header = ''
-for index, line in enumerate(tmp_lines):
-    header_match = HEADER_RE.match(line)
+for index, line, structural in structural_toml_lines(tmp_lines):
+    header_match = HEADER_RE.match(line) if structural else None
     if header_match:
         current_header = header_match.group(1)
         continue
-    key_match = KV_RE.match(line)
+    key_match = KV_RE.match(line) if structural else None
     if current_header != creator_header or not key_match or key_match.group(1) != 'url':
         continue
     value_match = re.match(r'^(\s*url\s*=\s*)(?:"[^"]*"|\'[^\']*\')(\s*(?:#.*)?)$', line)
@@ -136,13 +151,13 @@ for index, line in enumerate(tmp_lines):
 # Top-level (no header) is stored under "".
 target_tables = {"": []}
 current = ""
-for line in tmp_lines:
-    m = HEADER_RE.match(line)
+for _, line, structural in structural_toml_lines(tmp_lines):
+    m = HEADER_RE.match(line) if structural else None
     if m:
         current = m.group(1)
         target_tables.setdefault(current, [])
         continue
-    kvm = KV_RE.match(line)
+    kvm = KV_RE.match(line) if structural else None
     if kvm:
         target_tables[current].append(kvm.group(1))
 
@@ -151,14 +166,17 @@ for line in tmp_lines:
 reg_blocks = []
 current_header = ""
 current_kvs = []
-for line in reg_lines:
-    m = HEADER_RE.match(line)
+for _, line, structural in structural_toml_lines(reg_lines):
+    m = HEADER_RE.match(line) if structural else None
     if m:
         reg_blocks.append((current_header, current_kvs))
         current_header = m.group(1)
         current_kvs = []
         continue
     # Skip comment-only and blank lines in kv collection (preserve them in original form for append)
+    if not structural:
+        current_kvs.append(line)
+        continue
     s = line.strip()
     if not s or s.startswith('#'):
         continue
@@ -197,8 +215,8 @@ for header, kvs in reg_blocks:
 # For table-creating additions (header=None first), append at end.
 # Re-process tmp_lines to find header line numbers.
 header_line_idx = {}  # header -> first line index
-for i, line in enumerate(tmp_lines):
-    m = HEADER_RE.match(line)
+for i, line, structural in structural_toml_lines(tmp_lines):
+    m = HEADER_RE.match(line) if structural else None
     if m:
         h = m.group(1)
         if h not in header_line_idx:
