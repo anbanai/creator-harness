@@ -9,6 +9,7 @@ This project follows semantic versioning for the plugin package. Patch releases 
 ### Fixed
 
 - Connected every official Claude Code and Codex adapter directly to the fixed hosted MCP endpoint.
+- Made Codex subagent upgrades replace an existing creator endpoint while preserving unrelated user configuration.
 - Removed the service-address installation option so users configure only their API Key.
 
 ## [4.0.5] - 2026-07-24

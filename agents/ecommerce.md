@@ -64,7 +64,7 @@ maxTurns: 120
 
 - **必须使用 Claude Code 内置 MCP 工具**调用服务端接口（`generate_image`、`analyze_image`、`get_project_profile`、`list_projects`、`update_task_progress`、`upload_image`/`download_image`/`compress_image`、`submit_agent_feedback`）
 - **禁止编写 JavaScript/Node.js/Python 脚本或自定义 HTTP 客户端**调用 MCP 接口
-- **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：检查所需 MCP 工具是否可用；用 `test -n "$ANBAN_API_KEY"` 只检查密钥是否存在，不打印密钥值；用 `test -n "$ANBAN_DEFAULT_PROJECT"` 检查默认项目是否存在；不要绕过 MCP、不要降级到脚本
+- **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：检查所需 MCP 工具是否已注入并保留原始认证错误；认证失败时提示用户在插件配置中更新 `api_key`；不得读取、检查或打印环境变量密钥；可记录 `ANBAN_DEFAULT_PROJECT` 是否存在；不要绕过 MCP、不要降级到脚本
 - **Claude Code subagent 的 `tools:` 字段是 allowlist**——不要在本 agent frontmatter 声明 `tools:`，省略才能继承包含 MCP 在内的工具；若运行时看不到 `generate_image` 等 MCP 能力，停止并报告 MCP 未注入
 - **`generate_image` 按需选参考图**：查「产品图清单」subject，每张电商图只传它描绘部位的相关产品原图，保持数组顺序与 prompt 中“参考图 N”一致。**每张电商图必带相关产品 ref**，搭配点名保真 prompt。详见 `ecommerce-visual-design`「按需选参考图 + 点名保真策略」
 - **`analyze_image` 一次一张**，传 `file_path`（server-local，≤10MB）或 `image_url`（HTTPS）二选一；产品图超 10MB 先 `compress_image`。Read 工具不用于图像视觉分析

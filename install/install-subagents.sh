@@ -4,8 +4,8 @@
 # What this script does:
 #   1. Copies agents/*.toml into ~/.codex/agents/, substituting __PLUGIN_ROOT__
 #      with the discovered plugin install path.
-#   2. Merges MCP and Agent registration into ~/.codex/config.toml
-#      without replacing existing tables or keys.
+#   2. Merges MCP and Agent registration into ~/.codex/config.toml, enforcing
+#      the official creator endpoint while preserving unrelated tables and keys.
 #   3. Prompts the user to restart Codex and verify with /agents.
 #
 # Usage:
@@ -83,7 +83,8 @@ if [[ ! -f "$CODEX_CONFIG" ]]; then
   cp "$REGISTRATION_SRC" "$CODEX_CONFIG"
   echo "[install-subagents] Created $CODEX_CONFIG"
 else
-  # Idempotent merge: preserve existing tables and append only missing keys.
+  # Idempotent merge: preserve existing tables, refresh the plugin-owned
+  # creator endpoint, and append only missing keys.
   tmp="$(mktemp)"
   cp "$CODEX_CONFIG" "$tmp"
 
@@ -108,6 +109,28 @@ for line in tmp_lines:
     if not skip_legacy_table:
         filtered_lines.append(line)
 tmp_lines = filtered_lines
+
+# The official creator endpoint is plugin-owned. Refresh only its url key so
+# upgrades cannot retain a stale or custom endpoint; preserve every other line.
+creator_header = '[mcp_servers.creator]'
+creator_endpoint = 'https://creator.anbanai.com/mcp'
+current_header = ''
+for index, line in enumerate(tmp_lines):
+    header_match = HEADER_RE.match(line)
+    if header_match:
+        current_header = header_match.group(1)
+        continue
+    key_match = KV_RE.match(line)
+    if current_header != creator_header or not key_match or key_match.group(1) != 'url':
+        continue
+    value_match = re.match(r'^(\s*url\s*=\s*)(?:"[^"]*"|\'[^\']*\')(\s*(?:#.*)?)$', line)
+    if value_match:
+        replacement = f'{value_match.group(1)}"{creator_endpoint}"{value_match.group(2)}'
+    else:
+        replacement = f'url = "{creator_endpoint}"'
+    if replacement != line:
+        tmp_lines[index] = replacement
+        print(f'[install-subagents] Updated: {creator_header}::url')
 
 # Parse target file into: { header_name: [list of kv keys] }
 # Top-level (no header) is stored under "".

@@ -48,7 +48,7 @@ bash plugins/install/install-subagents.sh
 
 The script is idempotent and does three things:
 1. **Copies `agents/*.toml` to `~/.codex/agents/`**, substituting `__PLUGIN_ROOT__` with the discovered plugin install path (so each `[[skills.config]]` path resolves correctly).
-2. **Merges `install/agents-registration.toml` into `~/.codex/config.toml`** — adds the `creator` MCP server, `[features] multi_agent = true`, `[agents] max_threads = 7`, and one `[agents.<name>]` block per subagent. Existing tables are preserved (no overwrites).
+2. **Merges `install/agents-registration.toml` into `~/.codex/config.toml`** — adds the `creator` MCP server, `[features] multi_agent = true`, `[agents] max_threads = 7`, and one `[agents.<name>]` block per subagent. Existing tables and unrelated keys are preserved; the plugin-owned creator endpoint is refreshed to the fixed official endpoint on upgrades.
 3. **Prints next-step reminders** (env var setup, restart Codex, verify).
 
 ### 3. Set API credentials
