@@ -86,18 +86,67 @@ else
   # Idempotent merge: preserve existing tables, refresh the plugin-owned
   # creator endpoint, and append only missing keys.
   tmp="$(mktemp)"
+  cleanup_install_tmp() {
+    if [[ -n "${tmp:-}" ]]; then
+      rm -f -- "$tmp" || true
+    fi
+  }
+  trap cleanup_install_tmp EXIT
   cp "$CODEX_CONFIG" "$tmp"
 
   # Idempotent merge: append top-level keys, append missing tables,
   # AND append missing keys within existing tables (key-level merge for [features], [agents]).
   python3 - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" <<'PY'
 import re, sys
-reg_path, tmp_path, legacy_article_agent = sys.argv[1], sys.argv[2], sys.argv[3]
-reg_lines = open(reg_path).read().splitlines()
-tmp_lines = open(tmp_path).read().splitlines()
 
-HEADER_RE = re.compile(r'^\s*(\[[^\]]+\])\s*(?:#.*)?$')
+try:
+    import tomllib
+except ModuleNotFoundError:
+    try:
+        import tomli as tomllib
+    except ModuleNotFoundError:
+        raise SystemExit(
+            '[install-subagents] ERROR: Python 3.11+ is required to safely update config.toml '
+            '(or install the tomli package for this Python interpreter).'
+        )
+
+reg_path, tmp_path, legacy_article_agent = sys.argv[1], sys.argv[2], sys.argv[3]
+reg_text = open(reg_path, encoding='utf-8').read()
+reg_lines = reg_text.splitlines()
+try:
+    parsed_registration = tomllib.loads(reg_text)
+except tomllib.TOMLDecodeError:
+    raise SystemExit('[install-subagents] ERROR: bundled agent registration is invalid TOML; config.toml was not changed.')
+try:
+    tmp_text = open(tmp_path, encoding='utf-8').read()
+except UnicodeDecodeError:
+    raise SystemExit('[install-subagents] ERROR: existing config.toml must be valid UTF-8 TOML; no changes were made.')
+tmp_lines = tmp_text.splitlines()
+
+HEADER_RE = re.compile(r'^\s*(\[\[[^\[\]]+\]\]|\[[^\[\]]+\])\s*(?:#.*)?$')
 KV_RE = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=')
+
+def strip_toml_comment(line):
+    quote = None
+    escaped = False
+    for index, char in enumerate(line):
+        if quote == '"':
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == '"':
+                quote = None
+            continue
+        if quote == "'":
+            if char == "'":
+                quote = None
+            continue
+        if char == '#':
+            return line[:index]
+        if char in ('"', "'"):
+            quote = char
+    return line
 
 def structural_toml_lines(lines):
     multiline_delimiter = None
@@ -109,10 +158,44 @@ def structural_toml_lines(lines):
             continue
 
         yield index, line, True
+        line_without_comment = strip_toml_comment(line)
         for delimiter in ('"""', "'''"):
-            if line.count(delimiter) % 2 == 1:
+            if line_without_comment.count(delimiter) % 2 == 1:
                 multiline_delimiter = delimiter
                 break
+
+try:
+    parsed_target = tomllib.loads(tmp_text)
+except tomllib.TOMLDecodeError:
+    raise SystemExit('[install-subagents] ERROR: existing config.toml is invalid TOML; fix it before reinstalling. No changes were made.')
+
+mcp_servers = parsed_target.get('mcp_servers')
+creator_exists = isinstance(mcp_servers, dict) and 'creator' in mcp_servers
+if creator_exists:
+    creator_config = mcp_servers['creator']
+    bearer_exists = isinstance(creator_config, dict) and 'bearer_token_env_var' in creator_config
+    canonical_headers = 0
+    bare_url_keys = 0
+    bare_bearer_keys = 0
+    current_header = ''
+    for _, line, structural in structural_toml_lines(tmp_lines):
+        header_match = HEADER_RE.match(line) if structural else None
+        if header_match:
+            current_header = header_match.group(1)
+            if current_header == '[mcp_servers.creator]':
+                canonical_headers += 1
+            continue
+        key_match = KV_RE.match(line) if structural else None
+        if current_header == '[mcp_servers.creator]' and key_match and key_match.group(1) == 'url':
+            bare_url_keys += 1
+        if current_header == '[mcp_servers.creator]' and key_match and key_match.group(1) == 'bearer_token_env_var':
+            bare_bearer_keys += 1
+    if canonical_headers != 1 or bare_url_keys != 1 or (bearer_exists and bare_bearer_keys != 1):
+        raise SystemExit(
+            '[install-subagents] ERROR: unsupported creator MCP configuration representation; '
+            'use [mcp_servers.creator] with a bare url key and bare bearer_token_env_var key. '
+            'No changes were made.'
+        )
 
 legacy_header = f'[agents.{legacy_article_agent}]'
 filtered_lines = []
@@ -125,10 +208,14 @@ for _, line, structural in structural_toml_lines(tmp_lines):
         filtered_lines.append(line)
 tmp_lines = filtered_lines
 
-# The official creator endpoint is plugin-owned. Refresh only its url key so
-# upgrades cannot retain a stale or custom endpoint; preserve every other line.
+# Creator connection fields are plugin-owned. Refresh their values so upgrades
+# cannot retain a stale endpoint or noncanonical credential variable.
 creator_header = '[mcp_servers.creator]'
 creator_endpoint = 'https://creator.anbanai.com/mcp'
+creator_connection_values = {
+    'url': creator_endpoint,
+    'bearer_token_env_var': 'ANBAN_API_KEY',
+}
 current_header = ''
 for index, line, structural in structural_toml_lines(tmp_lines):
     header_match = HEADER_RE.match(line) if structural else None
@@ -136,16 +223,23 @@ for index, line, structural in structural_toml_lines(tmp_lines):
         current_header = header_match.group(1)
         continue
     key_match = KV_RE.match(line) if structural else None
-    if current_header != creator_header or not key_match or key_match.group(1) != 'url':
+    if current_header != creator_header or not key_match:
         continue
-    value_match = re.match(r'^(\s*url\s*=\s*)(?:"[^"]*"|\'[^\']*\')(\s*(?:#.*)?)$', line)
+    key = key_match.group(1)
+    required_value = creator_connection_values.get(key)
+    if required_value is None:
+        continue
+    value_match = re.match(
+        rf'^(\s*{re.escape(key)}\s*=\s*)(?:"[^"]*"|\'[^\']*\')(\s*(?:#.*)?)$',
+        line,
+    )
     if value_match:
-        replacement = f'{value_match.group(1)}"{creator_endpoint}"{value_match.group(2)}'
+        replacement = f'{value_match.group(1)}"{required_value}"{value_match.group(2)}'
     else:
-        replacement = f'url = "{creator_endpoint}"'
+        replacement = f'{key} = "{required_value}"'
     if replacement != line:
         tmp_lines[index] = replacement
-        print(f'[install-subagents] Updated: {creator_header}::url')
+        print(f'[install-subagents] Updated: {creator_header}::{key}')
 
 # Parse target file into: { header_name: [list of kv keys] }
 # Top-level (no header) is stored under "".
@@ -252,11 +346,56 @@ for i, line in enumerate(tmp_lines):
         out.extend(insertions[i])
 out.extend(append_at_end)
 
-with open(tmp_path, 'w') as f:
-    f.write('\n'.join(out) + '\n')
+out_text = '\n'.join(out) + '\n'
+try:
+    parsed_out = tomllib.loads(out_text)
+except tomllib.TOMLDecodeError:
+    raise SystemExit('[install-subagents] ERROR: generated config.toml is invalid TOML; no changes were made.')
+
+try:
+    installed_creator = parsed_out['mcp_servers']['creator']
+    installed_endpoint = installed_creator['url']
+    installed_bearer = installed_creator['bearer_token_env_var']
+except (KeyError, TypeError):
+    raise SystemExit('[install-subagents] ERROR: generated config.toml is missing required creator connection fields; no changes were made.')
+if installed_endpoint != creator_endpoint:
+    raise SystemExit('[install-subagents] ERROR: generated config.toml did not retain the fixed creator endpoint; no changes were made.')
+if installed_bearer != 'ANBAN_API_KEY':
+    raise SystemExit('[install-subagents] ERROR: generated config.toml did not retain the required creator bearer variable; no changes were made.')
+
+def first_required_leaf(value, path):
+    if isinstance(value, dict) and value:
+        key = next(iter(value))
+        return first_required_leaf(value[key], path + (key,))
+    return path
+
+def registration_problem(expected, actual, path=()):
+    for key, expected_value in expected.items():
+        child_path = path + (key,)
+        if key not in actual:
+            return 'missing required registration key', first_required_leaf(expected_value, child_path)
+        actual_value = actual[key]
+        if isinstance(expected_value, dict):
+            if not isinstance(actual_value, dict):
+                return 'required registration table has incompatible type', child_path
+            problem = registration_problem(expected_value, actual_value, child_path)
+            if problem is not None:
+                return problem
+    return None
+
+problem = registration_problem(parsed_registration, parsed_out)
+if problem is not None:
+    reason, path = problem
+    key_path = '.'.join(path)
+    raise SystemExit(f'[install-subagents] ERROR: {reason} {key_path}; config.toml was not changed.')
+
+with open(tmp_path, 'w', encoding='utf-8') as f:
+    f.write(out_text)
 PY
 
   mv "$tmp" "$CODEX_CONFIG"
+  tmp=""
+  trap - EXIT
   echo "[install-subagents] Merged registration into $CODEX_CONFIG"
 fi
 
