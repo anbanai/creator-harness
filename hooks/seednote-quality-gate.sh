@@ -106,6 +106,18 @@ if plan_path.is_file():
         images = content_images + [
             p for name in ("cover.png", "tail.png") if (p := seednote_dir / name).is_file()
         ]
+        for image_path in images:
+            try:
+                if image_path.stat().st_size <= 0:
+                    missing.append(f"output/{image_path.name}（图片文件为空）")
+                    continue
+                with image_path.open("rb") as image_file:
+                    header = image_file.read(8)
+            except OSError as exc:
+                missing.append(f"output/{image_path.name}（图片文件无法读取：{exc}）")
+                continue
+            if header != b"\x89PNG\r\n\x1a\n":
+                missing.append(f"output/{image_path.name}（文件内容不是有效 PNG）")
         actual_image_names = sorted(p.name for p in images)
         image_count = len(images)
         if image_count != expected:

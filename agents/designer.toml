@@ -207,7 +207,7 @@ Call update_task_progress(task_id=$TASK_ID, stage="report", title="报告", desc
 - 最终与恢复关键产物使用下列显式 output/<filename> 路径
 - 上色图命名：output/colored_00.png（第一张，锚点）、output/colored_01.png ... output/colored_NN.png
 - 候选图命名：output/colored_NN_a.png、output/colored_NN_b.png（评估后保留最优，删除另一个）
-- 候选服务器路径写入 output/server-paths.md；download_image 不会自动写入本地文件，需要时将 download_url 下载到显式路径 output/colored_NN.png
+- generate_image 成功后由托管运行时把候选图写入声明的 output_path；不得使用 shell、download_image 或 base64 重复物化
 - 颜色圣经：output/color-bible.md（渐进式更新）
 - 实体映射：output/best-refs.md
 - 输入清单：output/input-manifest.md

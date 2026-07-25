@@ -28,7 +28,7 @@ description: Use when coloring line art images, batch coloring multiple images, 
 | MCP 工具 | 说明 |
 |----------|------|
 | `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。一次只分析一张图片；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path`。用于实体识别、候选评估、一致性审计、线稿验证 |
-| `generate_image` (project_id, task_id, prompt, image_type, output_path, size, ref_image_path / ref_image_paths, watermark) | 从创作 prompt 和有序参考集合生成并登记一张任务图片，返回 `name`、`role`、`download_url`、`file_path` |
+| `generate_image` (project_id, task_id, prompt, image_type, output_path, size, ref_image_path / ref_image_paths, watermark) | 从创作 prompt 和有序参考集合生成并登记一张任务图片；托管运行时自动把成品写入 `output_path` |
 | `upload_image` (project_id, file_path) | 上传图片 |
 | `compress_image` (file_path) | 压缩图片 |
 | `download_image` (project_id, url) | 把在线图片下载到 MCP 服务器临时路径，返回服务器端 `file_path`；不上传，也不写入 agent 本地 `output` |
@@ -322,7 +322,7 @@ lineart_server = download_image(project_id="$PROJECT_ID",
 - 每张上色图都必须带当前原始线稿；不要把前一张上色输出作为下一张的构图来源
 - 服务端拒绝参考集合时，保留原线稿并按语义相关性缩小锚点子集
 
-`output_path` 使用任务相对路径 `output/colored_NN_a.png`，返回的 `file_path` 写入 `output/server-paths.md`。`size` 从原始线稿推断最接近的支持比例（如 7:5 接近 `3:2` 或 `4:3`），传入 `size="3:2"`；返回后用文件尺寸或 `analyze_image` 检查是否被裁切、变形或转为竖图。
+`output_path` 使用任务相对路径 `output/colored_NN_a.png`。`size` 从原始线稿推断最接近的支持比例（如 7:5 接近 `3:2` 或 `4:3`），传入 `size="3:2"`；返回后用 `analyze_image` 检查是否被裁切、变形或转为竖图。
 
 生成候选 A：
 ```
@@ -335,7 +335,6 @@ result_a = generate_image(
   size="[从原线稿推断的比例]",
   ref_image_paths=[lineart_server, ...相关颜色锚点]
 )
-SERVER_PATH_A = result_a.file_path
 # image-prompts.md 只记录用途、最终 prompt 和参考图编号
 ```
 
@@ -343,11 +342,11 @@ SERVER_PATH_A = result_a.file_path
 
 #### 步骤 7：候选评估 + 最优选 + 回归检查
 
-1. 调用 `analyze_image(project_id="$PROJECT_ID", file_path=SERVER_PATH_A, prompt=候选颜色评估prompt)` → 获取候选 A 的颜色描述。10MB 限制失败时先 `compress_image`；仍失败则 `upload_image` 后用 `image_url` 分析。
-2. 高质量模式下，同样分析 SERVER_PATH_B。
+1. 调用 `analyze_image(project_id="$PROJECT_ID", task_id="$TASK_ID", image_url=result_a.download_url, prompt=候选颜色评估prompt)` → 获取候选 A 的颜色描述。
+2. 高质量模式下，同样使用候选 B 的 `download_url` 分析。
 3. 对每个候选，逐实体逐部位比对 Color Bible 评 PASS/MINOR/FAIL，同时记录线稿/构图差异。
 4. 选颜色最优且线稿风险最低的候选；**回归检查**：颜色更准但线稿退化更严重的候选必须拒。
-5. 将选中候选的服务器端 `file_path` 写入 `output/server-paths.md`。**不能把 `download_image` 当作写入 `output/colored_NN.png` 的本地归档步骤**——它只返回服务器端临时 `file_path` 或上传 URL；这里的“归档”仅指写入该文件，不涉及目录生命周期。需要本地文件时，用 shell 下载 `download_url` 到 `output/colored_NN.png`；该 URL 始终是可 HTTP fetch 的存储 URL。
+5. 选中候选已由托管运行时写入声明的 `output_path`；不得再用 shell、`download_image` 或 base64 重复物化。
 6. 如果两个候选都明显不匹配 → 生成候选 C（换 ref 锚点或加强 prompt 约束），选三者中最好的。
 7. 调用 `analyze_image` 验证线稿完整性：先为原线稿生成线稿指纹，再审计上色图，逐项比对。
 8. 更新 `output/best-refs.md`：新图中某实体颜色比当前 best_ref 更好则更新。
@@ -478,7 +477,7 @@ Color Bible 实体数: 5（3 角色 + 2 物体）
 - 语义色名、实物类比、反面约束和跨实体颜色关系的完整写法见 [references/color-bible.md](references/color-bible.md)。次要实体使用更简单直接的颜色指令，关键实体才叠加实物类比和反面约束。
 - 常见失败按 [references/verification.md](references/verification.md) 判断：颜色 FAIL 优先修；线稿退化直接触发回归守卫；当前 generate_image 非严格上色工具，强化 prompt 后仍失败就标 `needs_img2img`，不承诺 100% 保留。
 - 分析失败时遵循工具边界：Read 返回的 CDN URL 约 30 分钟过期；`file_path` 方式分析有 10MB 限制，先 `compress_image`，仍失败再 `upload_image` 后用 `image_url`。
-- `output_path` 使用任务相对路径 `output/...`；需要本地文件时下载 `download_url` 到显式路径 `output/colored_NN.png`，不能把 `download_image` 当作写入本地文件的步骤。
+- `output_path` 使用任务相对路径 `output/...`；`generate_image` 成功后由托管运行时自动写入，不执行手工下载或 base64 转存。
 - 长 prompt 可能触发 504 Gateway Timeout。Prompt 控制在 500 词以内，优先关键实体、关键颜色和 1-2 个最重要反面约束。
 
 ## 最终验证

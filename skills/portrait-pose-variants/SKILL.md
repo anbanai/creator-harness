@@ -24,7 +24,7 @@ description: Use when generating multiple pose/expression variants from a single
 | MCP 工具 | 说明 |
 |----------|------|
 | `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。**Read 工具不用于图像视觉分析**，只用来获取 CDN URL。一次只分析一张图；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path` |
-| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, size, task_id) | 生成单张图片，返回 `download_url`（始终为可 HTTP fetch 的存储 URL，不再返回 base64 data URL）和 `file_path`。当前是参考图生成，**不是专用 ID-lock 工具** |
+| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, size, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，**不是专用 ID-lock 工具** |
 | `download_image` (project_id, url) | 下载在线图片到 MCP 服务器临时路径，返回 `file_path`。用于把 Read 得到的 CDN URL 注册成 `ref_image_path` 可用的服务器端路径 |
 | `compress_image` (file_path) | 压缩图片——`analyze_image` 的 `file_path` 方式有 10MB 限制，超出时先压缩 |
 | `upload_image` (project_id, file_path) | 上传图片，用于 `compress_image` 仍超 10MB 的兜底场景 |
@@ -222,15 +222,13 @@ result_i = generate_image(
   size="9:16",
   ref_image_path="$PORTRAIT_SERVER_PATH"  # 始终用原始人像，不用前一张变体
 )
-DOWNLOAD_URL_i = result_i.download_url
-VARIANT_SERVER_PATH_i = result_i.file_path
+VARIANT_ANALYSIS_URL_i = result_i.download_url
 ```
 
-**5c. 本地文件 + prompt 备份**：
+**5c. Prompt 备份**：
 
-- 下载 `DOWNLOAD_URL_i` 到 `output/variant_0i.png`
+- 确认 `generate_image` 成功；托管运行时会把图片写入 `output/variant_0i.png`，不得手工下载或 base64 转存
 - 把图片文件名、用途和最终创作 prompt 追加到 `output/image-prompts.md`；参考图选择和稳定顺序写入 `output/selected-poses.md`
-- 把 `VARIANT_SERVER_PATH_i` 追加到 `output/server-paths.md`
 
 **5d. 逐张身份审计**：
 
@@ -239,7 +237,8 @@ VARIANT_SERVER_PATH_i = result_i.file_path
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$VARIANT_SERVER_PATH_i",
+  task_id="$TASK_ID",
+  image_url="$VARIANT_ANALYSIS_URL_i",
   prompt=<参考 references/consistency-audit.md 的 12 维度比对模板，基准是 identity-lock.md>
 )
 ```
@@ -437,9 +436,8 @@ Background and clothing may vary slightly but the person MUST be identical.
 
 ### 单张变体完成后
 
-- [ ] `output/variant_0N.png` 实际下载到本地
+- [ ] `output/variant_0N.png` 已由托管运行时写入
 - [ ] `output/image-prompts.md` 已追加该张的文件名、用途和最终创作 prompt
-- [ ] `output/server-paths.md` 已记录 VARIANT_SERVER_PATH_N
 - [ ] 逐张身份审计已通过（关键维度 PASS 或重试后接受）
 - [ ] `confirm_per_image=true` 时已得到用户确认
 

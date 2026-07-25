@@ -4,6 +4,17 @@ All notable changes to the Anban Creator Claude Code plugin are documented here.
 
 This project follows semantic versioning for the plugin package. Patch releases cover documentation, compatibility, hook, and workflow contract fixes that do not change the public agent or MCP behavior.
 
+## [4.0.7] - 2026-07-25
+
+### Removed
+
+- Removed the obsolete read-only `config` Skill; project profiles remain available directly through `list_projects` and `get_project_profile` in each business workflow.
+
+### Fixed
+
+- Made managed runtimes materialize successful `generate_image` results at the declared `output_path` without Agent-side downloads or base64 transfer.
+- Made the Seednote quality gate reject empty files and non-PNG bytes masquerading as generated images.
+
 ## [4.0.6] - 2026-07-24
 
 ### Fixed

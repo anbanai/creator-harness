@@ -52,7 +52,6 @@ Key skill groups:
 - **Design**: `line-art-coloring`
 - **Media and design**: `short-video-cover`, `portrait-pose-variants`, `capcut-draft`
 - **Setup**: `anban-setup` (first-time API Key setup and connectivity verification; Codex-specific — does not auto-write `~/.codex/config.toml`, documents manual setup steps instead)
-- **Config**: `config` (project-level runtime configuration: writer, theme, image provider, positioning)
 
 ### MCP Server
 

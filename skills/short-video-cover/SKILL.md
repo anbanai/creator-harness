@@ -24,7 +24,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 | MCP 工具 | 说明 |
 |----------|------|
 | `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。**Read 工具不用于图像视觉分析**，只用来获取 CDN URL。一次只分析一张图；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path` |
-| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, size, task_id) | 生成单张图片，返回 `download_url`（始终为可 HTTP fetch 的存储 URL，不再返回 base64 data URL）和 `file_path`。当前是参考图生成，不是 ControlNet/img2img |
+| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, size, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，不是 ControlNet/img2img |
 | `download_image` (project_id, url) | 下载在线图片到 MCP 服务器临时路径或上传到存储，返回 `file_path`。用于把 Read 得到的 CDN URL 注册成 `ref_image_path` 可用的服务器端路径 |
 | `compress_image` (file_path) | 压缩图片——`analyze_image` 的 `file_path` 方式有 10MB 限制，超出时先压缩 |
 | `upload_image` (project_id, file_path) | 上传图片，用于 `compress_image` 仍超 10MB 的兜底场景 |
@@ -222,15 +222,13 @@ result = generate_image(
   size="9:16",
   ref_image_path="$REF_SERVER_PATH"
 )
-DOWNLOAD_URL = result.download_url
-COVER_SERVER_PATH = result.file_path
+COVER_ANALYSIS_URL = result.download_url
 ```
 
-**5c. 本地文件 + prompt 备份**：
+**5c. Prompt 备份**：
 
-- 下载 `DOWNLOAD_URL` 到 `output/cover.png`（始终为可 HTTP fetch 的存储 URL，直接用 curl/wget 下载）
+- 确认 `generate_image` 成功；托管运行时会把图片写入 `output/cover.png`，不得手工下载或 base64 转存
 - 把图片文件名、用途和最终创作 prompt 写入 `output/cover-prompts.md`；参考封面的语义拆解与迁移决策保留在 `output/reference-analysis.md` 和 `output/cover-plan.md`
-- 把 `COVER_SERVER_PATH` 记录到 `output/server-paths.md`
 
 ---
 
@@ -243,7 +241,8 @@ COVER_SERVER_PATH = result.file_path
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$COVER_SERVER_PATH",
+  task_id="$TASK_ID",
+  image_url="$COVER_ANALYSIS_URL",
   prompt=<参考 references/optimization-checklist.md 的 5 项审计模板>
 )
 ```
@@ -362,10 +361,10 @@ DO NOT include:
 ### 单张封面完成后
 
 - [ ] `output/input-manifest.md` 已生成，包含全部 6 个用户输入字段
-- [ ] `output/server-paths.md` 已记录 REF_SERVER_PATH（和 COVER_SERVER_PATH）
+- [ ] `output/server-paths.md` 已记录输入参考图的 REF_SERVER_PATH
 - [ ] `output/reference-analysis.md` 已生成，覆盖 8 个分析维度
 - [ ] `output/cover-plan.md` 已生成，包含迁移决策和 style anchors
-- [ ] `output/cover.png` 实际下载到本地
+- [ ] `output/cover.png` 已由托管运行时写入
 - [ ] `output/cover-prompts.md` 已备份文件名、用途和最终创作 prompt
 - [ ] `output/cover-review.md` 已生成，5 项审计 PASS/MINOR/FAIL 评级
 

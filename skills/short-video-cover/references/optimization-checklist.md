@@ -22,7 +22,8 @@
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$COVER_SERVER_PATH",
+  task_id="$TASK_ID",
+  image_url="$COVER_ANALYSIS_URL",
   prompt=<下方完整审计模板>
 )
 ```
@@ -92,7 +93,7 @@ analyze_image(
 
 - file: output/cover.png
 - analyzed_at: <时间戳>
-- cover_server_path: $COVER_SERVER_PATH
+- analysis_source: generated task image
 - planned_against: output/cover-plan.md
 
 ---

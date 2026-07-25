@@ -22,7 +22,8 @@
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$VARIANT_SERVER_PATH",
+  task_id="$TASK_ID",
+  image_url="$VARIANT_ANALYSIS_URL",
   prompt=<下方完整比对模板，基准是 identity-lock.md>
 )
 ```
