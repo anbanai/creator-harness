@@ -4,6 +4,18 @@ All notable changes to the Anban Creator Claude Code plugin are documented here.
 
 This project follows semantic versioning for the plugin package. Patch releases cover documentation, compatibility, hook, and workflow contract fixes that do not change the public agent or MCP behavior.
 
+## [4.0.8] - 2026-07-30
+
+### Changed
+
+- Moved live-slicing semantic decisions into the Live Slicer Agent while keeping transcription and clip planning as deterministic MCP capabilities.
+- Added the explicit `viral_analysis` workflow to the Seednote Agents with managed-task artifact requirements.
+- Documented `analyze_video` as the atomic native-video understanding capability for workflows that need complete visual context.
+
+### Removed
+
+- Removed the four legacy live semantic generation MCP calls from Agent and Skill contracts.
+
 ## [4.0.7] - 2026-07-25
 
 ### Removed
