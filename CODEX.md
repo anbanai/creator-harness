@@ -59,10 +59,10 @@ The installer registers the fixed official endpoint `https://creator.anbanai.com
 
 - `list_projects`, `get_project_profile`, `list_drafts`, `list_published_articles`, `list_project_titles`
 - `render_template`, `convert_markdown`
-- `generate_image`, `upload_image`, `download_image`, `compress_image`, `analyze_image`
+- `generate_image`, `upload_image`, `download_image`, `compress_image`, `analyze_image`, `analyze_video`
 - `publish_draft` (WeChat draft box)
 - `get_feed_detail` (SeedNote source note fetching)
-- `upload_live_audio`, `create_live_analysis_task`, `query_live_analysis_task`, `recognize_live_invalid_sentences`, `recognize_live_segments`, `build_live_clip_plan`, `build_live_subject_clip_plan`, `build_live_clip_manifest`, `recognize_live_subjects`, `complete_live_subject`
+- `upload_live_audio`, `create_live_analysis_task`, `query_live_analysis_task`, `build_live_clip_plan`, `build_live_subject_clip_plan`, `build_live_clip_manifest`
 - `prepare_file_upload`
 
 ### Themes (Server-managed)

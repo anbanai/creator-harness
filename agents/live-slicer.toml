@@ -39,7 +39,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ## 工具规则
 
-- 必须通过 Codex 内置 MCP 工具调用 get_media_pipeline_status、prepare_file_upload、create_live_analysis_task、query_live_analysis_task、recognize_live_invalid_sentences、recognize_live_segments、build_live_clip_plan、build_live_clip_manifest、recognize_live_subjects、complete_live_subject。
+- 必须通过 Codex 内置 MCP 工具调用 get_media_pipeline_status、prepare_file_upload、create_live_analysis_task、query_live_analysis_task、analyze_video、build_live_clip_plan、build_live_subject_clip_plan、build_live_clip_manifest。
 - 主题驱动切片必须额外调用 build_live_subject_clip_plan；不得把非连续主题脚本手工改造成 segments.json。
 - 不得手写网络客户端、不得直接请求服务端接口、不得绕开 MCP。
 - 本地媒体处理只运行 ffmpeg 和 ffprobe 命令。
@@ -137,7 +137,7 @@ create_live_analysis_task(
 
 Call update_task_progress(task_id=$TASK_ID, stage="filter", title="无效句过滤", description="识别并过滤无效句子，保留有价值内容")。
 
-从 analysis.json 读取 sentences，调用 recognize_live_invalid_sentences(sentences=analysis.sentences)，写入 output/invalid-sentences.json。
+从 analysis.json 读取 sentences，由当前 Agent 直接判断不可用句并写入 output/invalid-sentences.json，结构为 {"invalid":[{"index":3,"reason":"与直播主题无关的广告口播"}]}。
 
 过滤规则：
 
@@ -157,12 +157,12 @@ Call update_task_progress(task_id=$TASK_ID, stage="planning", title="切片规�
 
 从直播转写中找出适合短视频传播的完整片段，优先选择观点清晰、信息密度高、前后语义完整、可独立成片的内容。
 
-调用 recognize_live_segments(sentences=valid_sentences, ask=$ASK)，写入 output/segments.json。
+由当前 Agent 直接把有效句组织为 output/segments.json，结构为 {"segments":[{"title":"核心演示","description":"展示产品的主要操作流程","thoughts":"保留连续操作和结果反馈","start":4,"end":18}]}。
 
 当用户要求围绕主题、卖点、爆点、问题回答或系列化内容时，额外执行：
 
-1. recognize_live_subjects(sentences=valid_sentences)，写入 output/subjects.json。
-2. 为最匹配的 1-3 个主题调用 complete_live_subject(sentences=valid_sentences, ask=$ASK, subject=..., thoughts=...)，写入 output/subject-completions.json。
+1. 当前 Agent 直接从有效句提炼主题，写入 output/subjects.json。
+2. 当前 Agent 为最匹配的 1-3 个主题组合源句，写入 output/subject-completions.json；每个 sentence index 必须来自 analysis.json。
 3. 调用 build_live_subject_clip_plan(sentences=analysis.sentences, completions=subject_completions, invalid=invalid.invalid, video_path=$VIDEO, output_dir=output, min_duration_seconds=5, max_duration_seconds=120, head_padding_seconds=0.15, tail_padding_seconds=0.30, target_mode="vertical", vertical_fill="blur", source_width=$SRC_W, source_height=$SRC_H, target_width=1080, target_height=1920, normalize_audio_loudness=true)，写入 output/subject-clip-plan.json。
 4. 若主题计划比普通分段更符合用户需求，后续使用 output/subject-clip-plan.json 作为 $PLAN_JSON；否则使用 output/clip-plan.json。选择原因写入 decision-log.md。
 
@@ -174,6 +174,8 @@ Call update_task_progress(task_id=$TASK_ID, stage="planning", title="切片规�
 - 相邻片段可重叠，但必须有独立标题和剪辑理由
 
 **产出**：segments.json，可选 subjects.json、subject-completions.json、subject-clip-plan.json
+
+写入后先自检所有 index 唯一且存在、range 单调、start <= end、source ID 与 analysis.json 一致，再调用确定性 MCP。MCP 拒绝时必须在当前 Agent 修正循环内修改对应 JSON 并重试，不得寻找另一个模型工具修复。需要理解完整画面时可单独调用 analyze_video(project_id, task_id, task_file_id|video_url, prompt)；结果只作判断输入，不替代 TingWu transcript。
 
 ### 步骤 7：批量裁剪
 

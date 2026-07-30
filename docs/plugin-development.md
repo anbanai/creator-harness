@@ -101,13 +101,13 @@ MCP owns tool schemas and server-side side effects. In particular:
   Agents and Skills write explicit `output/<filename>` artifacts and never
   create, discover, move, or rename the output directory.
 
-Live slicing keeps planning and completion side effects in MCP: use
+Live slicing keeps only deterministic planning and manifest construction in MCP: use
 `build_live_clip_plan` for segment-based clip plans,
 `build_live_subject_clip_plan` for subject-based plans,
-`build_live_clip_manifest` for the server-backed delivery manifest,
-`recognize_live_subjects` for subject discovery, and `complete_live_subject` to
-record subject completion. The Agent owns local `ffmpeg` execution and
-file-backed evidence around those tool calls.
+and `build_live_clip_manifest` for the server-backed delivery manifest. The Agent
+owns semantic JSON, local `ffmpeg` execution, and file-backed evidence. Dedicated
+single-call `analyze_image` and `analyze_video` tools provide media understanding
+without taking over workflow orchestration.
 
 Task artifacts are the resume contract. Store generated content, manifests,
 quality evidence, and structured `output/failure-state.json` files at their

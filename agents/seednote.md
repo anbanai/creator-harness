@@ -57,6 +57,10 @@ directory. Write final and resume-critical artifacts to the explicit
 output/<filename> paths below. Do not create, discover, move, or rename the
 output directory. TASK_ID is supplied by structured runtime context.
 
+## `viral_analysis` 任务停止闸门
+
+最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，按 `seednote-viral-analysis` 完成证据拆解，生成 `output/source-analysis.md`、`output/viral-template.json`、`output/template-meta.json`，更新进度并提交 feedback 后立即结束。该分支禁止进入 `seednote-writing`、视觉生成、模板保存或发布步骤，不得生成 `output/content.md` 或任何发布图片。
+
 ---
 
 <!-- seednote-reference-contract:start -->

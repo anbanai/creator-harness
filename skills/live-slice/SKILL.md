@@ -68,12 +68,12 @@ The managed runtime provides a task-private workspace and a pre-created `output/
    Call `query_live_analysis_task(task_id=...)` until `status` is `COMPLETED`, then save the JSON to `output/analysis.json`.
 
 6. Plan cleanup and cuts:
-   - Call `recognize_live_invalid_sentences(sentences=analysis.sentences)` and save `output/invalid-sentences.json`.
+   - Read `analysis.sentences`, directly identify unusable sentences, and save `output/invalid-sentences.json` as `{"invalid":[{"index":3,"reason":"与直播主题无关的广告口播"}]}`.
    - Remove invalid indexes from `analysis.sentences`.
-   - Call `recognize_live_segments(sentences=valid_sentences, ask=optional_user_goal)` and save `output/segments.json`.
+   - Directly create `output/segments.json` as `{"segments":[{"title":"核心演示","description":"展示产品的主要操作流程","thoughts":"保留连续操作和结果反馈","start":4,"end":18}]}`.
    - Detect source orientation with `ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$VIDEO"` (store `$SRC_W`/`$SRC_H`; `$SRC_W > $SRC_H` is landscape).
    - Call `build_live_clip_plan(sentences=analysis.sentences, segments=segments.segments, invalid=invalid.invalid, video_path="$VIDEO", output_dir="output", target_mode="vertical", vertical_fill="blur", source_width=$SRC_W, source_height=$SRC_H, target_width=1080, target_height=1920, normalize_audio_loudness=true, head_padding_seconds=0.15, tail_padding_seconds=0.30, min_duration_seconds=5, max_duration_seconds=120)` and save `output/clip-plan.json`.
-   - Use `recognize_live_subjects` and `complete_live_subject` when the user wants topic-driven clips instead of broad segments, then call `build_live_subject_clip_plan(sentences=analysis.sentences, completions=subject_completions, invalid=invalid.invalid, video_path="$VIDEO", output_dir="output", target_mode="vertical", vertical_fill="blur", source_width=$SRC_W, source_height=$SRC_H, target_width=1080, target_height=1920, normalize_audio_loudness=true, head_padding_seconds=0.15, tail_padding_seconds=0.30, min_duration_seconds=5, max_duration_seconds=120)` and save `output/subject-clip-plan.json`.
+   - For topic-driven clips, directly create `output/subjects.json` and `output/subject-completions.json`, then call `build_live_subject_clip_plan(sentences=analysis.sentences, completions=subject_completions, invalid=invalid.invalid, video_path="$VIDEO", output_dir="output", target_mode="vertical", vertical_fill="blur", source_width=$SRC_W, source_height=$SRC_H, target_width=1080, target_height=1920, normalize_audio_loudness=true, head_padding_seconds=0.15, tail_padding_seconds=0.30, min_duration_seconds=5, max_duration_seconds=120)` and save `output/subject-clip-plan.json`.
    - Never hand-convert non-contiguous subject scripts into `segments.json`; use `build_live_subject_clip_plan`.
 
 7. Cut clips:
@@ -165,6 +165,8 @@ For clip notes, write the `clip_notes_markdown` returned by `build_live_clip_man
 
 ## JSON Shapes
 
+Before either deterministic planning call, validate that every index is unique and exists, every range is monotonic with `start <= end`, and every source ID comes from `analysis.json`. If MCP validation rejects the files, fix them in the current Agent loop and retry; do not seek another model tool. Use `analyze_video(project_id, task_id, task_file_id|video_url, prompt)` only when complete visual context is needed; it does not replace the TingWu transcript.
+
 `analysis.json` uses:
 `chapters`, `sentences`, `subjects`, `segments`, `invalid`, `qas`, `topics`, `words`, `silents`, `keywords`, `key_sentences`, `templates`, `audio_info`.
 
@@ -192,7 +194,7 @@ Clip manifest is a JSON array of delivered clip objects with status, method, out
 - Pass `head_padding_seconds=0.15, tail_padding_seconds=0.30` to the plan tools so cuts don't clip the first or last word.
 - Target short-video sweet spots: pass `max_duration_seconds=120` (15-60s is ideal for livestream hooks). Treat clips >120s as too long and record a warning; drop clips shorter than 5s — the MIN is 5s everywhere (draft-skip and red-flag thresholds agree).
 - Aim for semantic diversity across clips (distinct sentence ranges or topics) so the batch is not a set of near-duplicates.
-- Favor segments whose first sentence is a conclusion, opinion, pain-point, or contrast (a hook); `complete_live_subject` already forces a 3-5s opening hook for subject clips.
+- Favor segments whose first sentence is a conclusion, opinion, pain-point, or contrast (a hook); subject completions should directly place a 3-5s opening hook.
 - Verticalize for the target platform: pass `target_mode="vertical"` and `vertical_fill="blur"`. Landscape sources get a blur-fill re-encode; already-vertical sources get only `scale`. Audio is loudness-normalized (EBU R128) on re-encode paths, never on `-c copy`.
 - Use `-c copy` first for speed only when `fast_cut_shell` is non-empty; retry with re-encoding (or go straight to it) if a filter is needed or timestamp accuracy is poor.
 - For subject clips, preserve selected sentence order unless the LLM explicitly provides a better narrative order.
