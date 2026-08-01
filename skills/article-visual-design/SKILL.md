@@ -18,6 +18,15 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
 4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
 
+### 任务图像参数合同
+
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
+- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，封面和正文图的每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
+- `resolved_profile.image_ratio` 为空表示智能适配：Agent 按每张产物职责从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`；公众号常用宽屏、横版或方形比例只作选择参考。
+- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
+- 每次生成都必须显式传 `size` 参数。
+- `image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
+
 
 ## 图片模式与跳过条件（运行控制驱动）
 
@@ -36,14 +45,14 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 
 ## 公众号图片尺寸与展示规则
 
-公众号图片的比例和大小由本 skill 固定，并在 MCP `generate_image` 参数中显式传入；**不依赖项目级/任务级 image ratio 自动推断**。项目/任务的 image ratio 可服务其他平台，但公众号文章优先使用下列固定规则：
+公众号图片必须遵循任务有效比例，并在 MCP `generate_image` 参数中显式传入。下表中的构图比例只用于智能适配时从当前能力支持范围选值，不得覆盖用户明确比例：
 
 | 图片类型 / slot | MCP `size` | HTML `image_size` | 用途 |
 |-----------------|--------------|---------------------|------|
-| 封面 / hero | `size="21:9"` | `full-bleed` | 服务端裁剪到 900×383，用作 `thumb_media_id` |
-| `section_opener` / 普通正文配图 | `size="4:3"` | `full-width` | 段落之间的章节图，适合公众号阅读流 |
-| `inline_detail` / 段内细节图 | `size="1:1"` | `inline` | 局部特写、操作细节、补充说明 |
-| 信息图 / 流程图 / 对比图 / 清单总结图 | 默认 `size="4:3"`，仅当内容更适合方形时用 `size="1:1"` | `full-width` 或 `inline` | 信息密度高但不能撑满正文 |
+| 封面 / hero | `$EFFECTIVE_IMAGE_SIZE` | `full-bleed` | 用户明确比例原样使用；智能适配时优先考虑能力支持的宽屏比例 |
+| `section_opener` / 普通正文配图 | `$EFFECTIVE_IMAGE_SIZE` | `full-width` | 用户明确比例原样使用；智能适配时可考虑横版 |
+| `inline_detail` / 段内细节图 | `$EFFECTIVE_IMAGE_SIZE` | `inline` | 用户明确比例原样使用；智能适配时可考虑方形 |
+| 信息图 / 流程图 / 对比图 / 清单总结图 | `$EFFECTIVE_IMAGE_SIZE` | `full-width` 或 `inline` | 智能适配时按信息结构从能力支持范围选择 |
 
 `visual-rhythm-plan.md` 中正文图 slot 默认不要滥用 `full-bleed`；正文阅读流优先 `full-width` 或 `inline`。`render_template` 会按 `image_size` 控制展示宽度：`full-bleed=100%`、`full-width=86%`、`inline=68%`。
 
@@ -148,11 +157,10 @@ Phase 4: 配图生成与独立内容审核
 
 > **封面开关守卫**：当 `article_image_mode` 为 `content_only` 或 `text_only` 时，**Phase 2 整体跳过**——不调 `generate_image`、不生成 `output/cover.png`、不取 `media_id`/`$COVER_PATH`。`article-cover-design` skill 同步跳过（见其「跳过条件」）。封面关·配图开时，Phase 4 正文图改用无锚点独立生成。
 
-封面是全篇风格锚点（产物 `output/cover.png` 供 Phase 4 内容图 `ref_image_path` 继承）。**封面设计已独立成稿**——using the `article-cover-design` skill，它硬编码官方比例（900×383 / 2.35:1）、中心安全区构图（转发卡 1:1 兼容）、受控文字策略、从文章核心隐喻推导视觉概念，并由 Agent 用质量评分卡把关。本阶段只交代与本 skill 的衔接：
+封面是全篇风格锚点（产物 `output/cover.png` 供 Phase 4 内容图 `ref_image_path` 继承）。**封面设计已独立成稿**——using the `article-cover-design` skill，它遵循任务有效比例，智能适配时参考公众号展示规格与中心安全区，受控决定是否显式裁剪，并从文章核心隐喻推导视觉概念，由 Agent 用质量评分卡把关。本阶段只交代与本 skill 的衔接：
 
-- **核心规格**：大图 2.35:1（900×383px，服务端强制精确裁剪），转发卡 1:1 由中心安全区自动覆盖，受控文字策略（按真实场景决定是否带短文字）。
-- **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", size="21:9")`；需要质量审核时单独调用 `analyze_image`，通过后调用 `upload_image`。
-  - `size="21:9"` 是接近业务目标的生成提示比；**服务端按 `platform=article + image_type=cover` 把成品精确裁到 900×383 并像素断言**——微信零裁剪，告别「需要手动裁剪的纯图」。
+- **核心规格**：用户明确比例原样生成；智能适配时可参考公众号宽屏构图和转发卡中心安全区。只有用户明确要求精确尺寸，或智能适配时 Agent 判断发布确有需要，才显式调用 `crop_image`。
+- **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", size=$EFFECTIVE_IMAGE_SIZE)`；需要精确 900×383 时再显式 `crop_image` 到 `output/cover-exact.png` 并更新 `$COVER_PATH`，否则 `$COVER_PATH="output/cover.png"`；需要质量审核时单独调用 `analyze_image`，通过后调用 `upload_image`。
 
 - **质量评分卡不过** → 根据可见问题锐化 prompt 重试，最多 3 次；耗尽后保留已有产物并写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_quality_failed","message":"封面在限定创作重试后仍未通过质量评分卡","resume_from":"image_generation"}`，结束当前托管执行；不得请求用户协助，**不得**用未通过封面发布。
 - 详细推导链、6 维评分卡模板、迭代策略、`cover-prompt.md` 审计见 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)；三维风格方向参考见 [references/cover.md](references/cover.md)。
@@ -226,12 +234,12 @@ generate_image(
   output_path="output/img_N.png",
   task_id=$TASK_ID,
   ref_image_path=<封面开关开启时 "output/cover.png"；封面关时省略或链到首张已生成图>,
-  size=<按 slot 固定：section_opener 用 "4:3"；inline_detail 用 "1:1"；信息图/流程图/对比图默认 "4:3">
+  size=$EFFECTIVE_IMAGE_SIZE
 )
 ```
 
 **关键**：
-- `size`：必须显式传入，普通正文配图/信息图用 `size="4:3"`，段内细节图用 `size="1:1"`；不得依赖项目级/任务级 image ratio。
+- `size`：必须显式传入。用户明确比例时每张都使用同一个 `$EFFECTIVE_IMAGE_SIZE`；智能适配时每张可分别从 `resolved_profile.supported_sizes` 选择。
 - `ref_image_path`：**封面开关开启时**用 `output/cover.png`（风格锚点）；**封面关·配图开时**不传（或链到首张已生成图），**严禁**指向不存在的 `output/cover.png`。
 - `ref_image_path` 只传递"风格语言"，不得复刻封面主体；正文图必须按章节 `visual_brief` / `required_entities` 独立表达。
 - `generate_image` 成功后单独调用 `analyze_image` 执行评分卡；通过后再单独调用 `upload_image` 取得 `media_id` 和 `wechat_url`。上传失败只重试上传。
@@ -340,8 +348,8 @@ analyze_image(
 
 **公众号常用比例**：
 - 封面图（公众号封面）：2.35:1（900x383px 标准）
-- 正文配图（section_opener）：4:3，MCP 显式传 `size="4:3"`
-- 章节内细节图（inline_detail）：1:1，MCP 显式传 `size="1:1"`
+- 正文配图（section_opener）：显式传 `size=$EFFECTIVE_IMAGE_SIZE`
+- 章节内细节图（inline_detail）：显式传 `size=$EFFECTIVE_IMAGE_SIZE`
 - Hero slot：full-bleed 2.35:1
 
 ---

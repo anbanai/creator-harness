@@ -1,6 +1,6 @@
 # 主图套设计规范（CTR 之战）
 
-主图是电商曝光→点击的第一战场，**点击率（CTR）优先于一切**。默认 5 张一套（京东 6 张、微信小店 3-9 张），比例与尺寸按 `target_platform`（见 `ecommerce-platform-specs/references/platforms.md`）：淘宝天猫/京东/微信 `1:1:2K`（生产 800×800），抖音/小红书服饰类 `3:4:2K`（竖版）。移动端首屏可读。
+主图是电商曝光→点击的第一战场，**点击率（CTR）优先于一切**。默认 5 张一套（京东 6 张、微信小店 3-9 张），比例与目标分辨率按 `target_platform`（见 `ecommerce-platform-specs/references/platforms.md`）分别规划：淘宝天猫/京东/微信常用比例 `1:1`、目标清晰度 `2K`（生产可为 800×800），抖音/小红书服饰类常用比例 `3:4`、目标清晰度 `2K`。传给 `generate_image.size` 的只能是有效比例，不得拼接清晰度。移动端首屏可读。
 
 > 设计方法论（字体/色彩/构图/信息层级/移动端）见 [design-principles.md](design-principles.md)——主图的每张都要用上「主角-配角-钩子」三级层级与三分法构图。
 

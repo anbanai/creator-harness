@@ -18,6 +18,15 @@ description: 'Use when 电商视觉设计与生成——商业转化导向的视
 3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
 4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
 
+### 任务图像参数合同
+
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
+- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
+- `resolved_profile.image_ratio` 为空表示智能适配：Agent 可按不同模块分别从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`；平台常用比例只作选择参考。
+- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
+- 每次生成都必须显式传 `size` 参数。
+- `image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
+
 
 ## 受众与目标
 
@@ -72,12 +81,12 @@ description: 'Use when 电商视觉设计与生成——商业转化导向的视
 
 按模块逐张规划。每张含：`用途 / 尺寸 / 视觉主体 / 必须出现的卖点文字 / 禁用元素 / 所需产品图=[第N张(subject), ...]（查「产品图清单」，精确到序号）/ 验收标准`。
 
-**尺寸规范**（按 `target_platform`，详见 `ecommerce-platform-specs`）：
-- 主图：`1:1:2K`（淘宝天猫/京东 800² 可放大）
-- 详情页：`3:4:2K`（750-790 宽移动优先）
-- 封面 banner：`16:9:2K` 或 `3:4:2K`
-- 分享图：`1:1:2K` 或 `3:4:2K`（按平台）
-- SKU：`1:1:2K`
+**智能适配比例参考**（仅当 `resolved_profile.image_ratio` 为空时按 `target_platform` 参考，且必须受 `resolved_profile.supported_sizes` 约束；详见 `ecommerce-platform-specs`）：
+- 主图：比例 `1:1`；目标清晰度/分辨率另记为 `2K`，不得拼入 `size`
+- 详情页：比例 `3:4`；目标清晰度/分辨率另记为 `2K`
+- 封面 banner：比例 `16:9` 或 `3:4`；目标清晰度/分辨率另记为 `2K`
+- 分享图：比例 `1:1` 或 `3:4`；目标清晰度/分辨率另记为 `2K`
+- SKU：比例 `1:1`；目标清晰度/分辨率另记为 `2K`
 
 各模块设计规范见：
 - 主图 → [references/main-image.md](references/main-image.md)
@@ -122,8 +131,8 @@ description: 'Use when 电商视觉设计与生成——商业转化导向的视
 每张 generate_image 调用：
 - `project_id=$PROJECT_ID`
 - `prompt` = 产品档案前缀块 + **点名保真块（本图{部位}与【产品图清单】第 N 张完全一致）** + 本张视觉描述（视觉主体/场景/构图/打光）+ 必须出现的卖点文字（用「」包裹）+ `$STYLE` 风格延续块 + 禁用元素
-- `image_type`：主图/封面/分享/SKU 用 `"cover"` 配置，详情图用 `"content"` 配置（按项目 image API 配置；默认 cover 用更高质量）
-- `size`：按 asset-plan
+- `image_type`：主图/封面/分享/SKU 用 `"cover"`，详情图用 `"content"`；仅表示产物角色
+- `size`：必须显式传 asset-plan 的纯比例 `$EFFECTIVE_IMAGE_SIZE`；清晰度/分辨率不得拼入该参数
 - `output_path`：`output/<模块>_<NN>.png`
 - `ref_image_paths`：只传本图所需部位的产品原图，顺序与 prompt 编号一致；服务端拒绝时缩小为更相关的子集。禁止不传 ref
 - `task_id=$TASK_ID`

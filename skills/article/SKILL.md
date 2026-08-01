@@ -62,6 +62,8 @@ description: 'Use when 微信公众号图文文章全自动创作。用户提到
 - `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功
 - 使用 runtime 已预创建的 `output/`；不得创建、发现、移动或重命名该目录
 
+**图像参数合同**：同时读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。非空 `image_ratio` 是用户明确比例，所有图片都必须原样令 `$EFFECTIVE_IMAGE_SIZE=image_ratio`；空值是智能适配，Agent 才可为每张产物从 `supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`。每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。用户明确比例不受支持时写入 `image_capability_ratio_unsupported`，不得回退比例或改选能力。
+
 ### 步骤 2：选题研究
 
 using the topic-research skill 结合账号关键词和用户需求搜索热门话题，创作文章大纲。产出：
@@ -121,7 +123,7 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
 
 #### 6d：生成封面（委托 article-cover-design skill）
 
-封面是全篇风格锚点，更是标题-摘要-正文-用户画像的点击承诺载体。**封面设计已独立成稿**——using the `article-cover-design` skill：硬编码官方比例（900×383 / 2.35:1）、中心安全区构图、受控文字策略、`cover_strategy`、三选一概念评审、`visual_quality_scorecard` 与 `cover_effectiveness_scorecard` 双评分卡把关。本步骤只交代与本流水线的衔接：
+封面是全篇风格锚点，更是标题-摘要-正文-用户画像的点击承诺载体。**封面设计已独立成稿**——using the `article-cover-design` skill：用户明确比例优先，智能适配时可参考公众号比例（900×383 / 2.35:1），并使用中心安全区构图、受控文字策略、`cover_strategy`、三选一概念评审、`visual_quality_scorecard` 与 `cover_effectiveness_scorecard` 双评分卡把关。本步骤只交代与本流水线的衔接：
 
 1. 从 `output/context-brief.md`、`output/seo-result.md`、digest 和 `output/04-article-final.md` 提取最终标题、目标读者、读者痛点/任务、文章承诺、正文证据和最强视觉素材。
 2. 交给 `article-cover-design` skill 先写 `cover_strategy`：`target_reader`、`reader_pain_or_job`、`article_promise`、`content_proof_points`、`click_trigger`、至少 3 个 `cover_concept_candidates`、`selected_cover_concept`。
@@ -134,13 +136,13 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
      image_type="cover",
      output_path="output/cover.png",
      task_id=$TASK_ID,
-     size="21:9",
+     size=$EFFECTIVE_IMAGE_SIZE,
    )
    ```
 5. 如需内容质量审核，单独调用 `analyze_image`。Agent 根据可见主体、文字、构图和合规结果决定接受、重构概念或锐化 prompt，最多 3 次生成；传输或运行时失败按「独立分析调用」记录警告，最终质量判断由 Agent 负责。
-6. 质量通过后单独调用 `upload_image`。上传失败只重试上传，不重新生成；按「MCP 工具使用规则」耗尽后写 `article_image_upload_failed` 并停止。
-7. 记录 `$COVER_PATH="output/cover.png"`、`$COVER_MEDIA_ID`、`$COVER_CDN_URL`（供步骤 7/8/10 使用）。
-8. **原子写 `output/cover-prompt.md`**：完整记录封面创作决策、最终 prompt 和 Agent 的可见内容质量结论。
+6. 质量通过后先令 `$COVER_PATH="output/cover.png"`。仅在用户明确要求精确尺寸，或智能适配时 Agent 判断发布确有需要，才显式调用 `crop_image` 生成 `output/cover-exact.png` 并更新 `$COVER_PATH`；不得按平台或 `image_type` 隐式裁剪。
+7. 单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)`，记录 `$COVER_MEDIA_ID` 与 `$COVER_CDN_URL`（供步骤 7/8/10 使用）。上传失败只重试上传，不重新生成；按「MCP 工具使用规则」耗尽后写 `article_image_upload_failed` 并停止。
+8. **原子写 `output/cover-prompt.md`**：完整记录比例来源、可选裁剪参数、实际上传的 `$COVER_PATH`、封面创作决策、最终 prompt 和 Agent 的可见内容质量结论。
 
 详细推导链、评分卡模板、迭代策略见 `skills/article-cover-design/SKILL.md` 与 `skills/article-cover-design/references/cover-effectiveness.md`；三维风格方向参考见 `skills/article-visual-design/references/cover.md`。
 
@@ -172,11 +174,11 @@ generate_image(
   output_path="output/img_N.png",
   task_id=$TASK_ID,
   ref_image_path=<封面开关开启时 "output/cover.png"；封面关时省略或链到首张已生成图>,
-  size=<按 slot 固定：section_opener/信息图用 "4:3"，inline_detail 用 "1:1">
+  size=$EFFECTIVE_IMAGE_SIZE
 )
 ```
 
-**关键**：公众号正文配图不依赖项目级/任务级 image ratio；每次 `generate_image` 必须显式传 `size`，section_opener/信息图用 `size="4:3"`，inline_detail 用 `size="1:1"`。封面+配图均开启时，`ref_image_path` 用 `output/cover.png` 传递风格语言；封面关·配图开时不传或链到首张已生成图。每张正文图的 `<img src>` 必须来自该图的独立 `upload_image` 调用，严禁复用封面或其他正文图 URL。
+**关键**：每次 `generate_image` 必须显式传 `size`。用户明确比例时所有图片原样使用 `$EFFECTIVE_IMAGE_SIZE`；智能适配时每张可从 `resolved_profile.supported_sizes` 分别选择。封面+配图均开启时，`ref_image_path` 用 `output/cover.png` 传递风格语言；封面关·配图开时不传或链到首张已生成图。每张正文图的 `<img src>` 必须来自该图的独立 `upload_image` 调用，严禁复用封面或其他正文图 URL。
 
 #### 7b：独立内容质量审核与失败重试
 

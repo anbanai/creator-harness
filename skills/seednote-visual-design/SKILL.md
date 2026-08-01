@@ -18,6 +18,15 @@ description: 'Use when creating seednote visual content including covers, conten
 3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
 4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
 
+### 任务图像参数合同
+
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
+- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
+- `resolved_profile.image_ratio` 为空表示智能适配：Agent 按每张产物职责从 `resolved_profile.supported_sizes` 中选择 `$EFFECTIVE_IMAGE_SIZE`；Seednote 常用 `3:4` 只作选择参考，不是固定覆盖。
+- 用户明确比例不在 `resolved_profile.supported_sizes` 时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退到 `1:1` 或其他比例。
+- 每次生成都必须显式传 `size` 参数。
+- `image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
+
 
 ## 硬性纪律（违反视为流程失败，会被 SubagentStop 机械闸门拦截）
 
@@ -41,7 +50,7 @@ description: 'Use when creating seednote visual content including covers, conten
 
 ## 平台 Gotcha
 
-种草笔记图片是 **3:4 竖版**，强视觉驱动。封面决定点击率，内容图决定完读率，尾图决定互动率。三类图片目标不同，prompt 构建方式也不同。
+种草笔记通常适合 **3:4 竖版**，但它只用于智能适配时的 Agent 参考。用户明确比例必须原样使用。封面决定点击率，内容图决定完读率，尾图决定互动率。三类图片目标不同，prompt 构建方式也不同。
 
 ---
 
@@ -336,7 +345,7 @@ reference-usage-summary.json
 **调用示例（封面，务必带上 task_id）**：
 
 ```
-generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", size="3:4")
+generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", size=$EFFECTIVE_IMAGE_SIZE)
 ```
 
 内容图、尾图同理，逐张调用时只替换 `image_type` 与 `output_path`（如 `output/image_01.png`、`output/tail.png`），`task_id=$TASK_ID` 每张都必须带。托管运行时已提供 `output/`，因此 `output_path` 直接使用这些显式路径，服务端可登记为 task_file。

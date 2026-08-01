@@ -1,6 +1,6 @@
 ---
 name: short-video-cover
-description: 'Use when replicating viral short-video covers, generating a short-video cover from a reference cover image, or when user mentions "短视频封面", "爆款封面", "封面复刻", "复刻封面", "cover replication", "B站封面", "抖音封面", "视频号封面", "小红书视频封面". Triggers whenever a user provides a reference cover image and asks for a new short-video cover based on it — even if they don''t explicitly say "复刻". Covers the 9:16 vertical cover replication workflow: analyze reference cover''s visual logic → migrate to user''s new title → generate cover prompt → quality optimization.'
+description: 'Use when replicating viral short-video covers, generating a short-video cover from a reference cover image, or when user mentions "短视频封面", "爆款封面", "封面复刻", "复刻封面", "cover replication", "B站封面", "抖音封面", "视频号封面", "小红书视频封面". Triggers whenever a user provides a reference cover image and asks for a new short-video cover based on it — even if they don''t explicitly say "复刻". Covers the short-video cover replication workflow: analyze reference cover''s visual logic → migrate to user''s new title → generate cover prompt → quality optimization.'
 ---
 
 # 短视频爆款封面——参考封面复刻工作流
@@ -9,14 +9,13 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
-## 图片比例固定规则
+## 任务图像参数合同
 
-本 Skill 只要涉及生成、选择、裁切、校验或引用图片，必须按以下优先级决定画面比例：
-
-1. 用户/任务明确指定的 `image_ratio`、`size` 或平台规格优先。
-2. 项目/频道默认比例次之。
-3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
-4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
+- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
+- `resolved_profile.image_ratio` 为空表示智能适配：Agent 从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`；短视频平台可优先参考 `9:16`，但只在能力支持时选择。
+- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
+- 每次生成都必须显式传 `size` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
 
 
 ## MCP 工具
@@ -35,7 +34,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 - `generate_image` 是**参考图生成**，不是 ControlNet 或专用封面排版工具。参考图能提高视觉一致性，**不能锁定构图、字号、文字位置**。
 - 中文文字在图片内的渲染**不稳定**——AI 生图模型对中文文字支持差。封面以**视觉冲击为主**，关键文字应作为辅助而非主体；若用户需要精确文字排版，建议生成图后用 PS/Canva 二次加工。
-- `size="9:16"` 是宽高比提示，不是像素级硬约束；返回后需用文件尺寸或 `analyze_image` 验证比例。
+- `size=$EFFECTIVE_IMAGE_SIZE` 是宽高比提示，不是像素级硬约束；返回后需用文件尺寸或 `analyze_image` 验证比例。
 - 在专用封面排版工具接入前，**二次优化**是重新生成，不是"只改局部"。
 
 如用户要求"标题文字必须精确显示为指定中文"，必须先说明当前能力无法严格保证。
@@ -60,9 +59,9 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 封面 prompt 必须包含 8 个要素（顺序可调）：①画面比例 ②标题排版 ③人物/主体 ④背景 ⑤色彩 ⑥字体气质 ⑦主体元素 ⑧禁止事项。缺要素会直接导致生成结果不稳定。详见 [references/prompt-template.md](references/prompt-template.md)。
 
-### 原则 3：9:16 竖版硬约束
+### 原则 3：任务有效比例硬约束
 
-短视频封面默认 **9:16 竖版**，与公众号图文封面 2.35:1、种草笔记封面 3:4 严格区分。除非用户明确指定其他比例，`size` 参数固定传 `"9:16"`。
+用户明确比例必须原样使用。智能适配时才把 **9:16 竖版**作为短视频平台的优先参考，并且只能从当前能力公开的 `resolved_profile.supported_sizes` 中选择。
 
 ---
 
@@ -77,6 +76,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 - `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
 - 如果为空，调用 `list_projects` 获取项目列表；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
 - 从结构化运行时上下文读取 `$TASK_ID`
+- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_IMAGE_SIZE`；用户明确比例不支持时在生成前停止
 
 #### 步骤 2：收集用户输入
 
@@ -87,7 +87,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 | 参考封面本地路径 | ✅ | — | 必须是本地可读的图片文件 |
 | 新封面标题 | ✅ | — | 用户的新标题文案 |
 | 账号领域 | ✅ | — | 知识干货/娱乐/美妆/科技/教育/...，决定视觉调性 |
-| 画面比例 | ❌ | `9:16` | 一般不需调整 |
+| 画面比例 | ❌ | 智能适配 | 用户明确值优先，否则从当前能力支持范围选择 |
 | 是否有人像 | ❌ | 自动判断 | 若参考封面有人像，新封面也建议保留人像位置逻辑 |
 | 参考深度 | ❌ | `light` | `light`（只学色彩和层级）或 `deep`（参考构图和主体位置）|
 
@@ -101,7 +101,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 - reference_cover: /Users/.../ref.png
 - new_title: 3 步学会爆款标题
 - account_domain: 知识干货
-- aspect_ratio: 9:16
+- aspect_ratio: $EFFECTIVE_IMAGE_SIZE
 - has_person: true
 - reference_depth: light
 
@@ -205,7 +205,7 @@ analyze_image(
 按 [references/prompt-template.md](references/prompt-template.md) 的 8 要素模板组装 prompt。Prompt 控制在 500 词以内，避免长 prompt 触发 504；超过时删减到关键要素 + 1-2 个最重要反面约束。
 
 构建要点：
-- 已确定要素直接填入：`画面比例 9:16`、`标题分行`、`主体位置`、`背景描述`、`色彩主+强调`、`字体气质`、`主体元素`、`禁止事项`
+- 已确定要素直接填入：`画面比例 $EFFECTIVE_IMAGE_SIZE`、`标题分行`、`主体位置`、`背景描述`、`色彩主+强调`、`字体气质`、`主体元素`、`禁止事项`
 - `reference_depth=deep` 时，prompt 中显式声明"参考封面的构图逻辑"
 - `reference_depth=light` 时，prompt 中只提色彩和字体气质参考，构图完全自主
 - 中文文字描述要具体（"标题'爆款标题'用大号黑体加粗"），但要在能力边界说明中告知用户渲染可能不精确
@@ -219,7 +219,7 @@ result = generate_image(
   prompt=<5a 构建的 prompt>,
   image_type="cover",
   output_path="output/cover.png",
-  size="9:16",
+  size=$EFFECTIVE_IMAGE_SIZE,
   ref_image_path="$REF_SERVER_PATH"
 )
 COVER_ANALYSIS_URL = result.download_url
@@ -308,7 +308,7 @@ analyze_image(
 
 | 要素 | 好的写法 | 差的写法 |
 |------|---------|---------|
-| 画面比例 | "vertical 9:16 ratio, portrait orientation" | "竖图" |
+| 画面比例 | "use the effective ratio $EFFECTIVE_IMAGE_SIZE and matching orientation" | "竖图" |
 | 标题排版 | "title '爆款标题' in 2 lines, line 1 small, line 2 oversized bold" | "有大标题" |
 | 人物/主体 | "young woman in red hoodie, half-body, positioned center-left, looking at camera" | "有个女生" |
 | 背景 | "deep navy gradient background with subtle geometric pattern, clean and uncluttered" | "深色背景" |

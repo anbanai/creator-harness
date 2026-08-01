@@ -1,6 +1,6 @@
 ---
 name: portrait-pose-variants
-description: Use when generating multiple pose/expression variants from a single portrait photo while keeping the person's identity consistent, or when user mentions "人像姿态", "人像一致性", "同一人物不同表情", "封面人物表情包", "人像变体", "portrait consistency", "pose variants", "手势变化", "表情封面". Triggers whenever a user provides one portrait photo and asks for multiple cover-ready variants of the same person — even if they don't explicitly say "一致性". Generates 1-6 vertical 9:16 cover-ready portraits from one reference photo, locked to the same person's face/features/hair/style.
+description: Use when generating multiple pose/expression variants from a single portrait photo while keeping the person's identity consistent, or when user mentions "人像姿态", "人像一致性", "同一人物不同表情", "封面人物表情包", "人像变体", "portrait consistency", "pose variants", "手势变化", "表情封面". Triggers whenever a user provides one portrait photo and asks for multiple cover-ready variants of the same person — even if they don't explicitly say "一致性". Generates 1-6 cover-ready portraits from one reference photo, locked to the same person's face/features/hair/style.
 ---
 
 # 人像姿态变体——基于一张参考人像生成多张封面
@@ -9,14 +9,13 @@ description: Use when generating multiple pose/expression variants from a single
 
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
-## 图片比例固定规则
+## 任务图像参数合同
 
-本 Skill 只要涉及生成、选择、裁切、校验或引用图片，必须按以下优先级决定画面比例：
-
-1. 用户/任务明确指定的 `image_ratio`、`size` 或平台规格优先。
-2. 项目/频道默认比例次之。
-3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
-4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
+- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
+- `resolved_profile.image_ratio` 为空表示智能适配：Agent 从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`；短视频人像可优先参考 `9:16`，但只在能力支持时选择。
+- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
+- 每次生成都必须显式传 `size` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
 
 
 ## MCP 工具
@@ -75,12 +74,12 @@ description: Use when generating multiple pose/expression variants from a single
 
 每张变体的 `ref_image_path` 都传入**原始参考人像**的服务器路径（`portrait_server_path`）。**不用前一张变体作下一张的参考**——这会放大错误，导致身份越生成越偏。
 
-### 原则 3：9:16 竖版 + 商业封面质感
+### 原则 3：有效比例 + 商业封面质感
 
 默认配置（直接写入每张 prompt）：
 
 ```
-画幅比例: 9:16 竖版
+画幅比例: $EFFECTIVE_IMAGE_SIZE
 镜头: 50mm 人像镜头
 景别: 半身近景（头肩到胸口）
 风格: 真实摄影、商业封面、短视频爆款封面
@@ -104,6 +103,7 @@ description: Use when generating multiple pose/expression variants from a single
 - `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
 - 如果为空，调用 `list_projects`；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
 - 从结构化运行时上下文读取 `$TASK_ID`
+- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_IMAGE_SIZE`；用户明确比例不支持时在生成前停止
 
 #### 步骤 2：收集用户输入
 
@@ -204,7 +204,7 @@ analyze_image(
 ```
 [身份锁段落 — 从 identity-lock.md 抄写]
 [当前姿态段落 — 从 selected-poses.md 抄写]
-[通用风格段落 — 9:16, 半身, 商业封面, 棚拍, etc.]
+[通用风格段落 — $EFFECTIVE_IMAGE_SIZE, 半身, 商业封面, 棚拍, etc.]
 [通用负面约束段落 — 见下方"通用负面提示词"]
 ```
 
@@ -219,7 +219,7 @@ result_i = generate_image(
   prompt=<5a 构建的 prompt>,
   image_type="cover",
   output_path="output/variant_0i.png",
-  size="9:16",
+  size=$EFFECTIVE_IMAGE_SIZE,
   ref_image_path="$PORTRAIT_SERVER_PATH"  # 始终用原始人像，不用前一张变体
 )
 VARIANT_ANALYSIS_URL_i = result_i.download_url

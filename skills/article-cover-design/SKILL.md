@@ -1,6 +1,6 @@
 ---
 name: article-cover-design
-description: 'Use when 微信公众号封面图（公众号头图）专用设计——硬编码官方比例 900×383（2.35:1），中心安全区构图保证转发卡 1:1 主体完整，受控文字策略（按真实场景决定是否带短文字），从文章核心隐喻和标题钩子推导视觉概念，生成后用封面质量评分卡把关。用户提到「封面」「公众号封面」「头图」「cover」「封面设计」「封面图」时，或 article 流水线到达封面生成步骤时使用。'
+description: 'Use when 微信公众号封面图（公众号头图）专用设计——尊重任务明确比例，智能适配时参考公众号展示规格和中心安全区，受控决定是否显式裁剪，从文章核心隐喻和标题钩子推导视觉概念，生成后用封面质量评分卡把关。用户提到「封面」「公众号封面」「头图」「cover」「封面设计」「封面图」时，或 article 流水线到达封面生成步骤时使用。'
 ---
 
 # 公众号封面图设计（效果与用途保障方法论）
@@ -20,6 +20,14 @@ description: 'Use when 微信公众号封面图（公众号头图）专用设计
 3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
 4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
 
+### 任务图像参数合同
+
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
+- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，调用 `generate_image` 时显式传 `size=$EFFECTIVE_IMAGE_SIZE`；不得为了平台规格覆盖它。
+- `resolved_profile.image_ratio` 为空表示智能适配：Agent 从 `resolved_profile.supported_sizes` 选择适合封面的 `$EFFECTIVE_IMAGE_SIZE`，公众号常用宽屏比例只作选择参考。
+- 用户明确比例不在支持范围时报告 `image_capability_ratio_unsupported`，不得静默回退到 `1:1` 或改选能力档位。
+- `image_type="cover"` 只表示产物角色，不决定能力、比例、裁剪或价格。
+
 
 ## 跳过条件（图片开关：封面关）
 
@@ -36,22 +44,22 @@ description: 'Use when 微信公众号封面图（公众号头图）专用设计
 
 本 skill 是公众号文章封面（`thumb_media_id`）的**唯一权威设计入口**，也是全篇内容配图的**风格锚点**（产物 `output/cover.png` 供后续内容图 `ref_image_path` 继承）。它不是「随便生成一张横图」，而是一套多层方法论，确保封面达成：订阅号列表抓眼球（CTR）、转发卡主体完整、微信零裁剪、一眼传达主题、品牌调性统一。
 
-## 核心规格（写死，不可改）
+## 核心规格（用于智能适配与显式后处理）
 
 | 项 | 值 | 说明 |
 |----|----|------|
-| 大图比例 | **2.35:1 = 900×383px** | 订阅号列表、文章详情页展示 |
+| 大图参考 | **2.35:1 = 900×383px** | 仅作智能适配或用户明确要求精确尺寸时的发布参考 |
 | 转发卡 | **1:1**（微信自动从封面**中心**裁切） | 群发通知、转发/分享卡片 |
 | 文字 | **受控文字策略**（按场景决定是否带 2-8 个字短标题/关键词；禁止乱码/水印/logo） | 标题利益点强、教程/清单/杂志风可带短文字；普通真实场景/氛围图默认无字 |
-| 生成比 | `size="21:9"`（接近业务目标的宽银幕比例） | 服务端强制中心裁剪到精确 900×383 |
+| 生成比 | `$EFFECTIVE_IMAGE_SIZE` | 用户明确比例原样使用；智能适配时从当前能力支持范围选择 |
 
-**关键**：服务端 `generate_image` 对 `platform=article && image_type="cover"` 会把成品**精确裁剪到 900×383** 并做像素断言。因此你只负责「出一张宽银幕横图 + 主体居中 + 按受控文字策略决定是否带短文字」，最终比例由服务端兜底，微信**绝不会**再裁剪（告别「一张需要手动裁剪的纯图」）。
+**关键**：`generate_image` 不做公众号业务裁剪。用户明确比例时保持生成结果，不得擅自改变；仅当用户明确要求 900×383，或任务处于智能适配且 Agent 判断发布确有需要时，才调用原子的 `crop_image` 生成精确尺寸文件。
 
 ## 用途 ↔ 规则 ↔ 验证（方法论的纲）
 
 | 封面用途 | 设计规则（硬性） | 验证方法 |
 |----------|------------------|----------|
-| 微信零裁剪、列表/详情完整 | 精确 900×383 | 服务端像素断言（不可绕过） |
+| 列表/详情适配 | 智能适配时可输出精确 900×383 | 显式 `crop_image` 后检查目标宽高 |
 | 转发卡 1:1 主体完整 | 主体置于**居中 1:1 安全区**（≈383×383），避开底部 20% | 评分卡 `safe_zone_centered` |
 | 避免低质文字干扰 | 按受控文字策略：需要时只放短文字；不需要时无字；始终禁止乱码/水印/logo/密集排版 | 评分卡 `text_policy_ok` + `hard_no_watermark_logo`（硬维度） |
 | 缩略图 0.5 秒抓眼球（CTR） | 主体大、高对比、强焦点 | 评分卡 `subject_thumbnail_readability` |
@@ -98,20 +106,20 @@ description: 'Use when 微信公众号封面图（公众号头图）专用设计
    - **绝不**从 writer YAML 推视觉（writer 只管文字；切断 dan-koe→维多利亚版画 bug）。
 3. 生成至少 3 个 `cover_concept_candidates`，**先评审，不先画图**。每个候选必须写清：标题钩子、摘要承诺、正文证据、目标读者点击理由、可视化实体、误导风险、可替换性风险。
 4. 对 3 个候选执行 `generic_swap_test`、`promise_proof_test`、`audience_motivation_test`，选择评分最高且三项全过的 `selected_cover_concept`。任何“换到其他方法论文章也成立”的概念必须失败。
-5. 合成封面概念：`{selected_cover_concept} × {VISUAL_STYLE} × {COLOR_PALETTE} × {article_promise} × {click_trigger} × {thumbnail_strategy} × {宽银幕叙事构图 + 主体居中安全区}`。
+5. 合成封面概念：`{selected_cover_concept} × {VISUAL_STYLE} × {COLOR_PALETTE} × {article_promise} × {click_trigger} × {thumbnail_strategy} × {$EFFECTIVE_IMAGE_SIZE 对应构图 + 主体安全区}`。
 6. 提炼 `required_entities`（封面必须出现的具体物体，内容审核依据）和 `anti_generic_constraints`（必须避免的同质化画面）。
 
 ## 第二步：构建封面 prompt
 
 ```
-A cinematic 2.35:1 wide banner for a WeChat article cover. {VISUAL_STYLE}.
+A cinematic WeChat article cover composed for {$EFFECTIVE_IMAGE_SIZE}. {VISUAL_STYLE}.
 Target reader: {TARGET_READER}. Reader pain/job: {READER_PAIN_OR_JOB}.
 Article promise: {ARTICLE_PROMISE}. Click trigger: {CLICK_TRIGGER}. {COLOR_PALETTE}.
 Selected cover concept: {SELECTED_COVER_CONCEPT}. {CONCRETE_PROOF_FROM_ARTICLE — 具象化正文证据}.
 Thumbnail strategy: {THUMBNAIL_STRATEGY}. Avoid generic visuals: {ANTI_GENERIC_CONSTRAINTS}.
-{MOOD_TONE}. Main subject centered within the middle safe zone (works for both
-the 2.35:1 hero and the 1:1 forward-card crop), large and high-contrast for
-thumbnail readability, generous negative space, avoid the bottom 20% (WeChat
+{MOOD_TONE}. Main subject placed within the safe zone appropriate to
+{$EFFECTIVE_IMAGE_SIZE}, large and high-contrast for thumbnail readability,
+generous negative space, avoid the bottom 20% (WeChat
 overlays the article title there). Photographic quality, {TEXT_POLICY: exact short Chinese text when needed, otherwise NO text}, NO watermark,
 NO logo.
 ```
@@ -128,7 +136,7 @@ NO logo.
 质量评分卡作为独立 `analyze_image` 的审核 prompt，在图片生成前准备好：
 
 ```
-这是文章《$ARTICLE_TITLE》的公众号封面（将用于订阅号列表 2.35:1 + 转发卡 1:1）。
+这是文章《$ARTICLE_TITLE》的公众号封面，任务有效比例为 $EFFECTIVE_IMAGE_SIZE；仅按本次明确比例或智能适配决策验收构图。
 digest 钩子：$DIGEST_HOOK；封面钩子：$COVER_HOOK。
 目标读者：$TARGET_READER；读者痛点/任务：$READER_PAIN_OR_JOB；文章承诺：$ARTICLE_PROMISE；点击触发点：$CLICK_TRIGGER。
 正文证据：$CONTENT_PROOF_POINTS；选中封面概念：$SELECTED_COVER_CONCEPT。
@@ -183,7 +191,7 @@ digest 钩子：$DIGEST_HOOK；封面钩子：$COVER_HOOK。
   "composition_quality": "...",            // 摄影级质感，无合成/卡通/纯色底/对称 PPT
   "text_policy_ok": true/false,          // 文字策略是否正确：需要文字时短且清晰；不需要时无字；无乱码/伪文字
   "hard_no_watermark_logo": true/false,  // 硬性：无水印/logo/密集排版
-  "hard_aspect_ok": true/false,            // 硬性：宽银幕横版（非竖图/方图错比）
+  "hard_aspect_ok": true/false,            // 硬性：实际比例与 $EFFECTIVE_IMAGE_SIZE 一致
   "missing_or_forbidden": "...",           // 缺失实体或违禁元素（文字水印、二维码、联系方式、外链 URL、扫码提示、加群、加微信等）
   "overall_pass": true/false,              // visual_quality_scorecard.overall_pass=true 且 text_policy_ok=true、所有 hard_* 为 true
   "sharper_prompt_hint": "..."             // 不通过时的锐化建议
@@ -199,11 +207,26 @@ generate_image(
   image_type="cover",
   output_path="output/cover.png",
   task_id=$TASK_ID,
-  size="21:9"
+  size=$EFFECTIVE_IMAGE_SIZE
 )
 ```
 
-- `size="21:9"` 是生成提示比；**服务端按 `platform=article + image_type=cover` 把成品精确裁到 900×383**（你无需管最终比例）。
+- 每次生成必须显式传 `size`。默认令 `$COVER_PATH="output/cover.png"`，不做后续裁剪。
+- 仅当用户明确要求 900×383，或智能适配时 Agent 判断发布确有需要，再显式调用：
+
+```
+crop_image(
+  task_id=$TASK_ID,
+  input_path="output/cover.png",
+  output_path="output/cover-exact.png",
+  target_width=900,
+  target_height=383,
+  anchor="center"
+)
+```
+
+- 裁剪成功后令 `$COVER_PATH="output/cover-exact.png"`；后续审核、上传使用 `$COVER_PATH`。
+- `target_width` / `target_height` 是目标宽高，`anchor` 是用户选择或 Agent 明确决定的锚点；不得从平台或 `image_type` 隐式推断裁剪。
 - `generate_image` 成功后单独调用 `analyze_image` 执行评分卡；通过后再单独调用 `upload_image` 取得 `media_id` 和 `wechat_url`。上传失败只重试上传。
 - `upload_image` 失败时保留已生成图片，只重试上传，无需重新生成。
 
@@ -225,7 +248,7 @@ generate_image(
 
 封面构建完成后，**原子写入 `output/cover-prompt.md`**（先写 `output/.cover-prompt.md.tmp` → `fsync` → `rename` 覆盖），完整记录封面决策，便于复盘与风格漂移排查。内容必须含：
 
-- **比例**：公众号 2.35:1（900×383px 标准；服务端强制裁剪）。
+- **比例**：记录 `$EFFECTIVE_IMAGE_SIZE` 的来源（用户明确比例或智能适配）；如显式裁剪，再记录目标宽高与锚点。
 - **账号视觉风格来源**：`$VISUAL_STYLE` / `$COLOR_PALETTE` / `$MOOD` + 三维分析依据（账号定位/内容主题/受众），或配置锚点来源（`visual_style_source`）。
 - **标题协同字段**：`final_title`、`digest_hook`、`cover_hook`。
 - **封面策略**：`cover_strategy`，含 `target_reader`、`reader_pain_or_job`、`article_promise`、`content_proof_points`、`click_trigger`、`cover_concept_candidates`、`selected_cover_concept`。

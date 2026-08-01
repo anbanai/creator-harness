@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.2] - 2026-08-01
+
+### Changed
+
+- Made task image ratios authoritative across every image-generating workflow, including Article, Seednote, ecommerce, line-art, portrait, and short-video covers.
+- Limited intelligent aspect-ratio selection to the current image capability's public supported sizes.
+- Replaced implicit WeChat cover cropping with the explicit atomic `crop_image` workflow.
+
 ## [4.1.1] - 2026-08-01
 
 ### Fixed

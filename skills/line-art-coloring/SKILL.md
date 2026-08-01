@@ -9,14 +9,14 @@ description: Use when coloring line art images, batch coloring multiple images, 
 
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
-## 图片比例固定规则
+## 任务图像参数合同
 
-本 Skill 只要涉及生成、选择、裁切、校验或引用图片，必须按以下优先级决定画面比例：
-
-1. 用户/任务明确指定的 `image_ratio`、`size` 或平台规格优先。
-2. 项目/频道默认比例次之。
-3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
-4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
+- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
+- `resolved_profile.image_ratio` 为空表示智能适配：Agent 可按原始线稿方向和构图，从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`。
+- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
+- 每次生成都必须显式传 `size` 参数；不得从工具缺省值反推业务比例。
+- `image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
 
 
 ## 这个 skill 交付什么
@@ -208,6 +208,7 @@ best_ref 记录的是某实体**颜色**渲染最好的一张，可作为 `ref_i
 - `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
 - 如果为空，调用 `list_projects` 获取项目列表并选择；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
 - 从结构化 runtime 上下文获取 `$TASK_ID`
+- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_IMAGE_SIZE`；用户明确比例不支持时在生成前停止
 - **确定语义参考集合**：当前原始线稿排第一；需要颜色一致性时追加最相关的颜色锚点，并保持 prompt 编号与参考数组顺序一致
 - 使用 runtime 已预创建的 `output/`；不得创建、发现、移动或重命名该目录
 
@@ -322,7 +323,7 @@ lineart_server = download_image(project_id="$PROJECT_ID",
 - 每张上色图都必须带当前原始线稿；不要把前一张上色输出作为下一张的构图来源
 - 服务端拒绝参考集合时，保留原线稿并按语义相关性缩小锚点子集
 
-`output_path` 使用任务相对路径 `output/colored_NN_a.png`。`size` 从原始线稿推断最接近的支持比例（如 7:5 接近 `3:2` 或 `4:3`），传入 `size="3:2"`；返回后用 `analyze_image` 检查是否被裁切、变形或转为竖图。
+`output_path` 使用任务相对路径 `output/colored_NN_a.png`。用户明确比例时原样使用；智能适配时才从 `resolved_profile.supported_sizes` 中选择与原始线稿最接近的 `$EFFECTIVE_IMAGE_SIZE`（如 7:5 可在能力支持时选择 `3:2` 或 `4:3`）。返回后用 `analyze_image` 检查是否被裁切、变形或转向。
 
 生成候选 A：
 ```
@@ -332,7 +333,7 @@ result_a = generate_image(
   prompt="[主 prompt]",
   image_type="content",
   output_path="output/colored_NN_a.png",
-  size="[从原线稿推断的比例]",
+  size=$EFFECTIVE_IMAGE_SIZE,
   ref_image_paths=[lineart_server, ...相关颜色锚点]
 )
 # image-prompts.md 只记录用途、最终 prompt 和参考图编号

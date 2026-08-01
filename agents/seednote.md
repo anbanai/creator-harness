@@ -171,6 +171,10 @@ reference-usage-summary.json
 
 **产出**：账号画像（含模板派生风格）、已有标题列表
 
+**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。非空 `image_ratio` 是用户明确比例，必须原样作为 `$EFFECTIVE_IMAGE_SIZE`；空值是智能适配，Agent 才可为每张产物从 `supported_sizes` 选择，`3:4` 只作 Seednote 常用参考。每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。用户明确比例不受支持时报告 `image_capability_ratio_unsupported`，不得回退比例或改选能力。
+
+每次生成均须显式传 `size` 参数。
+
 ### 原创模式
 
 #### 步骤 5：研究选题

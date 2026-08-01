@@ -106,6 +106,8 @@ Call `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研�
 - `get_project_profile`（`project_id=$PROJECT_ID`, `scope="article"`, `task_id="$TASK_ID"`）→ 获取账号定位、受众与风格维度。提取并记录 `$ACCOUNT_POSITIONING`（账号定位）、`$ACCOUNT_KEYWORDS`（领域关键词）、`$ACCOUNT_AUDIENCE`（目标受众），供步骤 6 三维风格分析使用。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层）。**务必区分两个易混字段**：顶层 `author` = 公众号**署名**（步骤 10 发布时原样填入 `draft.json` 的 author，空则省略）；顶层 `writer` = **写作风格资源 key**（驱动正文语气，**绝非署名**）。二者绝不混用。写作风格头像/昵称只是 Studio 展示元数据，不会出现在 MCP profile 中。
 - `list_drafts` 和 `list_published_articles`（`project_id=$PROJECT_ID`）→ 获取已有文章标题，后续选题避开；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功。
 
+**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。非空 `image_ratio` 是用户明确比例，必须原样作为 `$EFFECTIVE_IMAGE_SIZE`；空值是智能适配，Agent 才可为每张产物从 `supported_sizes` 选择。每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。用户明确比例不受支持时报告 `image_capability_ratio_unsupported`，不得回退比例或改选能力。
+
 `$TASK_ID` 由结构化运行时上下文提供，后续 MCP 调用全程复用。
 
 **产出**：`$PROJECT_ID`
@@ -261,7 +263,7 @@ Call `update_task_progress(task_id=$TASK_ID, stage="cover", title="视觉规划"
 
 > **封面开关守卫**：当 article_image_mode 为 `content_only` 或 `text_only`（见「图片生成模式」），**整个 6d 跳过**——不调 `generate_image`、不写 `cover.png`/`cover-prompt.md`、不取 `$COVER_MEDIA_ID`/`$COVER_CDN_URL`。6c 三维风格分析与 6b 节奏规划仍执行（hero slot 的 `image_url=null`）。封面关时 `$COVER_MEDIA_ID` 视为不存在，步骤 7/10 不得引用它。
 
-**封面设计已独立成稿——完整方法论（官方比例 900×383/2.35:1、中心安全区、受控文字策略、`cover_strategy`、三选一概念评审、封面质量评分卡、封面有效性评分卡、迭代闭环、cover-prompt.md 审计）见 `article-cover-design` skill**。下方为本步骤关键调用要点。
+**封面设计已独立成稿——完整方法论（用户明确比例优先、智能适配时参考公众号 900×383/2.35:1、中心安全区、显式 `crop_image`、受控文字策略、`cover_strategy`、三选一概念评审、封面质量评分卡、封面有效性评分卡、迭代闭环、cover-prompt.md 审计）见 `article-cover-design` skill**。下方为本步骤关键调用要点。
 
 基于 6c 的风格分析与文章核心隐喻构建封面 prompt（**主体居中安全区、避开底部 20%、按受控文字策略决定是否带短文字**）：
 
@@ -279,13 +281,13 @@ Call `update_task_progress(task_id=$TASK_ID, stage="cover", title="视觉规划"
      image_type="cover",
      output_path="output/cover.png",
      task_id=$TASK_ID,
-     size="21:9"
+     size=$EFFECTIVE_IMAGE_SIZE
    )
    ```
 8. 若封面工作流要求内容质量审核，单独调用 `analyze_image`，传入 `file_path="output/cover.png"` 和公众号封面质量评分卡。Agent 读取可见内容分析并决定是否重构概念或锐化 prompt；可见内容质量未通过时最多重试一次。`analyze_image` 的传输或运行时失败只按「独立分析调用」记录警告，最终质量判断由 Agent 负责，不能把分析故障伪装成生成失败。
-9. 封面通过 Agent 的质量闸门后，单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path="output/cover.png")`，从返回值取得 `media_id` 和 `wechat_url`。上传失败只重试上传，不重新生成；按「上传调用」规则耗尽后写 `article_image_upload_failed` 并停止。未通过质量闸门的封面不得上传。
-10. 记录 `$COVER_PATH="output/cover.png"`、`$COVER_MEDIA_ID`、`$COVER_CDN_URL`（供步骤 7/8/10 使用）
-11. **原子写 `output/cover-prompt.md`**（先写 `output/.cover-prompt.md.tmp` → `fsync` → `rename` 覆盖）：完整记录封面创作决策，内容必须含公众号比例 `2.35:1`、账号视觉风格来源、`final_title`、`digest_hook`、`cover_strategy`、`cover_hook`、`visual_metaphor`、`thumbnail_strategy`、`anti_generic_constraints`、`required_entities`、最终使用的 prompt，以及 Agent 根据可见内容完成的两张质量评分卡。
+9. 封面通过 Agent 的质量闸门后，先令 `$COVER_PATH="output/cover.png"`。仅在用户明确要求精确尺寸，或智能适配时 Agent 判断发布确有需要，才按 `article-cover-design` 合同显式调用 `crop_image` 生成 `output/cover-exact.png` 并将 `$COVER_PATH` 更新为该路径。
+10. 单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)`，从返回值取得 `$COVER_MEDIA_ID` 和 `$COVER_CDN_URL`，供后续正文转换和发布使用。上传失败只重试上传，不重新生成；按「上传调用」规则耗尽后写 `article_image_upload_failed` 并停止。未通过质量闸门的封面不得上传。
+11. **原子写 `output/cover-prompt.md`**，记录有效比例来源、可选裁剪的目标宽高与锚点、实际上传的 `$COVER_PATH`、账号视觉风格来源、`final_title`、`digest_hook`、`cover_strategy`、`cover_hook`、`visual_metaphor`、`thumbnail_strategy`、`anti_generic_constraints`、`required_entities`、最终 prompt 和两张质量评分卡。
 
 ##### 6e：创建配图内容规划（升级 schema）
 
@@ -322,11 +324,11 @@ generate_image(
   output_path="output/img_N.png",
   task_id=$TASK_ID,
   ref_image_path="output/cover.png",
-  size=<按 slot 固定：section_opener/信息图用 "4:3"，inline_detail 用 "1:1">
+  size=$EFFECTIVE_IMAGE_SIZE
 )
 ```
 
-**关键**：公众号正文配图不依赖项目级/任务级 image ratio；每次 `generate_image` 必须显式传 `size`（section_opener/信息图用 `size="4:3"`，inline_detail 用 `size="1:1"`）。`ref_image_path` 在**封面开关开启时**始终用 `output/cover.png`（**只传递"风格语言"，不是把封面图当作正文图复用，也不得复刻封面主体/构图/核心物件**）；**封面关·配图开**时不传 `ref_image_path`（或链到首张已生成图），**严禁**指向不存在的 `output/cover.png`。每张正文图的 `<img src>` 必须是该图通过独立 `upload_image` 得到的 `wechat_url`；严禁复用封面或其他正文图 URL。
+**关键**：每次 `generate_image` 必须显式传 `size`。用户明确比例时所有图片原样使用 `$EFFECTIVE_IMAGE_SIZE`；智能适配时每张可从 `resolved_profile.supported_sizes` 分别选择。`ref_image_path` 在**封面开关开启时**始终用 `output/cover.png`（**只传递"风格语言"，不是把封面图当作正文图复用，也不得复刻封面主体/构图/核心物件**）；**封面关·配图开**时不传 `ref_image_path`（或链到首张已生成图），**严禁**指向不存在的 `output/cover.png`。每张正文图的 `<img src>` 必须是该图通过独立 `upload_image` 得到的 `wechat_url`；严禁复用封面或其他正文图 URL。
 
 ##### 7b：独立内容质量审核与失败重试
 
