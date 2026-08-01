@@ -1,0 +1,31 @@
+id: montage
+version: 1.0.0
+kind: managed
+display_name: Montage 视频
+description: 使用 OpenMontage 从素材和业务输入生产最终视频与交付清单。
+agent:
+  name: montage
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [montage]
+  max_turns: 180
+bindings:
+  project_platforms: [montage]
+  task_types: [montage]
+runtime:
+  profile: montage
+  adapter: openmontage
+surfaces: [plugin, project, task, plan]
+features: [video-generation, source-assets]
+billing_operations:
+  montage: task.montage
+progress:
+  - {id: prepare, title: 准备 Montage 项目}
+  - {id: production, title: 视频生产}
+  - {id: delivery, title: 交付验收}
+artifacts:
+  - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
+  - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
+ui:
+  renderer: custom:montage

@@ -1,0 +1,32 @@
+id: seednote
+version: 1.0.0
+kind: managed
+display_name: 种草笔记
+description: 支持原创、复刻和爆款分析的种草笔记图文创作流程。
+agent:
+  name: seednote
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [agent-reach, seednote-research, seednote-viral-analysis, seednote-writing, seednote-visual-design]
+  max_turns: 20
+bindings:
+  project_platforms: [seednote]
+  task_types: [seednote, viral_analysis]
+runtime:
+  profile: seednote
+  adapter: standard
+surfaces: [plugin, project, task, plan]
+features: [research, image-generation, reference-images]
+billing_operations:
+  seednote: task.seednote
+  viral_analysis: task.viral_analysis
+progress:
+  - {id: research, title: 素材研究}
+  - {id: writing, title: 笔记创作}
+  - {id: delivery, title: 交付验收}
+artifacts:
+  - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
+  - {role: image_plan, path: output/image-plan.md, mime_type: text/markdown, required: true}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+ui:
+  renderer: custom:seednote

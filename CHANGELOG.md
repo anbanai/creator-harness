@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.1.0] - 2026-07-31
+
+### Added
+
+- Added versioned Agent Packs as the canonical source for native Claude Code Agents, Codex subagents, Skills, business bindings, runtime metadata, progress stages, and artifact contracts.
+- Added a generated Server Catalog with explicit project-platform and task-type bindings plus optional restricted JSON Schemas for scenario-specific project and task input.
+
+### Changed
+
+- Generated the native Claude and Codex Agent distributions from Pack-owned canonical sources while preserving their existing workflow semantics.
+- Bound managed execution to immutable Pack ID, version, digest, runtime profile, and runtime adapter identity.
+
 ## [4.0.9] - 2026-07-31
 
 - Unified task and plan materials: Agents resolve global and per-type attachment ordinals from `input-attachments/index.json` and decide file usage from Prompt semantics.

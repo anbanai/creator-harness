@@ -1,0 +1,31 @@
+id: ecommerce
+version: 1.0.0
+kind: managed
+display_name: 电商素材
+description: 基于产品图片生成完整电商文案和视觉素材包。
+agent:
+  name: ecommerce
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [ecommerce-product-analysis, ecommerce-copywriting, humanizer, ecommerce-visual-design, ecommerce-platform-specs]
+  max_turns: 120
+bindings:
+  project_platforms: [ecommerce]
+  task_types: [ecommerce]
+runtime:
+  profile: article
+  adapter: standard
+surfaces: [plugin, project, task]
+features: [image-generation, product-assets]
+billing_operations:
+  ecommerce: task.ecommerce
+progress:
+  - {id: analysis, title: 产品分析}
+  - {id: production, title: 素材生产}
+  - {id: delivery, title: 交付验收}
+artifacts:
+  - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
+  - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown, required: true}
+  - {role: manifest, path: output/manifest.json, mime_type: application/json, required: true}
+ui:
+  renderer: custom:ecommerce

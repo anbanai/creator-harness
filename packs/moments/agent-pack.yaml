@@ -1,0 +1,31 @@
+id: moments
+version: 1.0.0
+kind: managed
+display_name: 朋友圈素材包
+description: 从素材拆解到朋友圈正文、质量复盘和交付的创作流程。
+agent:
+  name: moments
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [moments, humanizer]
+  max_turns: 20
+bindings:
+  project_platforms: [moments]
+  task_types: [moments]
+runtime:
+  profile: article
+  adapter: standard
+surfaces: [plugin, project, task]
+features: [reference-images]
+billing_operations:
+  moments: task.moments
+progress:
+  - {id: analysis, title: 素材分析}
+  - {id: writing, title: 内容创作}
+  - {id: delivery, title: 交付验收}
+artifacts:
+  - {role: analysis, path: output/material-analysis.md, mime_type: text/markdown, required: true}
+  - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
+  - {role: review, path: output/quality-review.md, mime_type: text/markdown, required: true}
+ui:
+  renderer: custom:moments

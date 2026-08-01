@@ -1,0 +1,31 @@
+id: article
+version: 1.0.0
+kind: managed
+display_name: 微信公众号文章
+description: 从选题研究、写作和视觉设计到微信公众号草稿的完整创作流程。
+agent:
+  name: article
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [content-writing, humanizer, article-visual-design, article-cover-design, topic-research, seo-optimization, article-publishing, article-viral-strategy]
+  max_turns: 300
+bindings:
+  project_platforms: [article]
+  task_types: [article]
+runtime:
+  profile: article
+  adapter: standard
+surfaces: [plugin, project, task, plan]
+features: [publishing, image-generation, reference-images]
+billing_operations:
+  article: task.article
+progress:
+  - {id: research, title: 选题研究}
+  - {id: writing, title: 内容创作}
+  - {id: delivery, title: 交付验收}
+artifacts:
+  - {role: final_markdown, path: output/04-article-final.md, mime_type: text/markdown, required: true}
+  - {role: html, path: output/05-article.html, mime_type: text/html, required: true}
+  - {role: review, path: output/final-review.md, mime_type: text/markdown, required: true}
+ui:
+  renderer: custom:article
