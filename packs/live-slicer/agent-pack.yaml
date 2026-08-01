@@ -14,6 +14,7 @@ bindings:
 runtime:
   profile: montage
   adapter: standard
+  max_turns: 40
 surfaces: [plugin]
 features: [video-processing, transcription]
 progress:

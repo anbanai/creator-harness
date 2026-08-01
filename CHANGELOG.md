@@ -6,11 +6,13 @@
 
 - Added versioned Agent Packs as the canonical source for native Claude Code Agents, Codex subagents, Skills, business bindings, runtime metadata, progress stages, and artifact contracts.
 - Added a generated Server Catalog with explicit project-platform and task-type bindings plus optional restricted JSON Schemas for scenario-specific project and task input.
+- Added the generated runtime Catalog consumed by both Go and TypeScript managed Agent images.
 
 ### Changed
 
 - Generated the native Claude and Codex Agent distributions from Pack-owned canonical sources while preserving their existing workflow semantics.
 - Bound managed execution to immutable Pack ID, version, digest, runtime profile, and runtime adapter identity.
+- Separated native Agent turn limits from managed runtime defaults while preserving the existing Server budgets.
 
 ## [4.0.9] - 2026-07-31
 

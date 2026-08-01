@@ -15,6 +15,7 @@ bindings:
 runtime:
   profile: seednote
   adapter: standard
+  max_turns: 50
 surfaces: [plugin, project, task, plan]
 features: [research, image-generation, reference-images]
 billing_operations:

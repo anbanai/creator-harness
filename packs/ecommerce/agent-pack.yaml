@@ -15,6 +15,7 @@ bindings:
 runtime:
   profile: article
   adapter: standard
+  max_turns: 90
 surfaces: [plugin, project, task]
 features: [image-generation, product-assets]
 billing_operations:

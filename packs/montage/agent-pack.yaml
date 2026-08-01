@@ -15,6 +15,7 @@ bindings:
 runtime:
   profile: montage
   adapter: openmontage
+  max_turns: 40
 surfaces: [plugin, project, task, plan]
 features: [video-generation, source-assets]
 billing_operations:
