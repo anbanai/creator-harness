@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.1.1] - 2026-08-01
+
+### Fixed
+
+- Excluded checkout-specific `.git` metadata from Agent Pack digests so the generated Catalog remains stable across repositories and worktrees.
+
 ## [4.1.0] - 2026-07-31
 
 ### Added
