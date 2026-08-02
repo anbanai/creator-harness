@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.1.4] - 2026-08-02
+
+### Fixed
+
+- Removed the remaining ecommerce `ratio:tier` guidance so task image generation always passes a pure business `aspect_ratio` and keeps clarity targets in prompts and asset plans.
+
 ## [4.1.3] - 2026-08-02
 
 ### Changed
