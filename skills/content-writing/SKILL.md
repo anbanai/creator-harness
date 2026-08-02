@@ -10,15 +10,6 @@ description: Use when writing WeChat article body content, de-AI rewriting, cont
 
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
-## 图片比例固定规则
-
-本 Skill 只要涉及生成、选择、裁切、校验或引用图片，必须按以下优先级决定画面比例：
-
-1. 用户/任务明确指定的 `image_ratio`、`size` 或平台规格优先。
-2. 项目/频道默认比例次之。
-3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
-4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
-
 ## Intent Routing
 
 Use this Skill for正文创作、正文质量修订、公众号文章预检和渲染交接。正文、写作判断和质量门禁在 Skill 内完成；MCP 只用于项目资料、writer/resource discovery、确定性渲染和任务状态等受控能力。

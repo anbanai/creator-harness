@@ -84,9 +84,10 @@ Call update_task_progress(task_id=$TASK_ID, stage="research", title="选题研�
 - get_project_profile（project_id=$PROJECT_ID, scope="article", task_id=$TASK_ID）→ 获取账号定位、受众、风格维度，**以及任务已解析的视觉风格**。提取并记录 $ACCOUNT_POSITIONING（账号定位）、$ACCOUNT_KEYWORDS（领域关键词）、$ACCOUNT_AUDIENCE（目标受众），以及 $VISUAL_STYLE_CONFIGURED（profile 的 `visual_style` 字段，任务级覆盖解析后的视觉风格描述/关键词）、$VISUAL_STYLE_SOURCE（profile 的 `visual_style_source`：task / project），供步骤 6 视觉风格确定使用；同时记录顶层 byline（公众号**署名**，步骤 10 原样填入 draft 的 author，空则省略）——**注意区分**：byline=署名 ≠ writing_voice（写作口吻）≠ persona_avatar（人设头像），三者用途不同、绝不混用
 - list_drafts 和 list_published_articles（project_id=$PROJECT_ID）→ 获取已有文章标题，后续选题避开；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功。
 
-**图像参数合同**：从 get_project_profile 读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。非空 `image_ratio` 是用户明确比例，必须原样作为 `$EFFECTIVE_IMAGE_SIZE`；空值是智能适配，Agent 才可为每张产物从 `supported_sizes` 选择。每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。用户明确比例不受支持时报告 `image_capability_ratio_unsupported`，不得回退比例或改选能力。
 
-每次生成均须显式传 `size` 参数。
+**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
+
+每次生成均须显式传 `aspect_ratio` 参数。
 
 $TASK_ID 由结构化运行时上下文提供，后续 MCP 调用全程复用。
 
@@ -233,7 +234,7 @@ using the article-visual-design skill 完成以下五个子步骤。详细规范
      image_type="cover",
      output_path="output/cover.png",
      task_id=$TASK_ID,
-     size=$EFFECTIVE_IMAGE_SIZE
+     aspect_ratio=$EFFECTIVE_ASPECT_RATIO
    )
    ```
 8. 若封面工作流要求内容质量审核，单独调用 analyze_image，传入 file_path="output/cover.png" 和公众号封面质量评分卡。Agent 读取可见内容分析并决定是否重构概念或锐化 prompt；可见内容质量未通过时最多重试一次。`analyze_image` 的传输或运行时失败只按「独立分析调用」记录警告，最终质量判断由 Agent 负责，不能把分析故障伪装成生成失败。
@@ -276,7 +277,7 @@ generate_image(
   output_path="output/img_N.png",
   task_id=$TASK_ID,
   ref_image_path="output/cover.png",
-  size=$EFFECTIVE_IMAGE_SIZE
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO
 )
 ```
 

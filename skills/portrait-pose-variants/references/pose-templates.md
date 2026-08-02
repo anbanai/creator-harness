@@ -240,7 +240,7 @@ Emotional tone: Thrilled revelation, perfect for "finally figured it out", "it w
 - 情绪基调
 
 [3. Universal Style 段落]
-画幅比例: $EFFECTIVE_IMAGE_SIZE（按该比例决定横竖方向）
+画幅比例: $EFFECTIVE_ASPECT_RATIO（按该比例决定横竖方向）
 镜头: 50mm 人像镜头
 景别: 半身近景（头肩到胸口构图）
 风格: 真实摄影、商业封面、短视频爆款封面人像

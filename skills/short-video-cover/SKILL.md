@@ -11,11 +11,10 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ## 任务图像参数合同
 
-- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
-- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
-- `resolved_profile.image_ratio` 为空表示智能适配：Agent 从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`；短视频平台可优先参考 `9:16`，但只在能力支持时选择。
-- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
-- 每次生成都必须显式传 `size` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
+- `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；短视频平台可优先参考 `9:16`，但只在能力支持时选择。
+- 每次生成都必须显式传 `aspect_ratio` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
 
 
 ## MCP 工具
@@ -23,7 +22,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 | MCP 工具 | 说明 |
 |----------|------|
 | `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。**Read 工具不用于图像视觉分析**，只用来获取 CDN URL。一次只分析一张图；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path` |
-| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, size, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，不是 ControlNet/img2img |
+| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, aspect_ratio, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，不是 ControlNet/img2img |
 | `download_image` (project_id, url) | 下载在线图片到 MCP 服务器临时路径或上传到存储，返回 `file_path`。用于把 Read 得到的 CDN URL 注册成 `ref_image_path` 可用的服务器端路径 |
 | `compress_image` (file_path) | 压缩图片——`analyze_image` 的 `file_path` 方式有 10MB 限制，超出时先压缩 |
 | `upload_image` (project_id, file_path) | 上传图片，用于 `compress_image` 仍超 10MB 的兜底场景 |
@@ -34,7 +33,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 - `generate_image` 是**参考图生成**，不是 ControlNet 或专用封面排版工具。参考图能提高视觉一致性，**不能锁定构图、字号、文字位置**。
 - 中文文字在图片内的渲染**不稳定**——AI 生图模型对中文文字支持差。封面以**视觉冲击为主**，关键文字应作为辅助而非主体；若用户需要精确文字排版，建议生成图后用 PS/Canva 二次加工。
-- `size=$EFFECTIVE_IMAGE_SIZE` 是宽高比提示，不是像素级硬约束；返回后需用文件尺寸或 `analyze_image` 验证比例。
+- `aspect_ratio=$EFFECTIVE_ASPECT_RATIO` 是宽高比提示，不是像素级硬约束；返回后需用文件尺寸或 `analyze_image` 验证比例。
 - 在专用封面排版工具接入前，**二次优化**是重新生成，不是"只改局部"。
 
 如用户要求"标题文字必须精确显示为指定中文"，必须先说明当前能力无法严格保证。
@@ -61,7 +60,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ### 原则 3：任务有效比例硬约束
 
-用户明确比例必须原样使用。智能适配时才把 **9:16 竖版**作为短视频平台的优先参考，并且只能从当前能力公开的 `resolved_profile.supported_sizes` 中选择。
+用户明确比例必须原样使用。智能适配时才把 **9:16 竖版**作为短视频平台的优先参考，并且只能从当前能力公开的 `resolved_profile.allowed_image_ratios` 中选择。
 
 ---
 
@@ -76,7 +75,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 - `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
 - 如果为空，调用 `list_projects` 获取项目列表；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
 - 从结构化运行时上下文读取 `$TASK_ID`
-- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_IMAGE_SIZE`；用户明确比例不支持时在生成前停止
+- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_ASPECT_RATIO`；用户明确比例不支持时在生成前停止
 
 #### 步骤 2：收集用户输入
 
@@ -101,7 +100,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 - reference_cover: /Users/.../ref.png
 - new_title: 3 步学会爆款标题
 - account_domain: 知识干货
-- aspect_ratio: $EFFECTIVE_IMAGE_SIZE
+- aspect_ratio: $EFFECTIVE_ASPECT_RATIO
 - has_person: true
 - reference_depth: light
 
@@ -205,7 +204,7 @@ analyze_image(
 按 [references/prompt-template.md](references/prompt-template.md) 的 8 要素模板组装 prompt。Prompt 控制在 500 词以内，避免长 prompt 触发 504；超过时删减到关键要素 + 1-2 个最重要反面约束。
 
 构建要点：
-- 已确定要素直接填入：`画面比例 $EFFECTIVE_IMAGE_SIZE`、`标题分行`、`主体位置`、`背景描述`、`色彩主+强调`、`字体气质`、`主体元素`、`禁止事项`
+- 已确定要素直接填入：`画面比例 $EFFECTIVE_ASPECT_RATIO`、`标题分行`、`主体位置`、`背景描述`、`色彩主+强调`、`字体气质`、`主体元素`、`禁止事项`
 - `reference_depth=deep` 时，prompt 中显式声明"参考封面的构图逻辑"
 - `reference_depth=light` 时，prompt 中只提色彩和字体气质参考，构图完全自主
 - 中文文字描述要具体（"标题'爆款标题'用大号黑体加粗"），但要在能力边界说明中告知用户渲染可能不精确
@@ -219,7 +218,7 @@ result = generate_image(
   prompt=<5a 构建的 prompt>,
   image_type="cover",
   output_path="output/cover.png",
-  size=$EFFECTIVE_IMAGE_SIZE,
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
   ref_image_path="$REF_SERVER_PATH"
 )
 COVER_ANALYSIS_URL = result.download_url
@@ -308,7 +307,7 @@ analyze_image(
 
 | 要素 | 好的写法 | 差的写法 |
 |------|---------|---------|
-| 画面比例 | "use the effective ratio $EFFECTIVE_IMAGE_SIZE and matching orientation" | "竖图" |
+| 画面比例 | "use the effective ratio $EFFECTIVE_ASPECT_RATIO and matching orientation" | "竖图" |
 | 标题排版 | "title '爆款标题' in 2 lines, line 1 small, line 2 oversized bold" | "有大标题" |
 | 人物/主体 | "young woman in red hoodie, half-body, positioned center-left, looking at camera" | "有个女生" |
 | 背景 | "deep navy gradient background with subtle geometric pattern, clean and uncluttered" | "深色背景" |

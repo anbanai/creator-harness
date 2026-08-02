@@ -11,11 +11,10 @@ description: Use when generating multiple pose/expression variants from a single
 
 ## 任务图像参数合同
 
-- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
-- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
-- `resolved_profile.image_ratio` 为空表示智能适配：Agent 从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`；短视频人像可优先参考 `9:16`，但只在能力支持时选择。
-- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
-- 每次生成都必须显式传 `size` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
+- `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；短视频人像可优先参考 `9:16`，但只在能力支持时选择。
+- 每次生成都必须显式传 `aspect_ratio` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
 
 
 ## MCP 工具
@@ -23,7 +22,7 @@ description: Use when generating multiple pose/expression variants from a single
 | MCP 工具 | 说明 |
 |----------|------|
 | `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。**Read 工具不用于图像视觉分析**，只用来获取 CDN URL。一次只分析一张图；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path` |
-| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, size, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，**不是专用 ID-lock 工具** |
+| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, aspect_ratio, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，**不是专用 ID-lock 工具** |
 | `download_image` (project_id, url) | 下载在线图片到 MCP 服务器临时路径，返回 `file_path`。用于把 Read 得到的 CDN URL 注册成 `ref_image_path` 可用的服务器端路径 |
 | `compress_image` (file_path) | 压缩图片——`analyze_image` 的 `file_path` 方式有 10MB 限制，超出时先压缩 |
 | `upload_image` (project_id, file_path) | 上传图片，用于 `compress_image` 仍超 10MB 的兜底场景 |
@@ -79,7 +78,7 @@ description: Use when generating multiple pose/expression variants from a single
 默认配置（直接写入每张 prompt）：
 
 ```
-画幅比例: $EFFECTIVE_IMAGE_SIZE
+画幅比例: $EFFECTIVE_ASPECT_RATIO
 镜头: 50mm 人像镜头
 景别: 半身近景（头肩到胸口）
 风格: 真实摄影、商业封面、短视频爆款封面
@@ -103,7 +102,7 @@ description: Use when generating multiple pose/expression variants from a single
 - `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
 - 如果为空，调用 `list_projects`；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
 - 从结构化运行时上下文读取 `$TASK_ID`
-- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_IMAGE_SIZE`；用户明确比例不支持时在生成前停止
+- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_ASPECT_RATIO`；用户明确比例不支持时在生成前停止
 
 #### 步骤 2：收集用户输入
 
@@ -204,7 +203,7 @@ analyze_image(
 ```
 [身份锁段落 — 从 identity-lock.md 抄写]
 [当前姿态段落 — 从 selected-poses.md 抄写]
-[通用风格段落 — $EFFECTIVE_IMAGE_SIZE, 半身, 商业封面, 棚拍, etc.]
+[通用风格段落 — $EFFECTIVE_ASPECT_RATIO, 半身, 商业封面, 棚拍, etc.]
 [通用负面约束段落 — 见下方"通用负面提示词"]
 ```
 
@@ -219,7 +218,7 @@ result_i = generate_image(
   prompt=<5a 构建的 prompt>,
   image_type="cover",
   output_path="output/variant_0i.png",
-  size=$EFFECTIVE_IMAGE_SIZE,
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
   ref_image_path="$PORTRAIT_SERVER_PATH"  # 始终用原始人像，不用前一张变体
 )
 VARIANT_ANALYSIS_URL_i = result_i.download_url

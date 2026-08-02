@@ -24,7 +24,7 @@ maxTurns: 20
 
 ## 工具边界
 
-- 必须使用 Anban MCP 工具：`list_projects`、`get_project_profile`、`update_task_progress`。
+- 必须使用 Anban MCP 工具：`list_projects`、`get_project_profile`、`generate_image`、`update_task_progress`。
 - 不编写自定义 HTTP 客户端绕过 MCP。
 - 不伪造客户案例、成交数据、用户反馈。
 
@@ -49,7 +49,9 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 3. 获取项目画像
 
-调用 `get_project_profile(project_id="$PROJECT_ID", scope="moments", task_id="$TASK_ID")`，读取 `instructions`、`keywords`、`author` 与 `moments.required_artifacts`。`task_id` 必传，确保任务级快照覆盖生效。
+调用 `get_project_profile(project_id="$PROJECT_ID", scope="moments", task_id="$TASK_ID")`，读取 `instructions`、`keywords`、`author`、`moments.required_artifacts`，以及 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`、`resolved_profile.image_capability_key`。`task_id` 必传，确保任务级快照覆盖生效。
+
+**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 根据朋友圈正文结构从 `allowed_image_ratios` 中选择具体比例。记录 `resolved_profile.image_capability_key` 供审计；不得切换能力。每次 `generate_image` 都在 prompt 中明确最终画布比例，并显式传 `aspect_ratio`，其值为 `$EFFECTIVE_ASPECT_RATIO`。
 
 ### 4. 素材分析
 
@@ -63,28 +65,42 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 生成 `output/content.md`，并按 `humanizer` 方法轻量去 AI 味。正文必须保留证据边界，不能把推测写成事实。
 
-### 6. 质量复盘
+### 6. 配图生成
+
+调用 `update_task_progress(task_id=$TASK_ID, stage="image_generation", title="朋友圈配图", description="根据正文生成一张朋友圈配图")`。
+
+根据 `output/content.md` 与项目视觉风格写 `output/image-prompts.md`，其中记录用途、`$EFFECTIVE_ASPECT_RATIO`、`image_capability_key` 和最终提示词。提示词必须明确写出“最终图片画布宽高比严格为 `$EFFECTIVE_ASPECT_RATIO`”，再调用：
+
+```
+generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<output/image-prompts.md 中的最终提示词>, image_type="content", output_path="output/moments-image.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)
+```
+
+生成失败时最多重试 2 次，只能细化提示词；不得更换 `$EFFECTIVE_ASPECT_RATIO`、`image_capability_key`，不得自动裁剪或静默回退。仍失败时写 `output/failure-state.json`，保留结构化 MCP 错误并停止。
+
+### 7. 质量复盘
 
 调用 `update_task_progress(task_id=$TASK_ID, stage="quality_review", title="质量复盘", description="检查真实感、诱导互动、营销空泛与证据不足")`。
 
 写 `output/quality-review.md`，至少覆盖：真实感、诱导互动、空泛营销、证据不足、隐私与合规。
 
-### 7. 交付校验
+### 8. 交付校验
 
 调用 `update_task_progress(task_id=$TASK_ID, stage="delivery_validation", title="交付校验", description="校验朋友圈素材包最终产物")`。
 
-直接校验 `output/material-analysis.md`、`output/content.md` 与 `output/quality-review.md` 均存在且内容完整。
+直接校验 `output/material-analysis.md`、`output/content.md`、`output/image-prompts.md`、`output/moments-image.png` 与 `output/quality-review.md` 均存在且内容完整。
 
-### 8. 完成反馈
+### 9. 完成反馈
 
 调用 `update_task_progress(task_id=$TASK_ID, stage="finalize", title="完成", description="朋友圈素材包已完成交付校验")`。
 
-最终摘要包含：`output/material-analysis.md`、`output/content.md`、`output/quality-review.md`，以及主素材类型、正文标题/首句、质量复盘状态、任何证据不足或人工复核点。最后调用 `submit_agent_feedback(task_id=$TASK_ID, agent_name="moments", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<交付路径、主素材类型、正文标题/首句、质量复盘状态、证据不足或人工复核点摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数。
+最终摘要包含：`output/material-analysis.md`、`output/content.md`、`output/image-prompts.md`、`output/moments-image.png`、`output/quality-review.md`，以及主素材类型、正文标题/首句、有效图片比例、质量复盘状态、任何证据不足或人工复核点。最后调用 `submit_agent_feedback(task_id=$TASK_ID, agent_name="moments", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<交付路径、主素材类型、正文标题/首句、有效图片比例、质量复盘状态、证据不足或人工复核点摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数。
 
 ## 必需产物
 
 - `output/material-analysis.md`
 - `output/content.md`
+- `output/image-prompts.md`
+- `output/moments-image.png`
 - `output/quality-review.md`
 
 交付时逐项校验上述显式路径。

@@ -98,9 +98,10 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 **产出**：项目画像与模板派生风格
 
-**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。非空 `image_ratio` 是用户明确比例，必须原样作为 `$EFFECTIVE_IMAGE_SIZE`；空值是智能适配，Agent 才可按不同模块从 `supported_sizes` 选择。每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。用户明确比例不受支持时报告 `image_capability_ratio_unsupported`，不得回退比例或改选能力。
 
-每次生成均须显式传 `size` 参数。
+**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
+
+每次生成均须显式传 `aspect_ratio` 参数。
 
 #### 步骤 3：读取任务输入
 

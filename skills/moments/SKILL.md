@@ -9,26 +9,29 @@ description: Use when generating WeChat Moments / 朋友圈 content packages fro
 
 遇到素材类型、结构套用或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
-## 图片比例固定规则
-
-本 Skill 只要涉及生成、选择、裁切、校验或引用图片，必须按以下优先级决定画面比例：
-
-1. 用户/任务明确指定的 `image_ratio`、`size` 或平台规格优先。
-2. 项目/频道默认比例次之。
-3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
-4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
-
 ## 定位
 
 本 skill 直接产出 Anban 朋友圈素材包，不做自动发布，不接定时计划，不依赖运行时外部仓库。方法参考 `Caihui0127/caihui-moments-skill` 的内容拆解框架，但只借鉴公开方法：**不默认使用“彩卉”人设**，不复制私有素材，不把参考 repo 作为运行时依赖。
 
 ## 固定产物
 
-生成三个必需文件：
+生成五个必需文件：
 
 1. `output/material-analysis.md`：素材分类与四层抽取。
 2. `output/content.md`：朋友圈正文、备选开头/结尾、发布建议。
-3. `output/quality-review.md`：真实感、诱导互动、空泛营销、证据不足检查。
+3. `output/image-prompts.md`：配图用途、有效比例、能力和最终提示词。
+4. `output/moments-image.png`：与正文匹配的一张朋友圈配图。
+5. `output/quality-review.md`：真实感、诱导互动、空泛营销、证据不足检查。
+
+## 图像参数合同
+
+从 `get_project_profile` 读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios` 和 `resolved_profile.image_capability_key`。用户明确比例时原样作为 `$EFFECTIVE_ASPECT_RATIO`；智能适配时根据正文结构从 `allowed_image_ratios` 中选择一个具体比例。最终提示词必须明确描述该画布比例，每次调用都显式传 `aspect_ratio`：
+
+```
+generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<最终提示词，明确最终画布比例>, image_type="content", output_path="output/moments-image.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)
+```
+
+只允许在同一用户比例和同一 `image_capability_key` 下细化提示词并有限重试；不得切换比例、能力、自动裁剪或静默回退。
 
 ## 输入理解
 
@@ -78,8 +81,9 @@ description: Use when generating WeChat Moments / 朋友圈 content packages fro
 1. 读取项目画像：优先使用 `get_project_profile(scope="moments", task_id=$TASK_ID)` 返回的 `instructions`、`keywords`、`author`、`moments` block。
 2. 归纳素材：在 `material-analysis.md` 写明主类型、辅助类型、四层提炼、证据清单、缺口。
 3. 生成正文：在 `content.md` 写 1 条主版本，2-3 个备选开头，2 个备选结尾，发布时间/配图建议。
-4. 去 AI 味：必要时 using the `humanizer` skill，减少空泛升华、套话、过度营销词。
-5. 质量复盘：在 `quality-review.md` 检查真实感、诱导互动、空泛营销、证据不足、隐私与合规。
+4. 生成配图：基于正文与项目视觉风格写 `image-prompts.md`，再按图像参数合同生成 `moments-image.png`。
+5. 去 AI 味：必要时 using the `humanizer` skill，减少空泛升华、套话、过度营销词。
+6. 质量复盘：在 `quality-review.md` 检查真实感、诱导互动、空泛营销、证据不足、隐私与合规。
 
 ## `material-analysis.md` 模板
 

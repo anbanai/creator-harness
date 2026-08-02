@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.3] - 2026-08-02
+
+### Changed
+
+- Replaced task image size selection with explicit semantic `aspect_ratio` instructions constrained by each business platform.
+- Kept Designer generation on exact fixed size presets, separate from task Agent image generation.
+- Added the Moments semantic-ratio image workflow and required image deliverables.
+
 ## [4.1.2] - 2026-08-01
 
 ### Changed

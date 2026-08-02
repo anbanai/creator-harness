@@ -23,7 +23,7 @@
 
 | # | 要素 | 作用 |
 |---|------|------|
-| 1 | 画面比例 | 使用 `$EFFECTIVE_IMAGE_SIZE`，避免 Prompt 与任务有效比例冲突 |
+| 1 | 画面比例 | 使用 `$EFFECTIVE_ASPECT_RATIO`，避免 Prompt 与任务有效比例冲突 |
 | 2 | 标题排版 | 决定文字层级和视觉重点 |
 | 3 | 人物/主体 | 决定画面核心元素和位置 |
 | 4 | 背景 | 决定整体氛围和与主体的关系 |
@@ -38,7 +38,7 @@
 Generate a viral short-video cover image.
 
 ## Aspect Ratio
-Use the effective aspect ratio $EFFECTIVE_IMAGE_SIZE and its matching orientation.
+Use the effective aspect ratio $EFFECTIVE_ASPECT_RATIO and its matching orientation.
 
 ## Title Layout
 The cover features a Chinese title "<NEW_TITLE>" arranged as follows:
@@ -103,7 +103,7 @@ DO NOT include:
 Generate a viral short-video cover image.
 
 ## Aspect Ratio
-Use the effective aspect ratio $EFFECTIVE_IMAGE_SIZE and its matching orientation.
+Use the effective aspect ratio $EFFECTIVE_ASPECT_RATIO and its matching orientation.
 
 ## Title Layout
 The cover features a Chinese title "3 步学会爆款标题" arranged as follows:

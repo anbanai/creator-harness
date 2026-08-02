@@ -19,7 +19,7 @@
 
 ## 角色定位
 
-封面在 `visual-rhythm-plan.md` 中对应 `hero` slot（`image_size=full-bleed`，比例取 `$EFFECTIVE_IMAGE_SIZE`），是全篇的视觉锚点。封面定调后，所有内容配图通过 `ref_image_path="output/cover.png"` 继承风格。详见 [rhythm.md](rhythm.md)。
+封面在 `visual-rhythm-plan.md` 中对应 `hero` slot（`image_size=full-bleed`，比例取 `$EFFECTIVE_ASPECT_RATIO`），是全篇的视觉锚点。封面定调后，所有内容配图通过 `ref_image_path="output/cover.png"` 继承风格。详见 [rhythm.md](rhythm.md)。
 
 封面运行时先调用 `generate_image` 生成文件；需要内容审核时单独调用 `analyze_image`，由 Agent 根据主体、文字、构图和合规形成可见内容质量结论；通过后再单独调用 `upload_image`。上传失败只重试上传，不重新生成。生成、分析或整体质量闸门无法完成时写入 `output/failure-state.json` 并保留已有产物，不得请求用户中途协助。
 
@@ -85,7 +85,7 @@
 根据三维分析结果，按以下模板从零构建封面 prompt（不使用 writer YAML 的 cover_prompt）：
 
 ```
-An image composed for {$EFFECTIVE_IMAGE_SIZE} as a WeChat article cover. {VISUAL_STYLE}.
+An image composed for {$EFFECTIVE_ASPECT_RATIO} as a WeChat article cover. {VISUAL_STYLE}.
 Cover hook: {COVER_HOOK}. {COLOR_PALETTE}. {CONTENT_SUBJECT} — {VISUAL_METAPHOR_FROM_ARTICLE}.
 Thumbnail strategy: {THUMBNAIL_STRATEGY}. Avoid generic visuals: {ANTI_GENERIC_CONSTRAINTS}.
 {MOOD_TONE}. {COMPOSITION_GUIDANCE}.
@@ -109,12 +109,12 @@ Photographic quality, {TEXT_POLICY_FROM_ARTICLE_COVER_DESIGN}, no watermarks, no
 
 **养生账号，文章关于"慢下来的力量"**（比例占位符必须替换为任务有效值）：
 ```
-An image composed for $EFFECTIVE_IMAGE_SIZE as a WeChat article cover. Warm natural photography, soft morning light filtering through translucent leaves, organic textures. Cover hook: slow but visible recovery. Warm earth tones with soft sage green and golden accents. A single lotus bud slowly opening at dawn, dewdrops on petals, mist rising from still water. Thumbnail strategy: one large high-contrast lotus bud, visible at 200px. Avoid generic visuals: no empty ink-wash mountains, no tea cup still life. Serene and meditative atmosphere. Generous negative space, the bud placed in the safe zone for the effective ratio. Photographic quality, NO text, no watermarks, no logo.
+An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Warm natural photography, soft morning light filtering through translucent leaves, organic textures. Cover hook: slow but visible recovery. Warm earth tones with soft sage green and golden accents. A single lotus bud slowly opening at dawn, dewdrops on petals, mist rising from still water. Thumbnail strategy: one large high-contrast lotus bud, visible at 200px. Avoid generic visuals: no empty ink-wash mountains, no tea cup still life. Serene and meditative atmosphere. Generous negative space, the bud placed in the safe zone for the effective ratio. Photographic quality, NO text, no watermarks, no logo.
 ```
 
 **文化账号，文章关于"文字的温度"**（比例占位符必须替换为任务有效值）：
 ```
-An image composed for $EFFECTIVE_IMAGE_SIZE as a WeChat article cover. Traditional Chinese aesthetic, subtle ink wash texture blending with warm photography. Cover hook: words can still carry warmth. Ink black, warm brown, and celadon tones. An ancient calligraphy brush resting on handmade paper, a single character partially written, warm golden light from a window. Thumbnail strategy: one large brush tip and glowing paper texture, high contrast against the background. Avoid generic visuals: no empty study room, no random book stack. Contemplative and elegant atmosphere. Shallow depth of field, paper texture in foreground. Photographic quality, NO text, no watermarks, no logo.
+An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditional Chinese aesthetic, subtle ink wash texture blending with warm photography. Cover hook: words can still carry warmth. Ink black, warm brown, and celadon tones. An ancient calligraphy brush resting on handmade paper, a single character partially written, warm golden light from a window. Thumbnail strategy: one large brush tip and glowing paper texture, high contrast against the background. Avoid generic visuals: no empty study room, no random book stack. Contemplative and elegant atmosphere. Shallow depth of field, paper texture in foreground. Photographic quality, NO text, no watermarks, no logo.
 ```
 
 ---
@@ -145,7 +145,7 @@ An image composed for $EFFECTIVE_IMAGE_SIZE as a WeChat article cover. Tradition
 
 封面 prompt 构建完成后，**必须原子写入 `output/cover-prompt.md`**（先写 `.cover-prompt.md.tmp` → `fsync` → `rename` 覆盖），完整记录封面生成决策，便于复盘与风格漂移排查。内容必须包含：
 
-- **比例**：`$EFFECTIVE_IMAGE_SIZE`、比例来源（用户明确值或智能适配）及能力支持依据；若另行显式裁剪，再记录目标宽高与锚点
+- **比例**：`$EFFECTIVE_ASPECT_RATIO`、比例来源（用户明确值或智能适配）及能力支持依据；若另行显式裁剪，再记录目标宽高与锚点
 - **账号视觉风格来源**：`$VISUAL_STYLE` / `$COLOR_PALETTE` / `$MOOD`，以及三维分析依据（账号定位 / 内容主题 / 目标受众 各自如何决定视觉方向）
 - **标题协同字段**：`final_title`、`digest_hook`、`cover_hook`
 - **文章核心隐喻**：`visual_metaphor`，即封面要表达的文章最强视觉隐喻

@@ -11,13 +11,6 @@ description: 'Use when 微信公众号图文文章全自动创作。用户提到
 
 ## 图片比例固定规则
 
-本 Skill 只要涉及生成、选择、裁切、校验或引用图片，必须按以下优先级决定画面比例：
-
-1. 用户/任务明确指定的 `image_ratio`、`size` 或平台规格优先。
-2. 项目/频道默认比例次之。
-3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
-4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
-
 
 ## 强制执行声明
 
@@ -62,7 +55,7 @@ description: 'Use when 微信公众号图文文章全自动创作。用户提到
 - `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功
 - 使用 runtime 已预创建的 `output/`；不得创建、发现、移动或重命名该目录
 
-**图像参数合同**：同时读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。非空 `image_ratio` 是用户明确比例，所有图片都必须原样令 `$EFFECTIVE_IMAGE_SIZE=image_ratio`；空值是智能适配，Agent 才可为每张产物从 `supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`。每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。用户明确比例不受支持时写入 `image_capability_ratio_unsupported`，不得回退比例或改选能力。
+**图像参数合同**：读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时所有图片必须原样使用 `$EFFECTIVE_ASPECT_RATIO=image_ratio`；`image_ratio == "auto"` 时，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 
 ### 步骤 2：选题研究
 
@@ -136,7 +129,7 @@ using the article-visual-design skill 完成以下子步骤。详细规范见 `s
      image_type="cover",
      output_path="output/cover.png",
      task_id=$TASK_ID,
-     size=$EFFECTIVE_IMAGE_SIZE,
+     aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
    )
    ```
 5. 如需内容质量审核，单独调用 `analyze_image`。Agent 根据可见主体、文字、构图和合规结果决定接受、重构概念或锐化 prompt，最多 3 次生成；传输或运行时失败按「独立分析调用」记录警告，最终质量判断由 Agent 负责。
@@ -174,11 +167,11 @@ generate_image(
   output_path="output/img_N.png",
   task_id=$TASK_ID,
   ref_image_path=<封面开关开启时 "output/cover.png"；封面关时省略或链到首张已生成图>,
-  size=$EFFECTIVE_IMAGE_SIZE
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO
 )
 ```
 
-**关键**：每次 `generate_image` 必须显式传 `size`。用户明确比例时所有图片原样使用 `$EFFECTIVE_IMAGE_SIZE`；智能适配时每张可从 `resolved_profile.supported_sizes` 分别选择。封面+配图均开启时，`ref_image_path` 用 `output/cover.png` 传递风格语言；封面关·配图开时不传或链到首张已生成图。每张正文图的 `<img src>` 必须来自该图的独立 `upload_image` 调用，严禁复用封面或其他正文图 URL。
+**关键**：每次 `generate_image` 必须显式传 `aspect_ratio`。用户明确比例时所有图片原样使用 `$EFFECTIVE_ASPECT_RATIO`；智能适配时每张可从 `resolved_profile.allowed_image_ratios` 分别选择。封面+配图均开启时，`ref_image_path` 用 `output/cover.png` 传递风格语言；封面关·配图开时不传或链到首张已生成图。每张正文图的 `<img src>` 必须来自该图的独立 `upload_image` 调用，严禁复用封面或其他正文图 URL。
 
 #### 7b：独立内容质量审核与失败重试
 

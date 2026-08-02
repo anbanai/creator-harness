@@ -11,20 +11,12 @@ description: 'Use when creating seednote visual content including covers, conten
 
 ## 图片比例固定规则
 
-本 Skill 只要涉及生成、选择、裁切、校验或引用图片，必须按以下优先级决定画面比例：
-
-1. 用户/任务明确指定的 `image_ratio`、`size` 或平台规格优先。
-2. 项目/频道默认比例次之。
-3. 业务默认比例只作兜底：微信文章封面/正文图默认 `16:9`；Seednote/XLS/移动信息流默认 `3:4`；电商、广告投放、视频封面按具体平台素材位要求执行。
-4. 不得从工具缺省值反推业务比例；比例只由用户、任务、项目或业务场景决定。
-
 ### 任务图像参数合同
 
-- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
-- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
-- `resolved_profile.image_ratio` 为空表示智能适配：Agent 按每张产物职责从 `resolved_profile.supported_sizes` 中选择 `$EFFECTIVE_IMAGE_SIZE`；Seednote 常用 `3:4` 只作选择参考，不是固定覆盖。
-- 用户明确比例不在 `resolved_profile.supported_sizes` 时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退到 `1:1` 或其他比例。
-- 每次生成都必须显式传 `size` 参数。
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
+- `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 按每张产物职责从 `resolved_profile.allowed_image_ratios` 中选择 `$EFFECTIVE_ASPECT_RATIO`；Seednote 常用 `3:4` 只作选择参考，不是固定覆盖。
+- 每次生成都必须显式传 `aspect_ratio` 参数。
 - `image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
 
 
@@ -43,7 +35,7 @@ description: 'Use when creating seednote visual content including covers, conten
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `generate_image` (project_id, task_id, prompt, image_type, output_path, size, ref_image_paths) | 从创作 prompt 和有序参考集合生成并登记单张任务图片 |
+| `generate_image` (project_id, task_id, prompt, image_type, output_path, aspect_ratio, ref_image_paths) | 从创作 prompt 和有序参考集合生成并登记单张任务图片 |
 | `analyze_image` (project_id, task_id, file_path, prompt) | 独立分析已生成图片的可见主体、文字、构图与合规；是否调用及如何处理结果由 Agent/Skill 决定 |
 
 ---
@@ -345,7 +337,7 @@ reference-usage-summary.json
 **调用示例（封面，务必带上 task_id）**：
 
 ```
-generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", size=$EFFECTIVE_IMAGE_SIZE)
+generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)
 ```
 
 内容图、尾图同理，逐张调用时只替换 `image_type` 与 `output_path`（如 `output/image_01.png`、`output/tail.png`），`task_id=$TASK_ID` 每张都必须带。托管运行时已提供 `output/`，因此 `output_path` 直接使用这些显式路径，服务端可登记为 task_file。

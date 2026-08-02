@@ -11,11 +11,10 @@ description: Use when coloring line art images, batch coloring multiple images, 
 
 ## 任务图像参数合同
 
-- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。
-- `resolved_profile.image_ratio` 非空表示用户明确比例：必须原样作为 `$EFFECTIVE_IMAGE_SIZE`，每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。
-- `resolved_profile.image_ratio` 为空表示智能适配：Agent 可按原始线稿方向和构图，从 `resolved_profile.supported_sizes` 选择 `$EFFECTIVE_IMAGE_SIZE`。
-- 用户明确比例不在支持范围时停止图片阶段并报告 `image_capability_ratio_unsupported`，不得静默回退或改选能力档位。
-- 每次生成都必须显式传 `size` 参数；不得从工具缺省值反推业务比例。
+- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
+- `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 可按原始线稿方向和构图，从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`。
+- 每次生成都必须显式传 `aspect_ratio` 参数；不得从工具缺省值反推业务比例。
 - `image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
 
 
@@ -28,7 +27,7 @@ description: Use when coloring line art images, batch coloring multiple images, 
 | MCP 工具 | 说明 |
 |----------|------|
 | `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。一次只分析一张图片；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path`。用于实体识别、候选评估、一致性审计、线稿验证 |
-| `generate_image` (project_id, task_id, prompt, image_type, output_path, size, ref_image_path / ref_image_paths, watermark) | 从创作 prompt 和有序参考集合生成并登记一张任务图片；托管运行时自动把成品写入 `output_path` |
+| `generate_image` (project_id, task_id, prompt, image_type, output_path, aspect_ratio, ref_image_path / ref_image_paths, watermark) | 从创作 prompt 和有序参考集合生成并登记一张任务图片；托管运行时自动把成品写入 `output_path` |
 | `upload_image` (project_id, file_path) | 上传图片 |
 | `compress_image` (file_path) | 压缩图片 |
 | `download_image` (project_id, url) | 把在线图片下载到 MCP 服务器临时路径，返回服务器端 `file_path`；不上传，也不写入 agent 本地 `output` |
@@ -41,7 +40,7 @@ description: Use when coloring line art images, batch coloring multiple images, 
 
 - 线条会被部分重绘——**尽力保持线稿，但不能承诺 100% 保留**。本 skill 是"尽力保线"的参考图生成流程。
 - `ref_image_path` 只能提高构图/风格一致性，不能锁定线稿像素。
-- `size` 是宽高比提示，不是像素级裁切硬约束。
+- `aspect_ratio` 是宽高比提示，不是像素级裁切硬约束。
 - 收敛修正和回溯都是**重新生成整张图**，不是"只改颜色不动线条"——所以不能反复重绘谎称只修色。
 
 **保线能做到多好，取决于是否始终把当前原线稿作为首要参考**。颜色锚点只补充实体颜色语义，不替代当前原线稿；参考图按语义相关性排序，服务端负责路由与数量限制，Agent 不按供应商或模型能力分支。
@@ -208,7 +207,7 @@ best_ref 记录的是某实体**颜色**渲染最好的一张，可作为 `ref_i
 - `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
 - 如果为空，调用 `list_projects` 获取项目列表并选择；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
 - 从结构化 runtime 上下文获取 `$TASK_ID`
-- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_IMAGE_SIZE`；用户明确比例不支持时在生成前停止
+- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_ASPECT_RATIO`；用户明确比例不支持时在生成前停止
 - **确定语义参考集合**：当前原始线稿排第一；需要颜色一致性时追加最相关的颜色锚点，并保持 prompt 编号与参考数组顺序一致
 - 使用 runtime 已预创建的 `output/`；不得创建、发现、移动或重命名该目录
 
@@ -323,7 +322,7 @@ lineart_server = download_image(project_id="$PROJECT_ID",
 - 每张上色图都必须带当前原始线稿；不要把前一张上色输出作为下一张的构图来源
 - 服务端拒绝参考集合时，保留原线稿并按语义相关性缩小锚点子集
 
-`output_path` 使用任务相对路径 `output/colored_NN_a.png`。用户明确比例时原样使用；智能适配时才从 `resolved_profile.supported_sizes` 中选择与原始线稿最接近的 `$EFFECTIVE_IMAGE_SIZE`（如 7:5 可在能力支持时选择 `3:2` 或 `4:3`）。返回后用 `analyze_image` 检查是否被裁切、变形或转向。
+`output_path` 使用任务相对路径 `output/colored_NN_a.png`。用户明确比例时原样使用；智能适配时才从 `resolved_profile.allowed_image_ratios` 中选择与原始线稿最接近的 `$EFFECTIVE_ASPECT_RATIO`（如 7:5 可在能力支持时选择 `3:2` 或 `4:3`）。返回后用 `analyze_image` 检查是否被裁切、变形或转向。
 
 生成候选 A：
 ```
@@ -333,7 +332,7 @@ result_a = generate_image(
   prompt="[主 prompt]",
   image_type="content",
   output_path="output/colored_NN_a.png",
-  size=$EFFECTIVE_IMAGE_SIZE,
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
   ref_image_paths=[lineart_server, ...相关颜色锚点]
 )
 # image-prompts.md 只记录用途、最终 prompt 和参考图编号

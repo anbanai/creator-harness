@@ -27,6 +27,8 @@ progress:
 artifacts:
   - {role: analysis, path: output/material-analysis.md, mime_type: text/markdown, required: true}
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
+  - {role: image_prompt, path: output/image-prompts.md, mime_type: text/markdown, required: true}
+  - {role: image, path: output/moments-image.png, mime_type: image/png, required: true}
   - {role: review, path: output/quality-review.md, mime_type: text/markdown, required: true}
 ui:
   renderer: custom:moments

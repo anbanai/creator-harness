@@ -106,7 +106,7 @@ Call `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研�
 - `get_project_profile`（`project_id=$PROJECT_ID`, `scope="article"`, `task_id="$TASK_ID"`）→ 获取账号定位、受众与风格维度。提取并记录 `$ACCOUNT_POSITIONING`（账号定位）、`$ACCOUNT_KEYWORDS`（领域关键词）、`$ACCOUNT_AUDIENCE`（目标受众），供步骤 6 三维风格分析使用。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层）。**务必区分两个易混字段**：顶层 `author` = 公众号**署名**（步骤 10 发布时原样填入 `draft.json` 的 author，空则省略）；顶层 `writer` = **写作风格资源 key**（驱动正文语气，**绝非署名**）。二者绝不混用。写作风格头像/昵称只是 Studio 展示元数据，不会出现在 MCP profile 中。
 - `list_drafts` 和 `list_published_articles`（`project_id=$PROJECT_ID`）→ 获取已有文章标题，后续选题避开；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功。
 
-**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`。非空 `image_ratio` 是用户明确比例，必须原样作为 `$EFFECTIVE_IMAGE_SIZE`；空值是智能适配，Agent 才可为每张产物从 `supported_sizes` 选择。每次 `generate_image` 都显式传 `size=$EFFECTIVE_IMAGE_SIZE`。用户明确比例不受支持时报告 `image_capability_ratio_unsupported`，不得回退比例或改选能力。
+**图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 
 `$TASK_ID` 由结构化运行时上下文提供，后续 MCP 调用全程复用。
 
@@ -281,7 +281,7 @@ Call `update_task_progress(task_id=$TASK_ID, stage="cover", title="视觉规划"
      image_type="cover",
      output_path="output/cover.png",
      task_id=$TASK_ID,
-     size=$EFFECTIVE_IMAGE_SIZE
+     aspect_ratio=$EFFECTIVE_ASPECT_RATIO
    )
    ```
 8. 若封面工作流要求内容质量审核，单独调用 `analyze_image`，传入 `file_path="output/cover.png"` 和公众号封面质量评分卡。Agent 读取可见内容分析并决定是否重构概念或锐化 prompt；可见内容质量未通过时最多重试一次。`analyze_image` 的传输或运行时失败只按「独立分析调用」记录警告，最终质量判断由 Agent 负责，不能把分析故障伪装成生成失败。
@@ -324,11 +324,11 @@ generate_image(
   output_path="output/img_N.png",
   task_id=$TASK_ID,
   ref_image_path="output/cover.png",
-  size=$EFFECTIVE_IMAGE_SIZE
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO
 )
 ```
 
-**关键**：每次 `generate_image` 必须显式传 `size`。用户明确比例时所有图片原样使用 `$EFFECTIVE_IMAGE_SIZE`；智能适配时每张可从 `resolved_profile.supported_sizes` 分别选择。`ref_image_path` 在**封面开关开启时**始终用 `output/cover.png`（**只传递"风格语言"，不是把封面图当作正文图复用，也不得复刻封面主体/构图/核心物件**）；**封面关·配图开**时不传 `ref_image_path`（或链到首张已生成图），**严禁**指向不存在的 `output/cover.png`。每张正文图的 `<img src>` 必须是该图通过独立 `upload_image` 得到的 `wechat_url`；严禁复用封面或其他正文图 URL。
+**关键**：每次 `generate_image` 必须显式传 `aspect_ratio`。用户明确比例时所有图片原样使用 `$EFFECTIVE_ASPECT_RATIO`；智能适配时每张可从 `resolved_profile.allowed_image_ratios` 分别选择。`ref_image_path` 在**封面开关开启时**始终用 `output/cover.png`（**只传递"风格语言"，不是把封面图当作正文图复用，也不得复刻封面主体/构图/核心物件**）；**封面关·配图开**时不传 `ref_image_path`（或链到首张已生成图），**严禁**指向不存在的 `output/cover.png`。每张正文图的 `<img src>` 必须是该图通过独立 `upload_image` 得到的 `wechat_url`；严禁复用封面或其他正文图 URL。
 
 ##### 7b：独立内容质量审核与失败重试
 

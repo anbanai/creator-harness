@@ -260,7 +260,7 @@ Rule of thirds composition, shoots at the right intersection. Warm earth tones w
 
 ### 步骤 1：生成图片
 
-先读取 `resolved_profile.image_ratio` 与 `resolved_profile.supported_sizes`：用户明确比例必须原样作为 `$EFFECTIVE_IMAGE_SIZE`；仅当比例为空时才按智能适配从当前能力支持范围选择。每次生成都显式传 `size` 参数，值为 `$EFFECTIVE_IMAGE_SIZE`。
+先读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`：用户明确比例必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；仅当比例等于 `"auto"`时才按智能适配从当前能力支持范围选择。每次生成都显式传 `aspect_ratio` 参数，值为 `$EFFECTIVE_ASPECT_RATIO`。
 
 ```
 generate_image(
@@ -270,7 +270,7 @@ generate_image(
   output_path="output/img_01.png",
   task_id=$TASK_ID,
   ref_image_path="output/cover.png",
-  size=$EFFECTIVE_IMAGE_SIZE
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO
 )
 ```
 
