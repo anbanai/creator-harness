@@ -131,9 +131,9 @@ novelty_bonus: 同角度笔记<3 → 1.2, 否则 → 1.0
 1. 通过 Agent-Reach backend 的 search/feed/signed URL 获取真实 `feed_id` 与 `xsec_token`。
 2. 按 `active_backend` 获取笔记详情、互动数据和评论数据。
 3. 将原始详情、`data_source=agent-reach`、`active_backend`、`backend_command_family`、`token_source`、互动数据、评论摘要、`missing_fields` 和 `fallback_reason` 写入 `output/source-note.md`。
-4. 后续由 `seednote-viral-analysis` skill 读取 `output/source-note.md`，生成 `output/source-analysis.md`、`output/viral-template.json`、`output/template-meta.json`。
+4. 后续由 `seednote-viral-analysis` skill 读取 `output/source-note.md`，生成 `output/source-analysis.md` 和任务内 `output/viral-template.json`。
 
-**边界**：不要在本 skill 中提取爆款模板，不要调用 `save_template`，不要生成改写正文。仅有外部 ID/链接且无法取得源内容时，写结构化 `output/failure-state.json` 并从 `research` 恢复；这条失败规则不适用于原创模式。
+**边界**：不要在本 skill 中提取爆款模板、持久化全局模板或生成改写正文。仅有外部 ID/链接且无法取得源内容时，写结构化 `output/failure-state.json` 并从 `research` 恢复；这条失败规则不适用于原创模式。
 
 ## 产出要求
 

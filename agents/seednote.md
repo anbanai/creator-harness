@@ -49,7 +49,7 @@ maxTurns: 20
 
 ## 工具边界
 
-- **Anban 产品能力必须使用 Claude Code 内置 MCP 工具**调用服务端接口（如 `list_projects`、`get_project_profile`、`list_project_titles`、`generate_image`、`save_template` 等）
+- **Anban 产品能力必须使用 Claude Code 内置 MCP 工具**调用服务端接口（如 `list_projects`、`get_project_profile`、`list_project_titles`、`generate_image` 等）
 - **外部互联网/小红书真实数据研究必须遵循 `agent-reach` Skill**。Agent-Reach 是唯一外部数据入口；执行 `agent-reach doctor --json` 后，必须同时确认 `xiaohongshu.status == "ok"` 和非空 `active_backend`，backend 顺序和可用性完全由 Agent-Reach 决定。OpenCLI、xiaohongshu-mcp、xhs-cli 只是 Agent-Reach 的 backend，不在本 agent 内自行排序或替代选路
 - **禁止编写 JavaScript/Node.js/Python 脚本或自定义 HTTP 客户端**调用 Anban MCP 或小红书接口
 - **Agent-Reach 是原创模式的可选增强能力**。CLI、登录态或小红书 backend 不可用时，原创模式基于用户主题、选题池、账号画像与已有标题继续，明确记录无外部数据且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
@@ -63,7 +63,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ## `viral_analysis` 任务停止闸门
 
-最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，按 `seednote-viral-analysis` 完成证据拆解，生成 `output/source-analysis.md`、`output/viral-template.json`、`output/template-meta.json`，更新进度并提交 feedback 后立即结束。该分支禁止进入 `seednote-writing`、视觉生成、模板保存或发布步骤，不得生成 `output/content.md` 或任何发布图片。
+最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，按 `seednote-viral-analysis` 完成证据拆解，生成 `output/source-analysis.md`、`output/viral-template.json`，更新进度并提交 feedback 后立即结束。该分支禁止进入 `seednote-writing`、视觉生成或发布步骤，不得生成 `output/content.md` 或任何发布图片。
 
 ---
 
@@ -157,7 +157,7 @@ reference-usage-summary.json
 
 #### 步骤 1：判断模式并创建任务
 
-如果用户提供种草笔记 ID、链接、xsec_token 线索，或明确说复刻、仿写、改写、克隆，则选择复刻模式（9 个任务：公共前置、源笔记获取、爆款拆解、内容改写、标题终稿锁定、图片生成、合规检查、交付校验与模板保存、最终报告）；否则选择原创模式（7 个任务：公共前置、选题研究、内容写作、标题终稿锁定、图片生成、交付校验、最终报告）。
+如果用户提供种草笔记 ID、链接、xsec_token 线索，或明确说复刻、仿写、改写、克隆，则选择复刻模式（8 个任务：公共前置、源笔记获取、爆款拆解、内容改写、标题终稿锁定、图片生成、合规检查、交付校验与最终报告）；否则选择原创模式（7 个任务：公共前置、选题研究、内容写作、标题终稿锁定、图片生成、交付校验、最终报告）。
 
 使用 `TaskCreate` 创建任务列表，设置依赖：每个任务 `blockedBy` 前一个任务。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`。
 
@@ -202,9 +202,9 @@ reference-usage-summary.json
 
 #### 步骤 6：证据驱动拆解爆款
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="viral_analysis", title="爆款拆解", description="证据驱动拆解源笔记爆款结构")`。按 `seednote-viral-analysis` 方法分析 `output/source-note.md`，生成 `output/source-analysis.md`、`output/viral-template.json` 和 `output/template-meta.json`。每个核心结论必须绑定源内容、封面、互动数据或评论证据；缺失数据写入 `missing_data` 并降低 `confidence`。不得调用 `save_template`。
+调用 `update_task_progress(task_id=$TASK_ID, stage="viral_analysis", title="爆款拆解", description="证据驱动拆解源笔记爆款结构")`。按 `seednote-viral-analysis` 方法分析 `output/source-note.md`，生成 `output/source-analysis.md` 和任务内 `output/viral-template.json`。每个核心结论必须绑定源内容、封面、互动数据或评论证据；缺失数据写入 `missing_data` 并降低 `confidence`。该模板仅供当前任务后续步骤消费，不持久化到全局模板库。
 
-**产出**：`output/source-analysis.md`、`output/viral-template.json`、`output/template-meta.json`
+**产出**：`output/source-analysis.md`、`output/viral-template.json`
 
 #### 步骤 7：改写内容
 
@@ -220,7 +220,7 @@ reference-usage-summary.json
 
 - 成功后以服务端接受的标题锁定 `$FINAL_TITLE`，并确认 `output/content.md` 第一行完全一致。后续 `image-plan`、`cover`、`prompts`、`review`、`compliance`、交付校验与最终报告只能读取这个已接受标题，不得静默改名。
 - 返回 `duplicate title` 错误时，按 `seednote-writing` 方法更新 `output/content.md` 第一行为新标题，执行轻量去 AI 与标题合规检查，通过后才用新的 `$FINAL_TITLE` 重试。连续 3 次均返回重复标题时停止。
-- 返回非重复错误，或连续 3 次重复标题均未解决时，写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`。非重复错误使用 `error_code="finalize_title_failed"`，重复耗尽使用 `error_code="duplicate_title_exhausted"`；随后停止，不得进入图片生成、合规、交付校验或模板保存。
+- 返回非重复错误，或连续 3 次重复标题均未解决时，写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`。非重复错误使用 `error_code="finalize_title_failed"`，重复耗尽使用 `error_code="duplicate_title_exhausted"`；随后停止，不得进入图片生成、合规、交付校验或最终报告。
 
 ### 图片生成
 
@@ -254,11 +254,7 @@ reference-usage-summary.json
 
 **产出**：`output`
 
-#### 步骤 11：模板保存（仅复刻模式）
-
-完成步骤 10 的交付校验后，调用 `update_task_progress(task_id=$TASK_ID, stage="finalize", title="模板保存", description="保存复刻模板到模板库")`。检查 `output/viral-template.json` 和 `output/template-meta.json` 是否均存在，且 `template-meta.json` 中 `save_eligible=true`。条件满足时调用 `save_template(type="seednote", name=template-meta.name, category=template-meta.category, style_prompt=viral-template.cover_template, tags=JSON.stringify(template-meta.tags))`，参数从这两个 `output` 文件读取；只使用真实 schema 的 `type`、`name`、`category`、`style_prompt`、`tags`。服务端按持久字段 fingerprint 幂等保存：重复或 resume 调用同一 payload 必须返回同一 template ID，首次状态为 `created`，后续为 `existing`。若 `save_template` 失败，记录 warning 但不阻塞成功交付，也不把已校验交付降级为失败。
-
-#### 步骤 12：最终报告
+#### 步骤 11：最终报告
 
 向用户交付可复核的结果摘要，包含：模式（原创/复刻）、标题、`output/content.md`、`output/image-plan.md`、图片数量（封面/内容图/尾图分别统计；尾图按 `seednote_image_mode`，未包含则 0）、合规状态（复刻模式报告 `output/compliance-report.md`；原创模式说明已按写作规则规避诱导互动）、失败态或需要恢复的步骤。进度报告格式：`[N/M] description → output/ (detail)`。
 
@@ -273,7 +269,7 @@ reference-usage-summary.json
 - 图片总数符合 image-plan.md「计划图片数量」声明值：封面固定 1 张；cover_only 和 cover_tail 模式的内容图数量必须为 0；cover_content 和 full 模式的内容图数量必须为 1~3；尾图按模式为 0 或 1 张。内容图文件必须从 output/image_01.png 开始连续编号，只允许使用 output/image_01.png、output/image_02.png、output/image_03.png，不得跳号或使用其他 image_*.png 文件名；所有计划图片都必须存在、可访问
 - 图片视觉风格一致：同一色系、字体、布局语言和信息密度
 - 正文不包含诱导互动表述，格式规范以 `seednote-writing` skill 为准
-- 复刻模式下 `source-note.md` 包含源笔记详情，`source-analysis.md` 包含证据驱动拆解，`viral-template.json` 和 `template-meta.json` 存在
+- 复刻模式下 `source-note.md` 包含源笔记详情，`source-analysis.md` 包含证据驱动拆解，任务内 `viral-template.json` 存在
 - 违禁词检查报告生成（复刻模式）
 
 ## 诱导互动合规
@@ -306,7 +302,7 @@ reference-usage-summary.json
 - [ ] 尾图按 `seednote_image_mode`：含尾图的模式 `output/tail.png` 存在且可访问；不含尾图的模式不得存在 `output/tail.png`
 - [ ] 图片总数符合 `image-plan.md`「计划图片数量」声明值（封面 1 + 内容图 0~3 + 尾图 0~1）
 - [ ] 所有图片视觉风格一致
-- [ ] 复刻模式下 `output/source-note.md`、`output/source-analysis.md`、`output/viral-template.json`、`output/template-meta.json` 均存在
+- [ ] 复刻模式下 `output/source-note.md`、`output/source-analysis.md`、`output/viral-template.json` 均存在
 - [ ] 复刻模式下 `output/source-analysis.md` 的核心结论均包含证据
 - [ ] 复刻模式生成 `output/compliance-report.md`
 - [ ] 正文中无诱导互动表述

@@ -93,9 +93,6 @@ MCP owns tool schemas and server-side side effects. In particular:
 - `submit_agent_feedback` accepts `task_id`, `agent_name`, `scores` as a JSON
   string, `errors`, `optimizations`, and `summary`. The server upserts on
   `(task_id, agent_name)` and enforces the exact unique index.
-- `save_template` accepts its declared visual-template fields only. The server
-  normalizes persisted fields and derives a deterministic fingerprint so
-  repeated, resumed, or concurrent submissions are idempotent.
 - The managed runtime creates the task-private workspace and `output/` before
   an Agent starts and supplies `TASK_ID` through structured runtime context.
   Agents and Skills write explicit `output/<filename>` artifacts and never
@@ -149,8 +146,8 @@ The Agent validates content, visual verification evidence, manifests, and all
 planned files at their explicit `output/<filename>` paths. A recovered
 `output/failure-state.json` is removed only after delivery validation passes
 and immediately before reporting success.
-Template saving reads `output/viral-template.json` and `output/template-meta.json`
-after delivery validation; final summaries report `output/`.
+Clone analysis keeps `output/viral-template.json` task-local for later writing
+and visual steps; final summaries report `output/`.
 
 ## Content and runtime conventions
 

@@ -14,7 +14,7 @@ description: Use when analyzing or decomposing a Seednote (种草笔记) viral n
 
 爆款拆解必须是 **证据驱动**，不是主观点评。每个重要结论都要从源笔记内容、封面、互动数据、评论信号或账号定位中找到依据，并转化为可复用模板和下一步动作。
 
-本 skill 只负责分析与模板产物，不写新笔记，不调用 `save_template`。模板持久化由 seednote agent 步骤 11 统一处理。
+本 skill 只负责分析与任务内模板产物，不写新笔记，也不把模板持久化到全局模板库。
 
 ## 输入
 
@@ -32,8 +32,7 @@ description: Use when analyzing or decomposing a Seednote (种草笔记) viral n
 2. **7 维拆解**：按选题、标题、封面、正文、互动、标签、评论信号分析；每维都输出 `observation`、`mechanism`、`transferability`、`action`。
 3. **评分与置信度**：整体输出 `score`、`confidence`、`evidence_count`、`missing_data`、`why_not_higher`；不要给每个维度裸分。
 4. **提取模板**：生成 `output/viral-template.json`，供 `seednote-writing` 直接消费。
-5. **生成元数据**：生成 `output/template-meta.json`，供 hook 判断是否保存模板。
-6. **写分析报告**：生成 `output/source-analysis.md`，让用户能看懂"为什么火"和"我怎么用"。
+5. **写分析报告**：生成 `output/source-analysis.md`，让用户能看懂"为什么火"和"我怎么用"。
 
 详细评分依据见 [breakdown-rubric.md](references/breakdown-rubric.md)。
 报告格式见 [report-format.md](references/report-format.md)。
@@ -70,7 +69,6 @@ JSON 字段规范见 [template-schema.md](references/template-schema.md)。
 
 - `source-analysis.md`：用户可读报告，重点是证据、机制、迁移判断和行动建议。
 - `viral-template.json`：写作 skill 可直接读取的结构化模板。
-- `template-meta.json`：hook 保存模板所需元数据。
 
 ## 复刻深度判断
 
@@ -91,4 +89,4 @@ JSON 字段规范见 [template-schema.md](references/template-schema.md)。
 - 把评论区原话复制为互动设计
 - 复用源图构图、人物姿势、图标组合或文字框位置到不可区分
 - 无评论/无封面/无发布时间仍输出 high confidence
-- 生成可发布正文或直接调用 `save_template`
+- 生成可发布正文或把任务内模板写入全局模板库

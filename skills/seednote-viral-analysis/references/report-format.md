@@ -108,7 +108,6 @@
 ## 9. 模板文件
 
 - viral-template.json：
-- template-meta.json：
 ```
 
 ## 写作要求

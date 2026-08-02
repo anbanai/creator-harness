@@ -46,31 +46,6 @@
 - 数据缺失较多时 `confidence` 必须是 `low` 或 `medium`。
 - 相似度风险高时不得推荐 `tight`。
 
-## template-meta.json
-
-供 seednote 完成 hook 调用 `save_template`。
-
-```json
-{
-  "type": "seednote",
-  "name": "基于源笔记主题生成的模板名",
-  "category": "viral_analysis",
-  "source_feed_id": "源笔记 ID",
-  "source_url": "源笔记链接",
-  "tags": ["行业", "内容类型", "爆款机制"],
-  "template_hash": "由 viral-template.json 的核心字段生成的稳定摘要",
-  "save_eligible": true
-}
-```
-
-字段要求：
-
-- `type` 固定为 `seednote`。
-- `category` 固定为 `viral_analysis`。
-- `name` 必须是模板名，不能是源笔记标题原文。
-- `template_hash` 用于幂等保存；如果无法计算，写空字符串并在报告中说明。
-- `save_eligible=false` 用于相似度风险高、证据不足或用户明确不保存的情况。
-
 ## 合规要求
 
 - JSON 中不得包含整段源笔记正文。

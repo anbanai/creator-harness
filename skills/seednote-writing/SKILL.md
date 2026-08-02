@@ -237,7 +237,7 @@ Lightroom ✅ 专业全面 / 适合 raw 格式 / 稍重
 
 ## 9. 爆款改写
 
-复刻模式下，先由 `seednote-viral-analysis` skill 生成 `output/viral-template.json`，本 skill 只读取该模板并输出高贴合主题的可发布新笔记。不要重新拆解源笔记，不要调用 `save_template`。
+复刻模式下，先由 `seednote-viral-analysis` skill 生成任务内 `output/viral-template.json`，本 skill 只读取该模板并输出高贴合主题的可发布新笔记。不要重新拆解源笔记，也不要持久化全局模板。
 
 支持 3 种改写模式：
 
@@ -327,4 +327,4 @@ Lightroom ✅ 专业全面 / 适合 raw 格式 / 稍重
 
 ### 9.6 模板边界
 
-模板持久化由 seednote 完成 hook 处理。写作过程中只消费 `output/viral-template.json`，不得调用 `save_template`，不得修改 `output/template-meta.json`，除非发现模板明显无效并在 `compliance-report.md` 中记录问题。
+写作过程中只消费任务内 `output/viral-template.json`，不得把它持久化到全局模板库。发现模板明显无效时，在 `compliance-report.md` 中记录问题。

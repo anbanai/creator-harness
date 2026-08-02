@@ -2,6 +2,11 @@
 
 ## [4.1.4] - 2026-08-02
 
+### Changed
+
+- Kept Seednote viral templates task-local and removed global template persistence from the Agent workflow.
+- Removed `template-meta.json` from Seednote viral-analysis deliverables while retaining `viral-template.json`.
+
 ### Fixed
 
 - Removed the remaining ecommerce `ratio:tier` guidance so task image generation always passes a pure business `aspect_ratio` and keeps clarity targets in prompts and asset plans.
