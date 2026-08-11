@@ -45,7 +45,7 @@ description: 'Use when analyzing Seednote topics, scoring engagement, researchin
 研究产物必须记录：
 
 ```text
-data_source=xiaohongshu-mcp
+data_source=<xiaohongshu-mcp|task_topic|topic_pool|project_context>
 mcp_tools_used=<实际调用工具列表；未调用写 none>
 available=<true|false|unknown>
 logged_in=<true|false|unknown>
@@ -54,7 +54,7 @@ missing_fields=<缺失字段列表；无缺失时写 none>
 fallback_reason=<无降级则写 none>
 ```
 
-`data_source=xiaohongshu-mcp` 表示数据经过已认证的 Anban MCP 能力取得。研究必须记录 `mcp_tools_used`、`available` 和 `logged_in`；当外部数据未取得时用 `missing_fields` 与 `fallback_reason` 准确说明降级，绝不伪造成成功采集。
+`data_source=xiaohongshu-mcp` 只表示数据经过已认证的 Anban MCP 能力取得。外部数据未取得时必须按实际采用的主要业务输入记录：用户明确主题写 `data_source=task_topic`，认领的选题池主题写 `data_source=topic_pool`，仅按账号画像或项目资料推导写 `data_source=project_context`；绝不把本地回退伪造成 MCP 成功采集。研究必须记录 `mcp_tools_used`、`available` 和 `logged_in`，并用 `missing_fields` 与 `fallback_reason` 准确说明降级。
 
 ## 完整研究流程
 
@@ -75,7 +75,7 @@ fallback_reason=<无降级则写 none>
 
 根据账号定位和用户需求确定 2-3 个搜索关键词。先检查登录态；已登录后搜索笔记，再选择 Top 3-5 条结果获取详情，需要作者画像时查询公开用户资料。所有详情调用必须使用搜索或用户资料工具返回的真实 `feed_id` / `xsec_token`；用户输入的链接不能作为 token 来源。
 
-任一传输失败只重试一次。登录不可用、工具不可用或重试后仍无外部数据时，跳过后续外部调用并继续原创流程。`output/topic-analysis.md` 必须记录 `data_source=xiaohongshu-mcp`、`token_source=missing`、`missing_fields=external_hot_data` 和具体 `fallback_reason`。
+任一传输失败只重试一次。登录不可用、工具不可用或重试后仍无外部数据时，跳过后续外部调用并继续原创流程。`output/topic-analysis.md` 必须按实际选题输入记录 `data_source=task_topic`、`data_source=topic_pool` 或 `data_source=project_context`，并记录 `token_source=missing`、`missing_fields=external_hot_data` 和具体 `fallback_reason`；不得写 `data_source=xiaohongshu-mcp`。
 
 ### 步骤 3：分析热门笔记
 
