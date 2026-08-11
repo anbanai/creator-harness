@@ -7,166 +7,203 @@ set -euo pipefail
 INPUT="$(cat)"
 export HOOK_INPUT="$INPUT"
 
-python3 - <<'PY'
-import json
-import os
-import re
-import sys
-from pathlib import Path
+node <<'JS'
+const fs = require("node:fs");
+const path = require("node:path");
 
-
-def block(reason: str) -> None:
-    print(json.dumps({"decision": "block", "reason": reason}, ensure_ascii=False))
-
-
-try:
-    payload = json.loads(os.environ.get("HOOK_INPUT", "") or "{}")
-except json.JSONDecodeError:
-    payload = {}
-
-if payload.get("agent_type") not in ("seednote", "anban:seednote"):
-    sys.exit(0)
-
-workspace_root = os.environ.get("CLAUDE_PROJECT_DIR")
-if not workspace_root or not workspace_root.strip():
-    block("种子笔记机械闸门无法运行：missing runtime workspace injection (CLAUDE_PROJECT_DIR)")
-    sys.exit(0)
-
-root = Path(workspace_root)
-
-failure_path = root / "output" / "failure-state.json"
-if failure_path.is_file():
-    try:
-        failure = json.loads(failure_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        block(f"种子笔记失败态文件无效（{failure_path}）：{exc}")
-        sys.exit(0)
-    required_failure_fields = ("status", "stage", "error_code", "message", "resume_from")
-    missing_failure_fields = [name for name in required_failure_fields if not failure.get(name)]
-    if failure.get("status") != "recoverable_failure" or missing_failure_fields:
-        block(
-            f"种子笔记失败态文件不完整（{failure_path}）：status 必须为 recoverable_failure，"
-            f"缺失字段={missing_failure_fields}"
-        )
-        sys.exit(0)
-    # A structured recoverable failure is an honest terminal outcome. The
-    # server rejects it as business success while preserving uploaded files.
-    sys.exit(0)
-
-output_dir = root / "output"
-seednote_dir = output_dir
-missing: list[str] = []
-actual_image_names: list[str] = []
-
-required_artifacts = {
-    "content.md": "最终正文",
-    "request-analysis.json": "结构化需求分析",
-    "request-analysis.md": "可读需求分析",
-    "reference-analysis.json": "结构化参考素材分析",
-    "reference-analysis.md": "可读参考素材分析",
-    "image-plan.md": "视觉规划",
-    "image-prompts.md": "生成记录",
-    "image-review.md": "内容质量观察记录",
-    "reference-usage-summary.json": "参考素材与内容质量汇总",
+function block(reason) {
+  process.stdout.write(`{"decision": "block", "reason": ${JSON.stringify(reason)}}`);
 }
-for name, purpose in required_artifacts.items():
-    if not (seednote_dir / name).is_file():
-        missing.append(f"output/{name}（缺少{purpose}）")
 
-plan_path = seednote_dir / "image-plan.md"
-if plan_path.is_file():
-    plan = plan_path.read_text(encoding="utf-8", errors="replace")
-    match = re.search(r"计划图片数量[:：]\s*(\d+)", plan)
-    if not match:
-        missing.append("output/image-plan.md 缺「计划图片数量」字段（说明 skill 步骤 3 未执行）")
-    else:
-        expected = int(match.group(1))
-        content_candidates = [
-            p
-            for p in seednote_dir.iterdir()
-            if p.is_file() and p.name.startswith("image_")
-        ]
-        content_pattern = re.compile(r"image_0[1-3]\.png")
-        invalid_content_names = sorted(
-            p.name for p in content_candidates if not content_pattern.fullmatch(p.name)
-        )
-        if invalid_content_names:
-            missing.append(
-                "非规范内容图文件名（只允许 image_01.png、image_02.png、image_03.png）："
-                + ", ".join(invalid_content_names)
-            )
-        content_images = [p for p in content_candidates if content_pattern.fullmatch(p.name)]
-        content_names = sorted(p.name for p in content_images)
-        expected_content_names = [f"image_{index:02d}.png" for index in range(1, len(content_names) + 1)]
-        if content_names != expected_content_names:
-            missing.append(
-                "内容图编号必须从 image_01.png 开始连续且不得跳号"
-                f"（当前 {content_names}，应为 {expected_content_names}）"
-            )
-        images = content_images + [
-            p for name in ("cover.png", "tail.png") if (p := seednote_dir / name).is_file()
-        ]
-        for image_path in images:
-            try:
-                if image_path.stat().st_size <= 0:
-                    missing.append(f"output/{image_path.name}（图片文件为空）")
-                    continue
-                with image_path.open("rb") as image_file:
-                    header = image_file.read(8)
-            except OSError as exc:
-                missing.append(f"output/{image_path.name}（图片文件无法读取：{exc}）")
-                continue
-            if header != b"\x89PNG\r\n\x1a\n":
-                missing.append(f"output/{image_path.name}（文件内容不是有效 PNG）")
-        actual_image_names = sorted(p.name for p in images)
-        image_count = len(images)
-        if image_count != expected:
-            missing.append(f"图片数量（当前 {image_count} 张，应等于 image-plan.md 声明的 {expected} 张）")
-        if not (seednote_dir / "cover.png").is_file():
-            missing.append("output/cover.png（封面必选）")
+function isFile(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
 
-summary_path = seednote_dir / "reference-usage-summary.json"
-if summary_path.is_file():
-    try:
-        summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        missing.append(f"output/reference-usage-summary.json 无法解析：{exc}")
-    else:
-        outputs = summary.get("outputs")
-        if not isinstance(outputs, list) or not outputs:
-            missing.append("reference-usage-summary.json.outputs 为空，未记录逐图内容质量结论")
-        else:
-            summary_image_names: list[str] = []
-            for output in outputs:
-                if not isinstance(output, dict):
-                    missing.append("reference-usage-summary.json.outputs 含非对象条目")
-                    continue
-                filename = output.get("file_name")
-                if not isinstance(filename, str) or not filename.strip():
-                    missing.append("reference-usage-summary.json.outputs 含缺失 file_name 的条目")
-                    filename = "<unknown>"
-                else:
-                    filename = filename.strip()
-                    summary_image_names.append(filename)
-                quality_status = output.get("quality_status")
-                if quality_status != "accepted":
-                    missing.append(f"{filename} 内容质量状态未通过（quality_status={quality_status or 'missing'}）")
-            if (
-                len(summary_image_names) != len(set(summary_image_names))
-                or sorted(summary_image_names) != actual_image_names
-            ):
-                missing.append(
-                    "reference-usage-summary.json.outputs 必须与实际图片唯一且完全一致"
-                    f"（汇总 {summary_image_names}，实际 {actual_image_names}）"
-                )
+let payload = {};
+try {
+  payload = JSON.parse(process.env.HOOK_INPUT || "{}");
+} catch {
+  payload = {};
+}
 
-if missing:
+if (!['seednote', 'anban:seednote'].includes(payload.agent_type)) {
+  process.exit(0);
+}
+
+const workspaceRoot = process.env.CLAUDE_PROJECT_DIR;
+if (!workspaceRoot || !workspaceRoot.trim()) {
+  block("种子笔记机械闸门无法运行：missing runtime workspace injection (CLAUDE_PROJECT_DIR)");
+  process.exit(0);
+}
+
+const outputDir = path.join(workspaceRoot, "output");
+const failurePath = path.join(outputDir, "failure-state.json");
+if (isFile(failurePath)) {
+  let failure;
+  try {
+    failure = JSON.parse(fs.readFileSync(failurePath, "utf8"));
+  } catch (error) {
+    block(`种子笔记失败态文件无效（${failurePath}）：${error}`);
+    process.exit(0);
+  }
+  const requiredFailureFields = ["status", "stage", "error_code", "message", "resume_from"];
+  const missingFailureFields = requiredFailureFields.filter((name) => !failure[name]);
+  if (failure.status !== "recoverable_failure" || missingFailureFields.length > 0) {
     block(
-        f"种子笔记机械闸门未通过（{seednote_dir}），缺失：\n"
-        + "".join(f"  - {item}\n" for item in missing)
-        + "\n请完成 seednote-visual-design 规划、逐图生成和内容质量记录，并将全部产物留在 output/。"
-        + "只有 generate_image 失败才写结构化 output/failure-state.json；analyze_image 不可用只记录 warning。"
-    )
+      `种子笔记失败态文件不完整（${failurePath}）：status 必须为 recoverable_failure，` +
+      `缺失字段=${JSON.stringify(missingFailureFields)}`
+    );
+    process.exit(0);
+  }
+  // A structured recoverable failure is an honest terminal outcome. The
+  // server rejects it as business success while preserving uploaded files.
+  process.exit(0);
+}
 
-sys.exit(0)
-PY
+const missing = [];
+let actualImageNames = [];
+
+if (payload.task_type === "viral_analysis") {
+  const requiredViralArtifacts = {
+    "source-analysis.md": "源笔记证据拆解",
+    "viral-template.json": "爆款结构模板",
+  };
+  for (const [name, purpose] of Object.entries(requiredViralArtifacts)) {
+    if (!isFile(path.join(outputDir, name))) missing.push(`output/${name}（缺少${purpose}）`);
+  }
+  if (missing.length > 0) {
+    block(
+      `爆款分析机械闸门未通过（${outputDir}），缺失：\n` +
+      missing.map((item) => `  - ${item}\n`).join("") +
+      "\n请完成源笔记证据拆解，并将分析产物留在 output/。"
+    );
+  }
+  process.exit(0);
+}
+
+const requiredArtifacts = {
+  "content.md": "最终正文",
+  "request-analysis.json": "结构化需求分析",
+  "request-analysis.md": "可读需求分析",
+  "reference-analysis.json": "结构化参考素材分析",
+  "reference-analysis.md": "可读参考素材分析",
+  "image-plan.md": "视觉规划",
+  "image-prompts.md": "生成记录",
+  "image-review.md": "内容质量观察记录",
+  "reference-usage-summary.json": "参考素材与内容质量汇总",
+};
+for (const [name, purpose] of Object.entries(requiredArtifacts)) {
+  if (!isFile(path.join(outputDir, name))) missing.push(`output/${name}（缺少${purpose}）`);
+}
+
+const planPath = path.join(outputDir, "image-plan.md");
+if (isFile(planPath)) {
+  const plan = fs.readFileSync(planPath, "utf8");
+  const match = /计划图片数量[:：]\s*(\d+)/.exec(plan);
+  if (!match) {
+    missing.push("output/image-plan.md 缺「计划图片数量」字段（说明 skill 步骤 3 未执行）");
+  } else {
+    const expected = Number.parseInt(match[1], 10);
+    const contentCandidates = fs.readdirSync(outputDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.startsWith("image_"))
+      .map((entry) => entry.name);
+    const contentPattern = /^image_0[1-3]\.png$/;
+    const invalidContentNames = contentCandidates.filter((name) => !contentPattern.test(name)).sort();
+    if (invalidContentNames.length > 0) {
+      missing.push(
+        "非规范内容图文件名（只允许 image_01.png、image_02.png、image_03.png）：" +
+        invalidContentNames.join(", ")
+      );
+    }
+    const contentNames = contentCandidates.filter((name) => contentPattern.test(name)).sort();
+    const expectedContentNames = contentNames.map((_, index) => `image_${String(index + 1).padStart(2, "0")}.png`);
+    if (JSON.stringify(contentNames) !== JSON.stringify(expectedContentNames)) {
+      missing.push(
+        "内容图编号必须从 image_01.png 开始连续且不得跳号" +
+        `（当前 ${JSON.stringify(contentNames)}，应为 ${JSON.stringify(expectedContentNames)}）`
+      );
+    }
+    const imageNames = [...contentNames, ...["cover.png", "tail.png"].filter((name) => isFile(path.join(outputDir, name)))];
+    for (const name of imageNames) {
+      const imagePath = path.join(outputDir, name);
+      try {
+        if (fs.statSync(imagePath).size <= 0) {
+          missing.push(`output/${name}（图片文件为空）`);
+          continue;
+        }
+        const header = fs.readFileSync(imagePath).subarray(0, 8);
+        if (!header.equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+          missing.push(`output/${name}（文件内容不是有效 PNG）`);
+        }
+      } catch (error) {
+        missing.push(`output/${name}（图片文件无法读取：${error}）`);
+      }
+    }
+    actualImageNames = [...imageNames].sort();
+    if (imageNames.length !== expected) {
+      missing.push(`图片数量（当前 ${imageNames.length} 张，应等于 image-plan.md 声明的 ${expected} 张）`);
+    }
+    if (!isFile(path.join(outputDir, "cover.png"))) missing.push("output/cover.png（封面必选）");
+  }
+}
+
+const summaryPath = path.join(outputDir, "reference-usage-summary.json");
+if (isFile(summaryPath)) {
+  let summary;
+  try {
+    summary = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
+  } catch (error) {
+    missing.push(`output/reference-usage-summary.json 无法解析：${error}`);
+  }
+  if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
+    missing.push("output/reference-usage-summary.json 必须为 JSON 对象");
+  } else {
+    const outputs = summary.outputs;
+    if (!Array.isArray(outputs) || outputs.length === 0) {
+      missing.push("reference-usage-summary.json.outputs 为空，未记录逐图内容质量结论");
+    } else {
+      const summaryImageNames = [];
+      for (const output of outputs) {
+        if (!output || typeof output !== "object" || Array.isArray(output)) {
+          missing.push("reference-usage-summary.json.outputs 含非对象条目");
+          continue;
+        }
+        let filename = output.file_name;
+        if (typeof filename !== "string" || !filename.trim()) {
+          missing.push("reference-usage-summary.json.outputs 含缺失 file_name 的条目");
+          filename = "<unknown>";
+        } else {
+          filename = filename.trim();
+          summaryImageNames.push(filename);
+        }
+        if (output.quality_status !== "accepted") {
+          missing.push(`${filename} 内容质量状态未通过（quality_status=${output.quality_status || "missing"}）`);
+        }
+      }
+      const sortedSummaryNames = [...summaryImageNames].sort();
+      if (
+        summaryImageNames.length !== new Set(summaryImageNames).size ||
+        JSON.stringify(sortedSummaryNames) !== JSON.stringify(actualImageNames)
+      ) {
+        missing.push(
+          "reference-usage-summary.json.outputs 必须与实际图片唯一且完全一致" +
+          `（汇总 ${JSON.stringify(summaryImageNames)}，实际 ${JSON.stringify(actualImageNames)}）`
+        );
+      }
+    }
+  }
+}
+
+if (missing.length > 0) {
+  block(
+    `种子笔记机械闸门未通过（${outputDir}），缺失：\n` +
+    missing.map((item) => `  - ${item}\n`).join("") +
+    "\n请完成 seednote-visual-design 规划、逐图生成和内容质量记录，并将全部产物留在 output/。" +
+    "只有 generate_image 失败才写结构化 output/failure-state.json；analyze_image 不可用只记录 warning。"
+  );
+}
+JS

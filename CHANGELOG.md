@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.6] - 2026-08-11
+
+### Fixed
+
+- Replaced the Seednote completion gate's Python dependency with the Node runtime shipped in every Seednote image.
+- Applied the Seednote completion gate to viral-analysis tasks and validated their dedicated analysis artifacts.
+
 ## [4.1.5] - 2026-08-11
 
 ### Changed
