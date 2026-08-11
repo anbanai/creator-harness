@@ -4,7 +4,6 @@ description: 种草笔记图文全自动创作引擎——从选题到图文生�
 model: inherit
 memory: project
 skills:
-  - agent-reach
   - seednote-research
   - seednote-viral-analysis
   - seednote-writing
@@ -49,10 +48,10 @@ maxTurns: 20
 
 ## 工具边界
 
-- **Anban 产品能力必须使用 Claude Code 内置 MCP 工具**调用服务端接口（如 `list_projects`、`get_project_profile`、`list_project_titles`、`generate_image` 等）
-- **外部互联网/小红书真实数据研究必须遵循 `agent-reach` Skill**。Agent-Reach 是唯一外部数据入口；执行 `agent-reach doctor --json` 后，必须同时确认 `xiaohongshu.status == "ok"` 和非空 `active_backend`，backend 顺序和可用性完全由 Agent-Reach 决定。OpenCLI、xiaohongshu-mcp、xhs-cli 只是 Agent-Reach 的 backend，不在本 agent 内自行排序或替代选路
-- **禁止编写 JavaScript/Node.js/Python 脚本或自定义 HTTP 客户端**调用 Anban MCP 或小红书接口
-- **Agent-Reach 是原创模式的可选增强能力**。CLI、登录态或小红书 backend 不可用时，原创模式基于用户主题、选题池、账号画像与已有标题继续，明确记录无外部数据且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
+- **Anban 产品能力和小红书真实数据研究必须使用已认证的 Anban MCP 工具**。研究固定按 `check_seednote_login_status` -> `search_seednote_feeds` -> `get_seednote_feed_detail` / `get_seednote_user_profile` 执行；`get_seednote_login_qrcode` 仅用于提示操作员恢复登录，不是托管任务的自动等待步骤
+- **研究边界只读**。只允许登录状态、搜索、详情和公开用户资料查询，禁止发布、删除、关注、取关、点赞、收藏、评论写入
+- **禁止直连 sidecar、编写 JavaScript/Node.js/Python 脚本、自定义 HTTP 客户端或调用外部小红书客户端**；不得绕过已认证的 Anban MCP 工具
+- **原创模式外部研究不可用时必须降级继续**。基于用户主题、选题池、账号画像与已有标题完成保守选题，记录 `data_source=xiaohongshu-mcp`、`token_source`、`missing_fields`、`fallback_reason`，且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
 
 ## Runtime workspace contract
 
@@ -180,7 +179,7 @@ reference-usage-summary.json
 
 #### 步骤 5：研究选题
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="评估主题并在可用时通过 Agent-Reach 补充真实热门笔记数据")`。执行 `agent-reach doctor --json`；仅当 `xiaohongshu.status == "ok"` 且 `active_backend` 非空时，按 `seednote-research` 方法和 Agent-Reach 返回的 backend 命令族采集热门笔记数据，并遵守 xsec_token 工作流。只有取得真实互动字段时才按互动率、时效性和新颖度评分。若 Agent-Reach 不可用、未安装、未登录或无健康 backend，基于用户明确主题、选题池、账号画像和已有标题完成保守选题，原创模式不得因此写 `output/failure-state.json` 或停止。将候选列表、外部评分或降级依据、避重判断、`data_source`、`channel_status`、`active_backend`、缺失字段和降级原因写入 `output/topic-analysis.md`，不得把降级结果描述为热门数据。
+调用 `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 评估主题并补充真实热门笔记数据")`。按 `seednote-research` 方法先调用 `check_seednote_login_status`；已登录时调用 `search_seednote_feeds`，再用搜索返回的真实 `feed_id` / `xsec_token` 调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。`get_seednote_login_qrcode` 仅用于向操作员报告可恢复登录方式，不得在托管任务中等待扫码。传输失败时只重试一次。只有取得真实互动字段时才按互动率、时效性和新颖度评分。登录不可用、工具不可用或重试后仍无外部数据时，基于用户明确主题、选题池、账号画像和已有标题完成保守选题，原创模式不得因此写 `output/failure-state.json` 或停止。将候选列表、外部评分或降级依据、避重判断、`data_source=xiaohongshu-mcp`、`token_source`、`missing_fields`、`fallback_reason` 写入 `output/topic-analysis.md`，不得把降级结果描述为热门数据。
 
 **产出**：`output/topic-analysis.md`
 
@@ -196,7 +195,7 @@ reference-usage-summary.json
 
 #### 步骤 5：获取源笔记
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过 Agent-Reach 获取源笔记详情与互动数据")`。执行 `agent-reach doctor --json`，再按 `seednote-research` 方法和 `active_backend` 获取源笔记真实数据。必须从搜索、feed 或 backend 返回的完整 URL 中取得 `feed_id` / `xsec_token`，**不得凭空构造 xsec_token**。详情、互动与评论写入 `output/source-note.md`，并记录 `data_source`、`active_backend`、`backend_command_family`、`token_source`、`missing_fields`、`fallback_reason`。失败时按对应 backend 重试链重试一次；若任务只有外部 ID/链接且仍无源内容，写结构化 `output/failure-state.json` 并从 `research` 恢复。
+调用 `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 获取源笔记详情与互动数据")`。按 `seednote-research` 方法先调用 `check_seednote_login_status`；已登录后通过 `search_seednote_feeds` 或输入的完整签名 URL 获取真实 `feed_id` / `xsec_token`，再调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。**不得凭空构造 xsec_token**。`get_seednote_login_qrcode` 仅用于向操作员报告可恢复登录方式。详情、互动与评论写入 `output/source-note.md`，并记录 `data_source=xiaohongshu-mcp`、`token_source`、`missing_fields`、`fallback_reason`。仅传输失败时重试一次；若任务只有外部 ID/链接且重试后仍无源内容，写结构化 `output/failure-state.json` 并从 `research` 恢复。
 
 **产出**：源笔记详情、`output/source-note.md`
 
@@ -284,7 +283,7 @@ reference-usage-summary.json
 | 参考素材不可用 | 非关键素材记录 warning；唯一产品身份、Logo、包装、型号或核心结构证据不可用时保留产物并进入可恢复失败态 |
 | 图片生成失败 | 保留已生成图片并写 `output/failure-state.json`，从当前图片恢复 |
 | 内容审核调用失败 | 在 `image-review.md` 和 `reference-usage-summary.json` 的 `warnings` 记录“审核不可用”，继续生成后续计划图片；不写 `output/failure-state.json`，不单独导致最终交付失败，原始错误只保留在服务端观测记录中 |
-| 源笔记获取失败 | 重新获取 token 后重试一次；仅有外部 ID/链接且仍无源内容时写失败态并停止 |
+| 源笔记获取失败 | 已认证 Anban MCP 仅在传输失败时重试一次；仅有外部 ID/链接且仍无源内容时写失败态并停止 |
 | 爆款拆解证据不足 | 写入 missing_data，降低 confidence，默认推荐 `style-only` |
 | 复刻模板置信度低或视觉证据不足 | 记录原因并按 `style-only` 处理 |
 | 违禁词检测误报 | 记录疑似词，标注人工复核，不自动删除核心信息 |

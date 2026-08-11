@@ -7,7 +7,7 @@ agent:
   name: seednote
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [agent-reach, seednote-research, seednote-viral-analysis, seednote-writing, seednote-visual-design]
+  skills: [seednote-research, seednote-viral-analysis, seednote-writing, seednote-visual-design]
   max_turns: 20
 bindings:
   project_platforms: [seednote]
@@ -15,7 +15,7 @@ bindings:
 runtime:
   profile: seednote
   adapter: standard
-  max_turns: 50
+  max_turns: 20
 surfaces: [plugin, project, task, plan]
 features: [research, image-generation, reference-images]
 billing_operations:

@@ -67,13 +67,7 @@ Codex 在 shell 启动文件或项目环境中设置同名变量。任何已有�
 
 **写作去 AI Skill 可用性校验**：在当前插件根目录检查 `skills/humanizer/SKILL.md`。该 Skill 随插件安装，无需联网或 `git clone`；缺失时提示用户重新安装插件。
 
-**Agent-Reach 小红书数据预检**：Seednote 外部小红书研究完全走 Agent-Reach。用 Bash 执行 `agent-reach doctor --json` 检查可用性；如果命令不存在或 `xiaohongshu` 无可用 backend，提示用户按 Agent-Reach 官方流程安装/配置：
-
-```text
-帮我安装 Agent Reach：https://raw.githubusercontent.com/Panniantong/agent-reach/main/docs/install.md
-```
-
-不要把 OpenCLI、xiaohongshu-mcp 或 xhs-cli 写成 Anban 自己的安装方案；它们只是 Agent-Reach doctor 选择和提示的 backend。
+**Seednote 小红书数据预检**：调用已认证的 `check_seednote_login_status` MCP 工具。已登录即表示 Seednote 研究能力可用；未登录时可调用 `get_seednote_login_qrcode` 获取二维码并提示操作员恢复登录。不要在托管任务中等待扫码或轮询登录，也不要通过脚本、自定义 HTTP、sidecar 或外部客户端绕过 Anban MCP。
 
 告知用户：
 
@@ -83,6 +77,7 @@ Codex 在 shell 启动文件或项目环境中设置同名变量。任何已有�
 
 用户重启 Claude Code 或 Codex 后，再次运行本 Skill。预期结果：
 - `list_projects` 调用成功，返回可用项目列表
+- `check_seednote_login_status` 调用成功；如未登录，明确提示使用 `get_seednote_login_qrcode` 恢复
 - 输出每个项目的 platform、name 和 ID
 
 ## 常见问题

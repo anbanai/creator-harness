@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.5] - 2026-08-11
+
+### Changed
+
+- Replaced the Seednote third-party CLI research path with authenticated Anban MCP login, search, feed-detail, and user-profile tools.
+- Kept original-mode research recoverable without fabricated metrics and made source-only replicate failures file-backed and resumable.
+- Reduced the distributed Skill count to 28 and the Seednote pack to its four owned phase Skills with a 20-turn runtime limit.
+
 ## [4.1.4] - 2026-08-02
 
 ### Changed

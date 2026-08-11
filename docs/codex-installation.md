@@ -4,7 +4,7 @@ Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit
 
 ## What you get
 
-- **29 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, Seednote viral analysis, Agent-Reach-backed Xiaohongshu research, WeChat Moments packages, live video slicing, line-art coloring, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
+- **28 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, authenticated MCP-backed Seednote research and viral analysis, WeChat Moments packages, live video slicing, line-art coloring, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
 - **7 native Codex subagents**: end-to-end orchestrators for the workflows above.
 - **MCP integration**: connects to the anban-creator HTTP MCP server for project management, image generation, WeChat publishing, TingWu transcription, and FFmpeg-driven clip assembly.
 - **Embedded completion checks**: every TOML subagent performs its own delivery validation and final quality summary.
