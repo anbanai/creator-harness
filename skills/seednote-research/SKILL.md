@@ -15,7 +15,7 @@ description: 'Use when analyzing Seednote topics, scoring engagement, researchin
 
 1. 调用 `check_seednote_login_status` 检查服务端登录态。
 2. 已登录后调用 `search_seednote_feeds` 搜索真实笔记。
-3. 从搜索结果或输入的完整签名 URL 取得真实 `feed_id` 与 `xsec_token`，再调用 `get_seednote_feed_detail`。
+3. 从 `search_seednote_feeds` 或 `get_seednote_user_profile` 的真实工具返回中取得 `feed_id` 与 `xsec_token`，再调用 `get_seednote_feed_detail`。工具返回的签名 URL 只能作为该工具输出的一部分，不能直接读取用户输入的链接。
 4. 需要作者公开画像时，使用详情或搜索结果中的真实用户标识调用 `get_seednote_user_profile`。
 
 `get_seednote_login_qrcode` 仅用于操作员恢复登录：登录失效时可取得二维码并把恢复方式写入诊断，但托管任务不得等待扫码、轮询人工操作或把二维码当成自动研究步骤。
@@ -40,18 +40,21 @@ description: 'Use when analyzing Seednote topics, scoring engagement, researchin
 
 ## xsec_token 与来源合同
 
-`feed_id` 和 `xsec_token` 只能从 `search_seednote_feeds` 返回结果、`get_seednote_feed_detail` 返回结果或用户提供的完整签名 URL 中提取，不能凭空构造。裸 note ID 不足以证明 token；复刻模式必须保留 token 来源。
+`feed_id` 和 `xsec_token` 只能使用 MCP 工具返回：从 `search_seednote_feeds` 或 `get_seednote_user_profile` 的真实工具结果中提取；工具返回的签名 URL 也必须属于该结果。不能读取用户输入的签名 URL、不能凭空构造。裸 note ID 不足以证明 token；复刻模式必须保留 token 来源。
 
 研究产物必须记录：
 
 ```text
 data_source=xiaohongshu-mcp
-token_source=<search|detail|signed_url|missing>
+mcp_tools_used=<实际调用工具列表；未调用写 none>
+available=<true|false|unknown>
+logged_in=<true|false|unknown>
+token_source=<search|profile|signed_url|missing>
 missing_fields=<缺失字段列表；无缺失时写 none>
 fallback_reason=<无降级则写 none>
 ```
 
-`data_source=xiaohongshu-mcp` 表示数据经过已认证的 Anban MCP 能力取得；当外部数据未取得时仍保留该目标来源，并用 `missing_fields` 与 `fallback_reason` 准确说明降级，绝不伪造成成功采集。
+`data_source=xiaohongshu-mcp` 表示数据经过已认证的 Anban MCP 能力取得。研究必须记录 `mcp_tools_used`、`available` 和 `logged_in`；当外部数据未取得时用 `missing_fields` 与 `fallback_reason` 准确说明降级，绝不伪造成成功采集。
 
 ## 完整研究流程
 
@@ -70,7 +73,7 @@ fallback_reason=<无降级则写 none>
 
 ### 步骤 2：采集真实热门笔记
 
-根据账号定位和用户需求确定 2-3 个搜索关键词。先检查登录态；已登录后搜索笔记，再选择 Top 3-5 条结果获取详情，需要作者画像时查询公开用户资料。所有详情调用必须使用搜索结果或完整签名 URL 给出的真实 `feed_id` / `xsec_token`。
+根据账号定位和用户需求确定 2-3 个搜索关键词。先检查登录态；已登录后搜索笔记，再选择 Top 3-5 条结果获取详情，需要作者画像时查询公开用户资料。所有详情调用必须使用搜索或用户资料工具返回的真实 `feed_id` / `xsec_token`；用户输入的链接不能作为 token 来源。
 
 任一传输失败只重试一次。登录不可用、工具不可用或重试后仍无外部数据时，跳过后续外部调用并继续原创流程。`output/topic-analysis.md` 必须记录 `data_source=xiaohongshu-mcp`、`token_source=missing`、`missing_fields=external_hot_data` 和具体 `fallback_reason`。
 
@@ -96,9 +99,9 @@ novelty_bonus: 同角度笔记<3 → 1.2, 否则 → 1.0
 当用户提供笔记 ID 或链接时，本 skill 只负责获取源笔记详情，不做爆款模板分析：
 
 1. 先调用 `check_seednote_login_status`；未登录时可调用 `get_seednote_login_qrcode` 记录操作员恢复方式，然后进入可恢复失败判断，不等待扫码。
-2. 已登录时，通过 `search_seednote_feeds` 或用户输入的完整签名 URL 获取真实 `feed_id` 与 `xsec_token`。
+2. 已登录时，通过 `search_seednote_feeds` 或 `get_seednote_user_profile` 获取真实 `feed_id` 与 `xsec_token`；用户输入的链接不能直接提供 token。
 3. 调用 `get_seednote_feed_detail`；需要作者公开资料时调用 `get_seednote_user_profile`。传输失败时原调用重试一次。
-4. 将原始详情、互动数据、评论摘要、`data_source=xiaohongshu-mcp`、`token_source`、`missing_fields` 和 `fallback_reason` 写入 `output/source-note.md`。
+4. 将原始详情、互动数据、评论摘要、`data_source=xiaohongshu-mcp`、`mcp_tools_used`、`available`、`logged_in`、`token_source`、`missing_fields` 和 `fallback_reason` 写入 `output/source-note.md`。
 5. 后续由 `seednote-viral-analysis` skill 读取 `output/source-note.md`，生成 `output/source-analysis.md` 和任务内 `output/viral-template.json`。
 
 **边界**：不要在本 skill 中提取爆款模板、持久化全局模板或生成改写正文。若任务仅有外部 ID/链接，且登录恢复提示或一次传输重试后仍无法取得源内容，写结构化 `output/failure-state.json`，字段包含 `version`、`status=recoverable_failure`、`stage=research`、稳定 `error_code`、原始错误摘要和 `resume_from=research`；这条失败规则不适用于原创模式。

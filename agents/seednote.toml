@@ -42,7 +42,7 @@ developer_instructions = """
 - **Anban 产品能力和小红书真实数据研究必须使用已认证的 Anban MCP 工具**。研究固定按 check_seednote_login_status -> search_seednote_feeds -> get_seednote_feed_detail / get_seednote_user_profile 执行；get_seednote_login_qrcode 仅用于提示操作员恢复登录，不是托管任务的自动等待步骤
 - **研究边界只读**。只允许登录状态、搜索、详情和公开用户资料查询，禁止发布、删除、关注、取关、点赞、收藏、评论写入
 - **禁止直连 sidecar、编写 JavaScript/Node.js/Python 脚本、自定义 HTTP 客户端或调用外部小红书客户端**；不得绕过已认证的 Anban MCP 工具
-- **原创模式外部研究不可用时必须降级继续**。基于用户主题、选题池、账号画像与已有标题完成保守选题，记录 data_source=xiaohongshu-mcp、token_source、missing_fields、fallback_reason，且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
+- **原创模式外部研究不可用时必须降级继续**。基于用户主题、选题池、账号画像与已有标题完成保守选题，记录 data_source=xiaohongshu-mcp、mcp_tools_used、available、logged_in、token_source、missing_fields、fallback_reason，且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
 
 ## Runtime workspace contract
 
@@ -170,7 +170,7 @@ reference-usage-summary.json
 
 #### 步骤 5：研究选题
 
-调用 update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 评估主题并补充真实热门笔记数据")。using the seednote-research skill 先调用 check_seednote_login_status；已登录时调用 search_seednote_feeds，再用搜索返回的真实 feed_id / xsec_token 调用 get_seednote_feed_detail，需要作者画像时调用 get_seednote_user_profile。get_seednote_login_qrcode 仅用于向操作员报告可恢复登录方式，不得在托管任务中等待扫码。传输失败时只重试一次。只有取得真实互动字段时才按互动率、时效性和新颖度评分。登录不可用、工具不可用或重试后仍无外部数据时，基于用户明确主题、选题池、账号画像和已有标题完成保守选题。原创模式不得因此写 output/failure-state.json 或停止。将候选列表、外部评分或降级依据、避重判断、data_source=xiaohongshu-mcp、token_source、missing_fields、fallback_reason 写入 output/topic-analysis.md，不得把降级结果描述为热门数据。
+调用 update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 评估主题并补充真实热门笔记数据")。using the seednote-research skill 先调用 check_seednote_login_status；已登录时调用 search_seednote_feeds，再用搜索返回的真实 feed_id / xsec_token 调用 get_seednote_feed_detail，需要作者画像时调用 get_seednote_user_profile。feed_id / xsec_token 只能使用 MCP 工具返回，不得从用户输入的链接直接提取。get_seednote_login_qrcode 仅用于向操作员报告可恢复登录方式，不得在托管任务中等待扫码。传输失败时只重试一次。只有取得真实互动字段时才按互动率、时效性和新颖度评分。登录不可用、工具不可用或重试后仍无外部数据时，基于用户明确主题、选题池、账号画像和已有标题完成保守选题。原创模式不得因此写 output/failure-state.json 或停止。将候选列表、外部评分或降级依据、避重判断、data_source=xiaohongshu-mcp、mcp_tools_used、available、logged_in、token_source、missing_fields、fallback_reason 写入 output/topic-analysis.md，不得把降级结果描述为热门数据。
 
 **产出**：output/topic-analysis.md
 
@@ -198,7 +198,7 @@ reference-usage-summary.json
 
 #### 步骤 5：获取源笔记
 
-调用 update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 获取源笔记详情与互动数据")。using the seednote-research skill 先调用 check_seednote_login_status；已登录后通过 search_seednote_feeds 或输入的完整签名 URL 获取真实 feed_id / xsec_token，再调用 get_seednote_feed_detail，需要作者画像时调用 get_seednote_user_profile。**不得凭空构造 xsec_token**。get_seednote_login_qrcode 仅用于向操作员报告可恢复登录方式。获取详情、互动数据和评论数据后写入 output/source-note.md，并记录 data_source=xiaohongshu-mcp、token_source、missing_fields、fallback_reason。仅传输失败时重试一次；若任务只有外部 ID/链接且重试后仍无源内容，写结构化 output/failure-state.json 并从 research 恢复。
+调用 update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 获取源笔记详情与互动数据")。using the seednote-research skill 先调用 check_seednote_login_status；已登录后通过 search_seednote_feeds 或 get_seednote_user_profile 的工具返回获取真实 feed_id / xsec_token，再调用 get_seednote_feed_detail，需要作者画像时调用 get_seednote_user_profile。feed_id / xsec_token 只能使用 MCP 工具返回，不得从用户输入的链接直接提取或凭空构造。get_seednote_login_qrcode 仅用于向操作员报告可恢复登录方式。获取详情、互动数据和评论数据后写入 output/source-note.md，并记录 data_source=xiaohongshu-mcp、mcp_tools_used、available、logged_in、token_source、missing_fields、fallback_reason。仅传输失败时重试一次；若任务只有外部 ID/链接且重试后仍无源内容，写结构化 output/failure-state.json 并从 research 恢复。
 
 **产出**：源笔记详情、output/source-note.md
 
