@@ -10,7 +10,7 @@ Process: write `output/montage-project.json` with task/project IDs, normalized a
 
 Input: the task was system-routed to local execution and includes uploaded task files for source footage plus a short creative direction.
 
-Process: use the complete writable OpenMontage copy already materialized at `/workspace/openmontage` with `$ANBAN_MONTAGE_SUBMODULE_PATH` fixed to that path. Resolve source assets from task-provided input files, leave the repository submodule/template untouched, write through the runtime-provided `output` link, and require non-empty final video plus `output/delivery-manifest.json` before completion.
+Process: use the complete writable OpenMontage copy already materialized at `/workspace/openmontage` with `$ANBAN_MONTAGE_SUBMODULE_PATH` fixed to that path. Resolve source assets from task-provided input files, leave the immutable `/opt/montage-template` image template untouched, write through the runtime-provided `output` link, and require non-empty final video plus `output/delivery-manifest.json` before completion.
 
 ### Case 3: Pipeline Failure
 

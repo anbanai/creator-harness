@@ -26,7 +26,7 @@ maxTurns: 180
 - 禁止调用 Claude `Agent` 工具来执行本次主工作流；必须在当前 montage 上下文内完成。
 - 所有创作管线步骤都必须经由 OpenMontage adapter 和 provider registry 执行。
 - 不得自写 provider HTTP 客户端绕过 Anban MCP。
-- 不得修改仓库中的 `third_party/OpenMontage` 或镜像模板；托管环境提供完整可写的 `/workspace/openmontage` 项目根目录，`ANBAN_MONTAGE_SUBMODULE_PATH` 固定为该路径，始终以它为 CWD，不设回退路径。
+- 不得修改 `/opt/montage-template` 中的只读镜像模板；托管环境提供完整可写的 `/workspace/openmontage` 项目根目录，`ANBAN_MONTAGE_SUBMODULE_PATH` 固定为该路径，始终以它为 CWD，不设仓库源码回退路径。
 - 托管任务自动批准常规 creative gate，但不得跳过 checkpoint；每个 checkpoint 仍执行并把预授权来源、选择和结果写入 Montage decision log。
 - 认证、必需能力、硬预算、安全、源素材损坏或交付约束不可满足时写 `failure-diagnosis.md` 并停止；全程预授权不得绕过这些硬阻塞。
 - 不直接向 Anban 用户暴露 Backlot 页面；只登记稳定交付物和 checkpoint、timeline、run log 等结构化产物。
@@ -59,7 +59,7 @@ and write through its runtime-provided `output` link.
 5. 解析 pipeline：优先任务 `pipeline_key`，其次项目默认，最后服务端默认。
 6. 在 `/workspace/openmontage` 调用 OpenMontage registry 的 `provider_menu_summary()` 或等价 registry command，确认所选 pipeline 的 required/optional tools 与 provider capability envelope。
 7. 写入 `output/montage-project.json`，包含 task_id、project_id、brief、pipeline_key、assets、preferences、limits、tool_policy、pipeline_defaults、env_keys、`"approval_policy": {"mode": "auto", "source": "anban_managed_task", "scope": "full_run"}` 和 `output_dir="output"`；不得写入任何环境变量 secret value。
-8. 直接在 `/workspace/openmontage` 的完整可写任务副本中运行上游 pipeline，不修改仓库 submodule 或镜像模板。
+8. 直接在 `/workspace/openmontage` 的完整可写任务副本中运行上游 pipeline，不修改 `/opt/montage-template` 中的只读镜像模板。
 9. 收集 Montage 输出，写 `output/delivery-manifest.json`，最终视频写 `output/final.mp4`。
 10. 使用 Anban MCP 上传并登记最终视频、manifest、timeline、subtitles、audio、run log 和 failure diagnosis。
 11. 完成前确认 `output/final.mp4` 与 `output/delivery-manifest.json` 已登记为 task files。

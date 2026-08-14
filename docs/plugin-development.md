@@ -48,18 +48,10 @@ Do not add a `tools` allowlist to agents that need MCP tools; Claude Code treats
 
 Do not add `mcpServers` to plugin agent frontmatter. Plugin subagents receive MCP servers from the plugin-level `.mcp.json`; Claude Code ignores `permissionMode`, `mcpServers`, and `hooks` in plugin Agent definitions. Managed lifecycle Hooks are installed by the server SDK path.
 
-The seven Agent identities accepted by `submit_agent_feedback` are `article`,
-`designer`, `ecommerce`, `live-slicer`, `moments`, `montage`, and `seednote`.
+The six Agent identities accepted by `submit_agent_feedback` are `article`,
+`ecommerce`, `live-slicer`, `moments`, `montage`, and `seednote`.
 Each Agent owns exactly one final feedback
 call after its delivery report.
-
-### Designer runtime contract
-
-The line-art workflow uses single-candidate by default, optional 2-candidate
-generation when comparison is justified. If strict line preservation is not
-possible, the delivery report records `needs_img2img` instead of claiming an
-exact colorization. The current `generate_image` path is best-effort
-reference-image generation, not a guaranteed line-preserving colorize tool.
 
 ## Skills
 
@@ -170,8 +162,8 @@ Classify a Skill before editing it:
   directly to the official `blader/humanizer` repository; business rules
   belong in the owning Agent or Skill.
 - Third-party runtime assets use their own update and verification process.
-  `third_party/OpenMontage` remains governed
-  as an external runtime/submodule, not copied into Agent text.
+  OpenMontage is pinned and verified by the independently built runtime image;
+  it is not stored in this repository or copied into Agent text.
 
 ## Modifying the plugin
 

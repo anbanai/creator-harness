@@ -56,7 +56,7 @@ if [[ ! -f "$PLUGIN_ROOT/skills/article/SKILL.md" ]]; then
   echo "[install-subagents] WARNING: $PLUGIN_ROOT/skills/article/SKILL.md not found." >&2
   echo "[install-subagents] Subagent skill loading may fail. Install the plugin first:" >&2
   echo "[install-subagents]   codex plugin marketplace add $PLUGIN_SOURCE_ROOT" >&2
-  echo "[install-subagents]   codex plugin install anban" >&2
+  echo "[install-subagents]   codex plugin add anban@anbanai" >&2
   echo "[install-subagents] Or set ANBAN_PLUGIN_ROOT to point at the installed plugin directory." >&2
 fi
 

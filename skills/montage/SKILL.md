@@ -35,8 +35,8 @@ Use this skill only for Anban `montage` tasks.
 - The managed runtime provides a task-private workspace, structured `TASK_ID`, and a pre-created `output/`. Do not create, discover, move, or rename the output directory.
 - Run managed Montage commands from `/workspace/openmontage`, with `$ANBAN_MONTAGE_SUBMODULE_PATH` fixed to that project root, and write final or resume-critical artifacts through its runtime-provided `output` link.
 - Do not expose raw Montage pipeline internals as Anban stable schema.
-- Do not modify files under `third_party/OpenMontage`.
-- Do not fall back to `third_party/OpenMontage` or any repository checkout during managed execution.
+- Do not modify the immutable image template at `/opt/montage-template`.
+- Do not fall back to a repository checkout during managed execution.
 - Secrets only arrive through environment variables. Never write provider keys to `output/montage-project.json`, task files, logs, MCP feedback, or failure diagnosis.
 - Before production, run the OpenMontage registry capability check (`provider_menu_summary()` or the equivalent registry command) and compare the selected pipeline's required/optional tools with the configured provider envelope.
 - Let OpenMontage selectors/registry choose concrete providers from the configured policy and real availability; do not hardcode Anban-side provider routing.

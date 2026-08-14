@@ -1,13 +1,13 @@
 {
   "name": "anban",
-  "version": "4.1.6",
+  "version": "4.1.8",
   "description": "Anban Creator plugin for OpenAI Codex — WeChat, Seednote, Montage, ecommerce, and agent-assisted publishing workflows",
   "author": {
     "name": "anbanai",
     "url": "https://github.com/anbanai"
   },
-  "homepage": "https://github.com/royalmorty/anbanwriter/tree/main/plugins",
-  "repository": "https://github.com/royalmorty/anbanwriter",
+  "homepage": "https://github.com/anbanai/creator-skills",
+  "repository": "https://github.com/anbanai/creator-skills",
   "license": "MIT",
   "keywords": [
     "wechat",
@@ -25,11 +25,6 @@
     "seednote",
     "种草笔记",
     "cover-image",
-    "line-art",
-    "coloring",
-    "color-consistency",
-    "design",
-    "designer",
     "Montage"
   ],
   "skills": "./skills/",

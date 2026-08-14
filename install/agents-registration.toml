@@ -1,6 +1,6 @@
 # Codex subagent registration — append (or merge) into ~/.codex/config.toml
 #
-# This file is consumed by install-subagents.sh. It registers the seven anban-creator
+# This file is consumed by install-subagents.sh. It registers the six anban-creator
 # subagents and enables the multi-agent feature flag.
 #
 # WARNING: do NOT paste this verbatim if your ~/.codex/config.toml already declares
@@ -10,7 +10,7 @@
 multi_agent = true
 
 [agents]
-max_threads = 7
+max_threads = 6
 
 [mcp_servers.creator]
 url = "https://creator.anbanai.com/mcp"
@@ -30,11 +30,6 @@ nickname_candidates = ["NoteBot", "Seeder", "种草机器"]
 description = "朋友圈素材包全自动创作 Agent（素材拆解 → 正文 → 质量复盘 → 交付）"
 config_file = "~/.codex/agents/moments.toml"
 nickname_candidates = ["Moments", "朋友圈写手", "PrivateDomain"]
-
-[agents.designer]
-description = "线稿批量上色与一致性审计引擎"
-config_file = "~/.codex/agents/designer.toml"
-nickname_candidates = ["Colorist", "Designer", "上色师"]
 
 [agents.live-slicer]
 description = "直播视频智能切片引擎（ffmpeg + 听悟 + 剪映草稿）"
