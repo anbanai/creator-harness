@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.1.10] - 2026-08-14
+
+- Move Seednote login status, QR login, and logout to the Studio administrator surface.
+- Keep Agent MCP access read-only and limited to Seednote search, detail, and public profile research.
+
 ## [4.1.9] - 2026-08-14
 
 ### Fixed
