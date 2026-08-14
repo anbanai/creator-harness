@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.1.8] - 2026-08-14
+
+### Changed
+
+- Removed the standalone Designer Agent Pack, line-art coloring Skill, and Codex subagent registration for the MVP product cut.
+- Kept Montage as a first-class Agent workflow with image, audio, and video source material support.
+
+## [4.1.7] - 2026-08-14
+
+### Changed
+
+- Documented Montage managed execution against the immutable OpenMontage runtime-image template while preserving the writable `/workspace/openmontage` task contract.
+
 ## [4.1.6] - 2026-08-11
 
 ### Fixed
