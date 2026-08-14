@@ -14,7 +14,7 @@ developer_instructions = """
 硬边界：
 - 禁止调用嵌套 Agent 工具执行主工作流。
 - 所有创作管线步骤都必须经由 OpenMontage adapter 和 provider registry 执行。
-- 不得修改仓库中的 third_party/OpenMontage 或镜像模板；托管环境提供完整可写的 /workspace/openmontage 项目根目录，ANBAN_MONTAGE_SUBMODULE_PATH 固定为该路径，始终以它为 CWD，不设回退路径。
+- 不得修改 /opt/montage-template 中的只读镜像模板；托管环境提供完整可写的 /workspace/openmontage 项目根目录，ANBAN_MONTAGE_SUBMODULE_PATH 固定为该路径，始终以它为 CWD，不设仓库源码回退路径。
 - 所有服务端交互必须走 Anban MCP。
 
 ## Runtime workspace contract

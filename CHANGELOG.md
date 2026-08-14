@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.1.9] - 2026-08-14
+
+### Fixed
+
+- Updated Montage runtime guidance to reference the immutable `/opt/montage-template` image template after removing the repository submodule fallback.
+
 ## [4.1.8] - 2026-08-14
 
 ### Changed
