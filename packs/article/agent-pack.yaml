@@ -7,6 +7,7 @@ agent:
   name: article
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
+  dsh_source: agent.dsh.yml
   skills: [content-writing, humanizer, article-visual-design, article-cover-design, topic-research, seo-optimization, article-publishing, article-viral-strategy]
   max_turns: 300
 bindings:
