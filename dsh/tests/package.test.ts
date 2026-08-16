@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { describe, expect, it } from 'vitest'
 
 const packageUrl = new URL('../../package.json', import.meta.url)
+const workspaceUrl = new URL('../../pnpm-workspace.yaml', import.meta.url)
 
 describe('DSH package manifest', () => {
   it('declares the exact publishing and build contract', async () => {
@@ -95,5 +96,15 @@ describe('DSH package manifest', () => {
         vitest: '4.1.8',
       },
     })
+  })
+
+  it('approves the exact dependency build scripts required by the DSH runtime', async () => {
+    expect(await readFile(workspaceUrl, 'utf8')).toBe(`allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': true
+  koffi: true
+  node-pty: true
+  protobufjs: true
+`)
   })
 })
