@@ -41,8 +41,14 @@ interface PresetOwnership {
   sourceDigest: string
 }
 
+interface PresetFaults {
+  beforeRemoveOperationPath?: (path: string) => Promise<void> | void
+  beforeRename?: (source: string, destination: string) => Promise<void> | void
+}
+
 interface PresetContext {
   dshHome: string
+  faults: PresetFaults | undefined
   force: boolean
   packageVersion: string
   presetIds: readonly PresetId[]
@@ -51,6 +57,7 @@ interface PresetContext {
 
 interface TestPresetOptions {
   dshHome: string
+  faults?: PresetFaults
   force?: boolean
   packageVersion: string
   presetIds?: readonly string[]
@@ -388,7 +395,17 @@ async function removeOperationPath(
   path: string,
 ): Promise<void> {
   assertContained(presetRoot(context), path)
+  await context.faults?.beforeRemoveOperationPath?.(path)
   await rm(path, { force: true, recursive: true })
+}
+
+async function renameOperationPath(
+  context: PresetContext,
+  source: string,
+  destination: string,
+): Promise<void> {
+  await context.faults?.beforeRename?.(source, destination)
+  await rename(source, destination)
 }
 
 async function installPreset(
@@ -399,7 +416,12 @@ async function installPreset(
   const destination = presetDestination(context, id)
   const temporary = operationPath(context, id, 'temporary')
   const backup = operationPath(context, id, 'backup')
-  let backupContainsOriginal = false
+  let backupMayContainOnlyOriginal = false
+  let deferredBackupCleanupError: unknown
+  let hasDeferredBackupCleanupError = false
+  let operationError: unknown
+  let operationFailed = false
+  const cleanupErrors: unknown[] = []
 
   try {
     await copyDirectory(presetSource(context, id), temporary)
@@ -447,31 +469,76 @@ async function installPreset(
         await assertSafeReplacementTarget(context, id)
       }
 
-      await rename(destination, backup)
-      backupContainsOriginal = true
+      await renameOperationPath(context, destination, backup)
+      backupMayContainOnlyOriginal = true
     } else if (expectedStatus.state !== 'absent' && !context.force) {
       throw new Error(`Preset ${id} changed while preparing installation`)
     }
 
     try {
-      await rename(temporary, destination)
+      await renameOperationPath(context, temporary, destination)
+      backupMayContainOnlyOriginal = false
     } catch (error) {
-      if (backupContainsOriginal) {
-        await rename(backup, destination)
-        backupContainsOriginal = false
+      if (backupMayContainOnlyOriginal) {
+        try {
+          await renameOperationPath(context, backup, destination)
+          backupMayContainOnlyOriginal = false
+        } catch (rollbackError) {
+          throw new AggregateError(
+            [error, rollbackError],
+            `Preset ${id} replacement and rollback both failed`,
+          )
+        }
       }
       throw error
     }
 
-    if (backupContainsOriginal) {
+    try {
       await removeOperationPath(context, backup)
-      backupContainsOriginal = false
+    } catch (error) {
+      deferredBackupCleanupError = error
+      hasDeferredBackupCleanupError = true
     }
+  } catch (error) {
+    operationError = error
+    operationFailed = true
   } finally {
-    await removeOperationPath(context, temporary)
-    if (!backupContainsOriginal) {
-      await removeOperationPath(context, backup)
+    try {
+      await removeOperationPath(context, temporary)
+    } catch (error) {
+      cleanupErrors.push(error)
     }
+
+    if (!backupMayContainOnlyOriginal) {
+      try {
+        await removeOperationPath(context, backup)
+        hasDeferredBackupCleanupError = false
+      } catch (error) {
+        if (hasDeferredBackupCleanupError) {
+          cleanupErrors.push(deferredBackupCleanupError)
+        }
+        cleanupErrors.push(error)
+      }
+    }
+  }
+
+  if (operationFailed) {
+    if (cleanupErrors.length > 0) {
+      throw new AggregateError(
+        [operationError, ...cleanupErrors],
+        `Preset ${id} installation failed and cleanup was incomplete`,
+      )
+    }
+    throw operationError
+  }
+  if (cleanupErrors.length === 1) {
+    throw cleanupErrors[0]
+  }
+  if (cleanupErrors.length > 1) {
+    throw new AggregateError(
+      cleanupErrors,
+      `Preset ${id} cleanup failed more than once`,
+    )
   }
 }
 
@@ -529,12 +596,12 @@ async function removeWithContext(context: PresetContext): Promise<PresetId[]> {
     await listFiles(destination)
 
     const removalPath = operationPath(context, status.id, 'remove')
-    await rename(destination, removalPath)
+    await renameOperationPath(context, destination, removalPath)
     try {
       await removeOperationPath(context, removalPath)
     } catch (error) {
       try {
-        await rename(removalPath, destination)
+        await renameOperationPath(context, removalPath, destination)
       } catch {
         // Keep the original removal error; any remaining path retains ownership.
       }
@@ -565,6 +632,7 @@ async function publicContext(
 ): Promise<PresetContext> {
   return {
     dshHome: resolveDshHome(options.dshHome),
+    faults: undefined,
     force: 'force' in options && options.force === true,
     packageVersion: await packageVersion(),
     presetIds: PRESET_IDS,
@@ -575,6 +643,7 @@ async function publicContext(
 function testContext(options: TestPresetOptions): PresetContext {
   return {
     dshHome: resolveDshHome(options.dshHome),
+    faults: options.faults,
     force: options.force === true,
     packageVersion: options.packageVersion,
     presetIds: validatePresetIds(options.presetIds ?? PRESET_IDS),

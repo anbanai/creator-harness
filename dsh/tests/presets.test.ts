@@ -79,6 +79,10 @@ function destination(fixture: Fixture, id: string): string {
 function fixtureOptions(
   fixture: Fixture,
   overrides: {
+    faults?: {
+      beforeRemoveOperationPath?: (path: string) => Promise<void> | void
+      beforeRename?: (source: string, destination: string) => Promise<void> | void
+    }
     force?: boolean
     packageVersion?: string
     presetIds?: readonly string[]
@@ -88,6 +92,7 @@ function fixtureOptions(
     dshHome: fixture.dshHome,
     sourceRoot: fixture.sourceRoot,
     packageVersion: overrides.packageVersion ?? '1.2.3',
+    ...(overrides.faults === undefined ? {} : { faults: overrides.faults }),
     ...(overrides.force === undefined ? {} : { force: overrides.force }),
     ...(overrides.presetIds === undefined
       ? {}
@@ -260,6 +265,124 @@ describe('preset installation', () => {
     })
     const entries = await readdir(join(fixture.dshHome, '.agent-presets'))
     expect(entries).toEqual([])
+  })
+
+  it('restores the original and cleans siblings when the replacement rename fails', async () => {
+    const fixture = await createFixture()
+    const options = fixtureOptions(fixture, { presetIds: ['article'] })
+    await presetTestInternals.install(options)
+    const article = destination(fixture, 'article')
+    const originalOwnership = await readFile(join(article, OWNERSHIP_FILE), 'utf8')
+    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    let replacementFailed = false
+
+    await expect(
+      presetTestInternals.install(
+        fixtureOptions(fixture, {
+          faults: {
+            beforeRename(source, target) {
+              if (
+                !replacementFailed &&
+                source.includes('.article.anban-temporary-') &&
+                target === article
+              ) {
+                replacementFailed = true
+                throw new Error('injected replacement rename failure')
+              }
+            },
+          },
+          presetIds: ['article'],
+        }),
+      ),
+    ).rejects.toThrow('injected replacement rename failure')
+
+    expect(await readFile(join(article, 'preset.yml'), 'utf8')).toBe('name: article\n')
+    expect(await readFile(join(article, OWNERSHIP_FILE), 'utf8')).toBe(
+      originalOwnership,
+    )
+    expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
+      'article',
+    ])
+  })
+
+  it('retries backup cleanup after a successful replacement', async () => {
+    const fixture = await createFixture()
+    await presetTestInternals.install(
+      fixtureOptions(fixture, { presetIds: ['article'] }),
+    )
+    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    let backupRemovalAttempts = 0
+
+    await expect(
+      presetTestInternals.install(
+        fixtureOptions(fixture, {
+          faults: {
+            beforeRemoveOperationPath(path) {
+              if (path.includes('.article.anban-backup-')) {
+                backupRemovalAttempts += 1
+                if (backupRemovalAttempts === 1) {
+                  throw new Error('injected backup cleanup failure')
+                }
+              }
+            },
+          },
+          presetIds: ['article'],
+        }),
+      ),
+    ).resolves.toEqual([expect.objectContaining({ state: 'current' })])
+
+    expect(backupRemovalAttempts).toBe(2)
+    expect(
+      await readFile(join(destination(fixture, 'article'), 'preset.yml'), 'utf8'),
+    ).toBe('name: new\n')
+    expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
+      'article',
+    ])
+  })
+
+  it('attempts safe backup cleanup even when temporary cleanup fails', async () => {
+    const fixture = await createFixture()
+    await presetTestInternals.install(
+      fixtureOptions(fixture, { presetIds: ['article'] }),
+    )
+    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    let backupRemovalAttempts = 0
+    let temporaryCleanupFailed = false
+
+    await expect(
+      presetTestInternals.install(
+        fixtureOptions(fixture, {
+          faults: {
+            beforeRemoveOperationPath(path) {
+              if (path.includes('.article.anban-backup-')) {
+                backupRemovalAttempts += 1
+                if (backupRemovalAttempts === 1) {
+                  throw new Error('injected backup cleanup failure')
+                }
+              }
+              if (
+                !temporaryCleanupFailed &&
+                path.includes('.article.anban-temporary-')
+              ) {
+                temporaryCleanupFailed = true
+                throw new Error('injected temporary cleanup failure')
+              }
+            },
+          },
+          presetIds: ['article'],
+        }),
+      ),
+    ).rejects.toThrow('injected temporary cleanup failure')
+
+    expect(backupRemovalAttempts).toBe(2)
+    expect(
+      await presetTestInternals.status(
+        fixtureOptions(fixture, { presetIds: ['article'] }),
+      ),
+    ).toEqual([expect.objectContaining({ state: 'current' })])
+    expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
+      'article',
+    ])
   })
 })
 
