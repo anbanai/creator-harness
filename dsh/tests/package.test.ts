@@ -1,9 +1,42 @@
-import { readFile } from 'node:fs/promises'
+import { spawnSync } from 'node:child_process'
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
 const packageUrl = new URL('../../package.json', import.meta.url)
 const workspaceUrl = new URL('../../pnpm-workspace.yaml', import.meta.url)
+const cordisPatchUrl = new URL('../cordis.patch.yml', import.meta.url)
+const cliShimPath = fileURLToPath(
+  new URL('../bin/anban-dsh.js', import.meta.url),
+)
+
+async function createShimFixture(cliSource?: string) {
+  const root = await mkdtemp(join(tmpdir(), 'anban-dsh-shim-'))
+  const binDir = join(root, 'bin')
+  const shimPath = join(binDir, 'anban-dsh.js')
+
+  await mkdir(binDir, { recursive: true })
+  await copyFile(cliShimPath, shimPath)
+  await writeFile(join(root, 'package.json'), '{"type":"module"}\n')
+
+  if (cliSource !== undefined) {
+    const libDir = join(root, 'lib')
+    await mkdir(libDir, { recursive: true })
+    await writeFile(join(libDir, 'cli.js'), cliSource)
+  }
+
+  return { root, shimPath }
+}
 
 describe('DSH package manifest', () => {
   it('declares the exact publishing and build contract', async () => {
@@ -106,5 +139,54 @@ describe('DSH package manifest', () => {
   node-pty: true
   protobufjs: true
 `)
+  })
+
+  it('ships the exact two-entry Cordis host patch', async () => {
+    expect(await readFile(cordisPatchUrl, 'utf8')).toBe(`- insert:
+    - id: anban-mcp
+      name: '@anban/dsh-plugin/anban-mcp'
+    - id: anban-preset-manager
+      name: '@anban/dsh-plugin/preset-manager'
+`)
+  })
+})
+
+describe('DSH CLI shim', () => {
+  it('reports a missing CLI module as one safe stderr line', async () => {
+    const fixture = await createShimFixture()
+
+    try {
+      const result = spawnSync(process.execPath, [fixture.shimPath], {
+        encoding: 'utf8',
+      })
+
+      expect(result.status).toBe(1)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toBe('anban-dsh: command failed\n')
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('passes user argv to runCLI and propagates its numeric result', async () => {
+    const fixture = await createShimFixture(`export async function runCLI(argv) {
+  process.stdout.write(JSON.stringify(argv ?? null))
+  return 2
+}
+`)
+
+    try {
+      const result = spawnSync(
+        process.execPath,
+        [fixture.shimPath, 'first', 'two words'],
+        { encoding: 'utf8' },
+      )
+
+      expect(result.status).toBe(2)
+      expect(result.stdout).toBe('["first","two words"]')
+      expect(result.stderr).toBe('')
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
   })
 })
