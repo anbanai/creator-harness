@@ -22,6 +22,9 @@ const FAKE_SECRET = 'fake-anban-secret-value'
 const INVALID_CREDENTIAL_WARNING =
   'anban-mcp: ANBAN_API_KEY is invalid; creator MCP tools are unavailable'
 const OMITTED_ERROR_LINE = 'Error details omitted'
+const EMBEDDED_QUOTE_SECRET = 'resolved-secret-"embedded-secret-suffix'
+const EMBEDDED_QUOTE_MESSAGE =
+  String.raw`prefix {"Authorization":"Bearer resolved-secret-\"embedded-secret-suffix"} trailing-diagnostic-suffix`
 
 interface Deferred {
   promise: Promise<void>
@@ -563,6 +566,11 @@ describe('anban MCP failure containment', () => {
       'control-interrupted key',
       'Auth\u0000orization: Bearer leaked-secret',
     ],
+    [
+      'escaped-quote-interrupted key',
+      String.raw`A\"uthorization: Bearer leaked-secret`,
+    ],
+    ['whitespace-interrupted key', 'Auth orization: Bearer leaked-secret'],
   ])('redacts a structurally disguised Authorization header from %s', (_label, error) => {
     const line = safeErrorLine(error)
 
@@ -571,6 +579,50 @@ describe('anban MCP failure containment', () => {
     expect(line).not.toMatch(/\bBearer\s+[^\s,;}\]]+/i)
     expect(line).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/)
     expect(line.length).toBeLessThanOrEqual(512)
+  })
+
+  it.each([
+    ['raw string', EMBEDDED_QUOTE_MESSAGE],
+    ['Error', new Error(EMBEDDED_QUOTE_MESSAGE)],
+  ])(
+    'redacts an embedded escaped quote and the remaining payload from a %s with its secret',
+    (_label, error) => {
+      const line = safeErrorLine(error, EMBEDDED_QUOTE_SECRET)
+
+      expect(line).toContain('[REDACTED]')
+      expect(line).not.toContain(EMBEDDED_QUOTE_SECRET)
+      expect(line).not.toContain('embedded-secret-suffix')
+      expect(line).not.toContain('trailing-diagnostic-suffix')
+      expect(line).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/)
+      expect(line.length).toBeLessThanOrEqual(512)
+    },
+  )
+
+  it.each([
+    ['raw string', EMBEDDED_QUOTE_MESSAGE],
+    ['Error', new Error(EMBEDDED_QUOTE_MESSAGE)],
+  ])(
+    'redacts an embedded escaped quote and the entire payload from a %s without a secret',
+    (_label, error) => {
+      const line = safeErrorLine(error)
+
+      expect(line).toContain('[REDACTED]')
+      expect(line).not.toContain('Bearer')
+      expect(line).not.toContain('embedded-secret-suffix')
+      expect(line).not.toContain('trailing-diagnostic-suffix')
+      expect(line).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/)
+      expect(line.length).toBeLessThanOrEqual(512)
+    },
+  )
+
+  it('redacts an escaped secret outside an Authorization payload', () => {
+    const line = safeErrorLine(
+      String.raw`request token=resolved-secret-\"embedded-secret-suffix`,
+      EMBEDDED_QUOTE_SECRET,
+    )
+
+    expect(line).toContain('[REDACTED]')
+    expect(line).not.toContain('embedded-secret-suffix')
   })
 
   it('omits oversized errors before scanning their name and message', () => {

@@ -4,11 +4,10 @@ const MAX_ERROR_SCAN_LENGTH = 4_096
 const MAX_SAFE_ERROR_LENGTH = 512
 const MIN_SAFE_SECRET_LENGTH = 8
 const OMITTED_ERROR_LINE = 'Error details omitted'
-const AUTHORIZATION_VALUE_PATTERN =
-  /["']?\bauthorization\b["']?\s*[:=,]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\r\n,;}\]]+)/gi
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001f\u007f-\u009f]+/g
-const ESCAPED_SIMPLE_QUOTE_PATTERN = /\\(["'])/g
 const WHITESPACE_PATTERN = /\s+/g
+const AUTHORIZATION_KEY = 'authorization'
+const REDACTED_AUTHORIZATION = 'Authorization: [REDACTED]'
 
 function ownString(error: Error, key: 'message' | 'name'): string | undefined {
   try {
@@ -78,6 +77,85 @@ function renderUnknown(error: unknown): string | undefined {
   }
 }
 
+function isAsciiWord(code: number): boolean {
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 65 && code <= 90) ||
+    code === 95 ||
+    (code >= 97 && code <= 122)
+  )
+}
+
+function isAuthorizationSeparator(code: number): boolean {
+  return (
+    code === 34 ||
+    code === 39 ||
+    code === 92 ||
+    code <= 32 ||
+    (code >= 127 && code <= 159)
+  )
+}
+
+function authorizationStart(line: string): number | undefined {
+  for (let start = 0; start < line.length; start += 1) {
+    if (
+      line[start]?.toLowerCase() !== AUTHORIZATION_KEY[0] ||
+      (start > 0 && isAsciiWord(line.charCodeAt(start - 1)))
+    ) {
+      continue
+    }
+
+    let cursor = start
+    let keyIndex = 0
+    while (keyIndex < AUTHORIZATION_KEY.length) {
+      if (line[cursor]?.toLowerCase() !== AUTHORIZATION_KEY[keyIndex]) {
+        break
+      }
+      cursor += 1
+      keyIndex += 1
+
+      if (keyIndex < AUTHORIZATION_KEY.length) {
+        while (
+          cursor < line.length &&
+          isAuthorizationSeparator(line.charCodeAt(cursor))
+        ) {
+          cursor += 1
+        }
+      }
+    }
+
+    if (
+      keyIndex !== AUTHORIZATION_KEY.length ||
+      (cursor < line.length && isAsciiWord(line.charCodeAt(cursor)))
+    ) {
+      continue
+    }
+
+    while (
+      cursor < line.length &&
+      isAuthorizationSeparator(line.charCodeAt(cursor))
+    ) {
+      cursor += 1
+    }
+    if (line[cursor] === ':' || line[cursor] === '=' || line[cursor] === ',') {
+      return start
+    }
+  }
+  return undefined
+}
+
+function redactSecret(line: string, secret: string): string {
+  const variants = new Set([
+    secret,
+    secret.replaceAll('"', '\\"'),
+    secret.replaceAll("'", "\\'"),
+  ])
+  for (const variant of variants) {
+    line = line.split(variant).join('[REDACTED]')
+  }
+  return line
+}
+
 /** Render an unknown failure without retaining its stack, cause, or payload. */
 export function safeErrorLine(error: unknown, secret?: string): string {
   if (
@@ -96,18 +174,17 @@ export function safeErrorLine(error: unknown, secret?: string): string {
   }
 
   let line = rendered
-    .replace(ESCAPED_SIMPLE_QUOTE_PATTERN, '$1')
-    .replace(CONTROL_CHARACTERS_PATTERN, '')
-    .replace(
-      AUTHORIZATION_VALUE_PATTERN,
-      'Authorization: [REDACTED]',
-    )
-
   if (secret !== undefined && secret !== '') {
-    line = line.split(secret).join('[REDACTED]')
+    line = redactSecret(line, secret)
+  }
+
+  const authorization = authorizationStart(line)
+  if (authorization !== undefined) {
+    line = `${line.slice(0, authorization)}${REDACTED_AUTHORIZATION}`
   }
 
   line = line
+    .replace(CONTROL_CHARACTERS_PATTERN, '')
     .replace(WHITESPACE_PATTERN, ' ')
     .trim()
 
