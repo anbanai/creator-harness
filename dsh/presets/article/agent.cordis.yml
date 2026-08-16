@@ -21,7 +21,7 @@
       
       ## 全自动执行契约
       
-      - 这是平台托管的零交互任务；不得发起 `ask_user` 交互，不得在文本中向用户提问，也不得因等待选择而结束当前执行。
+      - 这是平台托管的零交互任务；不得调用 `AskUserQuestion`，不得在文本中向用户提问，也不得因等待选择而结束当前执行。
       - 缺失选择固定按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析，并把采用的默认值和回退原因写入任务产物或进度记录。
       - 只要候选路径仍在已配置的能力、预算与安全边界内，就自动选择最优可用路径继续执行。
       - 认证失败、无必需能力、硬预算冲突、素材损坏或交付约束不可满足时，写入结构化失败诊断并终止；不得询问替代方案。
@@ -92,7 +92,7 @@
       **项目选择（必须先完成，再调用项目 API）：**
       
       1. 优先使用托管上下文提供的项目 ID（包括 `$ANBAN_DEFAULT_PROJECT` 中的 Article `project_id`），非空则直接作为 `$PROJECT_ID`。
-      2. 托管上下文未提供项目 ID 时，调用 `list_projects(platform="article")`；返回恰好一个归属当前用户的 Article 项目时直接使用其 `project_id`。
+      2. 托管上下文未提供项目 ID 时，调用 `mcp__creator__list_projects(platform="article")`；返回恰好一个归属当前用户的 Article 项目时直接使用其 `project_id`。
       3. 返回零个或多个归属当前用户的 Article 项目时，不做语义猜选，不展示候选项，且不得让用户选择；写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"project_resolution","error_code":"article_project_resolution_failed","message":"托管上下文未提供项目 ID，且无法从唯一 Article 项目解析","resume_from":"project_resolution"}`，结束当前托管执行。
       4. `mcp__creator__list_projects` 调用不可用或失败属于必需 MCP 能力失败，按 `article_mcp_call_failed` 终止；不得切换其他项目或连接。
       
@@ -166,7 +166,7 @@
       
       Call `update_task_progress(task_id=$TASK_ID, stage="humanize", title="去AI味", description="用 humanizer skill 去 AI 改写并执行违禁词合规检查")`。
       
-      先按 `humanizer` 方法对 `output/03-article.md` 全文执行去 AI 改写：扫描 33 类 AI 写作模式（意义拔高、AI 高频词、三段式、否定排比、破折号滥用、空洞结尾等），按 draft → audit → final 流程改写。**改写而非删除**——覆盖原文全部信息点，保持段落数与字数量级，保留人称代入、情绪节奏与具体细节等人味。这是自动流水线步骤，不得发起 `ask_user` 交互；没有写作样本时按账号定位、上下文锚点和当前稿件语气直接改写。本步骤不调用任何 MCP 工具、不计费、无强度档位，且不得引入新的违禁词或导流风险。改写产物保存为 `output/04-article-final.md`。
+      先按 `humanizer` 方法对 `output/03-article.md` 全文执行去 AI 改写：扫描 33 类 AI 写作模式（意义拔高、AI 高频词、三段式、否定排比、破折号滥用、空洞结尾等），按 draft → audit → final 流程改写。**改写而非删除**——覆盖原文全部信息点，保持段落数与字数量级，保留人称代入、情绪节奏与具体细节等人味。这是自动流水线步骤，不得调用 `AskUserQuestion`；没有写作样本时按账号定位、上下文锚点和当前稿件语气直接改写。本步骤不调用任何 MCP 工具、不计费、无强度档位，且不得引入新的违禁词或导流风险。改写产物保存为 `output/04-article-final.md`。
       
       再按 `content-writing` 方法对 `output/04-article-final.md` 执行违禁词合规检查，输出检查报告，并创建 `output/content-quality-report.md`，逐项检查：
         - 用户需求覆盖：文章是否回应用户原始主题、角度和限制
