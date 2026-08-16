@@ -188,6 +188,11 @@ export function safeErrorLine(error: unknown, secret?: string): string {
     .replace(WHITESPACE_PATTERN, ' ')
     .trim()
 
+  const normalizedAuthorization = authorizationStart(line)
+  if (normalizedAuthorization !== undefined) {
+    line = `${line.slice(0, normalizedAuthorization)}${REDACTED_AUTHORIZATION}`
+  }
+
   if (secret !== undefined && secret !== '') {
     line = redactSecret(line, secret)
   }

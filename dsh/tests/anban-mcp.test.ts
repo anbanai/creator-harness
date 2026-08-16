@@ -572,6 +572,18 @@ describe('anban MCP failure containment', () => {
       String.raw`A\"uthorization: Bearer leaked-secret`,
     ],
     ['whitespace-interrupted key', 'Auth orization: Bearer leaked-secret'],
+    [
+      'NBSP-interrupted key',
+      'Auth\u00a0orization: Bearer leaked-secret',
+    ],
+    [
+      'Ogham-space-interrupted key',
+      'Auth\u1680orization: Bearer leaked-secret',
+    ],
+    [
+      'line-separator-interrupted key',
+      'Auth\u2028orization: Bearer leaked-secret',
+    ],
   ])('redacts a structurally disguised Authorization header from %s', (_label, error) => {
     const line = safeErrorLine(error)
 
