@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.1.11] - 2026-08-16
+
+### Added
+
+- Added DeepSeek Harness Web and Desktop support with generated Article and
+  Seednote Presets.
+- Added official DSH credential, MCP, and shared Skill adapters without changing
+  Anban Server business behavior.
+
 ## [4.1.10] - 2026-08-14
 
 - Move Seednote login status, QR login, and logout to the Studio administrator surface.

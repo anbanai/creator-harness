@@ -1,9 +1,9 @@
 # Plugin developer notes
 
-This file defines development boundaries for the Anban Claude Code plugin. It
-lives under `docs/` because Claude Code does not load a plugin-root `CLAUDE.md`
-as plugin context. Runtime workflow instructions belong in `agents/*.md` or
-`skills/*/SKILL.md`.
+This file defines development boundaries for the Anban Claude Code, Codex, and
+DeepSeek Harness plugin surfaces. It lives under `docs/` because Claude Code
+does not load a plugin-root `CLAUDE.md` as plugin context. Runtime workflow
+instructions belong in Pack-owned Agent sources or `skills/*/SKILL.md`.
 
 ## Project overview
 
@@ -25,6 +25,7 @@ when that phase begins.
 | Skill | One domain capability, its input/output contract, decision rules, and supporting knowledge |
 | Hook | Deterministic lifecycle gates or a bounded decision based only on hook input |
 | MCP | Tool schema, validation, persistence, and server-side side effects |
+| DSH Host adapter | Official credential resolution, fixed MCP transport, generated Preset installation, and shared Skill exposure |
 | Managed runtime | One task-private workspace per execution, structured `TASK_ID`, and the pre-created `output/` |
 | Artifact | File-backed state, evidence, failure details, and resume entrypoints across stages |
 
@@ -170,8 +171,16 @@ Classify a Skill before editing it:
 - Add Agents under `agents/<name>.md`; keep workflow/recovery ownership there.
 - Add Skills under `skills/<name>/SKILL.md`; move long details into direct
   `references/` files.
+- Treat `packs/*/agent.dsh.yml` as a Pack source and `dsh/presets/` as generated
+  output. Only Article and Seednote currently declare `dsh_source`; do not edit
+  generated Presets by hand.
+- Keep DSH credentials in the official credential adapter, configure only
+  `ANBAN_API_KEY`, and keep the MCP endpoint fixed at
+  `https://creator.anbanai.com/mcp`. Presets must not embed MCP clients,
+  credential values, or host-specific adapter files.
 - Keep deterministic validation in scripts or server tests.
-- Bump `.claude-plugin/plugin.json` and the marketplace plugin entry together,
-  and update `CHANGELOG.md` for any distributed runtime or documentation change.
+- Bump `package.json`, `.claude-plugin/plugin.json`, the marketplace plugin
+  entry, and `.codex-plugin/plugin.json` together, and update `CHANGELOG.md` for
+  any distributed runtime or documentation change.
 - Validate metadata, run affected contract tests, run `claude plugin validate`,
-  and check the final diff before release.
+  run `make dsh-check dsh-smoke`, and check the final diff before release.

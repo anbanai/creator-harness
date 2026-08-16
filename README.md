@@ -2,7 +2,10 @@
 
 > Claude Code 与 Codex 共用一份 Skill、模板、写作风格和运行资产；宿主差异只保留在原生 manifest、Agent、MCP/Hook 或安装适配层。
 
-Codex 安装说明见 [docs/codex-installation.md](docs/codex-installation.md)。
+Codex 安装说明见 [docs/codex-installation.md](docs/codex-installation.md)。DeepSeek
+Harness Web 与 Desktop 安装说明见
+[docs/dsh-installation.md](docs/dsh-installation.md)；当前提供由 Agent Pack 生成的
+Article 与 Seednote Preset。
 
 ## 接入流程
 
@@ -153,6 +156,7 @@ claude --verbose --agent anban:live-slicer ./live.mp4
 ├── .gitmodules     # 固定直接分发的第三方 Skill 上游
 ├── Makefile        # 插件维护命令
 ├── agents/         # Claude Markdown Agents + Codex TOML subagents
+├── dsh/            # DeepSeek Harness Bundle 适配器与生成的 Preset
 ├── skills/         # 两个宿主共用的唯一 Skill 树
 ├── hooks/          # Claude Code 原生质量检查 Hook
 ├── install/        # Codex MCP、subagent 安装与注册脚本
