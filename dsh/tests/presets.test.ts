@@ -418,6 +418,88 @@ describe('preset removal', () => {
     ).toBe('keep')
     expect(await lstat(destination(fixture, 'seednote'))).toBeTruthy()
   })
+
+  it('restores the destination when deletion fails before mutation', async () => {
+    const fixture = await createFixture()
+    await presetTestInternals.install(
+      fixtureOptions(fixture, { presetIds: ['article'] }),
+    )
+    let deletionFailed = false
+
+    await expect(
+      presetTestInternals.remove(
+        fixtureOptions(fixture, {
+          faults: {
+            beforeRemoveOperationPath(path) {
+              if (!deletionFailed && path.includes('.article.anban-remove-')) {
+                deletionFailed = true
+                throw new Error('injected preset deletion failure')
+              }
+            },
+          },
+          presetIds: ['article'],
+        }),
+      ),
+    ).rejects.toThrow('injected preset deletion failure')
+
+    expect(
+      await readFile(join(destination(fixture, 'article'), 'preset.yml'), 'utf8'),
+    ).toBe('name: article\n')
+    expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
+      'article',
+    ])
+  })
+
+  it('reports both failures and the recovery path when removal rollback fails', async () => {
+    const fixture = await createFixture()
+    const article = destination(fixture, 'article')
+    const presetRoot = join(fixture.dshHome, '.agent-presets')
+    await presetTestInternals.install(
+      fixtureOptions(fixture, { presetIds: ['article'] }),
+    )
+    let failure: unknown
+
+    try {
+      await presetTestInternals.remove(
+        fixtureOptions(fixture, {
+          faults: {
+            beforeRemoveOperationPath(path) {
+              if (path.includes('.article.anban-remove-')) {
+                throw new Error('injected preset deletion failure')
+              }
+            },
+            beforeRename(source, target) {
+              if (source.includes('.article.anban-remove-') && target === article) {
+                throw new Error('injected removal rollback failure')
+              }
+            },
+          },
+          presetIds: ['article'],
+        }),
+      )
+    } catch (error) {
+      failure = error
+    }
+
+    expect(failure).toBeInstanceOf(AggregateError)
+    if (!(failure instanceof AggregateError)) {
+      throw new Error('Expected removal failure to retain both errors')
+    }
+    expect(failure.errors).toEqual([
+      expect.objectContaining({ message: 'injected preset deletion failure' }),
+      expect.objectContaining({ message: 'injected removal rollback failure' }),
+    ])
+    const entries = await readdir(presetRoot)
+    const recoveryName = entries.find((entry) =>
+      entry.startsWith('.article.anban-remove-'),
+    )
+    expect(recoveryName).toBeDefined()
+    expect(failure.message).toContain(join(presetRoot, recoveryName!))
+    await expect(lstat(article)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(
+      await readFile(join(presetRoot, recoveryName!, OWNERSHIP_FILE), 'utf8'),
+    ).toContain('"presetId": "article"')
+  })
 })
 
 describe('preset containment and digest safety', () => {
@@ -510,17 +592,19 @@ describe('preset containment and digest safety', () => {
     expect(withExtraFile[0]?.sourceDigest).not.toBe(initial[0]?.sourceDigest)
 
     await rm(`${skillPath}.copy`)
-    await chmod(skillPath, 0o600)
-    const nonExecutable = await presetTestInternals.status(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
-    )
-    expect(nonExecutable[0]?.sourceDigest).toBe(initial[0]?.sourceDigest)
-    await chmod(skillPath, 0o700)
-    const executable = await presetTestInternals.status(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
-    )
-    expect(executable[0]?.sourceDigest).not.toBe(initial[0]?.sourceDigest)
-    await chmod(skillPath, 0o600)
+    if (process.platform !== 'win32') {
+      await chmod(skillPath, 0o600)
+      const nonExecutable = await presetTestInternals.status(
+        fixtureOptions(fixture, { presetIds: ['article'] }),
+      )
+      expect(nonExecutable[0]?.sourceDigest).toBe(initial[0]?.sourceDigest)
+      await chmod(skillPath, 0o700)
+      const executable = await presetTestInternals.status(
+        fixtureOptions(fixture, { presetIds: ['article'] }),
+      )
+      expect(executable[0]?.sourceDigest).not.toBe(initial[0]?.sourceDigest)
+      await chmod(skillPath, 0o600)
+    }
 
     await presetTestInternals.install(
       fixtureOptions(fixture, { presetIds: ['article'] }),
@@ -533,6 +617,29 @@ describe('preset containment and digest safety', () => {
         fixtureOptions(fixture, { presetIds: ['article'] }),
       ),
     ).toEqual([expect.objectContaining({ state: 'current' })])
+  })
+
+  it('frames digest records so content cannot forge a following file', async () => {
+    const twoFiles = await createFixture()
+    const forgedRecord = await createFixture()
+    const twoFilesSource = join(twoFiles.sourceRoot, 'article')
+    const forgedSource = join(forgedRecord.sourceRoot, 'article')
+    await rm(twoFilesSource, { recursive: true })
+    await rm(forgedSource, { recursive: true })
+    await mkdir(twoFilesSource)
+    await mkdir(forgedSource)
+    await writeFile(join(twoFilesSource, 'a'), 'x')
+    await writeFile(join(twoFilesSource, 'b'), 'y')
+    await writeFile(join(forgedSource, 'a'), Buffer.from('x\0b\0file\0y'))
+
+    const [twoFilesStatus] = await presetTestInternals.status(
+      fixtureOptions(twoFiles, { presetIds: ['article'] }),
+    )
+    const [forgedStatus] = await presetTestInternals.status(
+      fixtureOptions(forgedRecord, { presetIds: ['article'] }),
+    )
+
+    expect(twoFilesStatus?.sourceDigest).not.toBe(forgedStatus?.sourceDigest)
   })
 
   it('sorts digest paths by a stable lexical order instead of locale', async () => {
@@ -551,11 +658,19 @@ describe('preset containment and digest safety', () => {
     for (const [relativePath, contents] of [...files].sort(([left], [right]) =>
       left < right ? -1 : left > right ? 1 : 0,
     )) {
-      expected.update(relativePath)
+      const pathBytes = Buffer.from(relativePath, 'utf8')
+      const contentBytes = Buffer.from(contents)
+      expected.update('file')
+      expected.update('\0')
+      expected.update(String(pathBytes.byteLength))
+      expected.update('\0')
+      expected.update(pathBytes)
       expected.update('\0')
       expected.update('file')
       expected.update('\0')
-      expected.update(contents)
+      expected.update(String(contentBytes.byteLength))
+      expected.update('\0')
+      expected.update(contentBytes)
       expected.update('\0')
     }
 

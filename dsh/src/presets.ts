@@ -219,11 +219,19 @@ async function digestDirectory(
   const files = await listFiles(root, excludedRelativePath)
 
   for (const file of files) {
-    digest.update(file.relativePath)
+    const pathBytes = Buffer.from(file.relativePath, 'utf8')
+    const contents = await readFile(file.absolutePath)
+    digest.update('file')
+    digest.update('\0')
+    digest.update(String(pathBytes.byteLength))
+    digest.update('\0')
+    digest.update(pathBytes)
     digest.update('\0')
     digest.update(modeClass(file.mode))
     digest.update('\0')
-    digest.update(await readFile(file.absolutePath))
+    digest.update(String(contents.byteLength))
+    digest.update('\0')
+    digest.update(contents)
     digest.update('\0')
   }
 
@@ -599,13 +607,16 @@ async function removeWithContext(context: PresetContext): Promise<PresetId[]> {
     await renameOperationPath(context, destination, removalPath)
     try {
       await removeOperationPath(context, removalPath)
-    } catch (error) {
+    } catch (removalError) {
       try {
         await renameOperationPath(context, removalPath, destination)
-      } catch {
-        // Keep the original removal error; any remaining path retains ownership.
+      } catch (rollbackError) {
+        throw new AggregateError(
+          [removalError, rollbackError],
+          `Preset ${status.id} removal and rollback failed; inspect recovery path ${removalPath}`,
+        )
       }
-      throw error
+      throw removalError
     }
     removed.push(status.id)
   }
