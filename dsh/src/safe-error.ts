@@ -2,7 +2,7 @@ import { types } from 'node:util'
 
 const MAX_SAFE_ERROR_LENGTH = 512
 const AUTHORIZATION_VALUE_PATTERN =
-  /\bauthorization\b\s*[:=]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\r\n,;}]+)/gi
+  /["']?\bauthorization\b["']?\s*[:=]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\r\n,;}]+)/gi
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001f\u007f-\u009f]+/g
 const WHITESPACE_PATTERN = /\s+/g
 

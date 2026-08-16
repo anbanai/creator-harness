@@ -433,6 +433,44 @@ describe('anban MCP failure containment', () => {
   })
 
   it.each([
+    ['JSON raw string', '{"Authorization":"Bearer leaked-secret"}'],
+    [
+      'lowercase raw string',
+      'headers={"authorization":"Basic leaked-secret"}',
+    ],
+    [
+      'single-quoted raw string',
+      "headers={'Authorization':'Bearer leaked-secret'}",
+    ],
+    [
+      'mismatched-quote raw string',
+      "headers={'Authorization\":\"Bearer leaked-secret\"}",
+    ],
+    ['JSON Error', new Error('{"Authorization":"Bearer leaked-secret"}')],
+    [
+      'lowercase Error',
+      new Error('headers={"authorization":"Basic leaked-secret"}'),
+    ],
+    [
+      'single-quoted Error',
+      new Error("headers={'Authorization':'Bearer leaked-secret'}"),
+    ],
+    [
+      'mismatched-quote Error',
+      new Error("headers={'Authorization\":\"Bearer leaked-secret\"}"),
+    ],
+  ])('redacts a quoted Authorization header from a %s', (_label, error) => {
+    const line = safeErrorLine(error)
+
+    expect(line).toContain('[REDACTED]')
+    expect(line).not.toContain('leaked-secret')
+    expect(line).not.toMatch(/\b(?:Bearer|Basic)\s+[^\s,;}]+/i)
+    expect(line).not.toMatch(/["']authorization["']\s*[:=]/i)
+    expect(line).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/)
+    expect(line.length).toBeLessThanOrEqual(512)
+  })
+
+  it.each([
     [undefined, 'undefined'],
     [null, 'null'],
     [false, 'false'],
