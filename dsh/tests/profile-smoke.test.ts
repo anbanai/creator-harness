@@ -7,6 +7,11 @@ import { describe, expect, it, vi } from 'vitest'
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url))
 const smokeScriptUrl = new URL('../scripts/smoke-profile.mjs', import.meta.url)
 
+interface NodeCommand {
+  executable: string
+  prefixArgs: readonly string[]
+}
+
 describe('DSH profile smoke script', () => {
   it('packs and installs the current Bundle into an isolated web profile', async () => {
     const smokeModule = await import(smokeScriptUrl.href).catch(() => undefined)
@@ -24,28 +29,55 @@ describe('DSH profile smoke script', () => {
     const dshHome = join(smokeRoot, 'home')
     const profileDir = join(dshHome, 'profiles', 'web')
     const packTarball = join(smokeRoot, 'anban-dsh-plugin-4.1.11.tgz')
-    const dshBin = join(packageRoot, 'node_modules', '.bin', 'dsh')
-    const installedCli = join(
-      profileDir,
-      'node_modules',
-      '.bin',
-      'anban-dsh',
-    )
+    const nodeRuntime = join(packageRoot, 'runtime', 'node')
+    const pnpmCommand = {
+      executable: nodeRuntime,
+      prefixArgs: [join(packageRoot, 'tools', 'pnpm.mjs')],
+    }
+    const dshCommand = {
+      executable: nodeRuntime,
+      prefixArgs: [
+        join(
+          packageRoot,
+          'node_modules',
+          '@deepseek-ai',
+          'dsh',
+          'lib',
+          'bin.js',
+        ),
+      ],
+    }
+    const installedCommand = {
+      executable: nodeRuntime,
+      prefixArgs: [
+        join(
+          profileDir,
+          'node_modules',
+          '@anban',
+          'dsh-plugin',
+          'dsh',
+          'bin',
+          'anban-dsh.js',
+        ),
+      ],
+    }
     const events: string[] = []
     const commandCalls: Array<{
       args: readonly string[]
-      command: string
+      command: NodeCommand
       options: { cwd: string; env: NodeJS.ProcessEnv }
     }> = []
     const runCommand = vi.fn(
       (
-        command: string,
+        command: NodeCommand,
         args: readonly string[],
         options: { cwd: string; env: NodeJS.ProcessEnv },
       ) => {
-        events.push(`command:${command}:${args.join(' ')}`)
+        events.push(
+          `command:${command.executable}:${command.prefixArgs.join(' ')}:${args.join(' ')}`,
+        )
         commandCalls.push({ args, command, options })
-        if (command === 'pnpm') {
+        if (args[0] === 'pack') {
           return { stdout: `${packTarball}\n` }
         }
         if (args.at(-1) === '--dump-config') {
@@ -75,7 +107,7 @@ describe('DSH profile smoke script', () => {
       apply() {},
       name: 'anban-skills-provider',
     }))
-    const parseConfig = vi.fn(() => [
+    const parseConfig = vi.fn((): unknown => [
       { id: 'base-row', name: '@deepseek-ai/dsh-base' },
       { id: 'anban-mcp', name: '@anban/dsh-plugin/anban-mcp' },
       {
@@ -90,6 +122,9 @@ describe('DSH profile smoke script', () => {
     const mkdtemp = vi.fn(async () => smokeRoot)
     const rm = vi.fn(async () => undefined)
     const log = vi.fn()
+    const resolveDshCommand = vi.fn(async () => dshCommand)
+    const resolveInstalledCommand = vi.fn(async () => installedCommand)
+    const resolvePnpmCommand = vi.fn(async () => pnpmCommand)
 
     const overrides = {
       access,
@@ -99,6 +134,9 @@ describe('DSH profile smoke script', () => {
       log,
       mkdtemp,
       parseConfig,
+      resolveDshCommand,
+      resolveInstalledCommand,
+      resolvePnpmCommand,
       rm,
       runCommand,
       tmpdir: () => tmpdir(),
@@ -113,19 +151,19 @@ describe('DSH profile smoke script', () => {
     expect(commandCalls.map(({ command, args }) => ({ command, args }))).toEqual(
       [
         {
-          command: 'pnpm',
+          command: pnpmCommand,
           args: ['pack', '--pack-destination', smokeRoot],
         },
         {
-          command: dshBin,
+          command: dshCommand,
           args: ['plugin', '--profile', 'web', 'add', packTarball],
         },
         {
-          command: installedCli,
+          command: installedCommand,
           args: ['install-presets'],
         },
         {
-          command: dshBin,
+          command: dshCommand,
           args: ['--profile', 'web', '--dump-config'],
         },
       ],
@@ -135,12 +173,15 @@ describe('DSH profile smoke script', () => {
       expect(call.options.env.DSH_HOME).toBe(dshHome)
     }
     expect(healProfileFallback).toHaveBeenCalledWith(dshHome)
+    expect(resolvePnpmCommand).toHaveBeenCalledOnce()
+    expect(resolveDshCommand).toHaveBeenCalledOnce()
+    expect(resolveInstalledCommand).toHaveBeenCalledWith(profileDir)
     expect(events).toEqual([
-      'command:pnpm:pack --pack-destination ' + smokeRoot,
-      `command:${dshBin}:plugin --profile web add ${packTarball}`,
+      `command:${nodeRuntime}:${pnpmCommand.prefixArgs[0]}:pack --pack-destination ${smokeRoot}`,
+      `command:${nodeRuntime}:${dshCommand.prefixArgs[0]}:plugin --profile web add ${packTarball}`,
       'heal-profile-fallback',
-      `command:${installedCli}:install-presets`,
-      `command:${dshBin}:--profile web --dump-config`,
+      `command:${nodeRuntime}:${installedCommand.prefixArgs[0]}:install-presets`,
+      `command:${nodeRuntime}:${dshCommand.prefixArgs[0]}:--profile web --dump-config`,
     ])
     expect(discoverPresets).toHaveBeenCalledWith([
       { path: join(dshHome, '.agent-presets'), trust: 'user' },
@@ -172,5 +213,54 @@ describe('DSH profile smoke script', () => {
       'Installed profile has invalid Anban Bundle rows',
     )
     expect(rm).toHaveBeenCalledTimes(2)
+
+    parseConfig.mockReturnValue([
+      { id: 'anban-mcp', name: '@anban/dsh-plugin/anban-mcp' },
+      {
+        id: 'anban-preset-manager',
+        name: '@anban/dsh-plugin/preset-manager',
+        config: {
+          presetRows: [
+            {
+              id: 'mcp-client',
+              name: '@deepseek-ai/dsh-mcp-client',
+            },
+          ],
+        },
+      },
+    ])
+    await expect(smokeModule.smokeProfile(overrides)).rejects.toThrow(
+      'Installed profile has invalid Anban Bundle rows',
+    )
+    expect(rm).toHaveBeenCalledTimes(3)
   })
+
+  it.each([
+    {
+      entrypoint: String.raw`C:\tools\pnpm\bin\pnpm.cjs`,
+      executable: String.raw`C:\Program Files\nodejs\node.exe`,
+      platform: 'win32',
+    },
+    {
+      entrypoint: '/opt/pnpm/bin/pnpm.mjs',
+      executable: '/opt/node/bin/node',
+      platform: 'darwin',
+    },
+  ])(
+    'uses a Node entrypoint command on $platform',
+    async ({ entrypoint, executable, platform }) => {
+      const smokeModule = await import(smokeScriptUrl.href)
+
+      expect(smokeModule.nodeEntrypointCommand).toBeTypeOf('function')
+      expect(
+        smokeModule.nodeEntrypointCommand(entrypoint, {
+          executable,
+          platform,
+        }),
+      ).toEqual({
+        executable,
+        prefixArgs: [entrypoint],
+      })
+    },
+  )
 })

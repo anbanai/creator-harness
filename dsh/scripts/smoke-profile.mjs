@@ -1,8 +1,17 @@
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { access, mkdtemp, rm } from 'node:fs/promises'
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { isAbsolute, join, relative, resolve, sep } from 'node:path'
+import {
+  dirname,
+  isAbsolute,
+  join,
+  posix,
+  relative,
+  resolve,
+  sep,
+  win32,
+} from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url))
@@ -10,8 +19,22 @@ const SKILLS_PROVIDER = '@anban/dsh-plugin/skills-provider'
 const PROFILE = 'web'
 const CREDENTIAL_ENV_KEY = /(?:auth|credential|key|password|secret|token)/i
 
-function executable(name) {
-  return process.platform === 'win32' ? `${name}.cmd` : name
+export function nodeEntrypointCommand(
+  entrypoint,
+  {
+    executable = process.execPath,
+    platform = process.platform,
+  } = {},
+) {
+  const paths = platform === 'win32' ? win32 : posix
+  if (
+    !paths.isAbsolute(executable) ||
+    !paths.isAbsolute(entrypoint) ||
+    !/\.(?:c|m)?js$/i.test(entrypoint)
+  ) {
+    throw new Error('Profile smoke command requires absolute Node paths')
+  }
+  return { executable, prefixArgs: [entrypoint] }
 }
 
 function smokeEnvironment(dshHome) {
@@ -25,13 +48,17 @@ function smokeEnvironment(dshHome) {
 }
 
 function defaultRunCommand(command, args, options) {
-  const result = spawnSync(command, args, {
-    cwd: options.cwd,
-    encoding: 'utf8',
-    env: options.env,
-    shell: false,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  const result = spawnSync(
+    command.executable,
+    [...command.prefixArgs, ...args],
+    {
+      cwd: options.cwd,
+      encoding: 'utf8',
+      env: options.env,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  )
 
   if (result.error !== undefined) {
     throw result.error
@@ -43,6 +70,54 @@ function defaultRunCommand(command, args, options) {
   }
 
   return { stdout: result.stdout }
+}
+
+async function packageBinCommand(anchor, packageName, binName) {
+  const requireFromAnchor = createRequire(anchor)
+  const manifestPath = requireFromAnchor.resolve(`${packageName}/package.json`)
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  const bin =
+    typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.[binName]
+  if (typeof bin !== 'string') {
+    throw new Error(`Profile smoke package has no ${binName} bin`)
+  }
+
+  const packageDir = dirname(manifestPath)
+  const entrypoint = resolve(packageDir, bin)
+  const fromPackage = relative(packageDir, entrypoint)
+  if (
+    fromPackage === '' ||
+    fromPackage === '..' ||
+    fromPackage.startsWith(`..${sep}`) ||
+    isAbsolute(fromPackage)
+  ) {
+    throw new Error(`Profile smoke package has an invalid ${binName} bin`)
+  }
+  return nodeEntrypointCommand(entrypoint)
+}
+
+async function defaultResolvePnpmCommand() {
+  const entrypoint = process.env.npm_execpath
+  if (entrypoint === undefined) {
+    throw new Error('Profile smoke must run through pnpm')
+  }
+  return nodeEntrypointCommand(entrypoint)
+}
+
+function defaultResolveDshCommand() {
+  return packageBinCommand(
+    join(PACKAGE_ROOT, 'package.json'),
+    '@deepseek-ai/dsh',
+    'dsh',
+  )
+}
+
+function defaultResolveInstalledCommand(profileDir) {
+  return packageBinCommand(
+    join(profileDir, 'package.json'),
+    '@anban/dsh-plugin',
+    'anban-dsh',
+  )
 }
 
 async function defaultDiscoverPresets(roots) {
@@ -137,7 +212,9 @@ function requireBundleRows(config) {
   const presetLocalMcpRows = rows.filter(
     ({ depth, id, name }) =>
       depth > 0 &&
-      (id === 'anban-mcp' || name === '@anban/dsh-plugin/anban-mcp'),
+      (id === 'anban-mcp' ||
+        name === '@anban/dsh-plugin/anban-mcp' ||
+        name === '@deepseek-ai/dsh-mcp-client'),
   )
 
   if (
@@ -174,19 +251,17 @@ export async function smokeProfile(overrides = {}) {
     log: console.log,
     mkdtemp,
     parseConfig: defaultParseConfig,
+    resolveDshCommand: defaultResolveDshCommand,
+    resolveInstalledCommand: defaultResolveInstalledCommand,
+    resolvePnpmCommand: defaultResolvePnpmCommand,
     rm,
     runCommand: defaultRunCommand,
     tmpdir,
     ...overrides,
   }
-  const dshBin = join(
-    PACKAGE_ROOT,
-    'node_modules',
-    '.bin',
-    executable('dsh'),
-  )
-
   await dependencies.access(join(PACKAGE_ROOT, 'dsh', 'lib', 'cli.js'))
+  const pnpmCommand = await dependencies.resolvePnpmCommand()
+  const dshCommand = await dependencies.resolveDshCommand()
   const smokeRoot = await dependencies.mkdtemp(
     join(dependencies.tmpdir(), 'anban-dsh-profile-smoke-'),
   )
@@ -196,20 +271,23 @@ export async function smokeProfile(overrides = {}) {
     const profileDir = join(dshHome, 'profiles', PROFILE)
     const env = smokeEnvironment(dshHome)
     const packed = await dependencies.runCommand(
-      'pnpm',
+      pnpmCommand,
       ['pack', '--pack-destination', smokeRoot],
       { cwd: PACKAGE_ROOT, env: smokeEnvironment(dshHome) },
     )
     const packTarball = packTarballFrom(packed.stdout, smokeRoot)
 
     await dependencies.runCommand(
-      dshBin,
+      dshCommand,
       ['plugin', '--profile', PROFILE, 'add', packTarball],
       { cwd: PACKAGE_ROOT, env },
     )
     await dependencies.healProfileFallback(dshHome)
+    const installedCommand = await dependencies.resolveInstalledCommand(
+      profileDir,
+    )
     await dependencies.runCommand(
-      join(profileDir, 'node_modules', '.bin', executable('anban-dsh')),
+      installedCommand,
       ['install-presets'],
       { cwd: profileDir, env },
     )
@@ -220,7 +298,7 @@ export async function smokeProfile(overrides = {}) {
     requireHealthyPresets(presets)
 
     const dumped = await dependencies.runCommand(
-      dshBin,
+      dshCommand,
       ['--profile', PROFILE, '--dump-config'],
       { cwd: PACKAGE_ROOT, env },
     )
