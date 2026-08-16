@@ -25,6 +25,7 @@ const OMITTED_ERROR_LINE = 'Error details omitted'
 const EMBEDDED_QUOTE_SECRET = 'resolved-secret-"embedded-secret-suffix'
 const EMBEDDED_QUOTE_MESSAGE =
   String.raw`prefix {"Authorization":"Bearer resolved-secret-\"embedded-secret-suffix"} trailing-diagnostic-suffix`
+const BACKSLASH_SECRET = String.raw`abcd\efgh`
 
 interface Deferred {
   promise: Promise<void>
@@ -623,6 +624,18 @@ describe('anban MCP failure containment', () => {
 
     expect(line).toContain('[REDACTED]')
     expect(line).not.toContain('embedded-secret-suffix')
+  })
+
+  it.each([
+    ['control removal', 'abcdefghijklmno', 'token=abcd\u0000efghijklmno'],
+    ['whitespace collapse', 'abcd efgh', 'token=abcd  efgh'],
+    [
+      'JSON backslash escaping',
+      BACKSLASH_SECRET,
+      `token=${JSON.stringify(BACKSLASH_SECRET).slice(1, -1)}`,
+    ],
+  ])('redacts a secret reconstructed by %s', (_label, secret, diagnostic) => {
+    expect(safeErrorLine(diagnostic, secret)).toBe('token=[REDACTED]')
   })
 
   it('omits oversized errors before scanning their name and message', () => {

@@ -147,7 +147,7 @@ function authorizationStart(line: string): number | undefined {
 function redactSecret(line: string, secret: string): string {
   const variants = new Set([
     secret,
-    secret.replaceAll('"', '\\"'),
+    JSON.stringify(secret).slice(1, -1),
     secret.replaceAll("'", "\\'"),
   ])
   for (const variant of variants) {
@@ -187,6 +187,10 @@ export function safeErrorLine(error: unknown, secret?: string): string {
     .replace(CONTROL_CHARACTERS_PATTERN, '')
     .replace(WHITESPACE_PATTERN, ' ')
     .trim()
+
+  if (secret !== undefined && secret !== '') {
+    line = redactSecret(line, secret)
+  }
 
   if (line === '') {
     return 'Unknown error'
