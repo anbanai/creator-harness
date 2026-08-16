@@ -88,6 +88,7 @@ describe('DSH package manifest', () => {
         typecheck:
           'tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit',
         test: 'vitest run',
+        prepare: 'pnpm run build',
         'smoke:profile':
           'pnpm run build && node dsh/scripts/smoke-profile.mjs',
         check:
@@ -119,12 +120,14 @@ describe('DSH package manifest', () => {
       devDependencies: {
         '@deepseek-ai/cordis': '4.0.1',
         '@deepseek-ai/dsh': '0.1.0-rc.6',
+        '@deepseek-ai/dsh-agent-presets': '0.1.0-rc.6',
         '@deepseek-ai/dsh-commands': '0.1.0-rc.6',
         '@deepseek-ai/dsh-credentials': '0.1.0-rc.6',
         '@deepseek-ai/dsh-home-paths': '0.1.0-rc.6',
         '@deepseek-ai/dsh-mcp-client': '0.1.0-rc.6',
         '@deepseek-ai/dsh-skill-filesystem': '0.1.0-rc.6',
         '@types/node': '22.20.0',
+        'js-yaml': '4.3.1',
         typescript: '6.0.3',
         vitest: '4.1.8',
       },
