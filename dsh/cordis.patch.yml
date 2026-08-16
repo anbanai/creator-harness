@@ -1,0 +1,5 @@
+- insert:
+    - id: anban-mcp
+      name: '@anban/dsh-plugin/anban-mcp'
+    - id: anban-preset-manager
+      name: '@anban/dsh-plugin/preset-manager'

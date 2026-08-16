@@ -1,2 +1,7 @@
 .DS_Store
 bin/
+!dsh/bin/
+!dsh/bin/anban-dsh.js
+node_modules/
+dsh/lib/
+*.tgz
