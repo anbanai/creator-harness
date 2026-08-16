@@ -8,15 +8,28 @@ const API_KEY_REF = credentialRef('ANBAN_API_KEY')
 const MCP_URL = 'https://creator.anbanai.com/mcp'
 const SERVER_NAME = 'creator'
 const TOOL_CALL_TIMEOUT_MS = 900_000
+const MAX_API_KEY_LENGTH = 4_096
+const API_KEY_INVALID_CHARACTERS_PATTERN =
+  /[\u0000-\u001f\u007f-\u009f\u0100-\uffff]/
 
 export const name = 'anban-mcp'
 export const inject = ['credentials']
+
+function isValidApiKey(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= MAX_API_KEY_LENGTH &&
+    !value.endsWith(' ') &&
+    !API_KEY_INVALID_CHARACTERS_PATTERN.test(value)
+  )
+}
 
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   let acceptingUpdates = true
   let activeChild: (Fiber & PromiseLike<Fiber>) | undefined
   let activeSecret: string | undefined
-  let missingWarningIssued = false
+  let unavailableWarningIssued = false
   let queue: Promise<void> = Promise.resolve()
 
   async function disposeActiveChild(): Promise<void> {
@@ -47,11 +60,21 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     }
 
     if (resolved === undefined) {
-      if (!missingWarningIssued) {
+      if (!unavailableWarningIssued) {
         ctx.logger.warn(
           'anban-mcp: ANBAN_API_KEY is not configured; creator MCP tools are unavailable',
         )
-        missingWarningIssued = true
+        unavailableWarningIssued = true
+      }
+      return
+    }
+
+    if (!isValidApiKey(resolved.value)) {
+      if (!unavailableWarningIssued) {
+        ctx.logger.warn(
+          'anban-mcp: ANBAN_API_KEY is invalid; creator MCP tools are unavailable',
+        )
+        unavailableWarningIssued = true
       }
       return
     }
@@ -80,7 +103,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
 
     activeChild = child
     activeSecret = resolved.value
-    missingWarningIssued = false
+    unavailableWarningIssued = false
   }
 
   function enqueueRefresh(): Promise<void> {

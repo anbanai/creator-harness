@@ -19,6 +19,9 @@ import { safeErrorLine } from '../src/safe-error.js'
 
 const API_KEY_REF = credentialRef('ANBAN_API_KEY')
 const FAKE_SECRET = 'fake-anban-secret-value'
+const INVALID_CREDENTIAL_WARNING =
+  'anban-mcp: ANBAN_API_KEY is invalid; creator MCP tools are unavailable'
+const OMITTED_ERROR_LINE = 'Error details omitted'
 
 interface Deferred {
   promise: Promise<void>
@@ -205,6 +208,56 @@ describe('anban MCP registration', () => {
 
     await cleanup()
   })
+
+  it.each([
+    ['empty', ''],
+    ['CR/LF', `${FAKE_SECRET}\r\ncontrol-suffix`],
+    ['NUL', `${FAKE_SECRET}\u0000control-suffix`],
+    ['C0', `${FAKE_SECRET}\u001fcontrol-suffix`],
+    ['DEL', `${FAKE_SECRET}\u007fcontrol-suffix`],
+    ['C1', `${FAKE_SECRET}\u0085control-suffix`],
+    ['non-ByteString', `${FAKE_SECRET}\u0100control-suffix`],
+    ['trailing space', `${FAKE_SECRET} control-suffix `],
+    ['oversized', 'x'.repeat(4_097)],
+  ])(
+    'keeps the plugin active without mounting for an invalid %s credential',
+    async (_label, credential) => {
+      const fake = createContext({ credential })
+
+      const cleanup = await apply(fake.context)
+      await fake.emitUpdated()
+
+      expect(cleanup).toBeTypeOf('function')
+      expect(fake.plugin.mock.calls.length).toBe(0)
+      expect(fake.loggerWarn).toHaveBeenCalledTimes(1)
+      expect(fake.loggerWarn).toHaveBeenCalledWith(
+        INVALID_CREDENTIAL_WARNING,
+      )
+      const logs = JSON.stringify(fake.loggerWarn.mock.calls)
+      expect(logs).not.toContain(FAKE_SECRET)
+      expect(logs).not.toContain('control-suffix')
+      expect(logs).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/)
+
+      await cleanup()
+    },
+  )
+
+  it('preserves a valid credential at the exact length boundary', async () => {
+    const credential = ` ${'v'.repeat(4_095)}`
+    const fake = createContext({ credential })
+
+    const cleanup = await apply(fake.context)
+
+    expect(credential).toHaveLength(4_096)
+    expect(fake.plugin).toHaveBeenCalledWith(
+      mcpClient,
+      expect.objectContaining({
+        headers: { Authorization: `Bearer ${credential}` },
+      }),
+    )
+
+    await cleanup()
+  })
 })
 
 describe('anban MCP credential reconciliation', () => {
@@ -309,6 +362,36 @@ describe('anban MCP credential reconciliation', () => {
 
     expect(fake.plugin).toHaveBeenCalledTimes(1)
     expect(fake.loggerWarn).toHaveBeenCalledTimes(2)
+
+    await cleanup()
+  })
+
+  it('recovers from an invalid credential and resets its warning only after mounting', async () => {
+    const invalid = `${FAKE_SECRET}\r\ncontrol-suffix`
+    const child = childFiber()
+    const fake = createContext({ children: [child], credential: invalid })
+    const cleanup = await apply(fake.context)
+
+    await fake.emitUpdated()
+    expect(fake.loggerWarn).toHaveBeenCalledTimes(1)
+    expect(fake.plugin.mock.calls.length).toBe(0)
+
+    fake.setCredential(FAKE_SECRET)
+    await fake.emitUpdated()
+    expect(fake.plugin).toHaveBeenCalledTimes(1)
+    expect(fake.loggerWarn).toHaveBeenCalledTimes(1)
+
+    fake.setCredential(invalid)
+    await fake.emitUpdated()
+    expect(child.dispose).toHaveBeenCalledTimes(1)
+    expect(fake.plugin).toHaveBeenCalledTimes(1)
+    expect(fake.loggerWarn).toHaveBeenCalledTimes(2)
+    expect(fake.loggerWarn).toHaveBeenLastCalledWith(
+      INVALID_CREDENTIAL_WARNING,
+    )
+    const logs = JSON.stringify(fake.loggerWarn.mock.calls)
+    expect(logs).not.toContain(FAKE_SECRET)
+    expect(logs).not.toContain('control-suffix')
 
     await cleanup()
   })
@@ -468,6 +551,45 @@ describe('anban MCP failure containment', () => {
     expect(line).not.toMatch(/["']authorization["']\s*[:=]/i)
     expect(line).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/)
     expect(line.length).toBeLessThanOrEqual(512)
+  })
+
+  it.each([
+    [
+      'escaped JSON',
+      String.raw`{\"Authorization\":\"Bearer leaked-secret\"}`,
+    ],
+    ['tuple', '[ ["Authorization","Bearer leaked-secret"] ]'],
+    [
+      'control-interrupted key',
+      'Auth\u0000orization: Bearer leaked-secret',
+    ],
+  ])('redacts a structurally disguised Authorization header from %s', (_label, error) => {
+    const line = safeErrorLine(error)
+
+    expect(line).toContain('[REDACTED]')
+    expect(line).not.toContain('leaked-secret')
+    expect(line).not.toMatch(/\bBearer\s+[^\s,;}\]]+/i)
+    expect(line).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/)
+    expect(line.length).toBeLessThanOrEqual(512)
+  })
+
+  it('omits oversized errors before scanning their name and message', () => {
+    const error = new Error(
+      `${'x'.repeat(4_097)} Authorization: Bearer leaked-secret`,
+    )
+    error.name = 'HugeError'
+
+    expect(safeErrorLine(error)).toBe(OMITTED_ERROR_LINE)
+  })
+
+  it('omits short or oversized secrets before replacement allocation', () => {
+    const huge = new Error('x'.repeat(100_000))
+
+    expect(safeErrorLine(huge, 'x')).toBe(OMITTED_ERROR_LINE)
+    expect(safeErrorLine('safe message', 'x')).toBe(OMITTED_ERROR_LINE)
+    expect(safeErrorLine('safe message', 'x'.repeat(4_097))).toBe(
+      OMITTED_ERROR_LINE,
+    )
   })
 
   it.each([

@@ -1,9 +1,13 @@
 import { types } from 'node:util'
 
+const MAX_ERROR_SCAN_LENGTH = 4_096
 const MAX_SAFE_ERROR_LENGTH = 512
+const MIN_SAFE_SECRET_LENGTH = 8
+const OMITTED_ERROR_LINE = 'Error details omitted'
 const AUTHORIZATION_VALUE_PATTERN =
-  /["']?\bauthorization\b["']?\s*[:=]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\r\n,;}]+)/gi
+  /["']?\bauthorization\b["']?\s*[:=,]\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\r\n,;}\]]+)/gi
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001f\u007f-\u009f]+/g
+const ESCAPED_SIMPLE_QUOTE_PATTERN = /\\(["'])/g
 const WHITESPACE_PATTERN = /\s+/g
 
 function ownString(error: Error, key: 'message' | 'name'): string | undefined {
@@ -19,16 +23,36 @@ function ownString(error: Error, key: 'message' | 'name'): string | undefined {
   }
 }
 
-function renderUnknown(error: unknown): string {
+function bounded(value: string): string | undefined {
+  return value.length <= MAX_ERROR_SCAN_LENGTH ? value : undefined
+}
+
+function renderUnknown(error: unknown): string | undefined {
   switch (typeof error) {
     case 'string':
-      return error
+      return bounded(error)
     case 'boolean':
-    case 'bigint':
     case 'number':
-    case 'symbol':
     case 'undefined':
       return String(error)
+    case 'bigint':
+      if (
+        error < BigInt(Number.MIN_SAFE_INTEGER) ||
+        error > BigInt(Number.MAX_SAFE_INTEGER)
+      ) {
+        return undefined
+      }
+      return String(error)
+    case 'symbol': {
+      const description = error.description
+      if (
+        description !== undefined &&
+        description.length > MAX_ERROR_SCAN_LENGTH - 8
+      ) {
+        return undefined
+      }
+      return String(error)
+    }
     case 'function':
       return 'Unknown error'
     case 'object':
@@ -41,25 +65,49 @@ function renderUnknown(error: unknown): string {
 
       const name = ownString(error, 'name') ?? 'Error'
       const message = ownString(error, 'message')
-      return message === undefined || message === ''
-        ? name
-        : `${name}: ${message}`
+      if (name.length > MAX_ERROR_SCAN_LENGTH) {
+        return undefined
+      }
+      if (message === undefined || message === '') {
+        return name
+      }
+      if (message.length > MAX_ERROR_SCAN_LENGTH - name.length - 2) {
+        return undefined
+      }
+      return `${name}: ${message}`
   }
 }
 
 /** Render an unknown failure without retaining its stack, cause, or payload. */
 export function safeErrorLine(error: unknown, secret?: string): string {
-  let line = renderUnknown(error).replace(
-    AUTHORIZATION_VALUE_PATTERN,
-    'Authorization: [REDACTED]',
-  )
+  if (
+    secret !== undefined &&
+    secret !== '' &&
+    (typeof secret !== 'string' ||
+      secret.length < MIN_SAFE_SECRET_LENGTH ||
+      secret.length > MAX_ERROR_SCAN_LENGTH)
+  ) {
+    return OMITTED_ERROR_LINE
+  }
+
+  const rendered = renderUnknown(error)
+  if (rendered === undefined) {
+    return OMITTED_ERROR_LINE
+  }
+
+  let line = rendered
+    .replace(ESCAPED_SIMPLE_QUOTE_PATTERN, '$1')
+    .replace(CONTROL_CHARACTERS_PATTERN, '')
+    .replace(
+      AUTHORIZATION_VALUE_PATTERN,
+      'Authorization: [REDACTED]',
+    )
 
   if (secret !== undefined && secret !== '') {
     line = line.split(secret).join('[REDACTED]')
   }
 
   line = line
-    .replace(CONTROL_CHARACTERS_PATTERN, ' ')
     .replace(WHITESPACE_PATTERN, ' ')
     .trim()
 
