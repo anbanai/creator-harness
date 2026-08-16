@@ -48,6 +48,22 @@ function invalidConfig(value: unknown): Config {
   return value as Config
 }
 
+function proxyConfig(
+  trapName: 'getPrototypeOf' | 'ownKeys' | 'getOwnPropertyDescriptor',
+  marker: string,
+) {
+  const trap = vi.fn(() => {
+    throw new Error(marker)
+  })
+  const handler: ProxyHandler<Config> = {}
+  Object.defineProperty(handler, trapName, { value: trap })
+  const config = new Proxy(
+    { presetId: 'article', providerName: 'anban-article' },
+    handler,
+  )
+  return { config, trap }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -124,6 +140,31 @@ describe('skills provider registration', () => {
 })
 
 describe('skills provider validation', () => {
+  it.each([
+    ['getPrototypeOf', 'get-prototype-credential-secret'],
+    ['ownKeys', 'own-keys-token-secret'],
+    ['getOwnPropertyDescriptor', 'descriptor-password-secret'],
+  ] as const)(
+    'contains a throwing %s Proxy trap before loading a child plugin',
+    async (trapName, marker) => {
+      const fake = createContext()
+      const proxy = proxyConfig(trapName, marker)
+
+      const error = await apply(fake.context, proxy.config).catch(
+        (reason: unknown) => reason,
+      )
+
+      expect(error).toBeInstanceOf(TypeError)
+      expect(error).toHaveProperty('message', 'Invalid skills provider config')
+      expect(String(error)).toBe('TypeError: Invalid skills provider config')
+      expect(
+        JSON.stringify(error, Object.getOwnPropertyNames(error as object)),
+      ).not.toContain(marker)
+      expect(proxy.trap).not.toHaveBeenCalled()
+      expect(fake.plugin).not.toHaveBeenCalled()
+    },
+  )
+
   it.each([
     null,
     [],

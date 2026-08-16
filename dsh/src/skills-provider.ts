@@ -1,3 +1,5 @@
+import { types } from 'node:util'
+
 import type { Context } from '@deepseek-ai/cordis'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import * as skillFilesystem from '@deepseek-ai/dsh-skill-filesystem'
@@ -22,47 +24,52 @@ function invalidConfig(): never {
 }
 
 function validateConfig(config: Config): ResolvedConfig {
-  if (
-    typeof config !== 'object' ||
-    config === null ||
-    Array.isArray(config) ||
-    Object.getPrototypeOf(config) !== Object.prototype
-  ) {
-    return invalidConfig()
-  }
+  try {
+    if (
+      types.isProxy(config) ||
+      typeof config !== 'object' ||
+      config === null ||
+      Array.isArray(config) ||
+      Object.getPrototypeOf(config) !== Object.prototype
+    ) {
+      return invalidConfig()
+    }
 
-  const keys = Reflect.ownKeys(config)
-  if (
-    keys.length !== CONFIG_KEYS.size ||
-    keys.some((key) => !CONFIG_KEYS.has(key))
-  ) {
-    return invalidConfig()
-  }
+    const keys = Reflect.ownKeys(config)
+    if (
+      keys.length !== CONFIG_KEYS.size ||
+      keys.some((key) => !CONFIG_KEYS.has(key))
+    ) {
+      return invalidConfig()
+    }
 
-  const presetId = Object.getOwnPropertyDescriptor(config, 'presetId')
-  const providerName = Object.getOwnPropertyDescriptor(config, 'providerName')
-  if (
-    presetId === undefined ||
-    !('value' in presetId) ||
-    providerName === undefined ||
-    !('value' in providerName)
-  ) {
-    return invalidConfig()
-  }
+    const presetId = Object.getOwnPropertyDescriptor(config, 'presetId')
+    const providerName = Object.getOwnPropertyDescriptor(config, 'providerName')
+    if (
+      presetId === undefined ||
+      !('value' in presetId) ||
+      providerName === undefined ||
+      !('value' in providerName)
+    ) {
+      return invalidConfig()
+    }
 
-  if (presetId.value !== 'article' && presetId.value !== 'seednote') {
-    return invalidConfig()
-  }
-  if (
-    typeof providerName.value !== 'string' ||
-    !PROVIDER_NAME_PATTERN.test(providerName.value)
-  ) {
-    return invalidConfig()
-  }
+    if (presetId.value !== 'article' && presetId.value !== 'seednote') {
+      return invalidConfig()
+    }
+    if (
+      typeof providerName.value !== 'string' ||
+      !PROVIDER_NAME_PATTERN.test(providerName.value)
+    ) {
+      return invalidConfig()
+    }
 
-  return {
-    presetId: presetId.value,
-    providerName: providerName.value,
+    return {
+      presetId: presetId.value,
+      providerName: providerName.value,
+    }
+  } catch {
+    return invalidConfig()
   }
 }
 
