@@ -24,19 +24,31 @@ Install the plugin into the Web profile and materialize its generated Presets:
 
 ```bash
 dsh plugin --profile web add @anban/dsh-plugin
+dsh plugin --profile web exec anban-dsh install-presets
+```
+
+`dsh plugin ... exec` runs the installed package bin from the Web profile's
+`node_modules/.bin`; it does not depend on the caller's `PATH`.
+
+In an active-profile terminal, and only when that profile's
+`node_modules/.bin` is already on `PATH`, the second command can use this
+shorthand:
+
+```bash
 anban-dsh install-presets
 ```
 
-Run `anban-dsh install-presets` from the installed profile environment so the
-command resolves that profile's DSH home.
-
 ## Desktop active profile
 
-Open a terminal for the active Desktop profile, then run:
+The DSH CLI does not infer Desktop's active profile. Read the profile name from
+Desktop's profile selector or settings; it is the directory name below
+`$DSH_HOME/profiles/`. The CLI syntax is `--profile <active-profile>`; assign
+that exact name before running the commands:
 
 ```bash
-dsh plugin add @anban/dsh-plugin
-anban-dsh install-presets
+ACTIVE_PROFILE="replace-with-desktop-profile-name"
+dsh plugin --profile "$ACTIVE_PROFILE" add @anban/dsh-plugin
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets
 ```
 
 Restart DeepSeek Harness Desktop after installation so the active profile
@@ -44,23 +56,27 @@ reloads the Bundle and Presets.
 
 ## Status and removal
 
-Check whether the generated Presets are current:
+Check whether the Web profile's generated Presets are current:
 
 ```bash
-anban-dsh status
+dsh plugin --profile web exec anban-dsh status
 ```
 
-Remove only the Anban-generated Presets before removing the plugin:
+Remove only the Web profile's Anban-generated Presets before removing its
+plugin dependency:
 
 ```bash
-anban-dsh remove-presets
-dsh plugin remove @anban/dsh-plugin
-```
-
-For the Web profile, address the profile explicitly when removing the plugin:
-
-```bash
+dsh plugin --profile web exec anban-dsh remove-presets
 dsh plugin --profile web remove @anban/dsh-plugin
+```
+
+Use the same sequence for Desktop after substituting its actual profile name:
+
+```bash
+ACTIVE_PROFILE="replace-with-desktop-profile-name"
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets
+dsh plugin --profile "$ACTIVE_PROFILE" remove @anban/dsh-plugin
 ```
 
 The removal command refuses to delete an unowned or modified Preset. Inspect
@@ -69,13 +85,17 @@ its status instead of deleting profile files manually.
 ## Git-source installs
 
 When installing from a Git source, pnpm may hold dependency build scripts for
-approval. Review the packages and run:
+approval. Review the packages and forward approval to the same profile where
+the plugin was added:
 
 ```bash
-pnpm approve-builds
+dsh plugin --profile web approve-builds
+ACTIVE_PROFILE="replace-with-desktop-profile-name"
+dsh plugin --profile "$ACTIVE_PROFILE" approve-builds
 ```
 
-Then repeat the plugin and Preset installation commands.
+Run only the line for the profile being installed, then repeat that profile's
+plugin and Preset installation commands.
 
 ## Runtime limitation
 

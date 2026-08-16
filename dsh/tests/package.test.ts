@@ -4,6 +4,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   writeFile,
 } from 'node:fs/promises'
@@ -19,6 +20,48 @@ const cordisPatchUrl = new URL('../cordis.patch.yml', import.meta.url)
 const cliShimPath = fileURLToPath(
   new URL('../bin/anban-dsh.js', import.meta.url),
 )
+const builtLibPath = fileURLToPath(new URL('../lib/', import.meta.url))
+
+function publishedRuntimeFindings(source: string) {
+  const findings: string[] = []
+  const lower = source.toLowerCase()
+  if (lower.includes('create_task')) findings.push('create_task')
+  if (
+    /mcp[_-]?(?:url|endpoint)\s*[:=][^\n]*(?:process\.env|config|options|credentialref)/i.test(
+      source,
+    )
+  ) {
+    findings.push('configurable MCP endpoint')
+  }
+  for (const marker of [
+    'anban_mcp_url',
+    'anban_mcp_endpoint',
+    'mcp_endpoint',
+    'leaked-secret',
+    'resolved-secret',
+    'fake-secret',
+    'test-secret',
+  ]) {
+    if (lower.includes(marker)) findings.push(marker)
+  }
+  for (const match of source.matchAll(
+    /(?:api[_-]?key|token|secret)\s*[:=]\s*["'`][^"'`]+["'`]/gi,
+  )) {
+    if (!match[0].includes('ANBAN_API_KEY')) {
+      findings.push('literal credential assignment')
+    }
+  }
+  for (const line of source.split(/\r?\n/)) {
+    if (
+      /authorization/i.test(line) &&
+      /bearer\s/i.test(line) &&
+      !line.includes('Bearer ${resolved.value}')
+    ) {
+      findings.push('serialized Authorization header')
+    }
+  }
+  return findings
+}
 
 async function createShimFixture(cliSource?: string) {
   const root = await mkdtemp(join(tmpdir(), 'anban-dsh-shim-'))
@@ -92,7 +135,7 @@ describe('DSH package manifest', () => {
         'smoke:profile':
           'pnpm run build && node dsh/scripts/smoke-profile.mjs',
         check:
-          'pnpm run typecheck && pnpm run test && pnpm run build && pnpm pack --dry-run',
+          'pnpm run typecheck && pnpm run build && pnpm run test && pnpm pack --dry-run',
       },
       exports: {
         './anban-mcp': {
@@ -151,6 +194,50 @@ describe('DSH package manifest', () => {
     - id: anban-preset-manager
       name: '@anban/dsh-plugin/preset-manager'
 `)
+  })
+
+  it('scans every built runtime payload during the check sequence', async () => {
+    let entries
+    try {
+      entries = await readdir(builtLibPath, { recursive: true, withFileTypes: true })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
+      throw error
+    }
+
+    const runtimeFiles = entries
+      .filter(
+        (entry) => entry.isFile() && /\.(?:d\.ts|js)$/.test(entry.name),
+      )
+      .map((entry) => join(entry.parentPath, entry.name))
+      .sort()
+    expect(runtimeFiles.length).toBeGreaterThan(0)
+    for (const runtimeFile of runtimeFiles) {
+      expect(
+        publishedRuntimeFindings(await readFile(runtimeFile, 'utf8')),
+        runtimeFile,
+      ).toEqual([])
+    }
+  })
+
+  it('detects unsafe executable payloads', () => {
+    expect(
+      publishedRuntimeFindings(
+        `const operation = 'create_task'\nconst headers = { Authorization: 'Bearer leaked-secret' }`,
+      ),
+    ).toEqual([
+      'create_task',
+      'leaked-secret',
+      'serialized Authorization header',
+    ])
+    expect(
+      publishedRuntimeFindings(`const apiKey = 'hard-coded-value'`),
+    ).toEqual(['literal credential assignment'])
+    expect(
+      publishedRuntimeFindings(
+        'const MCP_URL = process.env.CREATOR_MCP_URL',
+      ),
+    ).toEqual(['configurable MCP endpoint'])
   })
 })
 
