@@ -4,49 +4,16 @@ import type {
   CommandResult,
 } from '@deepseek-ai/dsh-commands'
 
-import {
-  installPresets,
-  removePresets,
-  statusPresets,
-  type PresetStatus,
-} from './presets.js'
+import { formatPresetStatus } from './cli.js'
+import { installPresets, removePresets, statusPresets } from './presets.js'
 
 export const name = 'anban-preset-manager'
 export const inject = ['commands']
 
-const DIGEST_PREFIX_LENGTH = 12
-const DIGEST_PATTERN = /^[a-f0-9]{64}$/
-const VERSION_PATTERN =
-  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
-
-function digestPrefix(digest: string | undefined): string {
-  if (digest === undefined) {
-    return 'none'
-  }
-  return DIGEST_PATTERN.test(digest)
-    ? digest.slice(0, DIGEST_PREFIX_LENGTH)
-    : 'invalid'
-}
-
-function installedVersion(version: string | undefined): string {
-  if (version === undefined) {
-    return 'none'
-  }
-  return VERSION_PATTERN.test(version) ? version : 'invalid'
-}
-
-function formatStatuses(statuses: readonly PresetStatus[]): string {
-  return statuses
-    .map((status) =>
-      [
-        status.id,
-        `state=${status.state}`,
-        `source=${digestPrefix(status.sourceDigest)}`,
-        `installed=${digestPrefix(status.installedDigest)}`,
-        `version=${installedVersion(status.installedVersion)}`,
-      ].join(' '),
-    )
-    .join('\n')
+function formatStatuses(
+  statuses: Awaited<ReturnType<typeof statusPresets>>,
+): string {
+  return statuses.map(formatPresetStatus).join('\n')
 }
 
 function invalidInput(text: string): CommandResult {

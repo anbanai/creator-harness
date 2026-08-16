@@ -7,8 +7,9 @@ import {
 
 const DIGEST_PREFIX_LENGTH = 12
 const DIGEST_PATTERN = /^[a-f0-9]{64}$/
-const VERSION_PATTERN =
-  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+const MAX_RELEASE_COMPONENT_LENGTH = 9
+const MAX_RELEASE_VERSION_LENGTH = MAX_RELEASE_COMPONENT_LENGTH * 3 + 2
+const RELEASE_COMPONENT_PATTERN = /^(?:0|[1-9][0-9]*)$/
 
 function digestPrefix(digest: string | undefined): string {
   if (digest === undefined) {
@@ -23,10 +24,25 @@ function installedVersion(version: string | undefined): string {
   if (version === undefined) {
     return 'none'
   }
-  return VERSION_PATTERN.test(version) ? version : 'invalid'
+
+  const components = version.split('.')
+  if (
+    version.length > MAX_RELEASE_VERSION_LENGTH ||
+    components.length !== 3 ||
+    components.some(
+      (component) =>
+        component.length > MAX_RELEASE_COMPONENT_LENGTH ||
+        !RELEASE_COMPONENT_PATTERN.test(component),
+    )
+  ) {
+    return 'invalid'
+  }
+
+  return version
 }
 
-function formatStatus(status: PresetStatus): string {
+/** @internal Shared by the package-local Cordis adapter. */
+export function formatPresetStatus(status: PresetStatus): string {
   return [
     status.id,
     `state=${status.state}`,
@@ -49,7 +65,7 @@ export async function runCLI(
     if (argv.length === 1 && argv[0] === 'install-presets') {
       const statuses = await installPresets({})
       for (const status of statuses) {
-        io.log(formatStatus(status))
+        io.log(formatPresetStatus(status))
       }
       return 0
     }
@@ -61,7 +77,7 @@ export async function runCLI(
     ) {
       const statuses = await installPresets({ force: true })
       for (const status of statuses) {
-        io.log(formatStatus(status))
+        io.log(formatPresetStatus(status))
       }
       return 0
     }
@@ -69,7 +85,7 @@ export async function runCLI(
     if (argv.length === 1 && argv[0] === 'status') {
       const statuses = await statusPresets()
       for (const status of statuses) {
-        io.log(formatStatus(status))
+        io.log(formatPresetStatus(status))
       }
       return 0
     }

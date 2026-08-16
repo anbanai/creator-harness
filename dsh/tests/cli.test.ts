@@ -12,6 +12,17 @@ import { runCLI } from '../src/cli.js'
 
 const SOURCE_DIGEST = '0123456789abcdef'.repeat(4)
 const INSTALLED_DIGEST = 'fedcba9876543210'.repeat(4)
+const UNSAFE_INSTALLED_VERSIONS = [
+  '1.2.3+token.secret',
+  '1.2.3-..',
+  '1.2.3-01',
+  `1.2.3+${'x'.repeat(64)}`,
+  '01.2.3',
+  ' 1.2.3',
+  '1.2.3 ',
+  '\uff11.2.3',
+  `${'9'.repeat(64)}.2.3`,
+] as const
 
 function createIO() {
   return {
@@ -133,6 +144,32 @@ describe('runCLI output', () => {
     expect(JSON.stringify(io.log.mock.calls)).not.toContain('secret')
     expect(JSON.stringify(io.log.mock.calls)).not.toContain('hunter2')
   })
+
+  it.each(UNSAFE_INSTALLED_VERSIONS)(
+    'does not echo unsafe installed version %j',
+    async (installedVersion) => {
+      presetOperations.statusPresets.mockResolvedValue([
+        {
+          id: 'article',
+          installedDigest: INSTALLED_DIGEST,
+          installedVersion,
+          sourceDigest: SOURCE_DIGEST,
+          state: 'modified',
+        },
+      ])
+      const io = createIO()
+
+      await expect(runCLI(['status'], io)).resolves.toBe(0)
+
+      expect(io.log).toHaveBeenCalledWith(
+        'article state=modified source=0123456789ab installed=fedcba987654 version=invalid',
+      )
+      const output = JSON.stringify(io.log.mock.calls)
+      expect(output).not.toContain(installedVersion)
+      expect(output).not.toContain('token')
+      expect(output).not.toContain('secret')
+    },
+  )
 
   it('returns one and sanitizes operational failures', async () => {
     presetOperations.installPresets.mockRejectedValue(

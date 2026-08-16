@@ -17,6 +17,17 @@ import { apply, inject, name } from '../src/preset-manager.js'
 
 const SOURCE_DIGEST = '0123456789abcdef'.repeat(4)
 const INSTALLED_DIGEST = 'fedcba9876543210'.repeat(4)
+const UNSAFE_INSTALLED_VERSIONS = [
+  '1.2.3+token.secret',
+  '1.2.3-..',
+  '1.2.3-01',
+  `1.2.3+${'x'.repeat(64)}`,
+  '01.2.3',
+  ' 1.2.3',
+  '1.2.3 ',
+  '\uff11.2.3',
+  `1.2.${'9'.repeat(64)}`,
+] as const
 
 interface FakeContext {
   context: Context
@@ -111,7 +122,7 @@ describe('preset manager handlers', () => {
       {
         id: 'article',
         installedDigest: INSTALLED_DIGEST,
-        installedVersion: '4.1.11',
+        installedVersion: '0.0.0',
         sourceDigest: SOURCE_DIGEST,
         state: 'outdated',
       },
@@ -128,7 +139,7 @@ describe('preset manager handlers', () => {
     await expect(status.handler(invocation(''))).resolves.toEqual({
       kind: 'success',
       text: [
-        'article state=outdated source=0123456789ab installed=fedcba987654 version=4.1.11',
+        'article state=outdated source=0123456789ab installed=fedcba987654 version=0.0.0',
         'seednote state=absent source=fedcba987654 installed=none version=none',
       ].join('\n'),
     })
@@ -138,6 +149,35 @@ describe('preset manager handlers', () => {
     })
     expect(presetOperations.statusPresets).toHaveBeenCalledTimes(1)
   })
+
+  it.each(UNSAFE_INSTALLED_VERSIONS)(
+    'does not echo unsafe installed version %j in status output',
+    async (installedVersion) => {
+      presetOperations.statusPresets.mockResolvedValue([
+        {
+          id: 'article',
+          installedDigest: INSTALLED_DIGEST,
+          installedVersion,
+          sourceDigest: SOURCE_DIGEST,
+          state: 'modified',
+        },
+      ])
+      const fake = createContext()
+      apply(fake.context)
+      const status = fake.definitions[1]!
+
+      const result = await status.handler(invocation(''))
+
+      expect(result).toEqual({
+        kind: 'success',
+        text: 'article state=modified source=0123456789ab installed=fedcba987654 version=invalid',
+      })
+      const output = JSON.stringify(result)
+      expect(output).not.toContain(installedVersion)
+      expect(output).not.toContain('token')
+      expect(output).not.toContain('secret')
+    },
+  )
 
   it('removes presets only after exact confirm input', async () => {
     presetOperations.removePresets.mockResolvedValue(['article'])
