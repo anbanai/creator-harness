@@ -28,8 +28,8 @@ interface PortableCommand {
 function packResult(overrides: Record<string, unknown> = {}) {
   return JSON.stringify({
     name: '@anban/dsh-plugin',
-    version: '4.1.11',
-    filename: 'anban-dsh-plugin-4.1.11.tgz',
+    version: '4.1.12',
+    filename: 'anban-dsh-plugin-4.1.12.tgz',
     files: [
       { path: 'dsh/bin/anban-dsh.js' },
       { path: 'dsh/lib/anban-mcp.d.ts' },
@@ -503,11 +503,11 @@ describe('profile-smoke process supervision', () => {
   )
 })
 
-function profileFixture(version = '4.1.11') {
+function profileFixture(version = '4.1.12') {
   const smokeRoot = join(tmpdir(), 'anban-dsh-profile-smoke-contract')
   const dshHome = join(smokeRoot, 'home')
   const profileDir = join(dshHome, 'profiles', 'web')
-  const packTarball = join(smokeRoot, 'anban-dsh-plugin-4.1.11.tgz')
+  const packTarball = join(smokeRoot, 'anban-dsh-plugin-4.1.12.tgz')
   const pnpmCommand: PortableCommand = {
     executable: 'pnpm',
     prefixArgs: [],
@@ -737,7 +737,7 @@ describe('DSH profile smoke flow', () => {
   it('installs an exact registry package into a clean profile without packing', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
     const fixture = profileFixture()
-    const artifactSource = '@anban/dsh-plugin@4.1.11'
+    const artifactSource = '@anban/dsh-plugin@4.1.12'
 
     await smokeModule.smokeProfile({
       ...fixture.overrides,

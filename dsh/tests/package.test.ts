@@ -478,7 +478,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.11',
+      version: '4.1.12',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -847,17 +847,19 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
     )
   })
 
-  it('marks the DSH package as explicitly unpublished', async () => {
+  it('keeps package publication under operator control for the current release', async () => {
     const changelog = await readFile(changelogUrl, 'utf8')
-    const unreleased = changelog.slice(
-      changelog.indexOf('## [Unreleased]'),
-      changelog.indexOf('\n## [', changelog.indexOf('## [Unreleased]') + 1),
+    const releaseHeading = '## [4.1.12] - 2026-08-17'
+    const release = changelog.slice(
+      changelog.indexOf(releaseHeading),
+      changelog.indexOf('\n## [', changelog.indexOf(releaseHeading) + 1),
     )
-    expect(unreleased).toContain('The package is not yet published.')
-    expect(unreleased.replace(/\s+/g, ' ')).toMatch(
-      /release workflow.*release operator.*required/i,
+    expect(release).toContain('Prepared')
+    expect(release).toContain('does not claim npm publication')
+    expect(release.replace(/\s+/g, ' ')).toMatch(
+      /release workflow.*release operator.*must/i,
     )
-    expect(unreleased).not.toMatch(
+    expect(release).not.toMatch(
       /(?:package|version) (?:is|is now|has been) (?:published|available) (?:on|from) npm/i,
     )
   })

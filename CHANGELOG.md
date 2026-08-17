@@ -2,18 +2,19 @@
 
 ## [Unreleased]
 
+## [4.1.12] - 2026-08-17
+
 ### Changed
 
 - Clarified the exact Skills-only, Claude Code, Codex, and full DSH support
   matrix, including the Article/Seednote-only Preset scope.
 - Documented the official DSH artifact, profile, credential, global Preset,
   upgrade, rollback, removal, and recovery lifecycle.
-- The public npm package and checksummed GitHub Release paths described by the
-  guide become available only after the matching versioned release workflow
-  completes; this unreleased source change does not claim those assets exist.
-- The package is not yet published. A release workflow run initiated by the
-  release operator is required before npm or GitHub Release installation paths
-  are available.
+- Prepared the public npm package and checksummed GitHub Release installation
+  guidance for 4.1.12; those artifacts become available only after the matching
+  versioned release workflow completes.
+- This metadata release does not claim npm publication or GitHub Release
+  availability; a release operator must run the publishing workflow.
 
 ## [4.1.11] - 2026-08-16
 
