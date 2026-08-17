@@ -84,7 +84,7 @@ function bashBlockUnder(source: string, heading: string) {
 
 async function createShimFixture(cliSource?: string) {
   const root = await mkdtemp(join(tmpdir(), 'anban-dsh-shim-'))
-  const binDir = join(root, 'bin')
+  const binDir = join(root, 'dsh', 'bin')
   const shimPath = join(binDir, 'anban-dsh.js')
 
   await mkdir(binDir, { recursive: true })
@@ -92,7 +92,7 @@ async function createShimFixture(cliSource?: string) {
   await writeFile(join(root, 'package.json'), '{"type":"module"}\n')
 
   if (cliSource !== undefined) {
-    const libDir = join(root, 'lib')
+    const libDir = join(root, 'dsh', 'lib')
     await mkdir(libDir, { recursive: true })
     await writeFile(join(libDir, 'cli.js'), cliSource)
   }
@@ -311,7 +311,7 @@ describe('DSH package manifest', () => {
 })
 
 describe('DSH CLI shim', () => {
-  it('reports a missing CLI module as one safe stderr line', async () => {
+  it('diagnoses an incomplete tarball install when the CLI entrypoint is missing', async () => {
     const fixture = await createShimFixture()
 
     try {
@@ -321,7 +321,36 @@ describe('DSH CLI shim', () => {
 
       expect(result.status).toBe(1)
       expect(result.stdout).toBe('')
-      expect(result.stderr).toBe('anban-dsh: command failed\n')
+      expect(result.stderr).toBe(
+        'ERR_RUNTIME_MISSING: Missing package entrypoint dsh/lib/cli.js. Run pnpm pack, then pnpm add ./anban-dsh-plugin-*.tgz.\n',
+      )
+      expect(result.stderr.trimEnd().split('\n')).toHaveLength(1)
+      expect(result.stderr).not.toContain('file:')
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('sanitizes unrelated runtime import failures as one operation diagnostic', async () => {
+    const fixture = await createShimFixture(
+      `throw new Error('Authorization Bearer leaked-import-secret')\n`,
+    )
+
+    try {
+      const result = spawnSync(process.execPath, [fixture.shimPath], {
+        encoding: 'utf8',
+      })
+
+      expect(result.status).toBe(1)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toBe(
+        'ERR_PRESET_OPERATION: Anban preset operation failed.\n',
+      )
+      expect(result.stderr.trimEnd().split('\n')).toHaveLength(1)
+      expect(result.stderr).not.toContain('leaked-import-secret')
+      expect(result.stderr).not.toContain('Authorization')
+      expect(result.stderr).not.toContain('Error:')
+      expect(result.stderr).not.toContain('at ')
     } finally {
       await rm(fixture.root, { force: true, recursive: true })
     }
