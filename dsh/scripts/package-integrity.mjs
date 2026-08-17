@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { createReadStream } from 'node:fs'
 import { createGunzip } from 'node:zlib'
 import {
@@ -29,12 +29,27 @@ const FILES_CONTRACT = [
   'CHANGELOG.md',
   'LICENSE',
 ]
-const PUBLIC_CODE_EXPORTS = [
-  './anban-mcp',
-  './preset-manager',
-  './skills-provider',
-]
-const EXPECTED_EXPORTS = [...PUBLIC_CODE_EXPORTS, './package.json'].sort()
+const EXPORTS_CONTRACT = {
+  './anban-mcp': {
+    types: './dsh/lib/anban-mcp.d.ts',
+    default: './dsh/lib/anban-mcp.js',
+  },
+  './preset-manager': {
+    types: './dsh/lib/preset-manager.d.ts',
+    default: './dsh/lib/preset-manager.js',
+  },
+  './skills-provider': {
+    types: './dsh/lib/skills-provider.d.ts',
+    default: './dsh/lib/skills-provider.js',
+  },
+  './package.json': './package.json',
+}
+const PUBLIC_CODE_EXPORTS = Object.keys(EXPORTS_CONTRACT).filter(
+  (name) => name !== './package.json',
+)
+const BIN_CONTRACT = {
+  'anban-dsh': './dsh/bin/anban-dsh.js',
+}
 export const ARCHIVE_LIMITS = Object.freeze({
   maxCompressedBytes: 8 * 1024 * 1024,
   maxEntries: 4096,
@@ -46,7 +61,12 @@ export const ARCHIVE_LIMITS = Object.freeze({
 const CHILD_MAX_BUFFER = 1024 * 1024
 const CHILD_TIMEOUT_MS = 30_000
 const COMMAND_TIMEOUT_MS = 120_000
-const NODE_SHEBANG = '#!/usr/bin/env node\n'
+const CHILD_TERMINATION_GRACE_MS = 100
+const CHILD_CLOSE_WATCHDOG_MS = 1_000
+const NODE_SHEBANGS = [
+  Buffer.from('#!/usr/bin/env node\n'),
+  Buffer.from('#!/usr/bin/env node\r\n'),
+]
 const CORDIS_PATCH = [
   {
     insert: [
@@ -70,6 +90,12 @@ const yamlSchema = DEFAULT_SCHEMA.extend([jsExpression])
 
 function fail(message) {
   throw new Error(`Package integrity failed: ${message}`)
+}
+
+function hasNodeShebang(source) {
+  return NODE_SHEBANGS.some((shebang) =>
+    source.subarray(0, shebang.length).equals(shebang),
+  )
 }
 
 function isRecord(value) {
@@ -339,14 +365,7 @@ export async function verifySourceIntegrity(packageRoot = PACKAGE_ROOT) {
   sameStructure(manifest.files, FILES_CONTRACT, 'package files contract')
 
   if (!isRecord(manifest.exports)) fail('package manifest has no exports')
-  sameStructure(
-    Object.keys(manifest.exports).sort(),
-    EXPECTED_EXPORTS,
-    'exact public exports',
-  )
-  if (manifest.exports['./package.json'] !== './package.json') {
-    fail('package.json export is missing or invalid')
-  }
+  sameStructure(manifest.exports, EXPORTS_CONTRACT, 'exact public exports')
   const targets = []
   for (const [name, value] of Object.entries(manifest.exports)) {
     exportTargets(value, `export ${name}`, targets)
@@ -356,14 +375,12 @@ export async function verifySourceIntegrity(packageRoot = PACKAGE_ROOT) {
     await requireRegularFile(root, path, label)
   }
 
-  if (!isRecord(manifest.bin) || Object.keys(manifest.bin).length === 0) {
-    fail('package manifest has no bin')
-  }
+  sameStructure(manifest.bin, BIN_CONTRACT, 'exact package bin')
   for (const [name, target] of Object.entries(manifest.bin)) {
     const path = relativeTarget(target, `bin ${name}`)
     await requireRegularFile(root, path, `bin ${name}`)
     const source = await readFile(join(root, path))
-    if (!source.subarray(0, Buffer.byteLength(NODE_SHEBANG)).equals(Buffer.from(NODE_SHEBANG))) {
+    if (!hasNodeShebang(source)) {
       fail(`bin ${name} must start with a Node shebang`)
     }
     if (process.platform !== 'win32') {
@@ -723,11 +740,7 @@ export async function inspectAndExtractArchive({
         if ((entry.mode & 0o111) === 0) {
           fail(`packed bin ${packagedPath} is not executable`)
         }
-        if (
-          !data
-            .subarray(0, Buffer.byteLength(NODE_SHEBANG))
-            .equals(Buffer.from(NODE_SHEBANG))
-        ) {
+        if (!hasNodeShebang(data)) {
           fail(`packed bin ${packagedPath} must start with a Node shebang`)
         }
       }
@@ -810,40 +823,159 @@ function childEnvironment() {
   return environment
 }
 
+function commandStartError(label, error) {
+  const failure = new Error(
+    `Package integrity failed: ${label} failed to start: ${error?.code ?? 'unknown error'}`,
+    { cause: error },
+  )
+  if (error?.code !== undefined) failure.code = error.code
+  return failure
+}
+
+function terminateWindowsTree(pid, force) {
+  return new Promise((resolveTermination) => {
+    const args = ['/PID', String(pid), '/T']
+    if (force) args.push('/F')
+    const killer = spawn('taskkill', args, {
+      shell: false,
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+    killer.once('error', resolveTermination)
+    killer.once('close', resolveTermination)
+  })
+}
+
+function signalProcessTree(child, signal) {
+  if (child.pid === undefined) return
+  if (process.platform === 'win32') {
+    void terminateWindowsTree(child.pid, signal === 'SIGKILL')
+    return
+  }
+  try {
+    process.kill(-child.pid, signal)
+  } catch (error) {
+    if (error?.code !== 'ESRCH') child.kill(signal)
+  }
+}
+
 function runBoundedCommand(
   command,
   args,
   { cwd, environment = childEnvironment(), label, timeoutMs },
 ) {
-  const result = spawnSync(command, args, {
-    cwd,
-    encoding: 'utf8',
-    env: environment,
-    maxBuffer: CHILD_MAX_BUFFER,
-    shell: false,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: timeoutMs,
+  return new Promise((resolveCommand, rejectCommand) => {
+    let child
+    try {
+      child = spawn(command, args, {
+        cwd,
+        detached: process.platform !== 'win32',
+        env: environment,
+        shell: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      })
+    } catch (error) {
+      rejectCommand(commandStartError(label, error))
+      return
+    }
+
+    const stdout = []
+    const stderr = []
+    let outputBytes = 0
+    let terminationReason
+    let graceTimer
+    let watchdogTimer
+    let settled = false
+
+    const timeoutTimer = setTimeout(() => {
+      beginTermination('timeout')
+    }, timeoutMs)
+
+    function cleanup() {
+      clearTimeout(timeoutTimer)
+      clearTimeout(graceTimer)
+      clearTimeout(watchdogTimer)
+    }
+
+    function rejectOnce(error) {
+      if (settled) return
+      settled = true
+      cleanup()
+      rejectCommand(error)
+    }
+
+    function beginTermination(reason) {
+      if (terminationReason !== undefined || settled) return
+      terminationReason = reason
+      clearTimeout(timeoutTimer)
+      signalProcessTree(child, 'SIGTERM')
+      graceTimer = setTimeout(() => {
+        signalProcessTree(child, 'SIGKILL')
+      }, CHILD_TERMINATION_GRACE_MS)
+      watchdogTimer = setTimeout(() => {
+        rejectOnce(
+          new Error(
+            `Package integrity failed: ${label} did not exit after forced termination`,
+          ),
+        )
+      }, CHILD_CLOSE_WATCHDOG_MS)
+    }
+
+    function capture(chunks, chunk) {
+      if (terminationReason !== undefined) return
+      const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+      outputBytes += data.length
+      if (outputBytes > CHILD_MAX_BUFFER) {
+        beginTermination('output')
+        return
+      }
+      chunks.push(data)
+    }
+
+    child.stdout.on('data', (chunk) => capture(stdout, chunk))
+    child.stderr.on('data', (chunk) => capture(stderr, chunk))
+    child.once('error', (error) => {
+      rejectOnce(commandStartError(label, error))
+    })
+    child.once('close', (status, signal) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      if (terminationReason === 'timeout') {
+        rejectCommand(
+          new Error(
+            `Package integrity failed: ${label} timed out after ${timeoutMs}ms`,
+          ),
+        )
+        return
+      }
+      if (terminationReason === 'output') {
+        rejectCommand(
+          new Error(
+            `Package integrity failed: ${label} exceeded the output byte limit (${CHILD_MAX_BUFFER})`,
+          ),
+        )
+        return
+      }
+      resolveCommand({
+        signal,
+        status,
+        stderr: Buffer.concat(stderr).toString('utf8'),
+        stdout: Buffer.concat(stdout).toString('utf8'),
+      })
+    })
   })
-  if (result.error?.code === 'ETIMEDOUT') {
-    fail(`${label} timed out after ${timeoutMs}ms`)
-  }
-  if (result.error?.code === 'ENOBUFS') {
-    fail(`${label} exceeded the output byte limit (${CHILD_MAX_BUFFER})`)
-  }
-  if (result.error !== undefined) {
-    fail(`${label} failed to start: ${result.error.code ?? 'unknown error'}`)
-  }
-  return result
 }
 
-function runPackCommand(root, destination) {
+async function runPackCommand(root, destination) {
   const invocation = pnpmInvocation([
     'pack',
     '--json',
     '--pack-destination',
     destination,
   ])
-  const result = runBoundedCommand(invocation.command, invocation.args, {
+  const result = await runBoundedCommand(invocation.command, invocation.args, {
     cwd: root,
     environment: process.env,
     label: 'pnpm pack',
@@ -855,7 +987,10 @@ function runPackCommand(root, destination) {
 
 export async function verifyInstalledPackage(
   sandboxRoot,
-  { childTimeoutMs = CHILD_TIMEOUT_MS } = {},
+  {
+    childTimeoutMs = CHILD_TIMEOUT_MS,
+    runCommand = runBoundedCommand,
+  } = {},
 ) {
   const packageDirectory = join(
     sandboxRoot,
@@ -881,7 +1016,7 @@ const manifestPath = require.resolve('@anban/dsh-plugin/package.json')
 JSON.parse(await readFile(manifestPath, 'utf8'))
 `,
   )
-  const imported = runBoundedCommand(process.execPath, [checkPath], {
+  const imported = await runCommand(process.execPath, [checkPath], {
     cwd: sandboxRoot,
     label: 'public export smoke',
     timeoutMs: childTimeoutMs,
@@ -901,11 +1036,7 @@ JSON.parse(await readFile(manifestPath, 'utf8'))
     'installed bin anban-dsh',
   )
   const binSource = await readFile(binPath)
-  if (
-    !binSource
-      .subarray(0, Buffer.byteLength(NODE_SHEBANG))
-      .equals(Buffer.from(NODE_SHEBANG))
-  ) {
+  if (!hasNodeShebang(binSource)) {
     fail('installed bin anban-dsh must start with a Node shebang')
   }
   if (process.platform !== 'win32') {
@@ -915,16 +1046,37 @@ JSON.parse(await readFile(manifestPath, 'utf8'))
     }
   }
 
-  const cliCommand = process.platform === 'win32' ? process.execPath : binPath
-  const cliArgs =
-    process.platform === 'win32'
-      ? [binPath, '--package-integrity-smoke']
-      : ['--package-integrity-smoke']
-  const cli = runBoundedCommand(cliCommand, cliArgs, {
-    cwd: sandboxRoot,
-    label: 'packaged CLI smoke',
-    timeoutMs: childTimeoutMs,
-  })
+  let cli
+  if (process.platform === 'win32') {
+    cli = await runCommand(
+      process.execPath,
+      [binPath, '--package-integrity-smoke'],
+      {
+        cwd: sandboxRoot,
+        label: 'packaged CLI smoke',
+        timeoutMs: childTimeoutMs,
+      },
+    )
+  } else {
+    try {
+      cli = await runCommand(binPath, ['--package-integrity-smoke'], {
+        cwd: sandboxRoot,
+        label: 'packaged CLI smoke',
+        timeoutMs: childTimeoutMs,
+      })
+    } catch (error) {
+      if (error?.code !== 'EACCES') throw error
+      cli = await runCommand(
+        process.execPath,
+        [binPath, '--package-integrity-smoke'],
+        {
+          cwd: sandboxRoot,
+          label: 'packaged CLI smoke via Node',
+          timeoutMs: childTimeoutMs,
+        },
+      )
+    }
+  }
   if (
     cli.status !== 2 ||
     cli.stdout !== '' ||
@@ -962,7 +1114,7 @@ async function installPackedRuntime(sandboxRoot, tarball, manifest) {
     '--ignore-scripts',
     '--lockfile=false',
   ])
-  const installed = runBoundedCommand(invocation.command, invocation.args, {
+  const installed = await runBoundedCommand(invocation.command, invocation.args, {
     cwd: runtimeRoot,
     environment: process.env,
     label: 'offline runtime install',
@@ -979,7 +1131,7 @@ export async function verifyPackedArtifact(packageRoot = PACKAGE_ROOT) {
   await verifySourceIntegrity(root)
   const temporaryRoot = await mkdtemp(join(tmpdir(), 'anban-dsh-pack-'))
   try {
-    const result = parsePackResult(runPackCommand(root, temporaryRoot))
+    const result = parsePackResult(await runPackCommand(root, temporaryRoot))
     const manifest = await parseJsonFile(root, 'package.json', 'package manifest')
     if (result.name !== manifest.name || result.version !== manifest.version) {
       fail('pnpm pack metadata does not match package.json')

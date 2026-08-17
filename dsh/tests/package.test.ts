@@ -263,6 +263,24 @@ async function createArchiveFixture(entries: readonly TarEntryFixture[]) {
   return { archivePath, destination, root }
 }
 
+function processExists(pid: number) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false
+    throw error
+  }
+}
+
+async function expectProcessTreeGone(pids: readonly number[]) {
+  const deadline = Date.now() + 2_000
+  while (pids.some(processExists) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  expect(pids.filter(processExists)).toEqual([])
+}
+
 describe('DSH package manifest', () => {
   it('declares the exact publishing and build contract', async () => {
     const manifest = JSON.parse(await readFile(packageUrl, 'utf8'))
@@ -545,6 +563,112 @@ describe('DSH package integrity verifier', () => {
       await writeFile(manifestPath, JSON.stringify(manifest))
       await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
         'exact public exports',
+      )
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it.each([
+    {
+      name: 'remapped default target',
+      mutate(manifest: Record<string, any>) {
+        manifest.exports['./anban-mcp'].default = './dsh/lib/cli.js'
+      },
+    },
+    {
+      name: 'renamed default condition',
+      mutate(manifest: Record<string, any>) {
+        const entry = manifest.exports['./anban-mcp']
+        entry.browser = entry.default
+        delete entry.default
+      },
+    },
+    {
+      name: 'remapped types target',
+      mutate(manifest: Record<string, any>) {
+        manifest.exports['./anban-mcp'].types =
+          './dsh/lib/preset-manager.d.ts'
+      },
+    },
+    {
+      name: 'remapped package manifest',
+      mutate(manifest: Record<string, any>) {
+        manifest.exports['./package.json'] = './dsh/lib/cli.js'
+      },
+    },
+  ])('rejects an exact exports contract with a $name', async ({ mutate }) => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const manifestPath = join(fixture.root, 'package.json')
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+      mutate(manifest)
+      await writeFile(manifestPath, JSON.stringify(manifest))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+        'exact public exports',
+      )
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it.each([
+    {
+      name: 'renamed bin key',
+      async mutate(manifest: Record<string, any>) {
+        manifest.bin = { renamed: manifest.bin['anban-dsh'] }
+      },
+    },
+    {
+      name: 'additional bin key',
+      async mutate(manifest: Record<string, any>) {
+        manifest.bin.extra = manifest.bin['anban-dsh']
+      },
+    },
+    {
+      name: 'remapped executable target',
+      async mutate(manifest: Record<string, any>, root: string) {
+        const target = join(root, 'dsh/bin/remapped.js')
+        await copyFile(join(root, 'dsh/bin/anban-dsh.js'), target)
+        await chmod(target, 0o755)
+        manifest.bin['anban-dsh'] = './dsh/bin/remapped.js'
+      },
+    },
+  ])('rejects an exact bin contract with a $name', async ({ mutate }) => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const manifestPath = join(fixture.root, 'package.json')
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+      await mutate(manifest, fixture.root)
+      await writeFile(manifestPath, JSON.stringify(manifest))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+        'exact package bin',
+      )
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it('accepts a CRLF Node shebang in the source package bin', async () => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const binPath = join(fixture.root, 'dsh/bin/anban-dsh.js')
+      const source = await readFile(binPath, 'utf8')
+      await writeFile(binPath, source.replace(/^#!\/usr\/bin\/env node\n/, '#!/usr/bin/env node\r\n'))
+      await expect(verifySourceIntegrity(fixture.root)).resolves.toBeUndefined()
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it('rejects altered Node shebang semantics', async () => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const binPath = join(fixture.root, 'dsh/bin/anban-dsh.js')
+      const source = await readFile(binPath, 'utf8')
+      await writeFile(binPath, source.replace(/^#!\/usr\/bin\/env node/, '#!/usr/bin/env -S node'))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+        'Node shebang',
       )
     } finally {
       await rm(fixture.fixtureParent, { force: true, recursive: true })
@@ -834,6 +958,15 @@ describe('DSH package integrity verifier', () => {
       },
       error: 'Node shebang',
     },
+    {
+      name: 'altered Node shebang semantics',
+      entry: {
+        name: 'package/dsh/bin/anban-dsh.js',
+        content: '#!/usr/bin/env -S node\nprocess.exitCode = 2\n',
+        mode: 0o755,
+      },
+      error: 'Node shebang',
+    },
   ])('rejects a packed bin with $name', async ({ entry, error }) => {
     const fixture = await createArchiveFixture([entry])
     try {
@@ -845,6 +978,28 @@ describe('DSH package integrity verifier', () => {
           expectedFiles: ['dsh/bin/anban-dsh.js'],
         }),
       ).rejects.toThrow(error)
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('accepts a packed executable with a CRLF Node shebang', async () => {
+    const fixture = await createArchiveFixture([
+      {
+        name: 'package/dsh/bin/anban-dsh.js',
+        content: '#!/usr/bin/env node\r\nprocess.exitCode = 2\r\n',
+        mode: 0o755,
+      },
+    ])
+    try {
+      await expect(
+        inspectAndExtractArchive({
+          archivePath: fixture.archivePath,
+          destination: fixture.destination,
+          executablePaths: ['dsh/bin/anban-dsh.js'],
+          expectedFiles: ['dsh/bin/anban-dsh.js'],
+        }),
+      ).resolves.toEqual({ files: ['dsh/bin/anban-dsh.js'] })
     } finally {
       await rm(fixture.root, { force: true, recursive: true })
     }
@@ -893,6 +1048,164 @@ describe('DSH package integrity verifier', () => {
     } finally {
       await rm(fixture.root, { force: true, recursive: true })
     }
+  })
+
+  it('kills an ignored-SIGTERM public export and its descendant', async () => {
+    const fixture = await createInstalledPackageFixture()
+    const parentPidPath = join(fixture.root, 'parent.pid')
+    const descendantPidPath = join(fixture.root, 'descendant.pid')
+    const descendantSource =
+      `process.on('SIGTERM', () => {})\n` +
+      `setInterval(() => {}, 1000)\n`
+    await writeFile(
+      join(
+        fixture.packageDirectory,
+        'dsh',
+        'lib',
+        'anban-mcp.js',
+      ),
+      `import { spawn } from 'node:child_process'\n` +
+        `import { writeFileSync } from 'node:fs'\n` +
+        `writeFileSync(${JSON.stringify(parentPidPath)}, String(process.pid))\n` +
+        `const child = spawn(process.execPath, ['-e', ${JSON.stringify(descendantSource)}])\n` +
+        `writeFileSync(${JSON.stringify(descendantPidPath)}, String(child.pid))\n` +
+        `process.on('SIGTERM', () => {})\n` +
+        `setInterval(() => {}, 1000)\n`,
+    )
+
+    const startedAt = Date.now()
+    try {
+      await expect(
+        verifyInstalledPackage(fixture.root, { childTimeoutMs: 100 }),
+      ).rejects.toThrow('public export smoke timed out')
+      expect(Date.now() - startedAt).toBeLessThan(2_000)
+      const pids = await Promise.all(
+        [parentPidPath, descendantPidPath].map(async (path) =>
+          Number.parseInt(await readFile(path, 'utf8'), 10),
+        ),
+      )
+      await expectProcessTreeGone(pids)
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('stops a public export that floods the output cap', async () => {
+    const fixture = await createInstalledPackageFixture()
+    const pidPath = join(fixture.root, 'flood.pid')
+    await writeFile(
+      join(
+        fixture.packageDirectory,
+        'dsh',
+        'lib',
+        'anban-mcp.js',
+      ),
+      `import { writeFileSync } from 'node:fs'\n` +
+        `writeFileSync(${JSON.stringify(pidPath)}, String(process.pid))\n` +
+        `process.stdout.write('x'.repeat(2 * 1024 * 1024))\n` +
+        `setInterval(() => {}, 1000)\n`,
+    )
+
+    const startedAt = Date.now()
+    try {
+      await expect(
+        verifyInstalledPackage(fixture.root, { childTimeoutMs: 5_000 }),
+      ).rejects.toThrow('public export smoke exceeded the output byte limit')
+      expect(Date.now() - startedAt).toBeLessThan(2_000)
+      const pid = Number.parseInt(await readFile(pidPath, 'utf8'), 10)
+      await expectProcessTreeGone([pid])
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it.runIf(process.platform !== 'win32')(
+    'retries the packaged CLI through Node only when direct execution is denied',
+    async () => {
+      const fixture = await createInstalledPackageFixture()
+      const attempts: Array<{ args: string[]; command: string; label: string }> = []
+      const binPath = join(
+        fixture.packageDirectory,
+        'dsh',
+        'bin',
+        'anban-dsh.js',
+      )
+      try {
+        await expect(
+          verifyInstalledPackage(fixture.root, {
+            async runCommand(command: string, args: string[], options: { label: string }) {
+              attempts.push({ args, command, label: options.label })
+              if (options.label === 'public export smoke') {
+                return { status: 0, stderr: '', stdout: '' }
+              }
+              if (command === binPath) {
+                throw Object.assign(new Error('permission denied'), {
+                  code: 'EACCES',
+                })
+              }
+              if (command === process.execPath && args[0] === binPath) {
+                return {
+                  status: 2,
+                  stderr: 'anban-dsh: invalid command\n',
+                  stdout: '',
+                }
+              }
+              throw new Error(`unexpected command: ${command}`)
+            },
+          }),
+        ).resolves.toBeUndefined()
+        expect(attempts.slice(1)).toEqual([
+          {
+            args: ['--package-integrity-smoke'],
+            command: binPath,
+            label: 'packaged CLI smoke',
+          },
+          {
+            args: [binPath, '--package-integrity-smoke'],
+            command: process.execPath,
+            label: 'packaged CLI smoke via Node',
+          },
+        ])
+      } finally {
+        await rm(fixture.root, { force: true, recursive: true })
+      }
+    },
+  )
+
+  it.runIf(process.platform !== 'win32')(
+    'does not retry other direct packaged CLI failures through Node',
+    async () => {
+      const fixture = await createInstalledPackageFixture()
+      const attempts: string[] = []
+      const binPath = join(
+        fixture.packageDirectory,
+        'dsh',
+        'bin',
+        'anban-dsh.js',
+      )
+      try {
+        await expect(
+          verifyInstalledPackage(fixture.root, {
+            async runCommand(command: string, _args: string[], options: { label: string }) {
+              attempts.push(command)
+              if (options.label === 'public export smoke') {
+                return { status: 0, stderr: '', stdout: '' }
+              }
+              throw Object.assign(new Error('operation not permitted'), {
+                code: 'EPERM',
+              })
+            },
+          }),
+        ).rejects.toMatchObject({ code: 'EPERM' })
+        expect(attempts).toEqual([process.execPath, binPath])
+      } finally {
+        await rm(fixture.root, { force: true, recursive: true })
+      }
+    },
+  )
+
+  it('does not use synchronous child-process supervision', async () => {
+    expect(await readFile(integrityScriptUrl, 'utf8')).not.toContain('spawnSync')
   })
 })
 
