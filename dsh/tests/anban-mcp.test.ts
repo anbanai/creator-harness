@@ -603,6 +603,18 @@ describe('anban MCP failure containment', () => {
     ['braced boundary', 'request {Authorization: Bearer leaked-secret}'],
     ['hyphen boundary', 'request -authorization=leaked-secret'],
     ['slash boundary', 'request /authorization.token=leaked-secret'],
+    [
+      'leading zero-width boundary',
+      '\u200bAuthorization: Bearer leaked-secret',
+    ],
+    [
+      'slash language-tag boundary',
+      'request /\u{e0001}Authorization: Bearer leaked-secret',
+    ],
+    [
+      'Syriac-mark boundary',
+      'request \u070fAuthorization: Bearer leaked-secret',
+    ],
     ['indexed value', 'request authorization[0]=leaked-secret'],
     [
       'quoted indexed value',
@@ -656,6 +668,11 @@ describe('anban MCP failure containment', () => {
 
   it.each([
     ['xauthorization key', 'request xauthorization=public-value'],
+    ['Unicode letter prefix', 'request \u00e9authorization=public-value'],
+    ['Unicode number prefix', 'request \u0661authorization=public-value'],
+    ['combining-mark prefix', 'request \u0301authorization=public-value'],
+    ['connector prefix', 'request \u203fauthorization=public-value'],
+    ['astral identifier prefix', 'request \u{10400}authorization=public-value'],
     ['longer identifier key', 'request authorizationPolicy=public-value'],
     ['ordinary prose', 'request failed because authorization is required'],
     ['Bearer scheme without payload', 'request authorization Bearer'],

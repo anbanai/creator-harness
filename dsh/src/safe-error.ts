@@ -147,10 +147,7 @@ function isIdentifierContinuationBefore(line: string, start: number): boolean {
     previous -= 1
   }
   const character = line.slice(previous, start)
-  return (
-    FORMAT_CONTROL_CHARACTER_PATTERN.test(character) ||
-    IDENTIFIER_CONTINUATION_PATTERN.test(character)
-  )
+  return IDENTIFIER_CONTINUATION_PATTERN.test(character)
 }
 
 function isAuthorizationWrapperEnd(code: number): boolean {
