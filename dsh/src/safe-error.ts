@@ -194,6 +194,31 @@ function hasAuthorizationScheme(line: string, start: number): boolean {
 
 function hasAuthorizationPayload(line: string, start: number): boolean {
   let cursor = start
+  while (cursor < line.length) {
+    const separatorLength = authorizationSchemeSeparatorLength(line, cursor)
+    if (separatorLength > 0) {
+      cursor += separatorLength
+      continue
+    }
+
+    const code = line.charCodeAt(cursor)
+    if (matchingAuthorizationWrapperEnd(code) !== undefined) {
+      return emptyAuthorizationWrappersEnd(line, cursor) === undefined
+    }
+    if (isAuthorizationPayloadPunctuation(code)) {
+      cursor += 1
+      continue
+    }
+    return true
+  }
+  return false
+}
+
+function emptyAuthorizationWrappersEnd(
+  line: string,
+  start: number,
+): number | undefined {
+  let cursor = start
   const wrapperEnds: number[] = []
   while (cursor < line.length) {
     const separatorLength = authorizationSchemeSeparatorLength(line, cursor)
@@ -211,37 +236,99 @@ function hasAuthorizationPayload(line: string, start: number): boolean {
     }
     if (code === 41 || code === 93 || code === 125) {
       if (wrapperEnds.pop() !== code) {
-        return true
+        return undefined
       }
       cursor += 1
+      if (wrapperEnds.length === 0) {
+        return cursor
+      }
       continue
     }
     if (isAuthorizationPayloadPunctuation(code)) {
       cursor += 1
       continue
     }
-    return true
+    return undefined
   }
-  return wrapperEnds.length > 0
+  return undefined
 }
 
 function hasDottedAuthorizationValue(line: string, start: number): boolean {
+  let cursor = start
+  let hasField = false
+  while (cursor < line.length) {
+    if (line[cursor] === '.') {
+      cursor += 1
+      const fieldStart = cursor
+      while (cursor < line.length && isAsciiWord(line.charCodeAt(cursor))) {
+        cursor += 1
+      }
+      if (cursor === fieldStart) {
+        return false
+      }
+      hasField = true
+      continue
+    }
+    if (line[cursor] === '[') {
+      if (!hasField) {
+        return false
+      }
+      const indexEnd = authorizationIndexEnd(line, cursor)
+      if (indexEnd === undefined) {
+        return true
+      }
+      cursor = indexEnd
+      continue
+    }
+    if (line[cursor] === '(') {
+      if (!hasField) {
+        return false
+      }
+      const wrapperEnd = emptyAuthorizationWrappersEnd(line, cursor)
+      if (wrapperEnd === undefined) {
+        return true
+      }
+      cursor = wrapperEnd
+      continue
+    }
+    if (line[cursor] === ':' || line[cursor] === '=' || line[cursor] === ',') {
+      return hasField
+    }
+
+    const separatorLength = authorizationSchemeSeparatorLength(line, cursor)
+    if (separatorLength === 0) {
+      return false
+    }
+    cursor += separatorLength
+  }
+  return false
+}
+
+function authorizationIndexEnd(
+  line: string,
+  start: number,
+): number | undefined {
   let cursor = start + 1
-  const fieldStart = cursor
+  let separatorLength = authorizationSchemeSeparatorLength(line, cursor)
+  while (separatorLength > 0) {
+    cursor += separatorLength
+    separatorLength = authorizationSchemeSeparatorLength(line, cursor)
+  }
+
+  const valueStart = cursor
   while (cursor < line.length && isAsciiWord(line.charCodeAt(cursor))) {
     cursor += 1
   }
-  if (cursor === fieldStart) {
-    return false
+  if (cursor === valueStart) {
+    return undefined
   }
 
-  while (
-    cursor < line.length &&
-    isAuthorizationWrapperEnd(line.charCodeAt(cursor))
-  ) {
-    cursor += 1
+  separatorLength = authorizationSchemeSeparatorLength(line, cursor)
+  while (separatorLength > 0) {
+    cursor += separatorLength
+    separatorLength = authorizationSchemeSeparatorLength(line, cursor)
   }
-  return line[cursor] === ':' || line[cursor] === '=' || line[cursor] === ','
+  return line[cursor] === ']' ? cursor + 1 : undefined
 }
 
 function authorizationStart(line: string): number | undefined {
@@ -263,11 +350,15 @@ function authorizationStart(line: string): number | undefined {
       keyIndex += 1
 
       if (keyIndex < AUTHORIZATION_KEY.length) {
-        while (
-          cursor < line.length &&
-          isAuthorizationSeparator(line.charCodeAt(cursor))
-        ) {
-          cursor += 1
+        while (cursor < line.length) {
+          const separatorLength = authorizationSchemeSeparatorLength(
+            line,
+            cursor,
+          )
+          if (separatorLength === 0) {
+            break
+          }
+          cursor += separatorLength
         }
       }
     }
@@ -280,14 +371,15 @@ function authorizationStart(line: string): number | undefined {
     }
 
     let separatedByWhitespace = false
-    while (
-      cursor < line.length &&
-      isAuthorizationWrapperEnd(line.charCodeAt(cursor))
-    ) {
+    while (cursor < line.length) {
       const code = line.charCodeAt(cursor)
+      const formatControlLength = formatControlLengthAt(line, cursor)
+      if (!isAuthorizationWrapperEnd(code) && formatControlLength === 0) {
+        break
+      }
       separatedByWhitespace ||=
-        code <= 32 || (code >= 127 && code <= 159)
-      cursor += 1
+        code <= 32 || (code >= 127 && code <= 159) || formatControlLength > 0
+      cursor += formatControlLength || 1
     }
     if (line[cursor] === ':' || line[cursor] === '=' || line[cursor] === ',') {
       return start
@@ -346,7 +438,6 @@ export function safeErrorLine(error: unknown, secret?: string): string {
 
   line = line
     .replace(CONTROL_CHARACTERS_PATTERN, '')
-    .replace(FORMAT_CONTROL_CHARACTERS_PATTERN, '')
     .replace(WHITESPACE_PATTERN, ' ')
     .trim()
 
@@ -356,8 +447,18 @@ export function safeErrorLine(error: unknown, secret?: string): string {
   }
 
   if (secret !== undefined && secret !== '') {
+    const compactLine = line.replace(FORMAT_CONTROL_CHARACTERS_PATTERN, '')
+    const compactRedacted = redactSecret(compactLine, secret)
+    if (compactRedacted !== compactLine) {
+      line = compactRedacted
+    }
     line = redactSecret(line, secret)
   }
+
+  line = line
+    .replace(FORMAT_CONTROL_CHARACTERS_PATTERN, ' ')
+    .replace(WHITESPACE_PATTERN, ' ')
+    .trim()
 
   if (line === '') {
     return 'Unknown error'

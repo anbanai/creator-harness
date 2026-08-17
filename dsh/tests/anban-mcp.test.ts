@@ -560,6 +560,14 @@ describe('anban MCP failure containment', () => {
   it.each([
     ['Bearer value', 'request Authorization Bearer leaked-secret'],
     [
+      'zero-width separator before Bearer',
+      'request Authorization\u200bBearer leaked-secret',
+    ],
+    [
+      'language-tag separator before Bearer',
+      'request Authorization\u{e0001}Bearer leaked-secret',
+    ],
+    [
       'parenthesized Bearer payload',
       'request Authorization Bearer (leaked-secret)',
     ],
@@ -572,6 +580,26 @@ describe('anban MCP failure containment', () => {
       'request Authorization Bearer {leaked-secret}',
     ],
     ['dotted token', 'request authorization.token=leaked-secret'],
+    [
+      'indexed dotted token',
+      'request authorization.token[0]=leaked-secret',
+    ],
+    [
+      'quoted indexed dotted token',
+      'request authorization.token["current"]=leaked-secret',
+    ],
+    [
+      'parenthesized dotted token',
+      'request authorization.token(leaked-secret)',
+    ],
+    [
+      'multi-segment dotted token',
+      'request authorization.credentials.token=leaked-secret',
+    ],
+    [
+      'composed field index and call token',
+      'request authorization.credentials["current"]()=leaked-secret',
+    ],
     ['braced boundary', 'request {Authorization: Bearer leaked-secret}'],
     ['hyphen boundary', 'request -authorization=leaked-secret'],
     ['slash boundary', 'request /authorization.token=leaked-secret'],
@@ -638,6 +666,14 @@ describe('anban MCP failure containment', () => {
     [
       'nested empty balanced payload',
       'request Authorization Bearer ({[]})',
+    ],
+    [
+      'empty wrapper followed by prose',
+      'request Authorization Bearer () retrying request',
+    ],
+    [
+      'nested empty wrappers followed by prose',
+      'request Authorization Bearer ({[]}) retrying request',
     ],
   ])('preserves non-Authorization carrier text from %s', (_label, diagnostic) => {
     expect(safeErrorLine(diagnostic)).toBe(diagnostic)
