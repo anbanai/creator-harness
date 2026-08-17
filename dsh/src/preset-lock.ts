@@ -33,6 +33,11 @@ interface PresetReclaimClaim {
   expectedOwner: PresetLockOwner
 }
 
+interface PresetReclaimAbandonment {
+  schemaVersion: 1
+  claim: PresetReclaimClaim
+}
+
 export interface PresetLock {
   release(): Promise<void>
 }
@@ -125,6 +130,8 @@ const LOCK_NAME = '.anban-dsh.lock'
 const OWNER_NAME = 'owner.json'
 const RECLAIM_CLAIM_NAME = '.anban-dsh.reclaim-claim'
 const RECLAIM_CLAIM_DOCUMENT = 'claim.json'
+const RECLAIM_ABANDONMENT_PREFIX = '.anban-dsh.reclaim-abandoned-'
+const RECLAIM_ABANDONMENT_DOCUMENT = 'abandonment.json'
 const OWNER_KEYS = [
   'schemaVersion',
   'pid',
@@ -138,6 +145,7 @@ const MAX_OWNER_ID_LENGTH = 128
 const MAX_PACKAGE_VERSION_LENGTH = 128
 const MAX_OWNER_DOCUMENT_LENGTH = 4_096
 const MAX_CLAIM_DOCUMENT_LENGTH = 8_192
+const MAX_ABANDONMENT_DOCUMENT_LENGTH = 12_288
 const MAX_TIMEOUT_MS = 60_000
 const MAX_RETRY_INTERVAL_MS = 5_000
 const MAX_RACE_RETRIES = 64
@@ -471,6 +479,32 @@ function reclaimClaimFromValue(value: unknown): PresetReclaimClaim | null {
   }
 }
 
+function reclaimAbandonmentFromValue(
+  value: unknown,
+): PresetReclaimAbandonment | null {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    return null
+  }
+  const keys = Reflect.ownKeys(value)
+  if (
+    keys.length !== 2 ||
+    !keys.includes('schemaVersion') ||
+    !keys.includes('claim')
+  ) {
+    return null
+  }
+  const abandonment = value as Partial<PresetReclaimAbandonment>
+  if (abandonment.schemaVersion !== 1) return null
+  const claim = reclaimClaimFromValue(abandonment.claim)
+  if (claim === null) return null
+  return { schemaVersion: 1, claim }
+}
+
 async function readBoundedRegularFile(
   directoryPath: string,
   filePath: string,
@@ -603,6 +637,44 @@ async function readReclaimClaim(
     if (isOperationalError(error)) {
       throw error
     }
+    throw invalidLock(error)
+  }
+}
+
+async function readReclaimAbandonment(
+  lockPath: string,
+  abandonmentPath: string,
+  dependencies: ResolvedDependencies,
+): Promise<PresetReclaimAbandonment> {
+  assertContained(lockPath, abandonmentPath)
+  const documentPath = join(
+    abandonmentPath,
+    RECLAIM_ABANDONMENT_DOCUMENT,
+  )
+  assertContained(abandonmentPath, documentPath)
+  try {
+    const abandonmentStats = await dependencies.fileSystem.lstat(
+      abandonmentPath,
+    )
+    if (
+      abandonmentStats.isSymbolicLink() ||
+      !abandonmentStats.isDirectory()
+    ) {
+      throw invalidLock()
+    }
+    const contents = await readBoundedRegularFile(
+      abandonmentPath,
+      documentPath,
+      MAX_ABANDONMENT_DOCUMENT_LENGTH,
+      dependencies,
+    )
+    const abandonment = reclaimAbandonmentFromValue(
+      JSON.parse(contents) as unknown,
+    )
+    if (abandonment === null) throw invalidLock()
+    return abandonment
+  } catch (error) {
+    if (isOperationalError(error)) throw error
     throw invalidLock(error)
   }
 }
@@ -808,6 +880,169 @@ function reclaimClaimsMatch(
   )
 }
 
+function reclaimAbandonmentsMatch(
+  left: PresetReclaimAbandonment,
+  right: PresetReclaimAbandonment,
+): boolean {
+  return (
+    left.schemaVersion === right.schemaVersion &&
+    reclaimClaimsMatch(left.claim, right.claim)
+  )
+}
+
+function reclaimAbandonmentPath(
+  lockPath: string,
+  claim: PresetReclaimClaim,
+): string {
+  const abandonmentPath = join(
+    lockPath,
+    `${RECLAIM_ABANDONMENT_PREFIX}${claim.ownerId}`,
+  )
+  assertContained(lockPath, abandonmentPath)
+  return abandonmentPath
+}
+
+async function readReclaimAbandonmentIfPresent(
+  lockPath: string,
+  abandonmentPath: string,
+  dependencies: ResolvedDependencies,
+): Promise<PresetReclaimAbandonment | null> {
+  if (!(await pathExistsNoFollow(abandonmentPath, dependencies))) return null
+  return readReclaimAbandonment(lockPath, abandonmentPath, dependencies)
+}
+
+async function isReclaimClaimAbandoned(
+  lockPath: string,
+  claim: PresetReclaimClaim,
+  dependencies: ResolvedDependencies,
+): Promise<boolean> {
+  const abandonmentPath = reclaimAbandonmentPath(lockPath, claim)
+  const abandonment = await readReclaimAbandonmentIfPresent(
+    lockPath,
+    abandonmentPath,
+    dependencies,
+  )
+  if (abandonment === null) return false
+  const expected: PresetReclaimAbandonment = { schemaVersion: 1, claim }
+  if (!reclaimAbandonmentsMatch(abandonment, expected)) throw invalidLock()
+  return true
+}
+
+async function removeOwnedReclaimAbandonment(
+  lockPath: string,
+  claim: PresetReclaimClaim,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  const abandonmentPath = reclaimAbandonmentPath(lockPath, claim)
+  const expected: PresetReclaimAbandonment = { schemaVersion: 1, claim }
+  try {
+    await assertSafeQuarantine(lockPath, dependencies)
+    const abandonment = await readReclaimAbandonment(
+      lockPath,
+      abandonmentPath,
+      dependencies,
+    )
+    if (!reclaimAbandonmentsMatch(abandonment, expected)) {
+      throw invalidLock()
+    }
+    await assertSafeQuarantine(lockPath, dependencies)
+    await dependencies.fileSystem.rm(abandonmentPath, {
+      force: false,
+      recursive: true,
+    })
+  } catch (error) {
+    if (hasErrno(error, 'ENOENT')) return
+    if (isOperationalError(error)) throw error
+    throw invalidLock(error)
+  }
+}
+
+async function publishReclaimAbandonment(
+  lockPath: string,
+  claim: PresetReclaimClaim,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  const abandonmentPath = reclaimAbandonmentPath(lockPath, claim)
+  const stagePath = join(
+    lockPath,
+    `.anban-dsh.reclaim-abandonment-stage-${claim.ownerId}`,
+  )
+  const documentPath = join(stagePath, RECLAIM_ABANDONMENT_DOCUMENT)
+  const expected: PresetReclaimAbandonment = { schemaVersion: 1, claim }
+  assertContained(lockPath, stagePath)
+  assertContained(stagePath, documentPath)
+  let stageCreated = false
+
+  try {
+    await assertSafeQuarantine(lockPath, dependencies)
+    const currentOwner = await readOwnerFromLock(lockPath, dependencies)
+    if (!ownersMatch(currentOwner, claim.expectedOwner)) throw invalidLock()
+    const existing = await readReclaimAbandonmentIfPresent(
+      lockPath,
+      abandonmentPath,
+      dependencies,
+    )
+    if (existing !== null) {
+      if (!reclaimAbandonmentsMatch(existing, expected)) throw invalidLock()
+      return
+    }
+
+    await dependencies.fileSystem.mkdir(stagePath, { mode: 0o700 })
+    stageCreated = true
+    await dependencies.fileSystem.writeFile(
+      documentPath,
+      `${JSON.stringify(expected)}\n`,
+      { flag: 'wx', mode: 0o600 },
+    )
+    const staged = await readReclaimAbandonment(
+      lockPath,
+      stagePath,
+      dependencies,
+    )
+    if (!reclaimAbandonmentsMatch(staged, expected)) throw invalidLock()
+    await assertSafeQuarantine(lockPath, dependencies)
+    const ownerBeforePublish = await readOwnerFromLock(lockPath, dependencies)
+    if (!ownersMatch(ownerBeforePublish, claim.expectedOwner)) {
+      throw invalidLock()
+    }
+    try {
+      await dependencies.fileSystem.rename(stagePath, abandonmentPath)
+      stageCreated = false
+    } catch (error) {
+      const published = await readReclaimAbandonmentIfPresent(
+        lockPath,
+        abandonmentPath,
+        dependencies,
+      )
+      if (
+        published === null ||
+        !reclaimAbandonmentsMatch(published, expected)
+      ) {
+        throw invalidLock(error)
+      }
+    }
+    if (stageCreated) {
+      await removeOwnedDirectory(lockPath, stagePath, dependencies)
+      stageCreated = false
+    }
+    const published = await readReclaimAbandonment(
+      lockPath,
+      abandonmentPath,
+      dependencies,
+    )
+    if (!reclaimAbandonmentsMatch(published, expected)) throw invalidLock()
+  } catch (error) {
+    if (stageCreated) {
+      try {
+        await removeOwnedDirectory(lockPath, stagePath, dependencies)
+      } catch (cleanupError) {
+        throw invalidLock(new AggregateError([error, cleanupError]))
+      }
+    }
+    throw isOperationalError(error) ? error : invalidLock(error)
+  }
+}
+
 async function removeOwnedReclaimClaim(
   presetRoot: string,
   lockPath: string,
@@ -843,13 +1078,30 @@ async function removeOwnedReclaimClaim(
   }
 }
 
+async function removeAbandonedReclaimClaim(
+  lockPath: string,
+  claimPath: string,
+  expectedClaim: PresetReclaimClaim,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  await removeOwnedReclaimClaim(
+    lockPath,
+    lockPath,
+    claimPath,
+    expectedClaim,
+    dependencies,
+  )
+  if (await pathExistsNoFollow(claimPath, dependencies)) throw invalidLock()
+  await removeOwnedReclaimAbandonment(lockPath, expectedClaim, dependencies)
+}
+
 async function restoreRetiredReclaimClaim(
   lockPath: string,
   claimPath: string,
   retiredPath: string,
   expectedClaim: PresetReclaimClaim,
   dependencies: ResolvedDependencies,
-): Promise<void> {
+): Promise<boolean> {
   assertContained(lockPath, claimPath)
   assertContained(lockPath, retiredPath)
   await assertSafeQuarantine(lockPath, dependencies)
@@ -860,6 +1112,15 @@ async function restoreRetiredReclaimClaim(
   )
   if (!reclaimClaimsMatch(retiredClaim, expectedClaim)) {
     throw invalidLock()
+  }
+  if (await isReclaimClaimAbandoned(lockPath, expectedClaim, dependencies)) {
+    await removeAbandonedReclaimClaim(
+      lockPath,
+      retiredPath,
+      expectedClaim,
+      dependencies,
+    )
+    return false
   }
   try {
     await dependencies.fileSystem.lstat(claimPath)
@@ -879,6 +1140,15 @@ async function restoreRetiredReclaimClaim(
   if (!reclaimClaimsMatch(claimBeforeRestore, expectedClaim)) {
     throw invalidLock()
   }
+  if (await isReclaimClaimAbandoned(lockPath, expectedClaim, dependencies)) {
+    await removeAbandonedReclaimClaim(
+      lockPath,
+      retiredPath,
+      expectedClaim,
+      dependencies,
+    )
+    return false
+  }
   try {
     await dependencies.fileSystem.rename(retiredPath, claimPath)
   } catch (error) {
@@ -892,6 +1162,16 @@ async function restoreRetiredReclaimClaim(
   if (!reclaimClaimsMatch(restoredClaim, expectedClaim)) {
     throw invalidLock()
   }
+  if (await isReclaimClaimAbandoned(lockPath, expectedClaim, dependencies)) {
+    await removeAbandonedReclaimClaim(
+      lockPath,
+      claimPath,
+      expectedClaim,
+      dependencies,
+    )
+    return false
+  }
+  return true
 }
 
 async function readReclaimClaimIfPresent(
@@ -946,53 +1226,58 @@ async function waitForExactReclaimClaim(
   }
 }
 
+async function abandonPublishedReclaimClaim(
+  lockPath: string,
+  claimPath: string,
+  expectedClaim: PresetReclaimClaim,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  await assertSafeQuarantine(lockPath, dependencies)
+  const currentOwner = await readOwnerFromLock(lockPath, dependencies)
+  if (!ownersMatch(currentOwner, expectedClaim.expectedOwner)) return
+
+  await publishReclaimAbandonment(lockPath, expectedClaim, dependencies)
+
+  await assertSafeQuarantine(lockPath, dependencies)
+  const ownerAfterPublish = await readOwnerFromLock(lockPath, dependencies)
+  if (!ownersMatch(ownerAfterPublish, expectedClaim.expectedOwner)) return
+  const storedClaim = await readReclaimClaimIfPresent(
+    lockPath,
+    claimPath,
+    dependencies,
+  )
+  if (
+    storedClaim === null ||
+    !reclaimClaimsMatch(storedClaim, expectedClaim)
+  ) {
+    return
+  }
+  await removeAbandonedReclaimClaim(
+    lockPath,
+    claimPath,
+    expectedClaim,
+    dependencies,
+  )
+}
+
 async function reconcilePublishedReclaimClaim(
   presetRoot: string,
   lockPath: string,
   claimPath: string,
   expectedClaim: PresetReclaimClaim,
-  deadline: number,
   dependencies: ResolvedDependencies,
 ): Promise<void> {
-  let lastMonotonicReading = monotonicNow(dependencies)
-  while (true) {
-    await assertSafePresetRoot(presetRoot, dependencies)
-    if (!(await pathExistsNoFollow(lockPath, dependencies))) return
-    await assertSafeQuarantine(lockPath, dependencies)
-    const currentOwner = await readOwnerFromLock(lockPath, dependencies)
-    if (!ownersMatch(currentOwner, expectedClaim.expectedOwner)) return
-    const storedClaim = await readReclaimClaimIfPresent(
-      lockPath,
-      claimPath,
-      dependencies,
-    )
-    if (storedClaim !== null) {
-      if (!reclaimClaimsMatch(storedClaim, expectedClaim)) return
-      await removeOwnedReclaimClaim(
-        presetRoot,
-        lockPath,
-        claimPath,
-        expectedClaim,
-        dependencies,
-      )
-      return
-    }
-    const beforeWait = monotonicNow(dependencies)
-    if (beforeWait < lastMonotonicReading) throw operationFailure()
-    if (beforeWait >= deadline) return
-    const waitMilliseconds = Math.min(
-      dependencies.retryIntervalMs,
-      deadline - beforeWait,
-    )
-    try {
-      await dependencies.wait(waitMilliseconds)
-    } catch (error) {
-      throw operationFailure(error)
-    }
-    const afterWait = monotonicNow(dependencies)
-    if (afterWait <= beforeWait) throw operationFailure()
-    lastMonotonicReading = afterWait
-  }
+  await assertSafePresetRoot(presetRoot, dependencies)
+  if (!(await pathExistsNoFollow(lockPath, dependencies))) return
+  await assertSafeQuarantine(lockPath, dependencies)
+  const currentOwner = await readOwnerFromLock(lockPath, dependencies)
+  if (!ownersMatch(currentOwner, expectedClaim.expectedOwner)) return
+  await abandonPublishedReclaimClaim(
+    lockPath,
+    claimPath,
+    expectedClaim,
+    dependencies,
+  )
 }
 
 async function publishReclaimClaim(
@@ -1016,6 +1301,7 @@ async function publishReclaimClaim(
   assertContained(stagePath, stageDocumentPath)
   let stageCreated = false
   let stageValidated = false
+  let claimPublished = false
   const claimRace = Symbol('claim-race')
   const claimOccupied = Symbol('claim-occupied')
 
@@ -1040,6 +1326,7 @@ async function publishReclaimClaim(
       }
       await dependencies.fileSystem.rename(stagePath, claimPath)
       stageCreated = false
+      claimPublished = true
       return true
     } catch (error) {
       let canonicalOccupied =
@@ -1071,15 +1358,22 @@ async function publishReclaimClaim(
     }
 
     const existing = await readReclaimClaim(lockPath, claimPath, dependencies)
-    if (existing.hostname !== dependencies.hostname) throw invalidLock()
-    let alive: boolean
-    try {
-      alive = await dependencies.isPidAlive(existing.pid)
-    } catch (error) {
-      throw invalidLock(error)
+    const existingAbandoned = await isReclaimClaimAbandoned(
+      lockPath,
+      existing,
+      dependencies,
+    )
+    if (!existingAbandoned) {
+      if (existing.hostname !== dependencies.hostname) throw invalidLock()
+      let alive: boolean
+      try {
+        alive = await dependencies.isPidAlive(existing.pid)
+      } catch (error) {
+        throw invalidLock(error)
+      }
+      if (typeof alive !== 'boolean') throw invalidLock()
+      if (alive) throw LIVE_CLAIM_CONTENDED
     }
-    if (typeof alive !== 'boolean') throw invalidLock()
-    if (alive) throw LIVE_CLAIM_CONTENDED
 
     await assertVacantPath(retiredPath, dependencies)
     try {
@@ -1091,13 +1385,14 @@ async function publishReclaimClaim(
     const retired = await readReclaimClaim(lockPath, retiredPath, dependencies)
     if (!reclaimClaimsMatch(retired, existing)) {
       try {
-        await restoreRetiredReclaimClaim(
+        const restored = await restoreRetiredReclaimClaim(
           lockPath,
           claimPath,
           retiredPath,
           retired,
           dependencies,
         )
+        if (!restored) throw invalidLock()
       } catch (restoreError) {
         throw invalidLock(
           new AggregateError(
@@ -1111,6 +1406,7 @@ async function publishReclaimClaim(
     try {
       await dependencies.fileSystem.rename(stagePath, claimPath)
       stageCreated = false
+      claimPublished = true
     } catch (error) {
       throw invalidLock(error)
     }
@@ -1121,6 +1417,12 @@ async function publishReclaimClaim(
       retired,
       dependencies,
     )
+    if (
+      existingAbandoned ||
+      (await isReclaimClaimAbandoned(lockPath, retired, dependencies))
+    ) {
+      await removeOwnedReclaimAbandonment(lockPath, retired, dependencies)
+    }
     await waitForExactReclaimClaim(
       lockPath,
       claimPath,
@@ -1130,6 +1432,18 @@ async function publishReclaimClaim(
     )
     return true
   } catch (error) {
+    if (claimPublished) {
+      try {
+        await abandonPublishedReclaimClaim(
+          lockPath,
+          claimPath,
+          claim,
+          dependencies,
+        )
+      } catch (cleanupError) {
+        throw invalidLock(new AggregateError([error, cleanupError]))
+      }
+    }
     if (stageCreated) {
       try {
         await removeOwnedDirectory(lockPath, stagePath, dependencies)
@@ -1223,7 +1537,6 @@ async function reclaimDeadOwner(
         lockPath,
         claimPath,
         reclaimClaim,
-        deadline,
         dependencies,
       )
     } catch (cleanupError) {
@@ -1269,7 +1582,6 @@ async function reclaimDeadOwner(
         lockPath,
         claimPath,
         reclaimClaim,
-        deadline,
         dependencies,
       )
     } catch (cleanupError) {
@@ -1320,7 +1632,6 @@ async function reclaimDeadOwner(
         lockPath,
         claimPath,
         reclaimClaim,
-        deadline,
         dependencies,
       )
     } catch (cleanupError) {

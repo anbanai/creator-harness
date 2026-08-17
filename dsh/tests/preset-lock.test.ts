@@ -147,6 +147,23 @@ async function installClaim(fixture: Fixture, claim: ReturnType<typeof validClai
   )
 }
 
+async function installAbandonment(
+  fixture: Fixture,
+  claim: ReturnType<typeof validClaim>,
+  storedClaim = claim,
+): Promise<string> {
+  const abandonmentPath = join(
+    lockPath(fixture),
+    `.anban-dsh.reclaim-abandoned-${claim.ownerId}`,
+  )
+  await mkdir(abandonmentPath)
+  await writeFile(
+    join(abandonmentPath, 'abandonment.json'),
+    `${JSON.stringify({ schemaVersion: 1, claim: storedClaim })}\n`,
+  )
+  return abandonmentPath
+}
+
 async function pathExists(path: string): Promise<boolean> {
   try {
     await lstat(path)
@@ -768,6 +785,243 @@ describe('preset lock acquisition', () => {
       }),
     )
     await laterLock.release()
+  })
+
+  it('does not resurrect a claim restored after its publisher deadline expires', async () => {
+    const fixture = await createFixture()
+    const canonicalClaimPath = join(
+      lockPath(fixture),
+      '.anban-dsh.reclaim-claim',
+    )
+    const contenderBRetiredPath = join(
+      lockPath(fixture),
+      '.anban-dsh.reclaim-retired-late-b',
+    )
+    let signalBReady!: () => void
+    const bReady = new Promise<void>((resolveReady) => {
+      signalBReady = resolveReady
+    })
+    let startBMove!: () => void
+    const bMove = new Promise<void>((resolveMove) => {
+      startBMove = resolveMove
+    })
+    let signalBMoved!: () => void
+    const bMoved = new Promise<void>((resolveMoved) => {
+      signalBMoved = resolveMoved
+    })
+    let resumeB!: () => void
+    const bResume = new Promise<void>((resolveResume) => {
+      resumeB = resolveResume
+    })
+    let signalCPublished!: () => void
+    const cPublished = new Promise<void>((resolvePublished) => {
+      signalCPublished = resolvePublished
+    })
+    let resumeCPublish!: () => void
+    const cPublishResume = new Promise<void>((resolveResume) => {
+      resumeCPublish = resolveResume
+    })
+    let bPaused = false
+    let cPaused = false
+    let abandonmentCollision = false
+    let cMonotonicMilliseconds = 1_000
+    await installLock(fixture, validOwner())
+    await installClaim(fixture, validClaim())
+
+    const contenderB = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        fileSystem: {
+          rename: async (source, destination) => {
+            if (
+              !bPaused &&
+              source === canonicalClaimPath &&
+              destination === contenderBRetiredPath
+            ) {
+              bPaused = true
+              signalBReady()
+              await bMove
+              await rename(source, destination)
+              signalBMoved()
+              await bResume
+              return
+            }
+            await rename(source, destination)
+          },
+        },
+        isPidAlive: () => false,
+        pid: 62_021,
+        randomOwnerId: () => 'late-b',
+      }),
+    )
+    await bReady
+
+    const contenderC = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        clock: { monotonicNow: () => cMonotonicMilliseconds },
+        fileSystem: {
+          rename: async (source, destination) => {
+            await rename(source, destination)
+            if (
+              !abandonmentCollision &&
+              source.endsWith(
+                '.anban-dsh.reclaim-abandonment-stage-late-c',
+              ) &&
+              destination.endsWith('.anban-dsh.reclaim-abandoned-late-c')
+            ) {
+              abandonmentCollision = true
+              throw errno('EACCES', 'ambiguous Windows marker publication')
+            }
+            if (
+              !cPaused &&
+              source.endsWith('.anban-dsh.reclaim-stage-late-c') &&
+              destination === canonicalClaimPath
+            ) {
+              cPaused = true
+              signalCPublished()
+              await cPublishResume
+            }
+          },
+        },
+        isPidAlive: () => false,
+        pid: 62_022,
+        randomOwnerId: () => 'late-c',
+        retryIntervalMs: 25,
+        timeoutMs: 100,
+        wait: async (milliseconds) => {
+          cMonotonicMilliseconds += milliseconds
+        },
+      }),
+    )
+    await cPublished
+    startBMove()
+    await bMoved
+    resumeCPublish()
+
+    await expect(contenderC).rejects.toMatchObject({
+      code: 'ERR_PRESET_LOCK_INVALID',
+    })
+    expect(cMonotonicMilliseconds).toBe(1_100)
+    expect(abandonmentCollision).toBe(true)
+
+    resumeB()
+    await expect(contenderB).rejects.toMatchObject({
+      code: 'ERR_PRESET_LOCK_INVALID',
+    })
+    expect(await pathExists(canonicalClaimPath)).toBe(false)
+
+    const laterLock = await acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        isPidAlive: (pid) => pid === 62_022,
+        randomOwnerId: () => 'late-later',
+      }),
+    )
+    await laterLock.release()
+  })
+
+  it('reclaims an exactly abandoned canonical claim even while its PID is live', async () => {
+    const fixture = await createFixture()
+    const claim = validClaim({ pid: 62_031, ownerId: 'abandoned-live' })
+    const liveness = vi.fn((pid: number) => pid === claim.pid)
+    await installLock(fixture, validOwner())
+    await installClaim(fixture, claim)
+    await installAbandonment(fixture, claim)
+
+    const lock = await acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        isPidAlive: liveness,
+        randomOwnerId: () => 'abandoned-successor',
+      }),
+    )
+
+    expect(liveness).not.toHaveBeenCalledWith(claim.pid)
+    expect(JSON.parse(await readFile(ownerPath(fixture), 'utf8'))).toMatchObject({
+      ownerId: 'abandoned-successor',
+    })
+    await lock.release()
+  })
+
+  it('keeps a foreign abandonment marker fail-closed and untouched', async () => {
+    const fixture = await createFixture()
+    const claim = validClaim({ pid: 62_032, ownerId: 'marker-target' })
+    const foreignClaim = validClaim({
+      pid: 62_033,
+      ownerId: 'foreign-marker',
+    })
+    const liveness = vi.fn(() => false)
+    await installLock(fixture, validOwner())
+    await installClaim(fixture, claim)
+    const abandonmentPath = await installAbandonment(
+      fixture,
+      claim,
+      foreignClaim,
+    )
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          isPidAlive: liveness,
+          randomOwnerId: () => 'foreign-marker-contender',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect(liveness).not.toHaveBeenCalledWith(claim.pid)
+    expect(
+      JSON.parse(
+        await readFile(join(abandonmentPath, 'abandonment.json'), 'utf8'),
+      ),
+    ).toEqual({ schemaVersion: 1, claim: foreignClaim })
+    expect(
+      JSON.parse(
+        await readFile(
+          join(
+            lockPath(fixture),
+            '.anban-dsh.reclaim-claim',
+            'claim.json',
+          ),
+          'utf8',
+        ),
+      ),
+    ).toEqual(claim)
+  })
+
+  it('keeps a malformed abandonment marker fail-closed and untouched', async () => {
+    const fixture = await createFixture()
+    const claim = validClaim({ pid: 62_034, ownerId: 'malformed-marker' })
+    await installLock(fixture, validOwner())
+    await installClaim(fixture, claim)
+    const abandonmentPath = await installAbandonment(fixture, claim)
+    const documentPath = join(abandonmentPath, 'abandonment.json')
+    await writeFile(documentPath, '{"schemaVersion":1}\n')
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          isPidAlive: () => false,
+          randomOwnerId: () => 'malformed-marker-contender',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect(await readFile(documentPath, 'utf8')).toBe('{"schemaVersion":1}\n')
+    expect(
+      JSON.parse(
+        await readFile(
+          join(
+            lockPath(fixture),
+            '.anban-dsh.reclaim-claim',
+            'claim.json',
+          ),
+          'utf8',
+        ),
+      ),
+    ).toEqual(claim)
   })
 
   it('keeps a complete same-host live reclaim claim intact', async () => {
