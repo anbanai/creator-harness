@@ -823,11 +823,12 @@ function childEnvironment() {
   return environment
 }
 
-function commandStartError(label, error) {
+function commandStartError(label, error, errorPrefix) {
   const failure = new Error(
-    `Package integrity failed: ${label} failed to start: ${error?.code ?? 'unknown error'}`,
+    `${errorPrefix}: ${label} failed to start: ${error?.code ?? 'unknown error'}`,
     { cause: error },
   )
+  failure.commandFailure = 'spawn'
   if (error?.code !== undefined) failure.code = error.code
   return failure
 }
@@ -859,15 +860,23 @@ function signalProcessTree(child, signal) {
   }
 }
 
-function runBoundedCommand(
+export function runBoundedCommand(
   command,
   args,
-  { cwd, environment = childEnvironment(), label, timeoutMs },
+  {
+    cwd,
+    environment = childEnvironment(),
+    errorPrefix = 'Package integrity failed',
+    label,
+    maxBuffer = CHILD_MAX_BUFFER,
+    spawnProcess = spawn,
+    timeoutMs,
+  },
 ) {
   return new Promise((resolveCommand, rejectCommand) => {
     let child
     try {
-      child = spawn(command, args, {
+      child = spawnProcess(command, args, {
         cwd,
         detached: process.platform !== 'win32',
         env: environment,
@@ -876,7 +885,7 @@ function runBoundedCommand(
         windowsHide: true,
       })
     } catch (error) {
-      rejectCommand(commandStartError(label, error))
+      rejectCommand(commandStartError(label, error, errorPrefix))
       return
     }
 
@@ -915,8 +924,11 @@ function runBoundedCommand(
       }, CHILD_TERMINATION_GRACE_MS)
       watchdogTimer = setTimeout(() => {
         rejectOnce(
-          new Error(
-            `Package integrity failed: ${label} did not exit after forced termination`,
+          Object.assign(
+            new Error(
+              `${errorPrefix}: ${label} did not exit after forced termination`,
+            ),
+            { commandFailure: 'cleanup' },
           ),
         )
       }, CHILD_CLOSE_WATCHDOG_MS)
@@ -926,7 +938,7 @@ function runBoundedCommand(
       if (terminationReason !== undefined) return
       const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
       outputBytes += data.length
-      if (outputBytes > CHILD_MAX_BUFFER) {
+      if (outputBytes > maxBuffer) {
         beginTermination('output')
         return
       }
@@ -936,7 +948,7 @@ function runBoundedCommand(
     child.stdout.on('data', (chunk) => capture(stdout, chunk))
     child.stderr.on('data', (chunk) => capture(stderr, chunk))
     child.once('error', (error) => {
-      rejectOnce(commandStartError(label, error))
+      rejectOnce(commandStartError(label, error, errorPrefix))
     })
     child.once('close', (status, signal) => {
       if (settled) return
@@ -944,16 +956,22 @@ function runBoundedCommand(
       cleanup()
       if (terminationReason === 'timeout') {
         rejectCommand(
-          new Error(
-            `Package integrity failed: ${label} timed out after ${timeoutMs}ms`,
+          Object.assign(
+            new Error(
+              `${errorPrefix}: ${label} timed out after ${timeoutMs}ms`,
+            ),
+            { commandFailure: 'timeout' },
           ),
         )
         return
       }
       if (terminationReason === 'output') {
         rejectCommand(
-          new Error(
-            `Package integrity failed: ${label} exceeded the output byte limit (${CHILD_MAX_BUFFER})`,
+          Object.assign(
+            new Error(
+              `${errorPrefix}: ${label} exceeded the output byte limit (${maxBuffer})`,
+            ),
+            { commandFailure: 'output' },
           ),
         )
         return

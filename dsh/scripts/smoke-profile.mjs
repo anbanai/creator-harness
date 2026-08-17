@@ -1,6 +1,12 @@
-import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { access, mkdtemp, readFile, rm } from 'node:fs/promises'
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import {
   basename,
@@ -15,7 +21,12 @@ import {
 } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { parsePackResult } from './package-integrity.mjs'
+import crossSpawn from 'cross-spawn'
+
+import {
+  parsePackResult,
+  runBoundedCommand,
+} from './package-integrity.mjs'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const PACKAGE_NAME = '@anban/dsh-plugin'
@@ -31,21 +42,26 @@ const PUBLIC_EXPORT_NAMES = {
   [`${PACKAGE_NAME}/preset-manager`]: 'anban-preset-manager',
   [`${PACKAGE_NAME}/skills-provider`]: 'anban-skills-provider',
 }
-const CREDENTIAL_ENV_KEY = /(?:auth|credential|key|password|secret|token)/i
-const RUNTIME_OVERRIDE_ENV_KEY = /(?:^|_)run_as_node$/i
 const REGISTRY_ARTIFACT_PATTERN = new RegExp(
-  `^${PACKAGE_NAME.replace('/', '\\/')}@((?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?)$`,
+  `^${PACKAGE_NAME.replace('/', '\\/')}@((?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)$`,
 )
 const COMMAND_TIMEOUT_MS = 180_000
-const COMMAND_MAX_BUFFER = 1024 * 1024
+const INHERITED_ENV_KEYS = [
+  'COMSPEC',
+  'ComSpec',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'PATH',
+  'PATHEXT',
+  'SYSTEMROOT',
+  'SystemRoot',
+  'WINDIR',
+]
 
 export function portableCommand(
   executable,
-  {
-    environment = process.env,
-    platform = process.platform,
-    prefixArgs = [],
-  } = {},
+  { prefixArgs = [] } = {},
 ) {
   if (
     typeof executable !== 'string' ||
@@ -57,17 +73,7 @@ export function portableCommand(
     throw new Error('Profile smoke command is invalid')
   }
 
-  if (platform === 'win32' && /\.(?:cmd|bat)$/i.test(executable)) {
-    return {
-      executable:
-        environment.ComSpec ?? environment.COMSPEC ?? 'cmd.exe',
-      kind: 'windows-cmd',
-      prefixArgs: ['/d', '/s', '/v:off', '/c'],
-      shim: executable,
-    }
-  }
-
-  return { executable, kind: 'native', prefixArgs: [...prefixArgs] }
+  return { executable, prefixArgs: [...prefixArgs] }
 }
 
 export function nodeEntrypointCommand(
@@ -83,7 +89,7 @@ export function nodeEntrypointCommand(
   ) {
     throw new Error('Profile smoke command requires absolute Node paths')
   }
-  return portableCommand(executable, { platform, prefixArgs: [entrypoint] })
+  return portableCommand(executable, { prefixArgs: [entrypoint] })
 }
 
 function isPublicNodeRuntime(executable, platform) {
@@ -95,20 +101,32 @@ function isPublicNodeRuntime(executable, platform) {
   )
 }
 
+function isPnpmExecutable(executable, platform) {
+  if (typeof executable !== 'string') return false
+  const paths = platform === 'win32' ? win32 : posix
+  return /^pnpm(?:\.cmd|\.exe)?$/i.test(paths.basename(executable))
+}
+
 export function resolvePnpmCommand({
   environment = process.env,
   platform = process.platform,
+  processExecutable = process.execPath,
 } = {}) {
   const pathCommand = platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
   const entrypoint = environment.npm_execpath
   if (typeof entrypoint !== 'string' || entrypoint.length === 0) {
-    return portableCommand(pathCommand, { environment, platform })
+    return portableCommand(pathCommand)
   }
 
   if (/\.(?:c|m)?js$/i.test(entrypoint)) {
-    const nodeRuntime = environment.npm_node_execpath
+    const nodeRuntime = isPublicNodeRuntime(
+      environment.npm_node_execpath,
+      platform,
+    )
+      ? environment.npm_node_execpath
+      : processExecutable
     if (!isPublicNodeRuntime(nodeRuntime, platform)) {
-      return portableCommand(pathCommand, { environment, platform })
+      return portableCommand(pathCommand)
     }
     return nodeEntrypointCommand(entrypoint, {
       executable: nodeRuntime,
@@ -116,73 +134,103 @@ export function resolvePnpmCommand({
     })
   }
 
-  return portableCommand(entrypoint, { environment, platform })
-}
-
-function quoteWindowsCommandArgument(argument) {
-  if (typeof argument !== 'string' || /[\0\r\n"]/.test(argument)) {
-    throw new Error('Profile smoke Windows command argument is invalid')
-  }
-  return `"${argument.replaceAll('%', '%%')}"`
+  return portableCommand(
+    isPnpmExecutable(entrypoint, platform) ? entrypoint : pathCommand,
+  )
 }
 
 export function commandInvocation(command, args) {
-  if (command.kind === 'native') {
-    return {
-      executable: command.executable,
-      args: [...command.prefixArgs, ...args],
-    }
+  return {
+    executable: command.executable,
+    args: [...command.prefixArgs, ...args],
   }
-  if (command.kind === 'windows-cmd') {
-    const line = [command.shim, ...args]
-      .map(quoteWindowsCommandArgument)
-      .join(' ')
-    return {
-      executable: command.executable,
-      args: [...command.prefixArgs, `"${line}"`],
-    }
-  }
-  throw new Error('Profile smoke command kind is invalid')
 }
 
-export function smokeEnvironment(dshHome, source = process.env) {
-  const environment = { ...source, DSH_HOME: dshHome }
-  for (const key of Object.keys(environment)) {
-    if (
-      key !== 'DSH_HOME' &&
-      (CREDENTIAL_ENV_KEY.test(key) || RUNTIME_OVERRIDE_ENV_KEY.test(key))
-    ) {
-      delete environment[key]
-    }
+export function smokeEnvironment(dshHome, smokeRoot, source = process.env) {
+  const environment = {}
+  for (const key of INHERITED_ENV_KEYS) {
+    if (source[key] !== undefined) environment[key] = source[key]
   }
-  return environment
+  const temporary = join(smokeRoot, 'tmp')
+  return {
+    ...environment,
+    DSH_HOME: dshHome,
+    HOME: dshHome,
+    NPM_CONFIG_USERCONFIG: join(smokeRoot, '.npmrc'),
+    TEMP: temporary,
+    TMP: temporary,
+    TMPDIR: temporary,
+    USERPROFILE: dshHome,
+    XDG_CONFIG_HOME: join(smokeRoot, 'xdg-config'),
+  }
 }
 
-function defaultRunCommand(command, args, options) {
+export async function prepareSmokeEnvironment(
+  smokeRoot,
+  {
+    mkdir: makeDirectory = mkdir,
+    source = process.env,
+    writeFile: writeEnvironmentFile = writeFile,
+  } = {},
+) {
+  const dshHome = join(smokeRoot, 'home')
+  const xdgConfig = join(smokeRoot, 'xdg-config')
+  const temporary = join(smokeRoot, 'tmp')
+  for (const directory of [dshHome, xdgConfig, temporary]) {
+    await makeDirectory(directory, { recursive: true })
+  }
+  await writeEnvironmentFile(join(smokeRoot, '.npmrc'), '', { flag: 'wx' })
+  return smokeEnvironment(dshHome, smokeRoot, source)
+}
+
+export async function runProfileCommand(command, args, options) {
   const invocation = commandInvocation(command, args)
-  const result = spawnSync(invocation.executable, invocation.args, {
-    cwd: options.cwd,
-    encoding: 'utf8',
-    env: options.env,
-    maxBuffer: COMMAND_MAX_BUFFER,
-    shell: false,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: COMMAND_TIMEOUT_MS,
-    windowsHide: true,
-  })
-
-  if (result.error !== undefined) {
-    const code = result.error.code ?? 'unknown error'
-    if (code === 'ETIMEDOUT') {
-      throw new Error('Profile smoke command timed out')
-    }
-    throw new Error(`Profile smoke command failed to start: ${code}`)
+  let result
+  try {
+    result = await runBoundedCommand(invocation.executable, invocation.args, {
+      cwd: options.cwd,
+      environment: options.env,
+      errorPrefix: 'Profile smoke command',
+      label: options.label,
+      spawnProcess: crossSpawn,
+      timeoutMs: options.timeoutMs ?? COMMAND_TIMEOUT_MS,
+    })
+  } catch (error) {
+    throw profileCommandFailure(error, options)
   }
   if (result.status !== 0) {
-    throw new Error(`Profile smoke command exited ${result.status ?? 1}`)
+    throw new Error(
+      `Profile smoke command "${options.label}" exited ${result.status ?? 1}`,
+    )
   }
 
-  return { stdout: result.stdout }
+  return result
+}
+
+export function profileCommandFailure(error, options) {
+  if (error?.commandFailure === 'spawn') {
+    return new Error(
+      `Profile smoke command "${options.label}" failed to start: ${error.code ?? 'unknown error'}`,
+    )
+  }
+  if (error?.commandFailure === 'timeout') {
+    return new Error(
+      `Profile smoke command "${options.label}" timed out after ${options.timeoutMs ?? COMMAND_TIMEOUT_MS}ms`,
+    )
+  }
+  if (error?.commandFailure === 'output') {
+    return new Error(
+      `Profile smoke command "${options.label}" exceeded the output byte limit`,
+    )
+  }
+  if (error?.commandFailure === 'cleanup') {
+    return new Error(
+      `Profile smoke command "${options.label}" did not exit after forced termination`,
+    )
+  }
+  return new Error(
+    `Profile smoke command "${options.label}" failed unexpectedly`,
+  )
 }
 
 async function packageBinCommand(anchor, packageName, binName) {
@@ -208,7 +256,12 @@ async function packageBinCommand(anchor, packageName, binName) {
   }
 
   if (process.platform !== 'win32') return portableCommand(entrypoint)
-  const nodeRuntime = process.env.npm_node_execpath
+  const nodeRuntime = isPublicNodeRuntime(
+    process.env.npm_node_execpath,
+    process.platform,
+  )
+    ? process.env.npm_node_execpath
+    : process.execPath
   if (!isPublicNodeRuntime(nodeRuntime, process.platform)) {
     throw new Error('Profile smoke requires a public Node runtime on Windows')
   }
@@ -315,12 +368,24 @@ function validatePackResult(result, smokeRoot, manifest) {
 function registryVersion(artifactSource) {
   if (artifactSource === undefined) return undefined
   const matched = REGISTRY_ARTIFACT_PATTERN.exec(artifactSource)
-  if (matched === null) {
+  const version = matched?.[1]
+  const versionWithoutBuild = version?.split('+', 1)[0]
+  const prereleaseStart = versionWithoutBuild?.indexOf('-') ?? -1
+  const prerelease =
+    prereleaseStart === -1
+      ? undefined
+      : versionWithoutBuild?.slice(prereleaseStart + 1).split('.')
+  if (
+    version === undefined ||
+    prerelease?.some(
+      (identifier) => /^\d+$/.test(identifier) && /^0\d+/.test(identifier),
+    )
+  ) {
     throw new Error(
       'Profile smoke registry source must be an exact @anban/dsh-plugin version',
     )
   }
-  return matched[1]
+  return version
 }
 
 function configRows(config) {
@@ -419,16 +484,20 @@ export async function smokeProfile(overrides = {}) {
   const dependencies = {
     access,
     discoverPresets: defaultDiscoverPresets,
+    environment: process.env,
     importInstalledExport: defaultImportInstalledExport,
     log: console.log,
+    mkdir,
     mkdtemp,
     parseConfig: defaultParseConfig,
+    prepareEnvironment: prepareSmokeEnvironment,
     readFile,
     resolveDshCommand: defaultResolveDshCommand,
     resolvePnpmCommand,
     rm,
-    runCommand: defaultRunCommand,
+    runCommand: runProfileCommand,
     tmpdir,
+    writeFile,
     ...dependencyOverrides,
   }
   await dependencies.access(join(PACKAGE_ROOT, 'dsh', 'lib', 'cli.js'))
@@ -440,7 +509,11 @@ export async function smokeProfile(overrides = {}) {
   try {
     const dshHome = join(smokeRoot, 'home')
     const profileDir = join(dshHome, 'profiles', PROFILE)
-    const environment = smokeEnvironment(dshHome)
+    const environment = await dependencies.prepareEnvironment(smokeRoot, {
+      mkdir: dependencies.mkdir,
+      source: dependencies.environment,
+      writeFile: dependencies.writeFile,
+    })
     let artifact = artifactSource
     let expectedVersion = registryArtifactVersion
 
@@ -449,7 +522,7 @@ export async function smokeProfile(overrides = {}) {
       const packed = await dependencies.runCommand(
         pnpmCommand,
         ['pack', '--json', '--pack-destination', smokeRoot],
-        { cwd: PACKAGE_ROOT, env: environment },
+        { cwd: PACKAGE_ROOT, env: environment, label: 'pnpm pack' },
       )
       const manifest = JSON.parse(
         await dependencies.readFile(join(PACKAGE_ROOT, 'package.json'), 'utf8'),
@@ -463,12 +536,12 @@ export async function smokeProfile(overrides = {}) {
     await dependencies.runCommand(
       dshCommand,
       ['plugin', '--profile', PROFILE, 'add', artifact],
-      { cwd: PACKAGE_ROOT, env: environment },
+      { cwd: PACKAGE_ROOT, env: environment, label: 'DSH plugin add' },
     )
     await dependencies.runCommand(
       dshCommand,
       ['--profile', PROFILE, '--dump-config'],
-      { cwd: PACKAGE_ROOT, env: environment },
+      { cwd: PACKAGE_ROOT, env: environment, label: 'DSH profile boot' },
     )
     await dependencies.runCommand(
       dshCommand,
@@ -480,7 +553,7 @@ export async function smokeProfile(overrides = {}) {
         'anban-dsh',
         'install-presets',
       ],
-      { cwd: PACKAGE_ROOT, env: environment },
+      { cwd: PACKAGE_ROOT, env: environment, label: 'Anban preset install' },
     )
 
     const presets = await dependencies.discoverPresets([
@@ -491,7 +564,7 @@ export async function smokeProfile(overrides = {}) {
     const dumped = await dependencies.runCommand(
       dshCommand,
       ['--profile', PROFILE, '--dump-config'],
-      { cwd: PACKAGE_ROOT, env: environment },
+      { cwd: PACKAGE_ROOT, env: environment, label: 'DSH profile validation' },
     )
     const bundleRows = requireBundleRows(
       await dependencies.parseConfig(dumped.stdout),

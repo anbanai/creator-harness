@@ -372,6 +372,7 @@ describe('DSH package manifest', () => {
         '@deepseek-ai/dsh-mcp-client': '0.1.0-rc.6',
         '@deepseek-ai/dsh-skill-filesystem': '0.1.0-rc.6',
         '@types/node': '22.20.0',
+        'cross-spawn': '7.0.6',
         'js-yaml': '4.3.1',
         typescript: '6.0.3',
         vitest: '4.1.8',
