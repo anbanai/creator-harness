@@ -27,6 +27,19 @@ generated Article or Seednote Preset. DSH-only code is limited to host
 composition, official Bundle/MCP adapters, credentials, the Preset manager, and
 the Skill provider.
 
+## Resolve DSH home
+
+Resolve and export the effective DSH home before any filesystem operation. The
+fallback below is the official default when the process does not already set
+`DSH_HOME`; it must not be left empty or unresolved. Create the home owner-only
+(`0700`), then keep its credential file at mode `0600` as described below:
+
+```bash
+export DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
+install -d -m 700 "$DSH_HOME"
+chmod 700 "$DSH_HOME"
+```
+
 ## Lifecycle boundary
 
 **Two steps, two scopes:** the Bundle is profile-local. Presets are global at
@@ -70,12 +83,10 @@ mapping containing this placeholder key and replace the placeholder locally:
 ANBAN_API_KEY: <value>
 ```
 
-On POSIX, keep the DSH home directory owner-only (`0700`) and the credential
-file at mode `0600`:
+On POSIX, keep the credential file at mode `0600`; the resolved DSH home is
+already owner-only (`0700`) from the initialization above:
 
 ```bash
-install -d -m 700 "$DSH_HOME"
-chmod 700 "$DSH_HOME"
 chmod 600 "$DSH_HOME/.credentials.yaml"
 ```
 
@@ -93,12 +104,15 @@ Preset, command argument, log, screenshot, test fixture, or generated artifact.
 
 Install only a published, immutable artifact. In priority order:
 
-1. **public npm package (primary)**: an exact published version of
-   `@anban/dsh-plugin`.
-2. **checksummed GitHub Release**: the exact `.tgz` and matching SHA-256 file
-   attached to the same version tag.
-3. **immutable Git tag or full commit**: an advanced source install whose
-   prepare build is explicitly approved and allowed to complete.
+1. **public npm package (primary)**: an exact stable SemVer specifier such as
+   `@anban/dsh-plugin@4.1.12`; do not use an unversioned package, dist-tag, or
+   version range.
+2. **checksummed GitHub Release**: the exact versioned
+   `anban-dsh-plugin-X.Y.Z.tgz` and matching SHA-256 file attached to the same
+   version tag.
+3. **immutable Git tag or full commit**: an advanced source install from the
+   approved `anbanai/creator-skills` repository whose prepare build is
+   explicitly approved and allowed to complete.
 
 Use only a version that resolves anonymously from npm or has completed release
 assets. An unreleased repository revision is not a published artifact.
@@ -128,15 +142,23 @@ shasum -a 256 -c "anban-dsh-plugin-${PUBLISHED_VERSION}.tgz.sha256"
 dsh plugin --profile "$ACTIVE_PROFILE" add "./anban-dsh-plugin-${PUBLISHED_VERSION}.tgz"
 ```
 
-The checksum file names the exact tarball. Do not install when verification
+The checksum file names the exact tarball. A tarball add must resolve to a
+versioned `anban-dsh-plugin-X.Y.Z.tgz` path or URL. A `file:` specifier is
+acceptable only when it names that exact archive, for example
+`file:/absolute/path/anban-dsh-plugin-4.1.12.tgz`; a `file:` directory and an
+arbitrarily named `.tgz` are not supported. Do not install when verification
 fails or when the asset tag and package version differ.
 
 ### Immutable Git source
 
-Git installs must name an immutable tag or full commit, never a branch. pnpm
-runs the package's `prepare` build for Git-hosted dependencies and can block
-that build until it is approved. Review the packages, approve builds in the
-same profile, then repeat the exact add command:
+Git installs must use the approved repository and name a full 40-character
+commit or an exact protected release tag, never a branch, `HEAD`, or floating
+repository URL. A Git tag can be moved unless repository protection prevents
+it, so verify the protected release tag and prefer the full commit SHA for the
+strongest immutable pin. pnpm runs the package's `prepare` build for Git-hosted
+dependencies and can block that build until it is approved. Review the
+packages, approve builds in the same profile, then repeat the exact add
+command:
 
 ```bash
 SOURCE_REF="replace-with-immutable-tag-or-full-40-character-commit"
@@ -156,20 +178,21 @@ structured result:
 
 ```bash
 pnpm pack --json
-PACKED_TARBALL="/absolute/path/from-the-filename-field.tgz"
+PACKED_TARBALL="/absolute/path/anban-dsh-plugin-4.1.12.tgz"
 dsh plugin --profile "$ACTIVE_PROFILE" add "$PACKED_TARBALL"
 ```
 
 Pass the exact tarball path reported in the `filename` field to the target
-profile, then boot and install Presets. Never install this plugin from a source
-directory with a `file:` specifier; a package-manager snapshot can otherwise
-exist without the generated runtime files.
+profile, then compose its configuration and install Presets. Never install this
+plugin from a source directory with a `file:` specifier, including an arbitrary
+source checkout directory; a package-manager snapshot can otherwise exist
+without the generated runtime files.
 
-## Initial installation and boot
+## Initial installation and configuration
 
-Install an exact public version into the selected Web or Desktop profile, boot
-that profile once to initialize or refresh its peer fallback, then materialize
-the global Presets:
+Install an exact public version into the selected Web or Desktop profile,
+compose that profile's configuration to prepare its peer fallback, then
+materialize the global Presets:
 
 ```bash
 PUBLISHED_VERSION="replace-with-published-version"
@@ -178,8 +201,8 @@ dsh --profile "$ACTIVE_PROFILE" --dump-config
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets
 ```
 
-The official profile boot is required only to initialize or refresh the
-profile's peer fallback before the first standalone Bundle CLI command.
+The dump-config step composes the selected profile configuration and prepares
+its peer fallback before the first standalone Bundle CLI command.
 
 `dsh plugin ... exec` runs the installed package bin from the profile's
 `node_modules/.bin`; it does not depend on the caller's `PATH`.
@@ -235,8 +258,8 @@ credential file into that backup.
 ## Upgrade
 
 Check every profile using the same `DSH_HOME` before changing the global
-Presets. Upgrade the profile-local Bundle first, boot it, explicitly reconcile
-Presets, and check status again:
+Presets. Upgrade the profile-local Bundle first, compose its configuration,
+explicitly reconcile Presets, and check status again:
 
 ```bash
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
@@ -306,7 +329,7 @@ The CLI prints stable, secret-safe operational codes:
 
 | Code | Meaning and recovery |
 | --- | --- |
-| `ERR_RUNTIME_MISSING` | An incomplete package or source install lacks a runtime entrypoint. Remove that profile dependency, install the exact verified npm version or packed `.tgz`, boot the profile, and rerun Preset installation. |
+| `ERR_RUNTIME_MISSING` | An incomplete package or source install lacks a runtime entrypoint. Remove that profile dependency, install the exact verified npm version or packed `.tgz`, compose the profile configuration, and rerun Preset installation. |
 | `ERR_PRESET_UNOWNED` | A target directory has no matching Anban ownership record. Inspect it; removal is refused, and replacement requires an explicit trust decision. |
 | `ERR_PRESET_MODIFIED` | An owned Preset differs from its recorded digest. Run status, back it up, and use `--force` only when replacement is intended. |
 | `ERR_PRESET_LOCKED` | Another mutation is active or ownership cannot yet be proven stale. Wait for that operation, then rerun status; do not disturb its lock. |

@@ -186,23 +186,54 @@ function expandDocVariables(value: string, variables: Map<string, string>) {
   })
 }
 
+function shellLogicalLines(block: string) {
+  const logicalLines: string[] = []
+  let current = ''
+  for (const rawLine of block.split(/\r?\n/)) {
+    const trimmed = rawLine.trim()
+    const continued = trimmed.endsWith('\\')
+    const fragment = continued ? trimmed.slice(0, -1).trimEnd() : trimmed
+    current = [current, fragment].filter(Boolean).join(' ')
+    if (!continued && current !== '') {
+      logicalLines.push(current)
+      current = ''
+    }
+  }
+  if (current !== '') logicalLines.push(current)
+  return logicalLines
+}
+
 function documentedPluginAddFindings(source: string) {
   const findings: string[] = []
   const variables = new Map<string, string>()
   const shellBlocks = source.matchAll(/```(?:bash|sh|shell)\n([\s\S]*?)```/g)
 
   for (const block of shellBlocks) {
-    for (const rawLine of (block[1] ?? '').split(/\r?\n/)) {
-      const line = rawLine.trim()
+    for (const line of shellLogicalLines(block[1] ?? '')) {
       const assignment = /^([A-Z_][A-Z0-9_]*)=["']([^"']*)["']$/.exec(line)
       if (assignment !== null) {
         variables.set(assignment[1] ?? '', assignment[2] ?? '')
         continue
       }
-      if (!line.startsWith('dsh plugin ')) continue
 
       const words = shellWords(line)
-      const addIndex = words.indexOf('add')
+      let commandIndex = 0
+      if (words[commandIndex] === '$') commandIndex += 1
+      while (
+        words[commandIndex] === 'command' ||
+        words[commandIndex] === 'env' ||
+        /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[commandIndex] ?? '')
+      ) {
+        commandIndex += 1
+      }
+      if (
+        words[commandIndex] !== 'dsh' ||
+        words[commandIndex + 1] !== 'plugin'
+      ) {
+        continue
+      }
+
+      const addIndex = words.indexOf('add', commandIndex + 2)
       if (addIndex === -1) continue
       const rawSpecifier = words[addIndex + 1]
       if (rawSpecifier === undefined) {
@@ -211,13 +242,26 @@ function documentedPluginAddFindings(source: string) {
       }
       const specifier = expandDocVariables(rawSpecifier, variables)
       const npmPackage =
-        specifier === '@anban/dsh-plugin' ||
-        /^@anban\/dsh-plugin@(?:replace-with-published-version|v?\d+\.\d+\.\d+)$/.test(
+        /^@anban\/dsh-plugin@(?:replace-with-published-version|(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(
           specifier,
         )
-      const tarball =
+      const localTarballPattern =
+        /(?:^|[/\\])anban-dsh-plugin-(?:replace-with-published-version|(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/
+      const fileTarball =
+        specifier.startsWith('file:') &&
+        localTarballPattern.test(specifier.slice('file:'.length))
+      const releaseTarballMatch =
+        /^https:\/\/github\.com\/royalmorty\/anbanwriter\/releases\/download\/v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\/anban-dsh-plugin-((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/.exec(
+          specifier,
+        )
+      const releaseTarball =
+        releaseTarballMatch !== null &&
+        releaseTarballMatch[1] === releaseTarballMatch[2]
+      const localTarball =
         !specifier.startsWith('file:') &&
-        /(?:^|[/\\])[^/\\]+\.tgz$/.test(specifier)
+        !specifier.includes('://') &&
+        localTarballPattern.test(specifier)
+      const tarball = fileTarball || releaseTarball || localTarball
       const gitMatch =
         /^git\+https:\/\/github\.com\/anbanai\/creator-skills\.git#(.+)$/.exec(
           specifier,
@@ -226,7 +270,7 @@ function documentedPluginAddFindings(source: string) {
       const immutableGit =
         gitRef !== undefined &&
         (gitRef === 'replace-with-immutable-tag-or-full-40-character-commit' ||
-          /^v\d+\.\d+\.\d+$/.test(gitRef) ||
+          /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(gitRef) ||
           /^[0-9a-f]{40}$/.test(gitRef))
 
       if (!npmPackage && !tarball && !immutableGit) {
@@ -528,6 +572,8 @@ dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
     for (const allowed of [
       '"@anban/dsh-plugin@4.1.12"',
       '"/tmp/anban-dsh-plugin-4.1.12.tgz"',
+      '"file:/tmp/anban-dsh-plugin-4.1.12.tgz"',
+      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.12/anban-dsh-plugin-4.1.12.tgz"',
       '"git+https://github.com/anbanai/creator-skills.git#v4.1.12"',
       '"git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"',
     ]) {
@@ -540,14 +586,86 @@ dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
       './plugins',
       '/tmp/creator-skills',
       'file:../creator-skills',
+      'file:/tmp/creator-skills',
       'file:/tmp/anban-dsh-plugin.tgz',
+      '"@anban/dsh-plugin"',
+      '"@anban/dsh-plugin@latest"',
+      '"@anban/dsh-plugin@^4.1.12"',
+      '"@anban/dsh-plugin@01.2.3"',
+      '"/tmp/arbitrary-plugin-4.1.12.tgz"',
+      '"https://example.com/anban-dsh-plugin-4.1.12.tgz"',
+      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.12/anban-dsh-plugin-4.1.13.tgz"',
       '"git+https://github.com/anbanai/creator-skills.git#main"',
+      '"git+https://github.com/anbanai/creator-skills.git#HEAD"',
+      '"git+https://github.com/anbanai/creator-skills.git#v01.2.3"',
+      '"git+https://github.com/anbanai/creator-skills.git"',
     ]) {
       expect(
         documentedPluginAddFindings(fixture(forbidden)),
         forbidden,
       ).not.toEqual([])
     }
+
+    for (const source of [
+      `\`\`\`bash
+$ dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin"
+\`\`\``,
+      `\`\`\`bash
+CHECK_ONLY=1 dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/arbitrary-plugin-4.1.12.tgz"
+\`\`\``,
+      `\`\`\`bash
+command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#main"
+\`\`\``,
+      `\`\`\`bash
+dsh plugin --profile "$ACTIVE_PROFILE" add \\
+  "file:/tmp/creator-skills"
+\`\`\``,
+    ]) {
+      expect(documentedPluginAddFindings(source), source).not.toEqual([])
+    }
+    for (const source of [
+      `\`\`\`bash
+$ dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.12"
+\`\`\``,
+      `\`\`\`bash
+CHECK_ONLY=1 dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.12.tgz"
+\`\`\``,
+      `\`\`\`bash
+command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"
+\`\`\``,
+      `\`\`\`bash
+dsh plugin --profile "$ACTIVE_PROFILE" add \\
+  "https://github.com/royalmorty/anbanwriter/releases/download/v4.1.12/anban-dsh-plugin-4.1.12.tgz"
+\`\`\``,
+    ]) {
+      expect(documentedPluginAddFindings(source), source).toEqual([])
+    }
+  })
+
+  it('resolves an effective DSH home before any home filesystem use', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+    const definition = 'export DSH_HOME="${DSH_HOME:-$HOME/.dsh}"'
+    const definitionIndex = guide.indexOf(definition)
+
+    expect(guide.match(/^export DSH_HOME=.*$/gm)).toEqual([definition])
+    expect(definitionIndex).toBeGreaterThanOrEqual(0)
+    expect(guide.slice(0, definitionIndex)).not.toContain('$DSH_HOME')
+    expect(guide).not.toMatch(/^DSH_HOME=(?:""|''|"?\$DSH_HOME"?)$/gm)
+
+    const filesystemLines = guide.match(
+      /^(?:install|mkdir|chmod|mv|cp|rm)\b[^\n]*\$DSH_HOME[^\n]*$/gm,
+    ) ?? []
+    expect(filesystemLines.length).toBeGreaterThan(0)
+    expect(guide.indexOf(filesystemLines[0] ?? '')).toBeGreaterThan(definitionIndex)
+    for (const line of filesystemLines) {
+      expect(line).toMatch(/"\$DSH_HOME(?:\/[^"\n]*)?"/)
+    }
+    expect(guide).toContain('install -d -m 700 "$DSH_HOME"')
+    expect(guide).toContain('chmod 700 "$DSH_HOME"')
+    expect(guide).toContain('chmod 600 "$DSH_HOME/.credentials.yaml"')
+    expect(guide).toContain(
+      'mv -- "$DSH_HOME/.agent-presets/.anban-dsh.lock" "$LOCK_QUARANTINE"',
+    )
   })
 
   it('documents both executable Preset management surfaces', async () => {
@@ -676,23 +794,23 @@ dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
     expect(guide).not.toMatch(/rm\s+(?:-[^\s]*r[^\s]*\s+)?[^\n]*\.anban-dsh\.lock/)
   })
 
-  it('boots the selected profile before invoking the standalone Bundle CLI', async () => {
+  it('composes the selected profile before invoking the standalone Bundle CLI', async () => {
     const guide = await readFile(installationGuideUrl, 'utf8')
 
     expect(bashBlockUnder(guide, '## Select the active profile')).toEqual([
       'ACTIVE_PROFILE="replace-with-web-or-desktop-profile-name"',
     ])
-    expect(bashBlockUnder(guide, '## Initial installation and boot')).toEqual([
+    expect(bashBlockUnder(guide, '## Initial installation and configuration')).toEqual([
       'PUBLISHED_VERSION="replace-with-published-version"',
       'dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
       'dsh --profile "$ACTIVE_PROFILE" --dump-config',
       'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets',
     ])
     expect(guide.replace(/\s+/g, ' ')).toContain(
-      'The official profile boot is required only to initialize or refresh ' +
-        "the profile's peer fallback before the first standalone Bundle CLI " +
-        'command.',
+      'The dump-config step composes the selected profile configuration and ' +
+        'prepares its peer fallback before the first standalone Bundle CLI command.',
     )
+    expect(guide).not.toContain('official profile boot')
   })
 
   it('documents the destructive removal behavior for modified owned Presets', async () => {
