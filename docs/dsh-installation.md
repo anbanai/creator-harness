@@ -24,14 +24,17 @@ Install the plugin into the Web profile and materialize its generated Presets:
 
 ```bash
 dsh plugin --profile web add @anban/dsh-plugin
+dsh --profile web --dump-config
 dsh plugin --profile web exec anban-dsh install-presets
 ```
 
+The official profile boot is required only to initialize or refresh the
+profile's peer fallback before the first standalone Bundle CLI command.
 `dsh plugin ... exec` runs the installed package bin from the Web profile's
 `node_modules/.bin`; it does not depend on the caller's `PATH`.
 
 In an active-profile terminal, and only when that profile's
-`node_modules/.bin` is already on `PATH`, the second command can use this
+`node_modules/.bin` is already on `PATH`, the final command can use this
 shorthand:
 
 ```bash
@@ -48,6 +51,7 @@ that exact name before running the commands:
 ```bash
 ACTIVE_PROFILE="replace-with-desktop-profile-name"
 dsh plugin --profile "$ACTIVE_PROFILE" add @anban/dsh-plugin
+dsh --profile "$ACTIVE_PROFILE" --dump-config
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets
 ```
 

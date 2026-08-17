@@ -144,18 +144,6 @@ async function defaultImportInstalledExport(profileDir, specifier) {
   return import(pathToFileURL(resolved).href)
 }
 
-async function defaultHealProfileFallback(dshHome) {
-  const requireFromPackage = createRequire(join(PACKAGE_ROOT, 'package.json'))
-  const dshManifest = requireFromPackage.resolve(
-    '@deepseek-ai/dsh/package.json',
-  )
-  const requireFromDsh = createRequire(dshManifest)
-  const appBoot = await import(
-    pathToFileURL(requireFromDsh.resolve('@deepseek-ai/dsh-app-boot')).href
-  )
-  appBoot.healProfilesModuleFallback(dshManifest, dshHome)
-}
-
 function packTarballFrom(stdout, smokeRoot) {
   const line = stdout
     .split(/\r?\n/)
@@ -246,7 +234,6 @@ export async function smokeProfile(overrides = {}) {
   const dependencies = {
     access,
     discoverPresets: defaultDiscoverPresets,
-    healProfileFallback: defaultHealProfileFallback,
     importInstalledExport: defaultImportInstalledExport,
     log: console.log,
     mkdtemp,
@@ -282,7 +269,11 @@ export async function smokeProfile(overrides = {}) {
       ['plugin', '--profile', PROFILE, 'add', packTarball],
       { cwd: PACKAGE_ROOT, env },
     )
-    await dependencies.healProfileFallback(dshHome)
+    await dependencies.runCommand(
+      dshCommand,
+      ['--profile', PROFILE, '--dump-config'],
+      { cwd: PACKAGE_ROOT, env },
+    )
     const installedCommand = await dependencies.resolveInstalledCommand(
       profileDir,
     )

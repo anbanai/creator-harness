@@ -117,7 +117,7 @@ describe('DSH profile smoke script', () => {
     ])
     const access = vi.fn(async () => undefined)
     const healProfileFallback = vi.fn(async () => {
-      events.push('heal-profile-fallback')
+      throw new Error('profile smoke must not call the internal healer')
     })
     const mkdtemp = vi.fn(async () => smokeRoot)
     const rm = vi.fn(async () => undefined)
@@ -159,6 +159,10 @@ describe('DSH profile smoke script', () => {
           args: ['plugin', '--profile', 'web', 'add', packTarball],
         },
         {
+          command: dshCommand,
+          args: ['--profile', 'web', '--dump-config'],
+        },
+        {
           command: installedCommand,
           args: ['install-presets'],
         },
@@ -172,14 +176,14 @@ describe('DSH profile smoke script', () => {
     for (const call of commandCalls.slice(1)) {
       expect(call.options.env.DSH_HOME).toBe(dshHome)
     }
-    expect(healProfileFallback).toHaveBeenCalledWith(dshHome)
+    expect(healProfileFallback).not.toHaveBeenCalled()
     expect(resolvePnpmCommand).toHaveBeenCalledOnce()
     expect(resolveDshCommand).toHaveBeenCalledOnce()
     expect(resolveInstalledCommand).toHaveBeenCalledWith(profileDir)
     expect(events).toEqual([
       `command:${nodeRuntime}:${pnpmCommand.prefixArgs[0]}:pack --pack-destination ${smokeRoot}`,
       `command:${nodeRuntime}:${dshCommand.prefixArgs[0]}:plugin --profile web add ${packTarball}`,
-      'heal-profile-fallback',
+      `command:${nodeRuntime}:${dshCommand.prefixArgs[0]}:--profile web --dump-config`,
       `command:${nodeRuntime}:${installedCommand.prefixArgs[0]}:install-presets`,
       `command:${nodeRuntime}:${dshCommand.prefixArgs[0]}:--profile web --dump-config`,
     ])

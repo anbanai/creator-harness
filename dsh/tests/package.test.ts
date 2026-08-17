@@ -16,6 +16,10 @@ import { describe, expect, it } from 'vitest'
 
 const packageUrl = new URL('../../package.json', import.meta.url)
 const workspaceUrl = new URL('../../pnpm-workspace.yaml', import.meta.url)
+const installationGuideUrl = new URL(
+  '../../docs/dsh-installation.md',
+  import.meta.url,
+)
 const cordisPatchUrl = new URL('../cordis.patch.yml', import.meta.url)
 const cliShimPath = fileURLToPath(
   new URL('../bin/anban-dsh.js', import.meta.url),
@@ -61,6 +65,21 @@ function publishedRuntimeFindings(source: string) {
     }
   }
   return findings
+}
+
+function bashBlockUnder(source: string, heading: string) {
+  const sectionStart = source.indexOf(`${heading}\n`)
+  expect(sectionStart, `missing ${heading}`).toBeGreaterThanOrEqual(0)
+  const nextSection = source.indexOf('\n## ', sectionStart + heading.length)
+  const section = source.slice(
+    sectionStart,
+    nextSection === -1 ? undefined : nextSection,
+  )
+  const match = section.match(/```bash\n([^`]+)```/)
+  expect(match, `missing bash block under ${heading}`).not.toBeNull()
+  const block = match?.[1]
+  if (block === undefined) return []
+  return block.trim().split('\n')
 }
 
 async function createShimFixture(cliSource?: string) {
@@ -194,6 +213,27 @@ describe('DSH package manifest', () => {
     - id: anban-preset-manager
       name: '@anban/dsh-plugin/preset-manager'
 `)
+  })
+
+  it('boots each fresh profile before invoking the standalone Bundle CLI', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+
+    expect(bashBlockUnder(guide, '## Web profile')).toEqual([
+      'dsh plugin --profile web add @anban/dsh-plugin',
+      'dsh --profile web --dump-config',
+      'dsh plugin --profile web exec anban-dsh install-presets',
+    ])
+    expect(bashBlockUnder(guide, '## Desktop active profile')).toEqual([
+      'ACTIVE_PROFILE="replace-with-desktop-profile-name"',
+      'dsh plugin --profile "$ACTIVE_PROFILE" add @anban/dsh-plugin',
+      'dsh --profile "$ACTIVE_PROFILE" --dump-config',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets',
+    ])
+    expect(guide.replace(/\s+/g, ' ')).toContain(
+      'The official profile boot is required only to initialize or refresh ' +
+        "the profile's peer fallback before the first standalone Bundle CLI " +
+        'command.',
+    )
   })
 
   it('scans every built runtime payload during the check sequence', async () => {
