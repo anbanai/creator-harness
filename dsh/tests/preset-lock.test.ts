@@ -624,6 +624,152 @@ describe('preset lock acquisition', () => {
     await lock.release()
   })
 
+  it('does not restore a live claim after its publishing acquisition fails', async () => {
+    const fixture = await createFixture()
+    const canonicalClaimPath = join(
+      lockPath(fixture),
+      '.anban-dsh.reclaim-claim',
+    )
+    const contenderBRetiredPath = join(
+      lockPath(fixture),
+      '.anban-dsh.reclaim-retired-inverse-b',
+    )
+    let signalBReady!: () => void
+    const bReady = new Promise<void>((resolveReady) => {
+      signalBReady = resolveReady
+    })
+    let startBMove!: () => void
+    const bMove = new Promise<void>((resolveMove) => {
+      startBMove = resolveMove
+    })
+    let signalBMoved!: () => void
+    const bMoved = new Promise<void>((resolveMoved) => {
+      signalBMoved = resolveMoved
+    })
+    let finishB!: () => void
+    const bFinish = new Promise<void>((resolveFinish) => {
+      finishB = resolveFinish
+    })
+    let signalCPublished!: () => void
+    const cPublished = new Promise<void>((resolvePublished) => {
+      signalCPublished = resolvePublished
+    })
+    let finishCPublish!: () => void
+    const cPublishFinish = new Promise<void>((resolveFinish) => {
+      finishCPublish = resolveFinish
+    })
+    let signalCWaiting!: () => void
+    const cWaiting = new Promise<void>((resolveWaiting) => {
+      signalCWaiting = resolveWaiting
+    })
+    let resumeCWait!: () => void
+    const cWaitResume = new Promise<void>((resolveResume) => {
+      resumeCWait = resolveResume
+    })
+    let bPaused = false
+    let cPaused = false
+    let cWaitSignaled = false
+    let cMonotonicMilliseconds = 1_000
+    await installLock(fixture, validOwner())
+    await installClaim(fixture, validClaim())
+
+    const contenderB = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        fileSystem: {
+          rename: async (source, destination) => {
+            if (
+              !bPaused &&
+              source === canonicalClaimPath &&
+              destination === contenderBRetiredPath
+            ) {
+              bPaused = true
+              signalBReady()
+              await bMove
+              await rename(source, destination)
+              signalBMoved()
+              await bFinish
+              return
+            }
+            await rename(source, destination)
+          },
+        },
+        isPidAlive: () => false,
+        pid: 62_011,
+        randomOwnerId: () => 'inverse-b',
+      }),
+    )
+    await bReady
+
+    const contenderC = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        clock: { monotonicNow: () => cMonotonicMilliseconds },
+        fileSystem: {
+          rename: async (source, destination) => {
+            await rename(source, destination)
+            if (
+              !cPaused &&
+              source.endsWith('.anban-dsh.reclaim-stage-inverse-c') &&
+              destination === canonicalClaimPath
+            ) {
+              cPaused = true
+              signalCPublished()
+              await cPublishFinish
+            }
+          },
+        },
+        isPidAlive: () => false,
+        pid: 62_012,
+        randomOwnerId: () => 'inverse-c',
+        retryIntervalMs: 25,
+        timeoutMs: 100,
+        wait: async (milliseconds) => {
+          if (!cWaitSignaled) {
+            cWaitSignaled = true
+            signalCWaiting()
+            await cWaitResume
+          }
+          cMonotonicMilliseconds += milliseconds
+        },
+      }),
+    )
+    const cOutcomePromise = contenderC.then(
+      (lock) => ({ kind: 'acquired' as const, lock }),
+      (error: unknown) => ({ error, kind: 'rejected' as const }),
+    )
+    await cPublished
+    startBMove()
+    await bMoved
+    finishCPublish()
+    const cState = await Promise.race([
+      cWaiting.then(() => 'waiting' as const),
+      cOutcomePromise.then(() => 'settled' as const),
+    ])
+    finishB()
+    await expect(contenderB).rejects.toMatchObject({
+      code: 'ERR_PRESET_LOCK_INVALID',
+    })
+    if (cState === 'waiting') resumeCWait()
+    const cOutcome = await cOutcomePromise
+    if (cOutcome.kind === 'acquired') {
+      await cOutcome.lock.release()
+    } else {
+      expect(cOutcome.error).toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+      expect(await pathExists(canonicalClaimPath)).toBe(false)
+    }
+
+    const laterLock = await acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        isPidAlive: (pid) => pid === 62_012,
+        randomOwnerId: () => 'inverse-later',
+        timeoutMs: 0,
+      }),
+    )
+    await laterLock.release()
+  })
+
   it('keeps a complete same-host live reclaim claim intact', async () => {
     const fixture = await createFixture()
     const claim = validClaim()
@@ -1227,10 +1373,9 @@ describe('preset lock refusal and fault handling', () => {
     expect(await pathExists(lockPath(fixture))).toBe(false)
   })
 
-  it('leaves a crash-after-claim lock invalid instead of reclaiming it again', async () => {
+  it('cleans its published claim after a pre-quarantine failure', async () => {
     const fixture = await createFixture()
     await installLock(fixture, validOwner())
-    const claimName = '.anban-dsh.reclaim-claim'
 
     await expect(
       acquirePresetLock(
@@ -1248,10 +1393,7 @@ describe('preset lock refusal and fault handling', () => {
     ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
 
     expect(await pathExists(ownerPath(fixture))).toBe(true)
-    expect((await readdir(lockPath(fixture))).sort()).toEqual([
-      claimName,
-      OWNER_NAME,
-    ])
+    expect(await readdir(lockPath(fixture))).toEqual([OWNER_NAME])
     const recovered = await acquirePresetLock(
       fixture.presetRoot,
       dependencies({

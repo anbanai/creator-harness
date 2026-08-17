@@ -894,10 +894,112 @@ async function restoreRetiredReclaimClaim(
   }
 }
 
+async function readReclaimClaimIfPresent(
+  lockPath: string,
+  claimPath: string,
+  dependencies: ResolvedDependencies,
+): Promise<PresetReclaimClaim | null> {
+  if (!(await pathExistsNoFollow(claimPath, dependencies))) return null
+  return readReclaimClaim(lockPath, claimPath, dependencies)
+}
+
+async function waitForExactReclaimClaim(
+  lockPath: string,
+  claimPath: string,
+  expectedClaim: PresetReclaimClaim,
+  deadline: number,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  let lastMonotonicReading = monotonicNow(dependencies)
+  while (true) {
+    await assertSafeQuarantine(lockPath, dependencies)
+    const storedClaim = await readReclaimClaimIfPresent(
+      lockPath,
+      claimPath,
+      dependencies,
+    )
+    if (storedClaim !== null) {
+      if (!reclaimClaimsMatch(storedClaim, expectedClaim)) {
+        throw invalidLock()
+      }
+      return
+    }
+    const currentOwner = await readOwnerFromLock(lockPath, dependencies)
+    if (!ownersMatch(currentOwner, expectedClaim.expectedOwner)) {
+      throw invalidLock()
+    }
+    const beforeWait = monotonicNow(dependencies)
+    if (beforeWait < lastMonotonicReading) throw operationFailure()
+    if (beforeWait >= deadline) throw invalidLock()
+    const waitMilliseconds = Math.min(
+      dependencies.retryIntervalMs,
+      deadline - beforeWait,
+    )
+    try {
+      await dependencies.wait(waitMilliseconds)
+    } catch (error) {
+      throw operationFailure(error)
+    }
+    const afterWait = monotonicNow(dependencies)
+    if (afterWait <= beforeWait) throw operationFailure()
+    lastMonotonicReading = afterWait
+  }
+}
+
+async function reconcilePublishedReclaimClaim(
+  presetRoot: string,
+  lockPath: string,
+  claimPath: string,
+  expectedClaim: PresetReclaimClaim,
+  deadline: number,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  let lastMonotonicReading = monotonicNow(dependencies)
+  while (true) {
+    await assertSafePresetRoot(presetRoot, dependencies)
+    if (!(await pathExistsNoFollow(lockPath, dependencies))) return
+    await assertSafeQuarantine(lockPath, dependencies)
+    const currentOwner = await readOwnerFromLock(lockPath, dependencies)
+    if (!ownersMatch(currentOwner, expectedClaim.expectedOwner)) return
+    const storedClaim = await readReclaimClaimIfPresent(
+      lockPath,
+      claimPath,
+      dependencies,
+    )
+    if (storedClaim !== null) {
+      if (!reclaimClaimsMatch(storedClaim, expectedClaim)) return
+      await removeOwnedReclaimClaim(
+        presetRoot,
+        lockPath,
+        claimPath,
+        expectedClaim,
+        dependencies,
+      )
+      return
+    }
+    const beforeWait = monotonicNow(dependencies)
+    if (beforeWait < lastMonotonicReading) throw operationFailure()
+    if (beforeWait >= deadline) return
+    const waitMilliseconds = Math.min(
+      dependencies.retryIntervalMs,
+      deadline - beforeWait,
+    )
+    try {
+      await dependencies.wait(waitMilliseconds)
+    } catch (error) {
+      throw operationFailure(error)
+    }
+    const afterWait = monotonicNow(dependencies)
+    if (afterWait <= beforeWait) throw operationFailure()
+    lastMonotonicReading = afterWait
+  }
+}
+
 async function publishReclaimClaim(
   lockPath: string,
   claimPath: string,
   claim: PresetReclaimClaim,
+  deadline: number,
   dependencies: ResolvedDependencies,
 ): Promise<boolean> {
   const stagePath = join(
@@ -1019,8 +1121,13 @@ async function publishReclaimClaim(
       retired,
       dependencies,
     )
-    const published = await readReclaimClaim(lockPath, claimPath, dependencies)
-    if (!reclaimClaimsMatch(published, claim)) throw invalidLock()
+    await waitForExactReclaimClaim(
+      lockPath,
+      claimPath,
+      claim,
+      deadline,
+      dependencies,
+    )
     return true
   } catch (error) {
     if (stageCreated) {
@@ -1067,6 +1174,7 @@ async function reclaimDeadOwner(
   presetRoot: string,
   lockPath: string,
   expectedOwner: PresetLockOwner,
+  deadline: number,
   dependencies: ResolvedDependencies,
 ): Promise<boolean> {
   const claimPath = join(lockPath, RECLAIM_CLAIM_NAME)
@@ -1092,20 +1200,35 @@ async function reclaimDeadOwner(
     lockPath,
     claimPath,
     reclaimClaim,
+    deadline,
     dependencies,
   ))) return false
 
-  let storedClaim: PresetReclaimClaim
   let currentOwner: PresetLockOwner
   try {
     await assertSafePresetRoot(presetRoot, dependencies)
     await assertSafeQuarantine(lockPath, dependencies)
-    storedClaim = await readReclaimClaim(lockPath, claimPath, dependencies)
-    if (!reclaimClaimsMatch(storedClaim, reclaimClaim)) {
-      throw invalidLock()
-    }
+    await waitForExactReclaimClaim(
+      lockPath,
+      claimPath,
+      reclaimClaim,
+      deadline,
+      dependencies,
+    )
     currentOwner = await readOwnerFromLock(lockPath, dependencies)
   } catch (error) {
+    try {
+      await reconcilePublishedReclaimClaim(
+        presetRoot,
+        lockPath,
+        claimPath,
+        reclaimClaim,
+        deadline,
+        dependencies,
+      )
+    } catch (cleanupError) {
+      throw invalidLock(new AggregateError([error, cleanupError]))
+    }
     throw isOperationalError(error) ? error : invalidLock(error)
   }
   if (!ownersMatch(currentOwner, expectedOwner)) {
@@ -1140,6 +1263,18 @@ async function reclaimDeadOwner(
     }
     await dependencies.fileSystem.rename(lockPath, quarantinePath)
   } catch (error) {
+    try {
+      await reconcilePublishedReclaimClaim(
+        presetRoot,
+        lockPath,
+        claimPath,
+        reclaimClaim,
+        deadline,
+        dependencies,
+      )
+    } catch (cleanupError) {
+      throw invalidLock(new AggregateError([error, cleanupError]))
+    }
     if (hasErrno(error, 'ENOENT')) {
       return false
     }
@@ -1178,6 +1313,18 @@ async function reclaimDeadOwner(
       )
     } catch (restoreError) {
       throw invalidLock(new AggregateError([error, restoreError]))
+    }
+    try {
+      await reconcilePublishedReclaimClaim(
+        presetRoot,
+        lockPath,
+        claimPath,
+        reclaimClaim,
+        deadline,
+        dependencies,
+      )
+    } catch (cleanupError) {
+      throw invalidLock(new AggregateError([error, cleanupError]))
     }
     throw invalidLock(error)
   }
@@ -1447,6 +1594,7 @@ export async function acquirePresetLock(
           resolvedRoot,
           lockPath,
           owner,
+          deadline,
           dependencies,
         )
       } catch (error) {
