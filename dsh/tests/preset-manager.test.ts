@@ -14,6 +14,7 @@ const presetOperations = vi.hoisted(() => ({
 vi.mock('../src/presets.js', () => presetOperations)
 
 import { apply, inject, name } from '../src/preset-manager.js'
+import { OperationalError } from '../src/operational-error.js'
 
 const SOURCE_DIGEST = '0123456789abcdef'.repeat(4)
 const INSTALLED_DIGEST = 'fedcba9876543210'.repeat(4)
@@ -219,9 +220,57 @@ describe('preset manager handlers', () => {
 
       expect(result).toEqual({
         kind: 'error',
-        text: 'Anban preset operation failed.',
+        text: 'ERR_PRESET_OPERATION: Anban preset operation failed.',
       })
       expect(JSON.stringify(result)).not.toContain('super-secret')
     },
   )
+
+  it('uses the same formatter as the CLI for known operational errors', async () => {
+    presetOperations.installPresets.mockRejectedValue(
+      new OperationalError(
+        'ERR_PRESET_MODIFIED',
+        'The Article preset has local changes.',
+        {
+          cause: new Error('Authorization Bearer leaked-secret'),
+          recovery: 'Rerun with --force after reviewing those changes.',
+        },
+      ),
+    )
+    const fake = createContext()
+    apply(fake.context)
+
+    const result = await fake.definitions[0]!.handler(invocation(''))
+
+    expect(result).toEqual({
+      kind: 'error',
+      text: 'ERR_PRESET_MODIFIED: The Article preset has local changes. Rerun with --force after reviewing those changes.',
+    })
+    expect(JSON.stringify(result)).not.toContain('leaked-secret')
+  })
+
+  it('accepts injected debug configuration without mutating process state', async () => {
+    const failure = new OperationalError(
+      'ERR_PRESET_LOCKED',
+      'Another preset operation is running.',
+    )
+    failure.stack = [
+      'OperationalError: Another preset operation is running.',
+      '    at Authorization Bearer leaked-debug-secret',
+    ].join('\n')
+    presetOperations.installPresets.mockRejectedValue(failure)
+    const fake = createContext()
+    apply(fake.context, { environment: { ANBAN_DSH_DEBUG: '1' } })
+
+    const result = await fake.definitions[0]!.handler(invocation(''))
+
+    expect(result).toEqual({
+      kind: 'error',
+      text: [
+        'ERR_PRESET_LOCKED: Another preset operation is running.',
+        'OperationalError: Another preset operation is running.',
+        'at Authorization: [REDACTED]',
+      ].join('\n'),
+    })
+  })
 })

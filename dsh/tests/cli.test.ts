@@ -9,6 +9,7 @@ const presetOperations = vi.hoisted(() => ({
 vi.mock('../src/presets.js', () => presetOperations)
 
 import { runCLI } from '../src/cli.js'
+import { OperationalError } from '../src/operational-error.js'
 
 const SOURCE_DIGEST = '0123456789abcdef'.repeat(4)
 const INSTALLED_DIGEST = 'fedcba9876543210'.repeat(4)
@@ -171,7 +172,7 @@ describe('runCLI output', () => {
     },
   )
 
-  it('returns one and sanitizes operational failures', async () => {
+  it('returns one and maps unknown failures to the stable operation code', async () => {
     presetOperations.installPresets.mockRejectedValue(
       new Error('request failed: token=credential-secret'),
     )
@@ -179,7 +180,57 @@ describe('runCLI output', () => {
 
     await expect(runCLI(['install-presets'], io)).resolves.toBe(1)
 
-    expect(io.error).toHaveBeenCalledWith('anban-dsh: preset operation failed')
+    expect(io.error).toHaveBeenCalledWith(
+      'ERR_PRESET_OPERATION: Anban preset operation failed.',
+    )
     expect(JSON.stringify(io.error.mock.calls)).not.toContain('credential-secret')
+  })
+
+  it('preserves known codes and recovery through the shared formatter', async () => {
+    presetOperations.installPresets.mockRejectedValue(
+      new OperationalError(
+        'ERR_PRESET_MODIFIED',
+        'The Article preset has local changes.',
+        {
+          cause: new Error('Authorization Bearer leaked-secret'),
+          recovery: 'Rerun with --force after reviewing those changes.',
+        },
+      ),
+    )
+    const io = createIO()
+
+    await expect(runCLI(['install-presets'], io)).resolves.toBe(1)
+
+    expect(io.error).toHaveBeenCalledWith(
+      'ERR_PRESET_MODIFIED: The Article preset has local changes. Rerun with --force after reviewing those changes.',
+    )
+    expect(JSON.stringify(io.error.mock.calls)).not.toContain('leaked-secret')
+  })
+
+  it('accepts injected debug configuration without mutating process state', async () => {
+    const failure = new OperationalError(
+      'ERR_PRESET_LOCKED',
+      'Another preset operation is running.',
+    )
+    failure.stack = [
+      'OperationalError: Another preset operation is running.',
+      '    at Authorization Bearer leaked-debug-secret',
+    ].join('\n')
+    presetOperations.installPresets.mockRejectedValue(failure)
+    const io = createIO()
+
+    await expect(
+      runCLI(['install-presets'], io, {
+        environment: { ANBAN_DSH_DEBUG: '1' },
+      }),
+    ).resolves.toBe(1)
+
+    expect(io.error).toHaveBeenCalledWith(
+      [
+        'ERR_PRESET_LOCKED: Another preset operation is running.',
+        'OperationalError: Another preset operation is running.',
+        'at Authorization: [REDACTED]',
+      ].join('\n'),
+    )
   })
 })

@@ -4,6 +4,11 @@ import {
   statusPresets,
   type PresetStatus,
 } from './presets.js'
+import {
+  formatOperationalError,
+  isDshDebugEnabled,
+  type OperationalDiagnosticsOptions,
+} from './operational-error.js'
 
 const DIGEST_PREFIX_LENGTH = 12
 const DIGEST_PATTERN = /^[a-f0-9]{64}$/
@@ -60,6 +65,7 @@ function invalidCommand(io: Pick<Console, 'error'>): number {
 export async function runCLI(
   argv: readonly string[],
   io: Pick<Console, 'log' | 'error'> = console,
+  options: OperationalDiagnosticsOptions = {},
 ): Promise<number> {
   try {
     if (argv.length === 1 && argv[0] === 'install-presets') {
@@ -97,8 +103,12 @@ export async function runCLI(
     }
 
     return invalidCommand(io)
-  } catch {
-    io.error('anban-dsh: preset operation failed')
+  } catch (error) {
+    io.error(
+      formatOperationalError(error, {
+        debug: isDshDebugEnabled(options.environment),
+      }),
+    )
     return 1
   }
 }
