@@ -66,6 +66,11 @@ Check whether the Web profile's generated Presets are current:
 dsh plugin --profile web exec anban-dsh status
 ```
 
+remove-presets removes Anban-owned Presets even if they are modified. Run the
+profile-explicit status command and back up any local modifications from
+`$DSH_HOME/.agent-presets/<id>` before removing Presets. It refuses to remove
+unowned Preset directories.
+
 Remove only the Web profile's Anban-generated Presets before removing its
 plugin dependency:
 
@@ -82,10 +87,6 @@ dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets
 dsh plugin --profile "$ACTIVE_PROFILE" remove @anban/dsh-plugin
 ```
-
-remove-presets removes Anban-owned Presets even if they are modified. Run the
-profile-explicit status command and back up any local modifications before
-removing Presets. It refuses to remove unowned Preset directories.
 
 ## Git-source installs
 

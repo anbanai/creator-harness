@@ -239,16 +239,25 @@ describe('DSH package manifest', () => {
   it('documents the destructive removal behavior for modified owned Presets', async () => {
     const guide = await readFile(installationGuideUrl, 'utf8')
     const normalized = guide.replace(/\s+/g, ' ')
+    const warning =
+      'remove-presets removes Anban-owned Presets even if they are modified.'
+    const warningIndex = guide.indexOf(warning)
+    const backupPathIndex = guide.indexOf('$DSH_HOME/.agent-presets/<id>')
+    const removalCommands = [
+      ...guide.matchAll(
+        /^dsh plugin --profile .* exec anban-dsh remove-presets$/gm,
+      ),
+    ]
 
-    expect(guide).toContain(
-      'dsh plugin --profile web exec anban-dsh remove-presets',
-    )
-    expect(guide).toContain(
-      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets',
-    )
-    expect(normalized).toMatch(
-      /remove-presets removes Anban-owned Presets even if they are modified/i,
-    )
+    expect(removalCommands).toHaveLength(2)
+    expect(warningIndex).toBeGreaterThanOrEqual(0)
+    for (const command of removalCommands) {
+      expect(warningIndex).toBeLessThan(command.index)
+    }
+    expect(backupPathIndex).toBeGreaterThan(warningIndex)
+    for (const command of removalCommands) {
+      expect(backupPathIndex).toBeLessThan(command.index)
+    }
     expect(normalized).toMatch(
       /run .*status.*back up .*local modifications.*before removing/i,
     )
