@@ -31,8 +31,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "vitest run",
     "prepare": "pnpm run build",
+    "prepack": "pnpm run build && pnpm run verify:source",
+    "verify:source": "node dsh/scripts/package-integrity.mjs source",
+    "verify:pack": "node dsh/scripts/package-integrity.mjs pack",
     "smoke:profile": "pnpm run build && node dsh/scripts/smoke-profile.mjs",
-    "check": "pnpm run typecheck && pnpm run build && pnpm run test && pnpm pack --dry-run"
+    "check": "pnpm run typecheck && pnpm run build && pnpm run test && pnpm run verify:pack && pnpm run smoke:profile"
   },
   "exports": {
     "./anban-mcp": {

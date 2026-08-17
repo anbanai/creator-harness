@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import {
+  cp,
   copyFile,
   mkdir,
   mkdtemp,
@@ -25,6 +26,17 @@ const cliShimPath = fileURLToPath(
   new URL('../bin/anban-dsh.js', import.meta.url),
 )
 const builtLibPath = fileURLToPath(new URL('../lib/', import.meta.url))
+const packageRootPath = fileURLToPath(new URL('../../', import.meta.url))
+const integrityScriptUrl = new URL(
+  '../scripts/package-integrity.mjs',
+  import.meta.url,
+)
+const {
+  assertSafeArchiveEntries,
+  parsePackResult,
+  verifyPackFileInventory,
+  verifySourceIntegrity,
+} = await import(integrityScriptUrl.href)
 
 function publishedRuntimeFindings(source: string) {
   const findings: string[] = []
@@ -100,6 +112,19 @@ async function createShimFixture(cliSource?: string) {
   return { root, shimPath }
 }
 
+async function createIntegrityFixture() {
+  const fixtureParent = await mkdtemp(join(tmpdir(), 'anban-dsh-integrity-'))
+  const root = join(fixtureParent, 'package')
+  await mkdir(root)
+  await copyFile(join(packageRootPath, 'package.json'), join(root, 'package.json'))
+  for (const directory of ['dsh', 'packs', 'skills']) {
+    await cp(join(packageRootPath, directory), join(root, directory), {
+      recursive: true,
+    })
+  }
+  return { fixtureParent, root }
+}
+
 describe('DSH package manifest', () => {
   it('declares the exact publishing and build contract', async () => {
     const manifest = JSON.parse(await readFile(packageUrl, 'utf8'))
@@ -151,10 +176,13 @@ describe('DSH package manifest', () => {
           'tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit',
         test: 'vitest run',
         prepare: 'pnpm run build',
+        prepack: 'pnpm run build && pnpm run verify:source',
+        'verify:source': 'node dsh/scripts/package-integrity.mjs source',
+        'verify:pack': 'node dsh/scripts/package-integrity.mjs pack',
         'smoke:profile':
           'pnpm run build && node dsh/scripts/smoke-profile.mjs',
         check:
-          'pnpm run typecheck && pnpm run build && pnpm run test && pnpm pack --dry-run',
+          'pnpm run typecheck && pnpm run build && pnpm run test && pnpm run verify:pack && pnpm run smoke:profile',
       },
       exports: {
         './anban-mcp': {
@@ -307,6 +335,116 @@ describe('DSH package manifest', () => {
         'const MCP_URL = process.env.CREATOR_MCP_URL',
       ),
     ).toEqual(['configurable MCP endpoint'])
+  })
+})
+
+describe('DSH package integrity verifier', () => {
+  it('accepts the generated source package contract', async () => {
+    await expect(verifySourceIntegrity(packageRootPath)).resolves.toBeUndefined()
+  })
+
+  it.each([
+    {
+      name: 'export target',
+      path: 'dsh/lib/anban-mcp.js',
+      expected: 'export ./anban-mcp default',
+    },
+    {
+      name: 'bin target',
+      path: 'dsh/bin/anban-dsh.js',
+      expected: 'bin anban-dsh',
+    },
+    {
+      name: 'Cordis patch',
+      path: 'dsh/cordis.patch.yml',
+      expected: 'exact Cordis patch',
+    },
+    {
+      name: 'Preset manifest',
+      path: 'dsh/presets/article/preset.yml',
+      expected: 'Article Preset manifest',
+    },
+    {
+      name: 'Agent composition',
+      path: 'dsh/presets/seednote/agent.cordis.yml',
+      expected: 'Seednote Agent composition',
+    },
+    {
+      name: 'declared Skill',
+      path: 'dsh/presets/article/skills/content-writing/SKILL.md',
+      expected: 'Article declared Skill content-writing',
+    },
+  ])('rejects a missing $name', async ({ path, expected }) => {
+    const fixture = await createIntegrityFixture()
+    try {
+      await rm(join(fixture.root, path))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(expected)
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it('rejects a modified Cordis patch', async () => {
+    const fixture = await createIntegrityFixture()
+    try {
+      await writeFile(
+        join(fixture.root, 'dsh/cordis.patch.yml'),
+        '- insert: []\n',
+      )
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+        'exact Cordis patch',
+      )
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it('structurally consumes one pnpm pack JSON result', () => {
+    expect(
+      parsePackResult(
+        JSON.stringify({
+          name: '@anban/dsh-plugin',
+          version: '4.1.11',
+          filename: 'anban-dsh-plugin-4.1.11.tgz',
+          files: [{ path: 'package.json' }, { path: 'dsh/lib/cli.js' }],
+        }),
+      ),
+    ).toEqual({
+      name: '@anban/dsh-plugin',
+      version: '4.1.11',
+      filename: 'anban-dsh-plugin-4.1.11.tgz',
+      files: ['dsh/lib/cli.js', 'package.json'],
+    })
+
+    expect(() => parsePackResult('[]')).toThrow('single JSON result')
+    expect(() => parsePackResult('{}\n{}')).toThrow('single JSON result')
+  })
+
+  it('rejects a packed artifact with a missing file', () => {
+    expect(() =>
+      verifyPackFileInventory(
+        ['dsh/bin/anban-dsh.js', 'package.json'],
+        ['package.json'],
+      ),
+    ).toThrow('missing: dsh/bin/anban-dsh.js')
+  })
+
+  it('rejects a packed artifact with an unexpected file', () => {
+    expect(() =>
+      verifyPackFileInventory(
+        ['package.json'],
+        ['package.json', 'dsh/lib/undeclared.js'],
+      ),
+    ).toThrow('unexpected: dsh/lib/undeclared.js')
+  })
+
+  it.each([
+    [{ path: 'package/../escape', type: 'file' }, 'unsafe path'],
+    [{ path: '/absolute', type: 'file' }, 'unsafe path'],
+    [{ path: 'outside/', type: 'directory' }, 'outside the package root'],
+    [{ path: 'package/dsh/bin/link', type: 'symlink' }, 'symlink'],
+  ])('rejects unsafe archive entry %#', (entry, expected) => {
+    expect(() => assertSafeArchiveEntries([entry])).toThrow(expected)
   })
 })
 
