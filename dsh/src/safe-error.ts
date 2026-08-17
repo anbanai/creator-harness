@@ -214,6 +214,9 @@ function authorizationStart(line: string): number | undefined {
     if (line[cursor] === '.' && hasDottedAuthorizationValue(line, cursor)) {
       return start
     }
+    if (line[cursor] === '[' || line[cursor] === '(') {
+      return start
+    }
     if (separatedByWhitespace && hasAuthorizationScheme(line, cursor)) {
       return start
     }

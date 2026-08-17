@@ -560,6 +560,15 @@ describe('anban MCP failure containment', () => {
   it.each([
     ['Bearer value', 'request Authorization Bearer leaked-secret'],
     ['dotted token', 'request authorization.token=leaked-secret'],
+    ['indexed value', 'request authorization[0]=leaked-secret'],
+    [
+      'quoted indexed value',
+      'request authorization["token"]=leaked-secret',
+    ],
+    [
+      'parenthesized value',
+      'request authorization(Bearer leaked-secret)',
+    ],
     ['nested header', 'request headers.authorization=leaked-secret'],
     ['bracketed key', 'request [Authorization]=leaked-secret'],
     ['spaced assignment', 'request authorization = leaked-secret'],
