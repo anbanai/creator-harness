@@ -138,6 +138,27 @@ The Creator MCP endpoint is fixed at `https://creator.anbanai.com/mcp`. It is
 not a profile option. Never put a key or serialized Authorization header in a
 Preset, command argument, log, screenshot, test fixture, or generated artifact.
 
+## 4.1.12 release-operator checklist
+
+Perform this manual production check after automated code gates and before
+public announcement:
+
+1. Create a dedicated low-privilege Anban API key for the release check. Keep it
+   outside Git and do not put it in a fixture, workflow, command argument, log,
+   screenshot, or artifact.
+2. Install the exact release artifact into a clean DSH profile, configure the
+   key through the official credential document, and call the real Creator MCP
+   `list_projects` operation. Use one returned project with
+   `get_project_profile` to confirm authenticated read-only access end to end.
+3. Record the account, environment, time, and result in the private release
+   record without recording the key or an Authorization header.
+4. Immediately rotate or revoke the dedicated key after the check.
+
+A missing valid key is an explicit manual release gate: do not announce the
+release until an authorized operator completes and records this check. The
+automated missing-key and invalid-key tests remain required, but they do not
+replace this real authenticated MCP verification.
+
 ## Supported artifacts
 
 Install only a published, immutable artifact. In priority order:

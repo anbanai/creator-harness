@@ -42,6 +42,24 @@ const PUBLIC_EXPORT_NAMES = {
   [`${PACKAGE_NAME}/preset-manager`]: 'anban-preset-manager',
   [`${PACKAGE_NAME}/skills-provider`]: 'anban-skills-provider',
 }
+const EXPECTED_SKILL_NAMES = {
+  article: [
+    'article-cover-design',
+    'article-publishing',
+    'article-viral-strategy',
+    'article-visual-design',
+    'content-writing',
+    'humanizer',
+    'seo-optimization',
+    'topic-research',
+  ],
+  seednote: [
+    'seednote-research',
+    'seednote-viral-analysis',
+    'seednote-visual-design',
+    'seednote-writing',
+  ],
+}
 const REGISTRY_ARTIFACT_PATTERN = new RegExp(
   `^${PACKAGE_NAME.replace('/', '\\/')}@((?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)$`,
 )
@@ -304,6 +322,227 @@ async function defaultImportInstalledExport(profileDir, specifier) {
   return import(pathToFileURL(resolved).href)
 }
 
+async function defaultInspectMountedSkillCatalogs({
+  dshCommand,
+  env,
+  profile,
+  profileDir,
+  smokeRoot,
+}) {
+  const inspectorName = 'anban-dsh-catalog-smoke'
+  const inspectorDir = join(profileDir, 'node_modules', inspectorName)
+  const inspectorEntrypoint = join(inspectorDir, 'index.mjs')
+  const patchPath = join(smokeRoot, 'catalog-inspector.patch.yml')
+  const resultPath = join(smokeRoot, 'mounted-skill-catalogs.json')
+  await mkdir(inspectorDir, { recursive: true })
+  await writeFile(
+    join(inspectorDir, 'package.json'),
+    `${JSON.stringify({
+      name: inspectorName,
+      version: '0.0.0',
+      private: true,
+      type: 'module',
+      exports: './index.mjs',
+    })}\n`,
+    'utf8',
+  )
+  await writeFile(
+    inspectorEntrypoint,
+    await readFile(
+      new URL('./catalog-inspector-plugin.mjs', import.meta.url),
+      'utf8',
+    ),
+    'utf8',
+  )
+  await writeFile(
+    patchPath,
+    `${JSON.stringify([
+      {
+        insert: [
+          {
+            id: inspectorName,
+            name: inspectorName,
+            config: { resultPath },
+          },
+        ],
+      },
+    ])}\n`,
+    'utf8',
+  )
+  try {
+    await runProfileCommand(
+      dshCommand,
+      ['--profile', profile, '--patch', patchPath],
+      {
+        cwd: profileDir,
+        env,
+        label: 'DSH mounted Skill catalog inspection',
+      },
+    )
+    return JSON.parse(await readFile(resultPath, 'utf8'))
+  } finally {
+    await rm(inspectorDir, { force: true, recursive: true })
+  }
+}
+
+function exactPath(path, expected) {
+  return typeof path === 'string' && resolve(path) === resolve(expected)
+}
+
+export function requireMountedSkillCatalogs(catalogs, dshHome) {
+  if (
+    catalogs === null ||
+    typeof catalogs !== 'object' ||
+    Array.isArray(catalogs) ||
+    Object.keys(catalogs).sort().join(',') !== 'article,seednote'
+  ) {
+    throw new Error('Mounted Skill catalog is invalid')
+  }
+
+  const counts = {}
+  for (const [presetId, expectedNames] of Object.entries(
+    EXPECTED_SKILL_NAMES,
+  )) {
+    const catalog = catalogs[presetId]
+    const provider = `anban-${presetId}`
+    const presetRoot = join(dshHome, '.agent-presets', presetId)
+    const skillRoot = join(presetRoot, 'skills')
+    const providers = catalog?.providers
+    const skills = catalog?.skills
+    const names = Array.isArray(skills)
+      ? skills.map(({ name }) => name).sort()
+      : []
+    if (
+      !exactPath(catalog?.presetPath, join(presetRoot, 'agent.cordis.yml')) ||
+      !Array.isArray(providers) ||
+      providers.length !== 1 ||
+      providers.some((candidate) => candidate !== provider) ||
+      !Array.isArray(skills) ||
+      names.join(',') !== [...expectedNames].sort().join(',') ||
+      skills.some(
+        (skill) =>
+          skill?.provider !== provider ||
+          !Number.isInteger(skill?.contentBytes) ||
+          skill.contentBytes <= 0 ||
+          !exactPath(
+            skill?.path,
+            join(skillRoot, skill?.name ?? '', 'SKILL.md'),
+          ),
+      )
+    ) {
+      throw new Error('Mounted Skill catalog is invalid')
+    }
+    counts[presetId] = skills.length
+  }
+  return counts
+}
+
+export async function verifyInstalledProfile(overrides = {}) {
+  const profile = overrides.profile ?? PROFILE
+  const dshHome = overrides.dshHome
+  if (
+    typeof profile !== 'string' ||
+    !/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(profile) ||
+    typeof dshHome !== 'string' ||
+    !isAbsolute(dshHome)
+  ) {
+    throw new Error('Installed profile smoke requires a profile and DSH_HOME')
+  }
+
+  const ownsSmokeRoot = overrides.smokeRoot === undefined
+  const dependencies = {
+    access,
+    discoverPresets: defaultDiscoverPresets,
+    environment: process.env,
+    importInstalledExport: defaultImportInstalledExport,
+    inspectMountedSkillCatalogs: defaultInspectMountedSkillCatalogs,
+    log: console.log,
+    mkdir,
+    mkdtemp,
+    parseConfig: defaultParseConfig,
+    readFile,
+    resolveDshCommand: defaultResolveDshCommand,
+    rm,
+    runCommand: runProfileCommand,
+    tmpdir,
+    writeFile,
+    ...overrides,
+  }
+  const smokeRoot =
+    overrides.smokeRoot ??
+    (await dependencies.mkdtemp(
+      join(dependencies.tmpdir(), 'anban-dsh-installed-smoke-'),
+    ))
+  const profileDir =
+    overrides.profileDir ?? join(dshHome, 'profiles', profile)
+  const environment = smokeEnvironment(
+    dshHome,
+    smokeRoot,
+    dependencies.environment,
+  )
+
+  try {
+    if (ownsSmokeRoot) {
+      await dependencies.mkdir(join(smokeRoot, 'tmp'), { recursive: true })
+      await dependencies.mkdir(join(smokeRoot, 'xdg-config'), {
+        recursive: true,
+      })
+      await dependencies.writeFile(join(smokeRoot, '.npmrc'), '', {
+        flag: 'wx',
+      })
+    }
+    const dshCommand = await dependencies.resolveDshCommand()
+    const presets = await dependencies.discoverPresets([
+      { path: join(dshHome, '.agent-presets'), trust: 'user' },
+    ])
+    requireHealthyPresets(presets)
+    const mountedCatalogCounts = requireMountedSkillCatalogs(
+      await dependencies.inspectMountedSkillCatalogs({
+        dshCommand,
+        dshHome,
+        env: environment,
+        profile,
+        profileDir,
+        smokeRoot,
+      }),
+      dshHome,
+    )
+    const dumped = await dependencies.runCommand(
+      dshCommand,
+      ['--profile', profile, '--dump-config'],
+      {
+        cwd: profileDir,
+        env: environment,
+        label: 'Installed DSH profile validation',
+      },
+    )
+    const bundleRows = requireBundleRows(
+      await dependencies.parseConfig(dumped.stdout),
+    )
+    const exportsBySpecifier = new Map()
+    for (const specifier of PUBLIC_EXPORTS) {
+      exportsBySpecifier.set(
+        specifier,
+        await dependencies.importInstalledExport(profileDir, specifier),
+      )
+    }
+    const manifest = exportsBySpecifier.get(`${PACKAGE_NAME}/package.json`)
+    validateInstalledExports(exportsBySpecifier, manifest?.version)
+    dependencies.log(
+      `Bundle rows: anban-mcp=${bundleRows.mcp} anban-preset-manager=${bundleRows.presetManager} preset-local-mcp=${bundleRows.presetLocalMcp}`,
+    )
+    dependencies.log('Healthy Presets: article, seednote')
+    dependencies.log(
+      `Mounted Skill catalogs: article=${mountedCatalogCounts.article} seednote=${mountedCatalogCounts.seednote}`,
+    )
+    dependencies.log(`Export resolution: ${PUBLIC_EXPORTS.join(', ')}`)
+  } finally {
+    if (ownsSmokeRoot) {
+      await dependencies.rm(smokeRoot, { force: true, recursive: true })
+    }
+  }
+}
+
 function safeInventoryPath(path) {
   if (
     typeof path !== 'string' ||
@@ -486,6 +725,7 @@ export async function smokeProfile(overrides = {}) {
     discoverPresets: defaultDiscoverPresets,
     environment: process.env,
     importInstalledExport: defaultImportInstalledExport,
+    inspectMountedSkillCatalogs: defaultInspectMountedSkillCatalogs,
     log: console.log,
     mkdir,
     mkdtemp,
@@ -562,6 +802,18 @@ export async function smokeProfile(overrides = {}) {
     ])
     requireHealthyPresets(presets)
 
+    const mountedCatalogCounts = requireMountedSkillCatalogs(
+      await dependencies.inspectMountedSkillCatalogs({
+        dshCommand,
+        dshHome,
+        env: environment,
+        profile: PROFILE,
+        profileDir,
+        smokeRoot,
+      }),
+      dshHome,
+    )
+
     const dumped = await dependencies.runCommand(
       dshCommand,
       ['--profile', PROFILE, '--dump-config'],
@@ -583,6 +835,9 @@ export async function smokeProfile(overrides = {}) {
       `Bundle rows: anban-mcp=${bundleRows.mcp} anban-preset-manager=${bundleRows.presetManager} preset-local-mcp=${bundleRows.presetLocalMcp}`,
     )
     dependencies.log('Healthy Presets: article, seednote')
+    dependencies.log(
+      `Mounted Skill catalogs: article=${mountedCatalogCounts.article} seednote=${mountedCatalogCounts.seednote}`,
+    )
     dependencies.log(`Export resolution: ${PUBLIC_EXPORTS.join(', ')}`)
   } catch (error) {
     primaryFailure = error
@@ -611,11 +866,28 @@ if (
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   try {
-    const artifactSource = process.argv[2]
-    if (process.argv.length > 3) {
-      throw new Error('usage: smoke-profile.mjs [@anban/dsh-plugin@<version>]')
+    const args = process.argv.slice(2)
+    if (args[0] === '--existing-profile') {
+      if (args.length !== 2) {
+        throw new Error(
+          'usage: smoke-profile.mjs --existing-profile <profile>',
+        )
+      }
+      await verifyInstalledProfile({
+        dshHome: process.env.DSH_HOME,
+        profile: args[1],
+      })
+    } else {
+      const artifactSource = args[0]
+      if (args.length > 1) {
+        throw new Error(
+          'usage: smoke-profile.mjs [@anban/dsh-plugin@<version>]',
+        )
+      }
+      await smokeProfile(
+        artifactSource === undefined ? {} : { artifactSource },
+      )
     }
-    await smokeProfile(artifactSource === undefined ? {} : { artifactSource })
   } catch (error) {
     process.stderr.write(
       `${error instanceof Error ? error.message : 'Profile smoke failed'}\n`,

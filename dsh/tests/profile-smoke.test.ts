@@ -13,6 +13,10 @@ import { describe, expect, it, vi } from 'vitest'
 
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url))
 const smokeScriptUrl = new URL('../scripts/smoke-profile.mjs', import.meta.url)
+const catalogInspectorUrl = new URL(
+  '../scripts/catalog-inspector-plugin.mjs',
+  import.meta.url,
+)
 const packageManifest = JSON.parse(
   await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
 ) as { version: string }
@@ -24,6 +28,24 @@ const publicExports = [
   '@anban/dsh-plugin/skills-provider',
   '@anban/dsh-plugin/package.json',
 ]
+const expectedSkillNames = {
+  article: [
+    'article-cover-design',
+    'article-publishing',
+    'article-viral-strategy',
+    'article-visual-design',
+    'content-writing',
+    'humanizer',
+    'seo-optimization',
+    'topic-research',
+  ],
+  seednote: [
+    'seednote-research',
+    'seednote-viral-analysis',
+    'seednote-visual-design',
+    'seednote-writing',
+  ],
+} as const
 
 interface PortableCommand {
   executable: string
@@ -50,6 +72,27 @@ function packResult(overrides: Record<string, unknown> = {}) {
 }
 
 describe('portable profile-smoke commands', () => {
+  it('inspects mounted catalogs only through public DSH services', async () => {
+    const source = await readFile(catalogInspectorUrl, 'utf8')
+
+    for (const required of [
+      'ctx.agentPresets.standingKeyFor',
+      'ctx.skills.snapshot',
+      'ctx.skills.get',
+    ]) {
+      expect(source).toContain(required)
+    }
+    for (const forbidden of [
+      '@anban/dsh-plugin/skills-provider',
+      '../src/skills-provider',
+      'desktopRuntime',
+      'desktopPnpmBootstrap',
+      'ELECTRON_RUN_AS_NODE',
+    ]) {
+      expect(source).not.toContain(forbidden)
+    }
+  })
+
   it('represents a POSIX native executable without a Node wrapper', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
 
@@ -579,6 +622,27 @@ function profileFixture(version = packageVersion) {
       }
     },
   )
+  function mountedSkillCatalog(
+    presetId: keyof typeof expectedSkillNames,
+    names: readonly string[],
+  ) {
+    const presetRoot = join(dshHome, '.agent-presets', presetId)
+    return {
+      presetPath: join(presetRoot, 'agent.cordis.yml'),
+      providers: [`anban-${presetId}`],
+      skills: names.map((name) => ({
+        contentBytes: 128,
+        name,
+        path: join(presetRoot, 'skills', name, 'SKILL.md'),
+        provider: `anban-${presetId}`,
+      })),
+    }
+  }
+  const mountedSkillCatalogs = {
+    article: mountedSkillCatalog('article', expectedSkillNames.article),
+    seednote: mountedSkillCatalog('seednote', expectedSkillNames.seednote),
+  }
+  const inspectMountedSkillCatalogs = vi.fn(async () => mountedSkillCatalogs)
   const parseConfig = vi.fn((): unknown => [
     { id: 'base-row', name: '@deepseek-ai/dsh-base' },
     { id: 'anban-mcp', name: '@anban/dsh-plugin/anban-mcp' },
@@ -600,6 +664,7 @@ function profileFixture(version = packageVersion) {
     access: vi.fn(async () => undefined),
     discoverPresets,
     importInstalledExport,
+    inspectMountedSkillCatalogs,
     environment: {
       ANBAN_API_KEY: 'host-secret',
       HOME: '/host/home',
@@ -628,6 +693,8 @@ function profileFixture(version = packageVersion) {
     dshHome,
     events,
     importInstalledExport,
+    inspectMountedSkillCatalogs,
+    mountedSkillCatalogs,
     mkdirMock,
     overrides,
     packTarball,
@@ -641,6 +708,35 @@ function profileFixture(version = packageVersion) {
 }
 
 describe('DSH profile smoke flow', () => {
+  it('validates an existing Desktop profile without reinstalling the plugin', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+
+    await smokeModule.verifyInstalledProfile({
+      ...fixture.overrides,
+      dshHome: fixture.dshHome,
+      profile: 'desktop',
+      profileDir: fixture.profileDir.replace(/web$/, 'desktop'),
+      smokeRoot: fixture.smokeRoot,
+    })
+
+    expect(
+      fixture.commandCalls.map(({ args }) => args),
+    ).toEqual([['--profile', 'desktop', '--dump-config']])
+    expect(fixture.inspectMountedSkillCatalogs).toHaveBeenCalledWith({
+      dshCommand: fixture.dshCommand,
+      dshHome: fixture.dshHome,
+      env: expect.objectContaining({ DSH_HOME: fixture.dshHome }),
+      profile: 'desktop',
+      profileDir: fixture.profileDir.replace(/web$/, 'desktop'),
+      smokeRoot: fixture.smokeRoot,
+    })
+    expect(fixture.overrides.rm).not.toHaveBeenCalledWith(
+      fixture.dshHome,
+      expect.anything(),
+    )
+  })
+
   it('preserves the primary smoke failure when cleanup also fails', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
     const fixture = profileFixture()
@@ -753,16 +849,77 @@ describe('DSH profile smoke flow', () => {
     expect(fixture.importInstalledExport.mock.calls).toEqual(
       publicExports.map((specifier) => [fixture.profileDir, specifier]),
     )
+    expect(fixture.inspectMountedSkillCatalogs).toHaveBeenCalledWith({
+      dshCommand: fixture.dshCommand,
+      dshHome: fixture.dshHome,
+      env: localEnvironment,
+      profile: 'web',
+      profileDir: fixture.profileDir,
+      smokeRoot: fixture.smokeRoot,
+    })
     expect(fixture.resolveInstalledCommand).not.toHaveBeenCalled()
     expect(fixture.overrides.log.mock.calls.map(([line]) => line)).toEqual([
       'Bundle rows: anban-mcp=1 anban-preset-manager=1 preset-local-mcp=0',
       'Healthy Presets: article, seednote',
+      'Mounted Skill catalogs: article=8 seednote=4',
       `Export resolution: ${publicExports.join(', ')}`,
     ])
     expect(fixture.overrides.rm).toHaveBeenCalledWith(fixture.smokeRoot, {
       force: true,
       recursive: true,
     })
+  })
+
+  it.each([
+    {
+      name: 'cross-preset bleed',
+      mutate: (catalogs: ReturnType<typeof profileFixture>['mountedSkillCatalogs']) => {
+        catalogs.article.skills.push({
+          contentBytes: 128,
+          name: 'seednote-writing',
+          path: join(
+            catalogs.article.presetPath,
+            '..',
+            'skills',
+            'seednote-writing',
+            'SKILL.md',
+          ),
+          provider: 'anban-article',
+        })
+      },
+    },
+    {
+      name: 'duplicate provider',
+      mutate: (catalogs: ReturnType<typeof profileFixture>['mountedSkillCatalogs']) => {
+        catalogs.article.providers.push('anban-article')
+      },
+    },
+    {
+      name: 'wrong generated root',
+      mutate: (catalogs: ReturnType<typeof profileFixture>['mountedSkillCatalogs']) => {
+        catalogs.seednote.skills[0]!.path = join(
+          catalogs.article.presetPath,
+          '..',
+          'skills',
+          'seednote-research',
+          'SKILL.md',
+        )
+      },
+    },
+    {
+      name: 'broken catalog entry',
+      mutate: (catalogs: ReturnType<typeof profileFixture>['mountedSkillCatalogs']) => {
+        catalogs.seednote.skills[0]!.contentBytes = 0
+      },
+    },
+  ])('rejects $name from the composed DSH Skill registry', async ({ mutate }) => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+    mutate(fixture.mountedSkillCatalogs)
+
+    await expect(smokeModule.smokeProfile(fixture.overrides)).rejects.toThrow(
+      'Mounted Skill catalog is invalid',
+    )
   })
 
   it('accepts pnpm absolute filenames contained by the pack destination', async () => {

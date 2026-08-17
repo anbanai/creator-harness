@@ -13,6 +13,8 @@
 - Prepared the public npm package and checksummed GitHub Release installation
   guidance for 4.1.12; those artifacts become available only after the matching
   versioned release workflow completes.
+- Added the 4.1.12 manual release-operator gate for a real low-privilege Creator
+  MCP authentication check without storing credentials in repository assets.
 - This metadata release does not claim npm publication or GitHub Release
   availability; a release operator must run the publishing workflow.
 
