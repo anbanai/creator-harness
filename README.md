@@ -7,6 +7,20 @@ Harness Web 与 Desktop 安装说明见
 [docs/dsh-installation.md](docs/dsh-installation.md)；当前提供由 Agent Pack 生成的
 Article 与 Seednote Preset。
 
+## 宿主支持范围
+
+| Surface | Skills | Native Agent | DSH Bundle/MCP | DSH Preset |
+| --- | --- | --- | --- | --- |
+| Skills-only installer | Yes | No | No | No |
+| Claude Code plugin | Yes | Claude Agent | Claude MCP adapter | No |
+| Codex plugin | Yes | Codex subagent | Codex MCP adapter | No |
+| Full DSH plugin | Article/Seednote generated copies | DSH composition | Official Bundle/MCP adapters | Article/Seednote only |
+
+Skills-only 安装只分发共享 Skills，不会安装 Agent、MCP 或 Preset。完整 DSH
+插件当前只为 Article 和 Seednote 提供生成的 Preset；Bundle 与 Preset 是两个
+显式安装步骤，详细的安装、升级、回滚、凭据和跨 profile 注意事项见
+[DSH 安装指南](docs/dsh-installation.md)。
+
 ## 接入流程
 
 按下面顺序操作，第一次接入最省事：

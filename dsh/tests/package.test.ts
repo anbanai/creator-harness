@@ -23,6 +23,7 @@ const installationGuideUrl = new URL(
   '../../docs/dsh-installation.md',
   import.meta.url,
 )
+const readmeUrl = new URL('../../README.md', import.meta.url)
 const cordisPatchUrl = new URL('../cordis.patch.yml', import.meta.url)
 const cliShimPath = fileURLToPath(
   new URL('../bin/anban-dsh.js', import.meta.url),
@@ -399,17 +400,162 @@ describe('DSH package manifest', () => {
 `)
   })
 
+  it('documents the exact host support matrix and canonical Skill ownership', async () => {
+    const readme = await readFile(readmeUrl, 'utf8')
+    const guide = await readFile(installationGuideUrl, 'utf8')
+
+    for (const body of [readme, guide]) {
+      for (const row of [
+        '| Skills-only installer | Yes | No | No | No |',
+        '| Claude Code plugin | Yes | Claude Agent | Claude MCP adapter | No |',
+        '| Codex plugin | Yes | Codex subagent | Codex MCP adapter | No |',
+        '| Full DSH plugin | Article/Seednote generated copies | DSH composition | Official Bundle/MCP adapters | Article/Seednote only |',
+      ]) {
+        expect(body).toContain(row)
+      }
+    }
+
+    const normalized = guide.replace(/\s+/g, ' ')
+    expect(normalized).toContain(
+      'DSH is not a separate Anban business workflow or Skill tree.',
+    )
+    expect(normalized).toMatch(
+      /plugins\/skills\/\*\*.*canonical.*Agent Pack generator copies the exact declared Skills/i,
+    )
+    expect(normalized).toMatch(
+      /DSH-only code.*host composition.*MCP.*credentials.*Preset manager.*Skill provider/i,
+    )
+    expect(normalized).toMatch(/only Article and Seednote.*DSH Presets/i)
+    expect(normalized).not.toMatch(
+      /(?:ecommerce|live-slicer|moments|montage)[^.|\n]*(?:DSH Preset|Preset support)/i,
+    )
+  })
+
+  it('documents only supported immutable DSH installation artifacts', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+    const normalized = guide.replace(/\s+/g, ' ')
+
+    for (const required of [
+      'public npm package (primary)',
+      'PUBLISHED_VERSION="replace-with-published-version"',
+      'npm view "@anban/dsh-plugin@${PUBLISHED_VERSION}" version',
+      'checksummed GitHub Release',
+      'anban-dsh-plugin-<published-version>.tgz.sha256',
+      'immutable Git tag or full commit',
+      'prepare build',
+      'pnpm pack --json',
+      'exact tarball path reported in the `filename` field',
+      'dsh plugin --profile web add "$PACKED_TARBALL"',
+    ]) {
+      expect(normalized).toContain(required)
+    }
+    expect(guide).not.toMatch(
+      /^\s*dsh plugin .*\badd\s+(?:["']?file:|["']?(?:\.\.?\/|\/)[^"'\n]*plugins\/?["']?\s*$)/gm,
+    )
+    expect(normalized).toMatch(
+      /Never install this plugin from a source directory with a `file:` specifier/i,
+    )
+  })
+
+  it('documents profile discovery and the complete two-step lifecycle', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+    const normalized = guide.replace(/\s+/g, ' ')
+
+    for (const command of [
+      'dsh plugin --profile web add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
+      'dsh plugin --profile web exec anban-dsh install-presets',
+      'dsh plugin --profile web exec anban-dsh status',
+      'dsh plugin --profile web exec anban-dsh install-presets --force',
+      'dsh plugin --profile web exec anban-dsh remove-presets',
+      'dsh plugin --profile web remove @anban/dsh-plugin',
+      'dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
+      `dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets`,
+    ]) {
+      expect(guide).toContain(command)
+    }
+    for (const concept of [
+      'Bundle is profile-local',
+      'Presets are global',
+      '$DSH_HOME/.agent-presets',
+      'shared by every profile using the same `DSH_HOME`',
+      'Bundle activation never installs, upgrades, or removes Presets',
+      'cross-profile',
+      'upgrade',
+      'rollback',
+      'recovery',
+    ]) {
+      expect(normalized).toContain(concept)
+    }
+
+    const firstStatus = guide.indexOf(
+      'dsh plugin --profile web exec anban-dsh status',
+    )
+    const force = guide.indexOf(
+      'dsh plugin --profile web exec anban-dsh install-presets --force',
+    )
+    const removePresets = guide.indexOf(
+      'dsh plugin --profile web exec anban-dsh remove-presets',
+    )
+    const removeBundle = guide.indexOf(
+      'dsh plugin --profile web remove @anban/dsh-plugin',
+    )
+    expect(firstStatus).toBeGreaterThanOrEqual(0)
+    expect(firstStatus).toBeLessThan(force)
+    expect(firstStatus).toBeLessThan(removePresets)
+    expect(removePresets).toBeLessThan(removeBundle)
+    expect(normalized).toMatch(/status.*back up.*before.*(?:--force|remove)/i)
+    expect(normalized).toMatch(/unowned Preset directories.*refused/i)
+  })
+
+  it('documents exact official credential precedence without an onboarding shortcut', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+    const normalized = guide.replace(/\s+/g, ' ')
+
+    expect(normalized).toContain(
+      'inherited process environment (read-only, highest priority) -> `$DSH_HOME/.credentials.yaml` (managed, writable) -> invocation-project `.env` -> `$DSH_HOME/.env`',
+    )
+    expect(guide.match(/^ANBAN_API_KEY: <value>$/gm)).toHaveLength(1)
+    expect(normalized).toMatch(/process environment.*temporary.*CI override/i)
+    expect(normalized).toMatch(/owner-only.*0700.*0600/i)
+    expect(normalized).toMatch(
+      /model onboarding.*does not configure arbitrary third-party credentials/i,
+    )
+    expect(guide).not.toMatch(/~\/\.dsh\/\.credentials\.yaml/)
+    expect(guide).not.toMatch(/<(?:harness|dsh)[ -]home>\/\.credentials\.yaml/i)
+  })
+
+  it('documents stable recovery diagnostics without unsafe lock deletion', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+    for (const code of [
+      'ERR_RUNTIME_MISSING',
+      'ERR_PRESET_UNOWNED',
+      'ERR_PRESET_MODIFIED',
+      'ERR_PRESET_LOCKED',
+      'ERR_PRESET_LOCK_INVALID',
+      'ERR_PRESET_ROLLBACK',
+      'ERR_PRESET_OPERATION',
+    ]) {
+      expect(guide).toContain(code)
+    }
+    expect(guide).toMatch(/incomplete (?:package|source) install/i)
+    expect(guide).toMatch(/lock residue/i)
+    expect(guide).toMatch(/move .*quarantine/i)
+    expect(guide).not.toMatch(/rm\s+(?:-[^\s]*r[^\s]*\s+)?[^\n]*\.anban-dsh\.lock/)
+  })
+
   it('boots each fresh profile before invoking the standalone Bundle CLI', async () => {
     const guide = await readFile(installationGuideUrl, 'utf8')
 
     expect(bashBlockUnder(guide, '## Web profile')).toEqual([
-      'dsh plugin --profile web add @anban/dsh-plugin',
+      'PUBLISHED_VERSION="replace-with-published-version"',
+      'dsh plugin --profile web add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
       'dsh --profile web --dump-config',
       'dsh plugin --profile web exec anban-dsh install-presets',
     ])
     expect(bashBlockUnder(guide, '## Desktop active profile')).toEqual([
       'ACTIVE_PROFILE="replace-with-desktop-profile-name"',
-      'dsh plugin --profile "$ACTIVE_PROFILE" add @anban/dsh-plugin',
+      'PUBLISHED_VERSION="replace-with-published-version"',
+      'dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
       'dsh --profile "$ACTIVE_PROFILE" --dump-config',
       'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets',
     ])

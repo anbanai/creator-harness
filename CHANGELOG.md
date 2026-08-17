@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Clarified the exact Skills-only, Claude Code, Codex, and full DSH support
+  matrix, including the Article/Seednote-only Preset scope.
+- Documented the official DSH artifact, profile, credential, global Preset,
+  upgrade, rollback, removal, and recovery lifecycle.
+- The public npm package and checksummed GitHub Release paths described by the
+  guide become available only after the matching versioned release workflow
+  completes; this unreleased source change does not claim those assets exist.
+
 ## [4.1.11] - 2026-08-16
 
 ### Added
