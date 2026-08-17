@@ -1,10 +1,11 @@
 /// <reference types="node" />
 
 import { randomUUID } from 'node:crypto'
+import { constants as fileSystemConstants } from 'node:fs'
 import {
   lstat as realLstat,
   mkdir as realMkdir,
-  readFile as realReadFile,
+  open as realOpen,
   rename as realRename,
   rm as realRm,
   writeFile as realWriteFile,
@@ -43,10 +44,21 @@ interface LockStats {
   isSymbolicLink(): boolean
 }
 
+interface PresetLockFileHandle {
+  close(): Promise<void>
+  read(
+    buffer: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+  ): Promise<{ bytesRead: number }>
+  stat(): Promise<LockStats>
+}
+
 export interface PresetLockFileSystem {
   lstat(path: string): Promise<LockStats>
   mkdir(path: string, options?: { mode?: number }): Promise<unknown>
-  readFile(path: string, encoding: 'utf8'): Promise<string>
+  open(path: string, flags: number): Promise<PresetLockFileHandle>
   rename(source: string, destination: string): Promise<void>
   rm(
     path: string,
@@ -131,6 +143,7 @@ const MAX_RETRY_INTERVAL_MS = 5_000
 const MAX_RACE_RETRIES = 64
 const DEFAULT_TIMEOUT_MS = 5_000
 const DEFAULT_RETRY_INTERVAL_MS = 50
+const LIVE_CLAIM_CONTENDED = Symbol('live-claim-contended')
 const SAFE_TOKEN_PATTERN = /^[\x21-\x7e]+$/
 const OWNER_ID_PATTERN = /^[A-Za-z0-9_-]+$/
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
@@ -138,7 +151,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 const DEFAULT_FILE_SYSTEM: PresetLockFileSystem = {
   lstat: realLstat,
   mkdir: realMkdir,
-  readFile: realReadFile,
+  open: realOpen,
   rename: realRename,
   rm: realRm,
   writeFile: realWriteFile,
@@ -458,6 +471,76 @@ function reclaimClaimFromValue(value: unknown): PresetReclaimClaim | null {
   }
 }
 
+async function readBoundedRegularFile(
+  directoryPath: string,
+  filePath: string,
+  maximumLength: number,
+  dependencies: ResolvedDependencies,
+): Promise<string> {
+  assertContained(directoryPath, filePath)
+  let handle: PresetLockFileHandle | undefined
+  let contents: string | undefined
+  let failure: unknown
+  try {
+    handle = await dependencies.fileSystem.open(
+      filePath,
+      fileSystemConstants.O_RDONLY | fileSystemConstants.O_NOFOLLOW,
+    )
+    const stats = await handle.stat()
+    if (
+      stats.isSymbolicLink() ||
+      !stats.isFile() ||
+      !Number.isSafeInteger(stats.size) ||
+      stats.size < 0 ||
+      stats.size > maximumLength
+    ) {
+      throw invalidLock()
+    }
+    const buffer = Buffer.alloc(maximumLength + 1)
+    let offset = 0
+    while (offset < buffer.length) {
+      const result = await handle.read(
+        buffer,
+        offset,
+        buffer.length - offset,
+        offset,
+      )
+      if (
+        !Number.isSafeInteger(result.bytesRead) ||
+        result.bytesRead < 0 ||
+        result.bytesRead > buffer.length - offset
+      ) {
+        throw invalidLock()
+      }
+      if (result.bytesRead === 0) break
+      offset += result.bytesRead
+    }
+    if (offset > maximumLength) throw invalidLock()
+    contents = buffer.toString('utf8', 0, offset)
+  } catch (error) {
+    failure = error
+  }
+  if (handle !== undefined) {
+    try {
+      await handle.close()
+    } catch (error) {
+      failure =
+        failure === undefined
+          ? error
+          : new AggregateError(
+              [failure, error],
+              'Preset lock document read and close failed.',
+            )
+    }
+  }
+  if (failure !== undefined) {
+    if (isOperationalError(failure)) throw failure
+    throw invalidLock(failure)
+  }
+  if (contents === undefined) throw invalidLock()
+  return contents
+}
+
 async function readOwnerFile(
   directoryPath: string,
   ownerPath: string,
@@ -466,17 +549,12 @@ async function readOwnerFile(
   assertContained(directoryPath, ownerPath)
 
   try {
-    const stats = await dependencies.fileSystem.lstat(ownerPath)
-    if (stats.isSymbolicLink() || !stats.isFile()) {
-      throw invalidLock()
-    }
-    if (stats.size < 0 || stats.size > MAX_OWNER_DOCUMENT_LENGTH) {
-      throw invalidLock()
-    }
-    const contents = await dependencies.fileSystem.readFile(ownerPath, 'utf8')
-    if (contents.length > MAX_OWNER_DOCUMENT_LENGTH) {
-      throw invalidLock()
-    }
+    const contents = await readBoundedRegularFile(
+      directoryPath,
+      ownerPath,
+      MAX_OWNER_DOCUMENT_LENGTH,
+      dependencies,
+    )
     const owner = ownerFromValue(JSON.parse(contents) as unknown)
     if (owner === null) {
       throw invalidLock()
@@ -510,17 +588,12 @@ async function readReclaimClaim(
     if (claimStats.isSymbolicLink() || !claimStats.isDirectory()) {
       throw invalidLock()
     }
-    const stats = await dependencies.fileSystem.lstat(documentPath)
-    if (stats.isSymbolicLink() || !stats.isFile()) {
-      throw invalidLock()
-    }
-    if (stats.size < 0 || stats.size > MAX_CLAIM_DOCUMENT_LENGTH) {
-      throw invalidLock()
-    }
-    const contents = await dependencies.fileSystem.readFile(documentPath, 'utf8')
-    if (contents.length > MAX_CLAIM_DOCUMENT_LENGTH) {
-      throw invalidLock()
-    }
+    const contents = await readBoundedRegularFile(
+      claimPath,
+      documentPath,
+      MAX_CLAIM_DOCUMENT_LENGTH,
+      dependencies,
+    )
     const claim = reclaimClaimFromValue(JSON.parse(contents) as unknown)
     if (claim === null) {
       throw invalidLock()
@@ -568,6 +641,19 @@ async function assertVacantPath(
     throw invalidLock(error)
   }
   throw invalidLock()
+}
+
+async function pathExistsNoFollow(
+  path: string,
+  dependencies: ResolvedDependencies,
+): Promise<boolean> {
+  try {
+    await dependencies.fileSystem.lstat(path)
+    return true
+  } catch (error) {
+    if (hasErrno(error, 'ENOENT')) return false
+    throw invalidLock(error)
+  }
 }
 
 async function assertSafeQuarantine(
@@ -658,12 +744,27 @@ async function tryPublishLock(
     await dependencies.fileSystem.rename(stagingPath, lockPath)
     return true
   } catch (error) {
-    const lostRace =
+    let lostRace =
       error === lockOccupied ||
       (stagingValidated &&
         (hasErrno(error, 'EEXIST') ||
           hasErrno(error, 'ENOTEMPTY') ||
           hasErrno(error, 'ENOTDIR')))
+    let classificationError: unknown
+    if (!lostRace && stagingValidated) {
+      try {
+        await assertSafePresetRoot(presetRoot, dependencies)
+        if (await pathExistsNoFollow(lockPath, dependencies)) {
+          const stagedOwner = await readOwnerFromLock(
+            stagingPath,
+            dependencies,
+          )
+          lostRace = ownersMatch(stagedOwner, owner)
+        }
+      } catch (inspectionError) {
+        classificationError = inspectionError
+      }
+    }
     if (stagingCreated) {
       try {
         await removeOwnedDirectory(presetRoot, stagingPath, dependencies)
@@ -677,6 +778,10 @@ async function tryPublishLock(
       }
     }
     if (lostRace) return false
+    if (classificationError !== undefined) {
+      if (isOperationalError(classificationError)) throw classificationError
+      throw operationFailure(classificationError)
+    }
     if (isOperationalError(error)) throw error
     throw operationFailure(error)
   }
@@ -738,6 +843,57 @@ async function removeOwnedReclaimClaim(
   }
 }
 
+async function restoreRetiredReclaimClaim(
+  lockPath: string,
+  claimPath: string,
+  retiredPath: string,
+  expectedClaim: PresetReclaimClaim,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  assertContained(lockPath, claimPath)
+  assertContained(lockPath, retiredPath)
+  await assertSafeQuarantine(lockPath, dependencies)
+  const retiredClaim = await readReclaimClaim(
+    lockPath,
+    retiredPath,
+    dependencies,
+  )
+  if (!reclaimClaimsMatch(retiredClaim, expectedClaim)) {
+    throw invalidLock()
+  }
+  try {
+    await dependencies.fileSystem.lstat(claimPath)
+    throw invalidLock()
+  } catch (error) {
+    if (!hasErrno(error, 'ENOENT')) {
+      if (isOperationalError(error)) throw error
+      throw invalidLock(error)
+    }
+  }
+  await assertSafeQuarantine(lockPath, dependencies)
+  const claimBeforeRestore = await readReclaimClaim(
+    lockPath,
+    retiredPath,
+    dependencies,
+  )
+  if (!reclaimClaimsMatch(claimBeforeRestore, expectedClaim)) {
+    throw invalidLock()
+  }
+  try {
+    await dependencies.fileSystem.rename(retiredPath, claimPath)
+  } catch (error) {
+    throw invalidLock(error)
+  }
+  const restoredClaim = await readReclaimClaim(
+    lockPath,
+    claimPath,
+    dependencies,
+  )
+  if (!reclaimClaimsMatch(restoredClaim, expectedClaim)) {
+    throw invalidLock()
+  }
+}
+
 async function publishReclaimClaim(
   lockPath: string,
   claimPath: string,
@@ -784,11 +940,28 @@ async function publishReclaimClaim(
       stageCreated = false
       return true
     } catch (error) {
-      const canonicalOccupied =
+      let canonicalOccupied =
         error === claimOccupied ||
         (stageValidated &&
           (hasErrno(error, 'EEXIST') || hasErrno(error, 'ENOTEMPTY')))
+      let classificationError: unknown
+      if (!canonicalOccupied && stageValidated) {
+        try {
+          await assertSafeQuarantine(lockPath, dependencies)
+          if (await pathExistsNoFollow(claimPath, dependencies)) {
+            const stagedClaim = await readReclaimClaim(
+              lockPath,
+              stagePath,
+              dependencies,
+            )
+            canonicalOccupied = reclaimClaimsMatch(stagedClaim, claim)
+          }
+        } catch (inspectionError) {
+          classificationError = inspectionError
+        }
+      }
       if (!canonicalOccupied) {
+        if (classificationError !== undefined) throw classificationError
         if (hasErrno(error, 'ENOENT')) throw claimRace
         throw isOperationalError(error) ? error : invalidLock(error)
       }
@@ -804,7 +977,7 @@ async function publishReclaimClaim(
       throw invalidLock(error)
     }
     if (typeof alive !== 'boolean') throw invalidLock()
-    if (alive) throw locked()
+    if (alive) throw LIVE_CLAIM_CONTENDED
 
     await assertVacantPath(retiredPath, dependencies)
     try {
@@ -815,6 +988,22 @@ async function publishReclaimClaim(
     }
     const retired = await readReclaimClaim(lockPath, retiredPath, dependencies)
     if (!reclaimClaimsMatch(retired, existing)) {
+      try {
+        await restoreRetiredReclaimClaim(
+          lockPath,
+          claimPath,
+          retiredPath,
+          retired,
+          dependencies,
+        )
+      } catch (restoreError) {
+        throw invalidLock(
+          new AggregateError(
+            [invalidLock(), restoreError],
+            'Preset reclaim claim validation and restoration failed.',
+          ),
+        )
+      }
       throw invalidLock()
     }
     try {
@@ -1163,6 +1352,34 @@ function createLockHandle(
   }
 }
 
+async function waitForContention(
+  deadline: number,
+  lastMonotonicReading: number,
+  dependencies: ResolvedDependencies,
+): Promise<number> {
+  const beforeWait = monotonicNow(dependencies)
+  if (beforeWait < lastMonotonicReading) {
+    throw operationFailure()
+  }
+  if (beforeWait >= deadline) {
+    throw locked()
+  }
+  const waitMilliseconds = Math.min(
+    dependencies.retryIntervalMs,
+    deadline - beforeWait,
+  )
+  try {
+    await dependencies.wait(waitMilliseconds)
+  } catch (error) {
+    throw operationFailure(error)
+  }
+  const afterWait = monotonicNow(dependencies)
+  if (afterWait <= beforeWait) {
+    throw operationFailure()
+  }
+  return afterWait
+}
+
 export async function acquirePresetLock(
   presetRoot: string,
   suppliedDependencies: PresetLockDependencies,
@@ -1224,12 +1441,23 @@ export async function acquirePresetLock(
     }
 
     if (!alive) {
-      const reclaimed = await reclaimDeadOwner(
-        resolvedRoot,
-        lockPath,
-        owner,
-        dependencies,
-      )
+      let reclaimed: boolean
+      try {
+        reclaimed = await reclaimDeadOwner(
+          resolvedRoot,
+          lockPath,
+          owner,
+          dependencies,
+        )
+      } catch (error) {
+        if (error !== LIVE_CLAIM_CONTENDED) throw error
+        lastMonotonicReading = await waitForContention(
+          deadline,
+          lastMonotonicReading,
+          dependencies,
+        )
+        continue
+      }
       raceRetries += 1
       if (raceRetries > MAX_RACE_RETRIES) {
         throw locked()
@@ -1238,27 +1466,10 @@ export async function acquirePresetLock(
       continue
     }
 
-    const beforeWait = monotonicNow(dependencies)
-    if (beforeWait < lastMonotonicReading) {
-      throw operationFailure()
-    }
-    lastMonotonicReading = beforeWait
-    if (beforeWait >= deadline) {
-      throw locked()
-    }
-    const waitMilliseconds = Math.min(
-      dependencies.retryIntervalMs,
-      deadline - beforeWait,
+    lastMonotonicReading = await waitForContention(
+      deadline,
+      lastMonotonicReading,
+      dependencies,
     )
-    try {
-      await dependencies.wait(waitMilliseconds)
-    } catch (error) {
-      throw operationFailure(error)
-    }
-    const afterWait = monotonicNow(dependencies)
-    if (afterWait <= beforeWait) {
-      throw operationFailure()
-    }
-    lastMonotonicReading = afterWait
   }
 }

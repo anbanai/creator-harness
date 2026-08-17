@@ -1,7 +1,9 @@
 import {
+  appendFile,
   lstat,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
   rename,
@@ -242,6 +244,49 @@ describe('preset lock acquisition', () => {
     expect(await readdir(fixture.presetRoot)).toEqual([LOCK_NAME])
   })
 
+  it.each(['EPERM', 'EACCES'])(
+    'treats a Windows-style %s lock publication collision as contention',
+    async (collisionCode) => {
+      const fixture = await createFixture()
+      const replacement = validOwner({
+        pid: 70_001,
+        packageVersion: '4.1.11',
+        ownerId: `windows-${collisionCode.toLowerCase()}-winner`,
+      })
+      let collided = false
+
+      await expect(
+        acquirePresetLock(
+          fixture.presetRoot,
+          dependencies({
+            fileSystem: {
+              rename: async (source, destination) => {
+                if (
+                  !collided &&
+                  source.endsWith('.anban-dsh.lock.acquire-windows-contender') &&
+                  destination === lockPath(fixture)
+                ) {
+                  collided = true
+                  await installLock(fixture, replacement)
+                  throw errno(collisionCode, 'Windows directory rename collision')
+                }
+                await rename(source, destination)
+              },
+            },
+            isPidAlive: () => true,
+            randomOwnerId: () => 'windows-contender',
+            timeoutMs: 0,
+          }),
+        ),
+      ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCKED' })
+
+      expect(collided).toBe(true)
+      expect(JSON.parse(await readFile(ownerPath(fixture), 'utf8'))).toEqual(
+        replacement,
+      )
+    },
+  )
+
   it('creates the exact lock directory and a complete bounded owner document', async () => {
     const fixture = await createFixture()
 
@@ -434,6 +479,151 @@ describe('preset lock acquisition', () => {
     await lock.release()
   })
 
+  it('treats a Windows-style claim publication collision as contention', async () => {
+    const fixture = await createFixture()
+    const competingClaim = validClaim({
+      pid: 70_002,
+      ownerId: 'windows-claim-winner',
+    })
+    const canonicalClaimPath = join(
+      lockPath(fixture),
+      '.anban-dsh.reclaim-claim',
+    )
+    let collided = false
+    await installLock(fixture, validOwner())
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          fileSystem: {
+            rename: async (source, destination) => {
+              if (
+                !collided &&
+                source.endsWith('.anban-dsh.reclaim-stage-windows-claim-loser') &&
+                destination === canonicalClaimPath
+              ) {
+                collided = true
+                await installClaim(fixture, competingClaim)
+                throw errno('EACCES', 'Windows claim rename collision')
+              }
+              await rename(source, destination)
+            },
+          },
+          isPidAlive: (pid) => pid === competingClaim.pid,
+          randomOwnerId: () => 'windows-claim-loser',
+          timeoutMs: 0,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCKED' })
+
+    expect(collided).toBe(true)
+    expect(
+      JSON.parse(
+        await readFile(join(canonicalClaimPath, 'claim.json'), 'utf8'),
+      ),
+    ).toEqual(competingClaim)
+  })
+
+  it('restores a newer live claim displaced by a stale claim takeover', async () => {
+    const fixture = await createFixture()
+    const canonicalClaimPath = join(
+      lockPath(fixture),
+      '.anban-dsh.reclaim-claim',
+    )
+    const contenderBRetiredPath = join(
+      lockPath(fixture),
+      '.anban-dsh.reclaim-retired-contender-b',
+    )
+    let signalBPaused!: () => void
+    const bPaused = new Promise<void>((resolvePaused) => {
+      signalBPaused = resolvePaused
+    })
+    let resumeB!: () => void
+    const bResume = new Promise<void>((resolveResume) => {
+      resumeB = resolveResume
+    })
+    let signalCPublished!: () => void
+    const cPublished = new Promise<void>((resolvePublished) => {
+      signalCPublished = resolvePublished
+    })
+    let resumeC!: () => void
+    const cResume = new Promise<void>((resolveResume) => {
+      resumeC = resolveResume
+    })
+    let bPausedOnce = false
+    let cPausedOnce = false
+    await installLock(fixture, validOwner())
+    await installClaim(fixture, validClaim())
+
+    const contenderB = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        fileSystem: {
+          rename: async (source, destination) => {
+            if (
+              !bPausedOnce &&
+              source === canonicalClaimPath &&
+              destination === contenderBRetiredPath
+            ) {
+              bPausedOnce = true
+              signalBPaused()
+              await bResume
+            }
+            await rename(source, destination)
+          },
+        },
+        isPidAlive: () => false,
+        pid: 62_001,
+        randomOwnerId: () => 'contender-b',
+      }),
+    )
+    await bPaused
+
+    const contenderC = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        fileSystem: {
+          rename: async (source, destination) => {
+            await rename(source, destination)
+            if (
+              !cPausedOnce &&
+              source.endsWith('.anban-dsh.reclaim-stage-contender-c') &&
+              destination === canonicalClaimPath
+            ) {
+              cPausedOnce = true
+              signalCPublished()
+              await cResume
+            }
+          },
+        },
+        isPidAlive: () => false,
+        pid: 62_002,
+        randomOwnerId: () => 'contender-c',
+      }),
+    )
+    await cPublished
+    resumeB()
+
+    await expect(contenderB).rejects.toMatchObject({
+      code: 'ERR_PRESET_LOCK_INVALID',
+    })
+    expect(
+      JSON.parse(
+        await readFile(join(canonicalClaimPath, 'claim.json'), 'utf8'),
+      ),
+    ).toEqual(
+      validClaim({
+        pid: 62_002,
+        ownerId: 'contender-c',
+      }),
+    )
+
+    resumeC()
+    const lock = await contenderC
+    await lock.release()
+  })
+
   it('keeps a complete same-host live reclaim claim intact', async () => {
     const fixture = await createFixture()
     const claim = validClaim()
@@ -462,6 +652,38 @@ describe('preset lock acquisition', () => {
         ),
       ),
     ).toEqual(claim)
+  })
+
+  it('waits to the original monotonic deadline for a live reclaim claim', async () => {
+    const fixture = await createFixture()
+    const claim = validClaim()
+    let monotonicMilliseconds = 10_000
+    const waits: number[] = []
+    await installLock(fixture, validOwner())
+    await installClaim(fixture, claim)
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          clock: { monotonicNow: () => monotonicMilliseconds },
+          isPidAlive: (pid) => pid === claim.pid,
+          randomOwnerId: () => 'live-claim-waiter',
+          retryIntervalMs: 20,
+          timeoutMs: 45,
+          wait: async (milliseconds) => {
+            waits.push(milliseconds)
+            monotonicMilliseconds += milliseconds
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCKED' })
+
+    expect(waits).toEqual([20, 20, 5])
+    expect((await readdir(lockPath(fixture))).sort()).toEqual([
+      '.anban-dsh.reclaim-claim',
+      OWNER_NAME,
+    ])
   })
 
   it('keeps a complete remote-host reclaim claim invalid and intact', async () => {
@@ -738,13 +960,20 @@ describe('preset lock acquisition', () => {
       fixture.presetRoot,
       dependencies({
         fileSystem: {
-          readFile: async (path, encoding) => {
-            if (staleSnapshotValidated && !claimReadPaused) {
-              claimReadPaused = true
-              signalClaimPaused()
-              await claimResume
+          open: async (path, flags) => {
+            const handle = await open(path, flags)
+            return {
+              close: () => handle.close(),
+              read: async (buffer, offset, length, position) => {
+                if (staleSnapshotValidated && !claimReadPaused) {
+                  claimReadPaused = true
+                  signalClaimPaused()
+                  await claimResume
+                }
+                return handle.read(buffer, offset, length, position)
+              },
+              stat: () => handle.stat(),
             }
-            return readFile(path, encoding)
           },
         },
         isPidAlive: async (pid) => {
@@ -808,11 +1037,18 @@ describe('preset lock acquisition', () => {
       fixture.presetRoot,
       dependencies({
         fileSystem: {
-          readFile: async (path, encoding) => {
-            if (staleSnapshotValidated) {
-              throw new Error('injected crash after fresh-directory claim')
+          open: async (path, flags) => {
+            const handle = await open(path, flags)
+            return {
+              close: () => handle.close(),
+              read: async (buffer, offset, length, position) => {
+                if (staleSnapshotValidated) {
+                  throw new Error('injected crash after fresh-directory claim')
+                }
+                return handle.read(buffer, offset, length, position)
+              },
+              stat: () => handle.stat(),
             }
-            return readFile(path, encoding)
           },
         },
         isPidAlive: async (pid) => {
@@ -899,15 +1135,20 @@ describe('preset lock refusal and fault handling', () => {
   it('treats permission-denied owner inspection as invalid and never removes it', async () => {
     const fixture = await createFixture()
     await installLock(fixture, validOwner())
-    const remove = vi.fn()
+    const remove = vi.fn((path: string, options: { force?: boolean; recursive?: boolean }) =>
+      rm(path, options),
+    )
 
     await expect(
       acquirePresetLock(
         fixture.presetRoot,
         dependencies({
           fileSystem: {
-            readFile: async () => {
-              throw errno('EACCES', 'permission denied')
+            open: async (path, flags) => {
+              if (path === ownerPath(fixture)) {
+                throw errno('EACCES', 'permission denied')
+              }
+              return open(path, flags)
             },
             rm: remove,
           },
@@ -1097,23 +1338,71 @@ describe('preset lock refusal and fault handling', () => {
 })
 
 describe('preset lock path safety and bounds', () => {
-  it('rejects an oversized owner before reading its contents', async () => {
+  it('bounds owner reads from one no-follow handle when the file grows', async () => {
     const fixture = await createFixture()
-    await installLock(fixture, 'x'.repeat(4_097))
-    const read = vi.fn((path: string, encoding: 'utf8') =>
-      readFile(path, encoding),
-    )
+    const openedPaths: string[] = []
+    const readLengths: number[] = []
+    let grew = false
+    await installLock(fixture, validOwner())
 
     await expect(
       acquirePresetLock(
         fixture.presetRoot,
-        dependencies({ fileSystem: { readFile: read } }),
+        dependencies({
+          fileSystem: {
+            open: async (path, flags) => {
+              openedPaths.push(path)
+              const handle = await open(path, flags)
+              return {
+                close: () => handle.close(),
+                read: async (buffer, offset, length, position) => {
+                  readLengths.push(length)
+                  if (!grew && path === ownerPath(fixture)) {
+                    grew = true
+                    await appendFile(path, 'x'.repeat(4_097))
+                  }
+                  return handle.read(buffer, offset, length, position)
+                },
+                stat: () => handle.stat(),
+              }
+            },
+          },
+        }),
       ),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
 
-    expect(
-      read.mock.calls.some(([path]) => path === ownerPath(fixture)),
-    ).toBe(false)
+    expect(openedPaths).toContain(ownerPath(fixture))
+    expect(Math.max(...readLengths)).toBeLessThanOrEqual(4_097)
+  })
+
+  it('rejects an oversized owner before reading its contents', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, 'x'.repeat(4_097))
+    const ownerRead = vi.fn()
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          fileSystem: {
+            open: async (path, flags) => {
+              const handle = await open(path, flags)
+              if (path !== ownerPath(fixture)) return handle
+              return {
+                close: () => handle.close(),
+                read: async (buffer, offset, length, position) => {
+                  ownerRead()
+                  return handle.read(buffer, offset, length, position)
+                },
+                stat: () => handle.stat(),
+              }
+            },
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect(ownerRead).not.toHaveBeenCalled()
   })
 
   it('never follows a symbolic-link preset root', async () => {
