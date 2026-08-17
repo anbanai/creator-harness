@@ -7,6 +7,10 @@ if (presetsModuleUrl === undefined || action === undefined || dshHome === undefi
   throw new Error('preset process worker requires module, action, and DSH home')
 }
 
+if (action === 'exit-before-ready') {
+  process.exit(31)
+}
+
 function send(message) {
   return new Promise((resolve, reject) => {
     if (process.send === undefined) {
@@ -34,6 +38,13 @@ function serializeError(error) {
 const presets = await import(presetsModuleUrl)
 await send({ type: 'ready' })
 await new Promise((resolve) => process.once('message', resolve))
+
+if (action === 'exit-without-result') {
+  process.exit(0)
+}
+if (action === 'wait-without-result') {
+  await new Promise(() => setInterval(() => {}, 60_000))
+}
 
 try {
   if (action === 'crash-lock') {

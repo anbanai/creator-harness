@@ -57,12 +57,37 @@ import {
   acquirePresetLock,
   type PresetLockDependencies,
 } from '../src/preset-lock.js'
+import {
+  OperationalError,
+  formatOperationalError,
+} from '../src/operational-error.js'
 
 const OWNERSHIP_FILE = '.anban-dsh-preset.json'
 const LOCK_NAME = '.anban-dsh.lock'
 const execFileAsync = promisify(execFile)
 const fixtureRoots: string[] = []
 let processPackageRoot = ''
+let observedCompileCommand: { args: string[]; executable: string } | undefined
+
+function processFixtureCompileCommand(
+  _platform: NodeJS.Platform,
+  outputRoot: string,
+): { args: string[]; executable: string } {
+  return {
+    executable: process.execPath,
+    args: [
+      fileURLToPath(
+        new URL('../../node_modules/typescript/bin/tsc', import.meta.url),
+      ),
+      '-p',
+      fileURLToPath(new URL('../../tsconfig.json', import.meta.url)),
+      '--outDir',
+      join(outputRoot, 'dsh', 'lib'),
+      '--declaration',
+      'false',
+    ],
+  }
+}
 
 interface Fixture {
   dshHome: string
@@ -148,20 +173,51 @@ interface WorkerResult {
 
 interface PresetWorker {
   child: ChildProcess
+  closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }>
+  message(type: string): Promise<void>
   output(): string
   ready: Promise<void>
   result: Promise<WorkerResult>
   start(): void
+  terminate(): Promise<void>
 }
 
-function spawnPresetWorker(action: string, dshHome: string): PresetWorker {
+interface PresetWorkerOptions {
+  execPath?: string
+  moduleUrl?: string
+  timeoutMs?: number
+}
+
+const activePresetWorkers = new Set<PresetWorker>()
+const DEFAULT_WORKER_TIMEOUT_MS = 10_000
+const WORKER_TERMINATION_TIMEOUT_MS = 1_000
+
+function workerFailure(
+  phase: string,
+  output: string,
+  code: number | null,
+  signal: NodeJS.Signals | null,
+): Error {
+  const outcome =
+    signal === null ? `code ${String(code)}` : `signal ${signal}`
+  return new Error(
+    `preset worker exited before ${phase} with ${outcome}: ${output}`,
+  )
+}
+
+function spawnPresetWorker(
+  action: string,
+  dshHome: string,
+  options: PresetWorkerOptions = {},
+): PresetWorker {
   const workerPath = fileURLToPath(
     new URL('./fixtures/preset-process-worker.mjs', import.meta.url),
   )
-  const moduleUrl = pathToFileURL(
-    join(processPackageRoot, 'dsh', 'lib', 'presets.js'),
-  ).href
+  const moduleUrl =
+    options.moduleUrl ??
+    pathToFileURL(join(processPackageRoot, 'dsh', 'lib', 'presets.js')).href
   const child = fork(workerPath, [moduleUrl, action, dshHome], {
+    ...(options.execPath === undefined ? {} : { execPath: options.execPath }),
     silent: true,
   })
   let output = ''
@@ -171,19 +227,52 @@ function spawnPresetWorker(action: string, dshHome: string): PresetWorker {
   child.stderr?.on('data', (chunk) => {
     output += String(chunk)
   })
+  const timeoutMs = options.timeoutMs ?? DEFAULT_WORKER_TIMEOUT_MS
   let resolveReady!: () => void
-  let resolveResult!: (result: WorkerResult) => void
-  const ready = new Promise<void>((resolve) => {
+  let rejectReady!: (error: unknown) => void
+  let readySettled = false
+  const ready = new Promise<void>((resolve, reject) => {
     resolveReady = resolve
+    rejectReady = reject
   })
+  let resolveResult!: (result: WorkerResult) => void
+  let rejectResult!: (error: unknown) => void
+  let resultSettled = false
   const result = new Promise<WorkerResult>((resolve, reject) => {
     resolveResult = resolve
-    child.once('error', reject)
-    child.once('exit', (code) => {
-      if (code !== 0 && action !== 'crash-lock') {
-        reject(new Error(`preset worker exited ${String(code)}: ${output}`))
-      }
-    })
+    rejectResult = reject
+  })
+  void ready.catch(() => {})
+  void result.catch(() => {})
+  let resultTimer: NodeJS.Timeout | undefined
+
+  function settleReady(error?: unknown): void {
+    if (readySettled) return
+    readySettled = true
+    clearTimeout(readyTimer)
+    if (error === undefined) resolveReady()
+    else rejectReady(error)
+  }
+
+  function settleResult(value: WorkerResult | undefined, error?: unknown): void {
+    if (resultSettled) return
+    resultSettled = true
+    if (resultTimer !== undefined) clearTimeout(resultTimer)
+    if (error === undefined && value !== undefined) resolveResult(value)
+    else rejectResult(error ?? new Error('preset worker returned no result'))
+  }
+
+  const readyTimer = setTimeout(() => {
+    const error = new Error(`preset worker ready timed out after ${timeoutMs}ms`)
+    settleReady(error)
+    settleResult(undefined, error)
+    child.kill('SIGTERM')
+  }, timeoutMs)
+  readyTimer.unref()
+
+  child.once('error', (error) => {
+    settleReady(error)
+    settleResult(undefined, error)
   })
   child.on('message', (message) => {
     if (
@@ -191,20 +280,117 @@ function spawnPresetWorker(action: string, dshHome: string): PresetWorker {
       message !== null &&
       'type' in message
     ) {
-      if (message.type === 'ready') resolveReady()
-      if (message.type === 'result') resolveResult(message as WorkerResult)
+      if (message.type === 'ready') settleReady()
+      if (message.type === 'result') {
+        settleResult(message as WorkerResult)
+      }
     }
   })
 
-  return {
+  let resolveClosed!: (outcome: {
+    code: number | null
+    signal: NodeJS.Signals | null
+  }) => void
+  const closed = new Promise<{
+    code: number | null
+    signal: NodeJS.Signals | null
+  }>((resolve) => {
+    resolveClosed = resolve
+  })
+  let worker!: PresetWorker
+  child.once('close', (code, signal) => {
+    const error = workerFailure(
+      readySettled ? 'result' : 'ready',
+      output,
+      code,
+      signal,
+    )
+    settleReady(error)
+    settleResult(undefined, error)
+    activePresetWorkers.delete(worker)
+    resolveClosed({ code, signal })
+  })
+
+  let started = false
+  worker = {
     child,
+    closed,
+    message(type: string): Promise<void> {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          cleanup()
+          reject(new Error(`preset worker message ${type} timed out`))
+        }, timeoutMs)
+        timer.unref()
+        const onMessage = (message: unknown) => {
+          if (
+            typeof message === 'object' &&
+            message !== null &&
+            'type' in message &&
+            message.type === type
+          ) {
+            cleanup()
+            resolve()
+          }
+        }
+        const onClose = (code: number | null, signal: NodeJS.Signals | null) => {
+          cleanup()
+          reject(workerFailure(`message ${type}`, output, code, signal))
+        }
+        const onError = (error: Error) => {
+          cleanup()
+          reject(error)
+        }
+        function cleanup(): void {
+          clearTimeout(timer)
+          child.off('message', onMessage)
+          child.off('close', onClose)
+          child.off('error', onError)
+        }
+        child.on('message', onMessage)
+        child.once('close', onClose)
+        child.once('error', onError)
+      })
+    },
     output: () => output,
     ready,
     result,
     start() {
-      child.send({ type: 'start' })
+      if (started) throw new Error('preset worker already started')
+      started = true
+      resultTimer = setTimeout(() => {
+        const error = new Error(
+          `preset worker result timed out after ${timeoutMs}ms`,
+        )
+        settleResult(undefined, error)
+        child.kill('SIGTERM')
+      }, timeoutMs)
+      resultTimer.unref()
+      child.send({ type: 'start' }, (error) => {
+        if (error !== null) settleResult(undefined, error)
+      })
+    },
+    async terminate(): Promise<void> {
+      if (child.exitCode !== null || child.signalCode !== null) {
+        await closed
+        return
+      }
+      child.kill('SIGTERM')
+      const forced = setTimeout(() => child.kill('SIGKILL'), WORKER_TERMINATION_TIMEOUT_MS)
+      forced.unref()
+      await closed
+      clearTimeout(forced)
     },
   }
+  activePresetWorkers.add(worker)
+
+  return worker
+}
+
+async function terminateActivePresetWorkers(): Promise<void> {
+  await Promise.all(
+    [...activePresetWorkers].map((worker) => worker.terminate()),
+  )
 }
 
 async function waitForLockOwner(dshHome: string, pid: number): Promise<void> {
@@ -247,11 +433,15 @@ async function expectNoLockResidue(dshHome: string): Promise<void> {
   expect(entries.filter((entry) => entry.startsWith('.anban-dsh'))).toEqual([])
 }
 
-async function expectHealthyOwnership(dshHome: string): Promise<void> {
+async function expectHealthyOwnership(
+  dshHome: string,
+  expectedState: 'absent' | 'current',
+): Promise<void> {
   const statusWorker = spawnPresetWorker('status', dshHome)
   await statusWorker.ready
   statusWorker.start()
   const result = await statusWorker.result
+  await statusWorker.closed
   expect(result).toMatchObject({ ok: true })
   const statuses = result.value as Array<{
     id: string
@@ -259,7 +449,7 @@ async function expectHealthyOwnership(dshHome: string): Promise<void> {
     state: string
   }>
   for (const status of statuses) {
-    expect(['absent', 'current']).toContain(status.state)
+    expect(status.state).toBe(expectedState)
     if (status.state === 'current') {
       const ownership = JSON.parse(
         await readFile(
@@ -294,20 +484,18 @@ beforeAll(async () => {
     join(processPackageRoot, 'node_modules'),
     'dir',
   )
+  observedCompileCommand = processFixtureCompileCommand(
+    process.platform,
+    processPackageRoot,
+  )
   await execFileAsync(
-    fileURLToPath(new URL('../../node_modules/.bin/tsc', import.meta.url)),
-    [
-      '-p',
-      fileURLToPath(new URL('../../tsconfig.json', import.meta.url)),
-      '--outDir',
-      join(processPackageRoot, 'dsh', 'lib'),
-      '--declaration',
-      'false',
-    ],
+    observedCompileCommand.executable,
+    observedCompileCommand.args,
   )
 }, 30_000)
 
 afterAll(async () => {
+  await terminateActivePresetWorkers()
   const templateRoot = processPackageRoot === '' ? '' : join(processPackageRoot, '..')
   processPackageRoot = ''
   if (templateRoot !== '') {
@@ -318,18 +506,59 @@ afterAll(async () => {
 afterEach(async () => {
   copyFault.before = undefined
   copyFault.path = ''
+  await terminateActivePresetWorkers()
   await Promise.all(
     fixtureRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })),
   )
 })
 
 describe('preset public contract', () => {
+  it('uses a Windows-portable Node command to compile the process fixture', () => {
+    const windowsCommand = processFixtureCompileCommand(
+      'win32',
+      processPackageRoot,
+    )
+    expect(observedCompileCommand).toEqual(
+      processFixtureCompileCommand(process.platform, processPackageRoot),
+    )
+    expect(windowsCommand.executable).toBe(process.execPath)
+    expect(windowsCommand.args[0]).toMatch(
+      /[\\/]typescript[\\/]bin[\\/]tsc$/,
+    )
+  })
+
   it('exports only the supported preset ids and callable operations', () => {
     expect(PRESET_IDS).toEqual(['article', 'seednote'])
     expect(installPresets).toBeTypeOf('function')
     expect(statusPresets).toBeTypeOf('function')
     expect(removePresets).toBeTypeOf('function')
   })
+
+  it.each([
+    ['install', installPresets],
+    ['status', statusPresets],
+    ['remove', removePresets],
+  ] as const)(
+    'maps throwing option access inside the public %s boundary',
+    async (_label, operation) => {
+      const options = new Proxy(
+        {},
+        {
+          get() {
+            throw new Error('Authorization Bearer leaked-option-secret')
+          },
+        },
+      )
+
+      const failure = await operation(options).catch((error: unknown) => error)
+
+      expect(failure).toMatchObject({ code: 'ERR_PRESET_OPERATION' })
+      expect(formatOperationalError(failure)).not.toContain(
+        'leaked-option-secret',
+      )
+      expect(JSON.stringify(failure)).not.toContain('leaked-option-secret')
+    },
+  )
 })
 
 describe('preset transaction locking', () => {
@@ -440,6 +669,141 @@ describe('preset transaction locking', () => {
     const next = await acquirePresetLock(root, lockDependencies('next-owner'))
     await next.release()
     await expectNoLockResidue(fixture.dshHome)
+  })
+
+  it.each([
+    [
+      'unowned',
+      'ERR_PRESET_UNOWNED',
+      'An Anban preset is not owned by this package.',
+    ],
+    [
+      'modified',
+      'ERR_PRESET_MODIFIED',
+      'An Anban preset has local changes.',
+    ],
+  ] as const)(
+    'preserves a %s mutation failure while retrying transient release',
+    async (state, code, message) => {
+      const fixture = await createFixture()
+      if (state === 'unowned') {
+        await mkdir(destination(fixture, 'article'), { recursive: true })
+        await writeFile(join(destination(fixture, 'article'), 'personal.txt'), 'keep')
+      } else {
+        await presetTestInternals.install(fixtureOptions(fixture))
+        await writeFile(join(destination(fixture, 'article'), 'preset.yml'), 'changed\n')
+      }
+      let releaseAttempts = 0
+
+      const failure = await presetTestInternals
+        .install(
+          fixtureOptions(fixture, {
+            lockDependencies: {
+              faults: {
+                beforeReleaseRename() {
+                  releaseAttempts += 1
+                  if (releaseAttempts === 1) {
+                    throw Object.assign(new Error('temporary release failure'), {
+                      code: 'EACCES',
+                    })
+                  }
+                },
+              },
+            },
+          }),
+        )
+        .catch((error: unknown) => error)
+
+      expect(failure).toMatchObject({ code, message })
+      expect(releaseAttempts).toBe(2)
+      await expectNoLockResidue(fixture.dshHome)
+      await expect(
+        presetTestInternals.install(
+          fixtureOptions(fixture, { force: true }),
+        ),
+      ).resolves.toEqual([
+        expect.objectContaining({ state: 'current' }),
+        expect.objectContaining({ state: 'current' }),
+      ])
+    },
+  )
+
+  it('keeps the mutation primary when bounded release retries are exhausted', async () => {
+    const fixture = await createFixture()
+    await mkdir(destination(fixture, 'article'), { recursive: true })
+    await writeFile(join(destination(fixture, 'article'), 'personal.txt'), 'keep')
+    let releaseAttempts = 0
+
+    const failure = await presetTestInternals
+      .install(
+        fixtureOptions(fixture, {
+          lockDependencies: {
+            faults: {
+              beforeReleaseRename() {
+                releaseAttempts += 1
+                throw Object.assign(new Error('leaked-release-secret'), {
+                  code: 'EACCES',
+                })
+              },
+            },
+          },
+        }),
+      )
+      .catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({
+      code: 'ERR_PRESET_UNOWNED',
+      message: 'An Anban preset is not owned by this package.',
+    })
+    expect(releaseAttempts).toBe(3)
+    expect(JSON.stringify(failure)).not.toContain('leaked-release-secret')
+  })
+
+  it('returns a controlled release error after bounded retries without mutation failure', async () => {
+    const fixture = await createFixture()
+    let releaseAttempts = 0
+
+    const failure = await presetTestInternals
+      .install(
+        fixtureOptions(fixture, {
+          lockDependencies: {
+            faults: {
+              beforeReleaseRename() {
+                releaseAttempts += 1
+                throw Object.assign(new Error('persistent release failure'), {
+                  code: 'EACCES',
+                })
+              },
+            },
+          },
+        }),
+      )
+      .catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({ code: 'ERR_PRESET_OPERATION' })
+    expect(releaseAttempts).toBe(3)
+  })
+
+  it('maps a forged OperationalError prototype to the generic operation code', async () => {
+    const fixture = await createFixture()
+    const forged = Object.create(OperationalError.prototype) as OperationalError
+
+    const failure = await presetTestInternals
+      .install(
+        fixtureOptions(fixture, {
+          lockDependencies: {
+            faults: {
+              beforeOwnerPublish() {
+                throw forged
+              },
+            },
+          },
+        }),
+      )
+      .catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({ code: 'ERR_PRESET_OPERATION' })
+    expect(failure).not.toBe(forged)
   })
 })
 
@@ -1042,6 +1406,29 @@ describe('preset containment and digest safety', () => {
 })
 
 describe('preset cross-process transactions', () => {
+  async function settleWithin<T>(
+    promise: Promise<T>,
+    milliseconds = 300,
+  ): Promise<
+    | { kind: 'fulfilled'; value: T }
+    | { error: unknown; kind: 'rejected' }
+    | { kind: 'timeout' }
+  > {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve({ kind: 'timeout' }), milliseconds)
+      promise.then(
+        (value) => {
+          clearTimeout(timer)
+          resolve({ kind: 'fulfilled', value })
+        },
+        (error: unknown) => {
+          clearTimeout(timer)
+          resolve({ error, kind: 'rejected' })
+        },
+      )
+    })
+  }
+
   async function runWorker(action: string, dshHome: string): Promise<{
     output: string
     result: WorkerResult
@@ -1050,31 +1437,122 @@ describe('preset cross-process transactions', () => {
     await worker.ready
     worker.start()
     const result = await worker.result
+    await worker.closed
     return { output: worker.output(), result }
   }
 
-  function waitForMessage(child: ChildProcess, type: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const onMessage = (message: unknown) => {
-        if (
-          typeof message === 'object' &&
-          message !== null &&
-          'type' in message &&
-          message.type === type
-        ) {
-          child.off('error', onError)
-          child.off('message', onMessage)
-          resolve()
-        }
-      }
-      const onError = (error: Error) => {
-        child.off('message', onMessage)
-        reject(error)
-      }
-      child.on('message', onMessage)
-      child.once('error', onError)
-    })
+  function expectCurrentWorkerResult(result: WorkerResult): void {
+    expect(result).toMatchObject({ ok: true })
+    const statuses = result.value as Array<{ state?: unknown }>
+    expect(statuses).toHaveLength(PRESET_IDS.length)
+    expect(statuses.every((status) => status.state === 'current')).toBe(true)
   }
+
+  it('rejects ready and result when a worker exits before setup completes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-early-exit-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker('exit-before-ready', join(root, 'home'))
+
+    const [ready, result] = await Promise.all([
+      settleWithin(worker.ready),
+      settleWithin(worker.result),
+    ])
+
+    expect(ready).toMatchObject({ kind: 'rejected' })
+    expect(result).toMatchObject({ kind: 'rejected' })
+  })
+
+  it('rejects a zero exit that sends no result', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-no-result-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker('exit-without-result', join(root, 'home'))
+    await worker.ready
+    worker.start()
+
+    expect(await settleWithin(worker.result)).toMatchObject({
+      kind: 'rejected',
+    })
+  })
+
+  it('rejects ready and result on module setup failure', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-setup-failure-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker('install', join(root, 'home'), {
+      moduleUrl: pathToFileURL(join(root, 'missing-presets.js')).href,
+    })
+
+    const [ready, result] = await Promise.all([
+      settleWithin(worker.ready),
+      settleWithin(worker.result),
+    ])
+
+    expect(ready).toMatchObject({ kind: 'rejected' })
+    expect(result).toMatchObject({ kind: 'rejected' })
+  })
+
+  it('reports the terminating signal while waiting for a result', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-signal-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker('wait-without-result', join(root, 'home'))
+    await worker.ready
+    worker.start()
+    worker.child.kill('SIGTERM')
+
+    const outcome = await settleWithin(worker.result)
+
+    expect(outcome).toMatchObject({
+      error: { message: expect.stringContaining('SIGTERM') },
+      kind: 'rejected',
+    })
+  })
+
+  it('bounds ready and result waits and leaves teardown able to stop the worker', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-timeout-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker('wait-without-result', join(root, 'home'), {
+      timeoutMs: 50,
+    })
+    await worker.ready
+    worker.start()
+
+    const outcome = await settleWithin(worker.result)
+    await worker.closed
+
+    expect(outcome).toMatchObject({
+      error: { message: expect.stringContaining('timed out') },
+      kind: 'rejected',
+    })
+  })
+
+  it('terminates and awaits every tracked worker before fixture cleanup', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-teardown-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker('wait-without-result', join(root, 'home'))
+    await worker.ready
+    worker.start()
+
+    await terminateActivePresetWorkers()
+
+    expect(activePresetWorkers.size).toBe(0)
+    expect(await worker.closed).toMatchObject({ signal: 'SIGTERM' })
+    expect(await lstat(root)).toBeTruthy()
+  })
+
+  it('rejects ready and result when the child process cannot spawn', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-spawn-error-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker('install', join(root, 'home'), {
+      execPath: join(root, 'missing-node-executable'),
+    })
+
+    const [ready, result] = await Promise.all([
+      settleWithin(worker.ready),
+      settleWithin(worker.result),
+    ])
+
+    expect(ready).toMatchObject({ kind: 'rejected' })
+    expect(result).toMatchObject({ kind: 'rejected' })
+  })
 
   it('makes concurrent install/install idempotent across Node processes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-install-'))
@@ -1088,12 +1566,9 @@ describe('preset cross-process transactions', () => {
     second.start()
     const results = await Promise.all([first.result, second.result])
 
-    expect(results).toEqual([
-      expect.objectContaining({ ok: true }),
-      expect.objectContaining({ ok: true }),
-    ])
+    for (const result of results) expectCurrentWorkerResult(result)
     expect(`${first.output()}\n${second.output()}`).not.toContain('ENOTEMPTY')
-    await expectHealthyOwnership(dshHome)
+    await expectHealthyOwnership(dshHome, 'current')
   })
 
   it('serializes install then remove in observed acquisition order', async () => {
@@ -1112,20 +1587,20 @@ describe('preset cross-process transactions', () => {
       remove.result,
     ])
 
-    expect(installResult).toMatchObject({ ok: true })
+    expectCurrentWorkerResult(installResult)
     expect(removeResult).toMatchObject({
       ok: true,
       value: ['article', 'seednote'],
     })
     expect(`${install.output()}\n${remove.output()}`).not.toContain('ENOTEMPTY')
-    await expectHealthyOwnership(dshHome)
+    await expectHealthyOwnership(dshHome, 'absent')
   })
 
   it('serializes force install then regular install in observed acquisition order', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-force-'))
     fixtureRoots.push(root)
     const dshHome = join(root, 'home')
-    expect((await runWorker('install', dshHome)).result).toMatchObject({ ok: true })
+    expectCurrentWorkerResult((await runWorker('install', dshHome)).result)
     await writeFile(join(dshHome, '.agent-presets', 'article', 'preset.yml'), 'modified\n')
     const force = spawnPresetWorker('force-install', dshHome)
     const install = spawnPresetWorker('install', dshHome)
@@ -1139,10 +1614,10 @@ describe('preset cross-process transactions', () => {
       install.result,
     ])
 
-    expect(forceResult).toMatchObject({ ok: true })
-    expect(installResult).toMatchObject({ ok: true })
+    expectCurrentWorkerResult(forceResult)
+    expectCurrentWorkerResult(installResult)
     expect(`${force.output()}\n${install.output()}`).not.toContain('ENOTEMPTY')
-    await expectHealthyOwnership(dshHome)
+    await expectHealthyOwnership(dshHome, 'current')
   })
 
   it('releases its process lock when a preset operation fails', async () => {
@@ -1169,10 +1644,10 @@ describe('preset cross-process transactions', () => {
       error: { code: 'ERR_PRESET_OPERATION' },
       ok: false,
     })
-    expect(failed.output).not.toContain('ENOTEMPTY')
+    expect(JSON.stringify(failed.result.error)).not.toContain('ENOTEMPTY')
     await expectNoLockResidue(dshHome)
-    expect((await runWorker('install', dshHome)).result).toMatchObject({ ok: true })
-    await expectHealthyOwnership(dshHome)
+    expectCurrentWorkerResult((await runWorker('install', dshHome)).result)
+    await expectHealthyOwnership(dshHome, 'current')
   })
 
   it('reclaims process-crash lock residue before the next install', async () => {
@@ -1181,13 +1656,10 @@ describe('preset cross-process transactions', () => {
     const dshHome = join(root, 'home')
     const crashed = spawnPresetWorker('crash-lock', dshHome)
     await crashed.ready
-    const acquired = waitForMessage(crashed.child, 'acquired')
+    const acquired = crashed.message('acquired')
     crashed.start()
     await acquired
-    const exitCode = await new Promise<number | null>((resolve) =>
-      crashed.child.once('exit', resolve),
-    )
-    expect(exitCode).toBe(73)
+    expect(await crashed.closed).toMatchObject({ code: 73, signal: null })
     expect(
       await readFile(
         join(dshHome, '.agent-presets', LOCK_NAME, 'owner.json'),
@@ -1197,8 +1669,8 @@ describe('preset cross-process transactions', () => {
 
     const recovered = await runWorker('install', dshHome)
 
-    expect(recovered.result).toMatchObject({ ok: true })
+    expectCurrentWorkerResult(recovered.result)
     expect(recovered.output).not.toContain('ENOTEMPTY')
-    await expectHealthyOwnership(dshHome)
+    await expectHealthyOwnership(dshHome, 'current')
   })
 })

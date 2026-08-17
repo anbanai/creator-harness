@@ -5,6 +5,7 @@ import {
   OperationalError,
   formatOperationalError,
   isDshDebugEnabled,
+  isOperationalError,
   type OperationalErrorCode,
 } from '../src/operational-error.js'
 
@@ -19,6 +20,21 @@ const EXPECTED_CODES = [
 ] as const satisfies readonly OperationalErrorCode[]
 
 describe('OperationalError', () => {
+  it('rejects an OperationalError prototype forgery', () => {
+    const authentic = new OperationalError(
+      'ERR_PRESET_LOCKED',
+      'Another preset operation is running.',
+    )
+    const forged = Object.create(OperationalError.prototype) as OperationalError
+
+    expect(isOperationalError(authentic)).toBe(true)
+    expect(isOperationalError(forged)).toBe(false)
+    expect(isOperationalError(new Proxy(authentic, {}))).toBe(false)
+    expect(formatOperationalError(forged)).toBe(
+      'ERR_PRESET_OPERATION: Anban preset operation failed.',
+    )
+  })
+
   it('supports exactly the seven stable public codes', () => {
     expect(OPERATIONAL_ERROR_CODES).toEqual(EXPECTED_CODES)
 

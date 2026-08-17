@@ -21,7 +21,10 @@ import {
   acquirePresetLock,
   type PresetLockDependencies,
 } from './preset-lock.js'
-import { OperationalError } from './operational-error.js'
+import {
+  OperationalError,
+  isOperationalError,
+} from './operational-error.js'
 
 export const PRESET_IDS = ['article', 'seednote'] as const
 export type PresetId = (typeof PRESET_IDS)[number]
@@ -77,6 +80,7 @@ const PACKAGE_NAME = '@anban/dsh-plugin'
 const PRESET_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
 const SOURCE_ROOT = fileURLToPath(new URL('../presets/', import.meta.url))
 const PACKAGE_URL = new URL('../../package.json', import.meta.url)
+const RELEASE_ATTEMPTS = 3
 
 function unownedPreset(cause?: unknown): OperationalError {
   return new OperationalError(
@@ -123,7 +127,20 @@ function operationFailure(cause: unknown): OperationalError {
 }
 
 function mapOperationFailure(error: unknown): OperationalError {
-  return error instanceof OperationalError ? error : operationFailure(error)
+  return isOperationalError(error) ? error : operationFailure(error)
+}
+
+function withSecondaryFailure(
+  primary: OperationalError,
+  secondary: OperationalError,
+): OperationalError {
+  return new OperationalError(primary.code, primary.message, {
+    cause: new AggregateError(
+      [primary, secondary],
+      'Preset mutation and lock release both failed',
+    ),
+    ...(primary.recovery === undefined ? {} : { recovery: primary.recovery }),
+  })
 }
 
 function isNodeError(error: unknown, code: string): boolean {
@@ -737,19 +754,50 @@ function testContext(options: TestPresetOptions): PresetContext {
 export async function installPresets(
   options: InstallOptions = {},
 ): Promise<PresetStatus[]> {
-  return mutateWithContext(await publicContext(options), installWithContext)
+  return mapPublicOperation(async () =>
+    mutateWithContext(await publicContext(options), installWithContext),
+  )
 }
 
 export async function statusPresets(
   options: Pick<InstallOptions, 'dshHome'> = {},
 ): Promise<PresetStatus[]> {
-  return statusWithContext(await publicContext(options))
+  return mapPublicOperation(async () =>
+    statusWithContext(await publicContext(options)),
+  )
 }
 
 export async function removePresets(
   options: Pick<InstallOptions, 'dshHome'> = {},
 ): Promise<PresetId[]> {
-  return mutateWithContext(await publicContext(options), removeWithContext)
+  return mapPublicOperation(async () =>
+    mutateWithContext(await publicContext(options), removeWithContext),
+  )
+}
+
+async function mapPublicOperation<Result>(
+  operation: () => Promise<Result>,
+): Promise<Result> {
+  try {
+    return await operation()
+  } catch (error) {
+    throw mapOperationFailure(error)
+  }
+}
+
+async function releaseWithRetries(
+  lock: Awaited<ReturnType<typeof acquirePresetLock>>,
+): Promise<void> {
+  let lastFailure: unknown
+  for (let attempt = 0; attempt < RELEASE_ATTEMPTS; attempt += 1) {
+    try {
+      await lock.release()
+      return
+    } catch (error) {
+      lastFailure = error
+    }
+  }
+  throw mapOperationFailure(lastFailure)
 }
 
 async function mutateWithContext<Result>(
@@ -757,17 +805,37 @@ async function mutateWithContext<Result>(
   operation: (context: PresetContext) => Promise<Result>,
 ): Promise<Result> {
   let lock: Awaited<ReturnType<typeof acquirePresetLock>> | undefined
+  let releaseFailure: OperationalError | undefined
+  let outcome:
+    | { error: OperationalError; kind: 'failure' }
+    | { kind: 'success'; value: Result }
   try {
     await assertSafePresetRoot(context)
     await mkdir(presetRoot(context), { recursive: true })
     await assertSafePresetRoot(context)
     lock = await acquirePresetLock(presetRoot(context), context.lockDependencies)
-    return await operation(context)
+    outcome = { kind: 'success', value: await operation(context) }
   } catch (error) {
-    throw mapOperationFailure(error)
+    outcome = { error: mapOperationFailure(error), kind: 'failure' }
   } finally {
-    await lock?.release()
+    if (lock !== undefined) {
+      try {
+        await releaseWithRetries(lock)
+      } catch (error) {
+        releaseFailure = mapOperationFailure(error)
+      }
+    }
   }
+
+  if (outcome.kind === 'failure') {
+    throw releaseFailure === undefined
+      ? outcome.error
+      : withSecondaryFailure(outcome.error, releaseFailure)
+  }
+  if (releaseFailure !== undefined) {
+    throw releaseFailure
+  }
+  return outcome.value
 }
 
 /** @internal Test boundary for isolated source fixtures; not part of package exports. */

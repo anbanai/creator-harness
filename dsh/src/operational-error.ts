@@ -155,7 +155,7 @@ function publicDiagnostic(error: OperationalError): string {
   )
 }
 
-function isOperationalError(error: unknown): error is OperationalError {
+export function isOperationalError(error: unknown): error is OperationalError {
   return (
     typeof error === 'object' &&
     error !== null &&

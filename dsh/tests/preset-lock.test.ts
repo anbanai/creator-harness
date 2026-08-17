@@ -21,6 +21,7 @@ import {
   type PresetLockDependencies,
   type PresetLockOwner,
 } from '../src/preset-lock.js'
+import { OperationalError } from '../src/operational-error.js'
 
 const LOCK_NAME = '.anban-dsh.lock'
 const OWNER_NAME = 'owner.json'
@@ -191,6 +192,24 @@ afterEach(async () => {
 })
 
 describe('preset lock acquisition', () => {
+  it('maps a forged OperationalError prototype through the lock boundary', async () => {
+    const fixture = await createFixture()
+    const forged = Object.create(OperationalError.prototype) as OperationalError
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          faults: {
+            beforeOwnerPublish() {
+              throw forged
+            },
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
+  })
+
   it('publishes only a complete staged lock into the canonical path', async () => {
     const fixture = await createFixture()
     let signalStaged!: () => void

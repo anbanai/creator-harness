@@ -13,7 +13,10 @@ import {
 import { hostname as realHostname } from 'node:os'
 import { join, relative, resolve, sep } from 'node:path'
 
-import { OperationalError } from './operational-error.js'
+import {
+  OperationalError,
+  isOperationalError,
+} from './operational-error.js'
 
 export interface PresetLockOwner {
   schemaVersion: 1
@@ -220,14 +223,6 @@ function operationFailure(cause?: unknown): OperationalError {
     'Unable to manage the Anban preset lock.',
     { cause },
   )
-}
-
-function isOperationalError(error: unknown): error is OperationalError {
-  try {
-    return error instanceof OperationalError
-  } catch {
-    return false
-  }
 }
 
 function assertBoundedToken(
