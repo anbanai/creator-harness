@@ -30,10 +30,12 @@ the Skill provider.
 ## Resolve DSH home
 
 Normalize and export the effective DSH home before any filesystem operation.
-Node is a DSH prerequisite. This snippet trims the environment value, treats an
-unset, empty, or whitespace-only value as `path.join(os.homedir(), '.dsh')`,
-expands exact `~` and `~/...` forms, and resolves the result to an absolute path.
-It refuses an empty result or a filesystem root before creating or changing
+Node is a DSH prerequisite. This snippet uses a trimmed view only to decide
+whether an unset, empty, or whitespace-only value falls back to
+`path.join(os.homedir(), '.dsh')`. It otherwise preserves the configured value,
+including significant leading or trailing whitespace, expands exact `~`,
+`~/...`, and `~\...` forms, and resolves the result to an absolute path. It
+refuses an empty result or a filesystem root before creating or changing
 permissions:
 
 ```bash
@@ -42,10 +44,13 @@ node <<'NODE'
 const os = require('node:os')
 const path = require('node:path')
 
-let value = (process.env.DSH_HOME ?? '').trim()
-if (value === '') value = path.join(os.homedir(), '.dsh')
-else if (value === '~') value = os.homedir()
-else if (value.startsWith('~/')) value = path.join(os.homedir(), value.slice(2))
+const configured = process.env.DSH_HOME ?? ''
+let value = configured
+if (configured.trim() === '') value = path.join(os.homedir(), '.dsh')
+else if (configured === '~') value = os.homedir()
+else if (configured.startsWith('~/') || configured.startsWith('~\\')) {
+  value = path.join(os.homedir(), configured.slice(2))
+}
 
 const normalized = path.resolve(value)
 if (normalized === path.parse(normalized).root) {
@@ -68,10 +73,10 @@ install -d -m 700 "$DSH_HOME"
 chmod 700 "$DSH_HOME"
 ```
 
-The `install` and `chmod` lines are the POSIX owner-only (`0700`) permission
-block; keep the credential file at mode `0600`. On a non-POSIX host, keep the
-same normalized path and apply the platform's equivalent owner-only directory
-permissions before storing credentials.
+The Node code mirrors DSH path-resolution semantics on every platform. The
+surrounding shell plus `install` and `chmod` lines are a POSIX-only owner-only
+permission block (`0700`, with credentials at `0600`); they are not Windows
+permission commands.
 
 ## Lifecycle boundary
 

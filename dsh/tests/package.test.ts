@@ -760,8 +760,13 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
     for (const [input, expected] of [
       [undefined, resolve(homedir(), '.dsh')],
       ['  \t ', resolve(homedir(), '.dsh')],
+      [
+        '  relative/dsh-home  ',
+        resolve(packageRootPath, '  relative/dsh-home  '),
+      ],
       ['~', resolve(homedir())],
       ['~/custom', resolve(homedir(), 'custom')],
+      ['~\\custom', resolve(homedir(), 'custom')],
       ['relative/dsh-home', resolve(packageRootPath, 'relative/dsh-home')],
       [join(tmpdir(), 'absolute-dsh-home'), resolve(tmpdir(), 'absolute-dsh-home')],
     ] as const) {
@@ -776,6 +781,10 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
       expect(result.status, `${input ?? '<unset>'}: ${result.stderr}`).toBe(0)
       expect(result.stdout).toBe(expected)
     }
+
+    expect(script).toContain("const configured = process.env.DSH_HOME ?? ''")
+    expect(script).toContain("configured.trim() === ''")
+    expect(script).not.toContain("(process.env.DSH_HOME ?? '').trim()")
 
     const rootResult = spawnSync(process.execPath, ['-e', script ?? ''], {
       cwd: packageRootPath,
