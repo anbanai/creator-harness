@@ -10,11 +10,13 @@ vi.mock('@deepseek-ai/dsh-skill-filesystem', () => ({
 
 import * as skillFilesystem from '@deepseek-ai/dsh-skill-filesystem'
 
+import { OperationalError } from '../src/operational-error.js'
 import { apply, name, type Config } from '../src/skills-provider.js'
 
 interface Deferred {
   promise: Promise<void>
   resolve: () => void
+  reject: (reason?: unknown) => void
 }
 
 interface FakeChild extends Promise<void> {
@@ -23,10 +25,12 @@ interface FakeChild extends Promise<void> {
 
 function deferred(): Deferred {
   let resolve!: () => void
-  const promise = new Promise<void>((settle) => {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<void>((settle, fail) => {
     resolve = settle
+    reject = fail
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
 }
 
 function childFiber(
@@ -136,6 +140,114 @@ describe('skills provider registration', () => {
     disposal.resolve()
     await disposing
     expect(settled).toBe(true)
+  })
+
+  it('awaits disposal of the created child before preserving a readiness failure', async () => {
+    const readiness = deferred()
+    const disposal = deferred()
+    const dispose = vi.fn(() => disposal.promise)
+    const fake = createContext(childFiber(readiness.promise, dispose))
+    const readinessFailure = new Error('readiness failed')
+
+    let settled = false
+    const applying = apply(fake.context, {
+      presetId: 'article',
+      providerName: 'anban-article',
+    }).catch((error: unknown) => {
+      settled = true
+      return error
+    })
+
+    readiness.reject(readinessFailure)
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledTimes(1))
+    expect(settled).toBe(false)
+
+    disposal.resolve()
+    await expect(applying).resolves.toBe(readinessFailure)
+    expect(dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('shares one awaited disposal across repeated and concurrent cleanup calls', async () => {
+    const disposal = deferred()
+    const dispose = vi.fn(() => disposal.promise)
+    const fake = createContext(childFiber(Promise.resolve(), dispose))
+    const cleanup = await apply(fake.context, {
+      presetId: 'article',
+      providerName: 'anban-article',
+    })
+
+    const first = cleanup()
+    const second = cleanup()
+    const third = cleanup()
+
+    expect(first).toBe(second)
+    expect(second).toBe(third)
+    expect(dispose).toHaveBeenCalledTimes(1)
+
+    disposal.resolve()
+    await expect(Promise.all([first, second, third])).resolves.toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ])
+    expect(cleanup()).toBe(first)
+    expect(dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a controlled readiness failure when rollback disposal also fails', async () => {
+    const readinessSecret = 'readiness-token-secret'
+    const disposalSecret = 'disposal-password-secret'
+    const dispose = vi.fn().mockRejectedValue(new Error(disposalSecret))
+    const fake = createContext(
+      childFiber(Promise.reject(new Error(readinessSecret)), dispose),
+    )
+
+    const failure = await apply(fake.context, {
+      presetId: 'seednote',
+      providerName: 'anban-seednote',
+    }).catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(OperationalError)
+    expect(failure).toHaveProperty('code', 'ERR_PRESET_OPERATION')
+    expect(failure).toHaveProperty(
+      'message',
+      'Anban preset Skills failed to become ready and cleanup also failed.',
+    )
+    expect(failure).not.toHaveProperty('cause')
+    expect(String(failure)).not.toContain(readinessSecret)
+    expect(String(failure)).not.toContain(disposalSecret)
+    expect(JSON.stringify(failure)).not.toContain(readinessSecret)
+    expect(JSON.stringify(failure)).not.toContain(disposalSecret)
+    expect(dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('shares one controlled secret-safe rejection when cleanup disposal fails', async () => {
+    const disposalSecret = 'cleanup-authorization-secret'
+    const dispose = vi.fn().mockRejectedValue(new Error(disposalSecret))
+    const fake = createContext(childFiber(Promise.resolve(), dispose))
+    const cleanup = await apply(fake.context, {
+      presetId: 'article',
+      providerName: 'anban-article',
+    })
+
+    const first = cleanup()
+    const second = cleanup()
+    const firstFailure = await first.catch((error: unknown) => error)
+    const secondFailure = await second.catch((error: unknown) => error)
+
+    expect(first).toBe(second)
+    expect(firstFailure).toBe(secondFailure)
+    expect(firstFailure).toBeInstanceOf(OperationalError)
+    expect(firstFailure).toHaveProperty('code', 'ERR_PRESET_OPERATION')
+    expect(firstFailure).toHaveProperty(
+      'message',
+      'Unable to dispose Anban preset Skills.',
+    )
+    expect(firstFailure).not.toHaveProperty('cause')
+    expect(String(firstFailure)).not.toContain(disposalSecret)
+    expect(JSON.stringify(firstFailure)).not.toContain(disposalSecret)
+    expect(cleanup()).toBe(first)
+    expect(dispose).toHaveBeenCalledTimes(1)
   })
 })
 

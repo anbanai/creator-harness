@@ -4,6 +4,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import * as skillFilesystem from '@deepseek-ai/dsh-skill-filesystem'
 
+import { OperationalError } from './operational-error.js'
+
 export interface Config {
   presetId: string
   providerName: string
@@ -85,6 +87,45 @@ export async function apply(
       dshHomePath('.agent-presets', resolved.presetId, 'skills'),
     ],
   })
-  await child
-  return () => child.dispose()
+
+  let disposal: Promise<void> | undefined
+  const disposeChild = (): Promise<void> => {
+    if (disposal === undefined) {
+      try {
+        disposal = Promise.resolve(child.dispose())
+      } catch (error) {
+        disposal = Promise.reject(error)
+      }
+    }
+    return disposal
+  }
+
+  try {
+    await child
+  } catch (readinessFailure) {
+    try {
+      await disposeChild()
+    } catch {
+      throw new OperationalError(
+        'ERR_PRESET_OPERATION',
+        'Anban preset Skills failed to become ready and cleanup also failed.',
+        { cause: readinessFailure },
+      )
+    }
+    throw readinessFailure
+  }
+
+  let cleanup: Promise<void> | undefined
+  return () => {
+    if (cleanup === undefined) {
+      cleanup = disposeChild().catch((disposalFailure: unknown) => {
+        throw new OperationalError(
+          'ERR_PRESET_OPERATION',
+          'Unable to dispose Anban preset Skills.',
+          { cause: disposalFailure },
+        )
+      })
+    }
+    return cleanup
+  }
 }
