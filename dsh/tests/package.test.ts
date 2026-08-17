@@ -322,10 +322,11 @@ describe('DSH CLI shim', () => {
       expect(result.status).toBe(1)
       expect(result.stdout).toBe('')
       expect(result.stderr).toBe(
-        'ERR_RUNTIME_MISSING: Missing package entrypoint dsh/lib/cli.js. Run pnpm pack, then pnpm add ./anban-dsh-plugin-*.tgz.\n',
+        'ERR_RUNTIME_MISSING: Missing package entrypoint dsh/lib/cli.js. Run pnpm pack, then pass the exact .tgz path it reports to pnpm add.\n',
       )
       expect(result.stderr.trimEnd().split('\n')).toHaveLength(1)
       expect(result.stderr).not.toContain('file:')
+      expect(result.stderr).not.toContain('*')
     } finally {
       await rm(fixture.root, { force: true, recursive: true })
     }
@@ -333,7 +334,7 @@ describe('DSH CLI shim', () => {
 
   it('sanitizes unrelated runtime import failures as one operation diagnostic', async () => {
     const fixture = await createShimFixture(
-      `throw new Error('Authorization Bearer leaked-import-secret')\n`,
+      `import './Authorization-Bearer-leaked-import-secret.js'\n`,
     )
 
     try {
@@ -351,6 +352,28 @@ describe('DSH CLI shim', () => {
       expect(result.stderr).not.toContain('Authorization')
       expect(result.stderr).not.toContain('Error:')
       expect(result.stderr).not.toContain('at ')
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('reports a CLI entrypoint that disappears during import as runtime missing', async () => {
+    const fixture = await createShimFixture(`import { rm } from 'node:fs/promises'
+await rm(new URL(import.meta.url))
+throw new Error('Authorization Bearer leaked-import-secret')
+`)
+
+    try {
+      const result = spawnSync(process.execPath, [fixture.shimPath], {
+        encoding: 'utf8',
+      })
+
+      expect(result.status).toBe(1)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toBe(
+        'ERR_RUNTIME_MISSING: Missing package entrypoint dsh/lib/cli.js. Run pnpm pack, then pass the exact .tgz path it reports to pnpm add.\n',
+      )
+      expect(result.stderr).not.toContain('leaked-import-secret')
     } finally {
       await rm(fixture.root, { force: true, recursive: true })
     }

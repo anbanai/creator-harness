@@ -4,35 +4,45 @@ import { access } from 'node:fs/promises'
 
 const cliUrl = new URL('../lib/cli.js', import.meta.url)
 const runtimeMissingDiagnostic =
-  'ERR_RUNTIME_MISSING: Missing package entrypoint dsh/lib/cli.js. Run pnpm pack, then pnpm add ./anban-dsh-plugin-*.tgz.'
+  'ERR_RUNTIME_MISSING: Missing package entrypoint dsh/lib/cli.js. Run pnpm pack, then pass the exact .tgz path it reports to pnpm add.'
 const operationFailedDiagnostic =
   'ERR_PRESET_OPERATION: Anban preset operation failed.'
 
-let entrypointAvailable = true
-
-try {
-  await access(cliUrl)
-} catch (error) {
-  let entrypointMissing = false
+function isMissingError(error) {
   try {
-    entrypointMissing =
-      typeof error === 'object' && error !== null && error.code === 'ENOENT'
+    return typeof error === 'object' && error !== null && error.code === 'ENOENT'
   } catch {
-    // Treat uninspectable failures as ordinary operational failures.
+    return false
   }
-  process.stderr.write(
-    `${entrypointMissing ? runtimeMissingDiagnostic : operationFailedDiagnostic}\n`,
-  )
-  process.exitCode = 1
-  entrypointAvailable = false
 }
 
-if (entrypointAvailable) {
+async function entrypointStatus() {
+  try {
+    await access(cliUrl)
+    return 'available'
+  } catch (error) {
+    return isMissingError(error) ? 'missing' : 'failed'
+  }
+}
+
+let status = await entrypointStatus()
+
+if (status !== 'available') {
+  process.stderr.write(
+    `${status === 'missing' ? runtimeMissingDiagnostic : operationFailedDiagnostic}\n`,
+  )
+  process.exitCode = 1
+}
+
+if (status === 'available') {
   try {
     const { runCLI } = await import(cliUrl.href)
     process.exitCode = await runCLI(process.argv.slice(2))
   } catch {
-    process.stderr.write(`${operationFailedDiagnostic}\n`)
+    status = await entrypointStatus()
+    process.stderr.write(
+      `${status === 'missing' ? runtimeMissingDiagnostic : operationFailedDiagnostic}\n`,
+    )
     process.exitCode = 1
   }
 }
