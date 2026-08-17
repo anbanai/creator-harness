@@ -244,12 +244,16 @@ describe('preset lock acquisition', () => {
       }),
     )
 
-    expect(renamed).toHaveLength(2)
-    expect(renamed[0]?.[0]).toBe(lockPath(fixture))
-    expect(renamed[0]?.[1]).toBe(
+    expect(renamed).toHaveLength(3)
+    expect(renamed[0]).toEqual([
+      ownerPath(fixture),
+      join(lockPath(fixture), '.anban-dsh.reclaim-fresh-owner.json'),
+    ])
+    expect(renamed[1]?.[0]).toBe(lockPath(fixture))
+    expect(renamed[1]?.[1]).toBe(
       join(fixture.presetRoot, '.anban-dsh.lock.quarantine-fresh-owner'),
     )
-    expect(renamed[1]?.[1]).toBe(ownerPath(fixture))
+    expect(renamed[2]?.[1]).toBe(ownerPath(fixture))
     expect(JSON.parse(await readFile(ownerPath(fixture), 'utf8'))).toEqual(
       validOwner({
         pid: 12_345,
@@ -293,6 +297,65 @@ describe('preset lock acquisition', () => {
       ownerId: 'race-winner',
     })
     await lock.release()
+  })
+
+  it('never quarantines a fresh lock after validating a replaced stale owner', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    let signalPaused!: () => void
+    const paused = new Promise<void>((resolvePaused) => {
+      signalPaused = resolvePaused
+    })
+    let resumeLoser!: () => void
+    const resume = new Promise<void>((resolveResume) => {
+      resumeLoser = resolveResume
+    })
+    let pausedOnce = false
+    const loserPromise = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        isPidAlive: async (pid) => {
+          if (pid === 41_234 && !pausedOnce) {
+            pausedOnce = true
+            signalPaused()
+            await resume
+            return false
+          }
+          return true
+        },
+        pid: 20_002,
+        randomOwnerId: () => 'race-loser',
+        timeoutMs: 0,
+      }),
+    )
+    await paused
+
+    const winnerLock = await acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        isPidAlive: (pid) => pid !== 41_234,
+        pid: 20_001,
+        randomOwnerId: () => 'race-winner',
+      }),
+    )
+    resumeLoser()
+    const loserOutcome = await loserPromise.then(
+      (lock) => ({ kind: 'acquired' as const, lock }),
+      (error: unknown) => ({ error, kind: 'rejected' as const }),
+    )
+    const canonicalOwner = JSON.parse(
+      await readFile(ownerPath(fixture), 'utf8'),
+    ) as PresetLockOwner
+
+    expect(loserOutcome).toMatchObject({
+      error: { code: 'ERR_PRESET_LOCKED' },
+      kind: 'rejected',
+    })
+    expect(canonicalOwner.ownerId).toBe('race-winner')
+    expect(canonicalOwner.pid).toBe(20_001)
+    expect(await readdir(fixture.presetRoot)).toEqual([LOCK_NAME])
+
+    await winnerLock.release()
   })
 })
 
@@ -430,6 +493,40 @@ describe('preset lock refusal and fault handling', () => {
 
     expect(await pathExists(lockPath(fixture))).toBe(false)
   })
+
+  it('leaves a crash-after-claim lock invalid instead of reclaiming it again', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    const claimName = '.anban-dsh.reclaim-crash-claimant.json'
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          faults: {
+            beforeQuarantineRename() {
+              throw new Error('injected crash after reclaim claim')
+            },
+          },
+          isPidAlive: () => false,
+          randomOwnerId: () => 'crash-claimant',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect(await pathExists(ownerPath(fixture))).toBe(false)
+    expect(await readdir(lockPath(fixture))).toEqual([claimName])
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          isPidAlive: () => false,
+          randomOwnerId: () => 'later-contender',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+    expect(await readdir(lockPath(fixture))).toEqual([claimName])
+  })
 })
 
 describe('preset lock path safety and bounds', () => {
@@ -484,6 +581,73 @@ describe('preset lock path safety and bounds', () => {
 
     expect(await pathExists(lockPath(fixture))).toBe(true)
     expect(await readFile(join(target, 'sentinel'), 'utf8')).toBe('keep')
+  })
+
+  it('revalidates the lock directory before claiming its owner file', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    const movedLock = join(fixture.root, 'moved-stale-lock')
+    const outsideLock = join(fixture.root, 'outside-lock-owner')
+    const outsideOwner = join(outsideLock, OWNER_NAME)
+    let replaced = false
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          isPidAlive: async () => {
+            if (!replaced) {
+              replaced = true
+              await rename(lockPath(fixture), movedLock)
+              await mkdir(outsideLock)
+              await writeFile(
+                outsideOwner,
+                `${JSON.stringify(validOwner())}\n`,
+              )
+              await symlink(outsideLock, lockPath(fixture), 'dir')
+            }
+            return false
+          },
+          randomOwnerId: () => 'symlink-claimant',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect((await lstat(lockPath(fixture))).isSymbolicLink()).toBe(true)
+    expect(JSON.parse(await readFile(outsideOwner, 'utf8'))).toEqual(validOwner())
+    expect(await readdir(outsideLock)).toEqual([OWNER_NAME])
+    expect(await pathExists(join(movedLock, OWNER_NAME))).toBe(true)
+  })
+
+  it('revalidates the claimed directory before its quarantine rename', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    const movedClaim = join(fixture.root, 'moved-claimed-lock')
+    const outsideLock = join(fixture.root, 'outside-claimed-lock')
+    await mkdir(outsideLock)
+    await writeFile(join(outsideLock, 'sentinel'), 'keep')
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          faults: {
+            async beforeQuarantineRename() {
+              await rename(lockPath(fixture), movedClaim)
+              await symlink(outsideLock, lockPath(fixture), 'dir')
+            },
+          },
+          isPidAlive: () => false,
+          randomOwnerId: () => 'post-claim-symlink',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect((await lstat(lockPath(fixture))).isSymbolicLink()).toBe(true)
+    expect(await readFile(join(outsideLock, 'sentinel'), 'utf8')).toBe('keep')
+    expect(await readdir(movedClaim)).toEqual([
+      '.anban-dsh.reclaim-post-claim-symlink.json',
+    ])
   })
 
   it.each([

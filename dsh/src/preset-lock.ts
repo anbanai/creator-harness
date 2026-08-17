@@ -390,12 +390,12 @@ function ownerFromValue(value: unknown): PresetLockOwner | null {
   return owner as PresetLockOwner
 }
 
-async function readOwnerFromLock(
-  lockPath: string,
+async function readOwnerFile(
+  directoryPath: string,
+  ownerPath: string,
   dependencies: ResolvedDependencies,
 ): Promise<PresetLockOwner> {
-  const ownerPath = join(lockPath, OWNER_NAME)
-  assertContained(lockPath, ownerPath)
+  assertContained(directoryPath, ownerPath)
 
   try {
     const stats = await dependencies.fileSystem.lstat(ownerPath)
@@ -417,6 +417,13 @@ async function readOwnerFromLock(
     }
     throw invalidLock(error)
   }
+}
+
+async function readOwnerFromLock(
+  lockPath: string,
+  dependencies: ResolvedDependencies,
+): Promise<PresetLockOwner> {
+  return readOwnerFile(lockPath, join(lockPath, OWNER_NAME), dependencies)
 }
 
 async function inspectLock(
@@ -554,18 +561,94 @@ async function publishOwner(
   }
 }
 
+function ownersMatch(
+  left: PresetLockOwner,
+  right: PresetLockOwner,
+): boolean {
+  return OWNER_KEYS.every((key) => left[key] === right[key])
+}
+
+async function restoreMismatchedClaim(
+  presetRoot: string,
+  lockPath: string,
+  claimPath: string,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  const ownerPath = join(lockPath, OWNER_NAME)
+  assertContained(lockPath, ownerPath)
+  await assertSafePresetRoot(presetRoot, dependencies)
+  await assertSafeQuarantine(lockPath, dependencies)
+
+  try {
+    await dependencies.fileSystem.lstat(ownerPath)
+  } catch (error) {
+    if (hasErrno(error, 'ENOENT')) {
+      try {
+        await assertSafePresetRoot(presetRoot, dependencies)
+        await assertSafeQuarantine(lockPath, dependencies)
+        await dependencies.fileSystem.rename(claimPath, ownerPath)
+        return
+      } catch (restoreError) {
+        throw invalidLock(restoreError)
+      }
+    }
+    throw invalidLock(error)
+  }
+  throw invalidLock()
+}
+
 async function reclaimDeadOwner(
   presetRoot: string,
   lockPath: string,
+  expectedOwner: PresetLockOwner,
   dependencies: ResolvedDependencies,
 ): Promise<boolean> {
+  const claimName = `.anban-dsh.reclaim-${dependencies.ownerId}.json`
+  const ownerPath = join(lockPath, OWNER_NAME)
+  const claimPath = join(lockPath, claimName)
   const quarantinePath = join(
     presetRoot,
     `${LOCK_NAME}.quarantine-${dependencies.ownerId}`,
   )
+  assertContained(lockPath, ownerPath)
+  assertContained(lockPath, claimPath)
   assertContained(presetRoot, quarantinePath)
   await assertSafePresetRoot(presetRoot, dependencies)
+  await assertSafeQuarantine(lockPath, dependencies)
   await assertVacantPath(quarantinePath, dependencies)
+  await assertVacantPath(claimPath, dependencies)
+
+  try {
+    await assertSafePresetRoot(presetRoot, dependencies)
+    await assertSafeQuarantine(lockPath, dependencies)
+    await dependencies.fileSystem.rename(ownerPath, claimPath)
+  } catch (error) {
+    if (hasErrno(error, 'ENOENT')) {
+      return false
+    }
+    if (isOperationalError(error)) {
+      throw error
+    }
+    throw invalidLock(error)
+  }
+
+  let claimedOwner: PresetLockOwner
+  try {
+    await assertSafePresetRoot(presetRoot, dependencies)
+    await assertSafeQuarantine(lockPath, dependencies)
+    claimedOwner = await readOwnerFile(lockPath, claimPath, dependencies)
+  } catch (error) {
+    throw isOperationalError(error) ? error : invalidLock(error)
+  }
+  if (!ownersMatch(claimedOwner, expectedOwner)) {
+    await restoreMismatchedClaim(
+      presetRoot,
+      lockPath,
+      claimPath,
+      dependencies,
+    )
+    return false
+  }
 
   try {
     await dependencies.faults?.beforeQuarantineRename?.(
@@ -573,6 +656,7 @@ async function reclaimDeadOwner(
       quarantinePath,
     )
     await assertSafePresetRoot(presetRoot, dependencies)
+    await assertSafeQuarantine(lockPath, dependencies)
     await dependencies.fileSystem.rename(lockPath, quarantinePath)
   } catch (error) {
     if (hasErrno(error, 'ENOENT')) {
@@ -585,9 +669,18 @@ async function reclaimDeadOwner(
   }
 
   try {
+    const quarantinedClaimPath = join(quarantinePath, claimName)
     await dependencies.faults?.beforeQuarantineRemove?.(quarantinePath)
     await assertSafePresetRoot(presetRoot, dependencies)
     await assertSafeQuarantine(quarantinePath, dependencies)
+    const quarantinedOwner = await readOwnerFile(
+      quarantinePath,
+      quarantinedClaimPath,
+      dependencies,
+    )
+    if (!ownersMatch(quarantinedOwner, expectedOwner)) {
+      throw invalidLock()
+    }
     await dependencies.fileSystem.rm(quarantinePath, {
       force: true,
       recursive: true,
@@ -786,6 +879,7 @@ export async function acquirePresetLock(
       const reclaimed = await reclaimDeadOwner(
         resolvedRoot,
         lockPath,
+        owner,
         dependencies,
       )
       raceRetries += 1
