@@ -11,6 +11,9 @@
 - The public npm package and checksummed GitHub Release paths described by the
   guide become available only after the matching versioned release workflow
   completes; this unreleased source change does not claim those assets exist.
+- The package is not yet published. A release workflow run initiated by the
+  release operator is required before npm or GitHub Release installation paths
+  are available.
 
 ## [4.1.11] - 2026-08-16
 

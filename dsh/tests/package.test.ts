@@ -24,6 +24,7 @@ const installationGuideUrl = new URL(
   import.meta.url,
 )
 const readmeUrl = new URL('../../README.md', import.meta.url)
+const changelogUrl = new URL('../../CHANGELOG.md', import.meta.url)
 const cordisPatchUrl = new URL('../cordis.patch.yml', import.meta.url)
 const cliShimPath = fileURLToPath(
   new URL('../bin/anban-dsh.js', import.meta.url),
@@ -171,6 +172,70 @@ function bashBlockUnder(source: string, heading: string) {
   const block = match?.[1]
   if (block === undefined) return []
   return block.trim().split('\n')
+}
+
+function shellWords(line: string) {
+  return [...line.matchAll(/"([^"]*)"|'([^']*)'|([^\s]+)/g)].map(
+    (match) => match[1] ?? match[2] ?? match[3] ?? '',
+  )
+}
+
+function expandDocVariables(value: string, variables: Map<string, string>) {
+  return value.replace(/\$\{([A-Z_][A-Z0-9_]*)\}|\$([A-Z_][A-Z0-9_]*)/g, (match, braced, bare) => {
+    return variables.get(braced ?? bare) ?? match
+  })
+}
+
+function documentedPluginAddFindings(source: string) {
+  const findings: string[] = []
+  const variables = new Map<string, string>()
+  const shellBlocks = source.matchAll(/```(?:bash|sh|shell)\n([\s\S]*?)```/g)
+
+  for (const block of shellBlocks) {
+    for (const rawLine of (block[1] ?? '').split(/\r?\n/)) {
+      const line = rawLine.trim()
+      const assignment = /^([A-Z_][A-Z0-9_]*)=["']([^"']*)["']$/.exec(line)
+      if (assignment !== null) {
+        variables.set(assignment[1] ?? '', assignment[2] ?? '')
+        continue
+      }
+      if (!line.startsWith('dsh plugin ')) continue
+
+      const words = shellWords(line)
+      const addIndex = words.indexOf('add')
+      if (addIndex === -1) continue
+      const rawSpecifier = words[addIndex + 1]
+      if (rawSpecifier === undefined) {
+        findings.push(`${line}: missing add specifier`)
+        continue
+      }
+      const specifier = expandDocVariables(rawSpecifier, variables)
+      const npmPackage =
+        specifier === '@anban/dsh-plugin' ||
+        /^@anban\/dsh-plugin@(?:replace-with-published-version|v?\d+\.\d+\.\d+)$/.test(
+          specifier,
+        )
+      const tarball =
+        !specifier.startsWith('file:') &&
+        /(?:^|[/\\])[^/\\]+\.tgz$/.test(specifier)
+      const gitMatch =
+        /^git\+https:\/\/github\.com\/anbanai\/creator-skills\.git#(.+)$/.exec(
+          specifier,
+        )
+      const gitRef = gitMatch?.[1]
+      const immutableGit =
+        gitRef !== undefined &&
+        (gitRef === 'replace-with-immutable-tag-or-full-40-character-commit' ||
+          /^v\d+\.\d+\.\d+$/.test(gitRef) ||
+          /^[0-9a-f]{40}$/.test(gitRef))
+
+      if (!npmPackage && !tarball && !immutableGit) {
+        findings.push(`${line}: unsupported add specifier ${specifier}`)
+      }
+    }
+  }
+
+  return findings
 }
 
 async function createShimFixture(cliSource?: string) {
@@ -445,15 +510,85 @@ describe('DSH package manifest', () => {
       'prepare build',
       'pnpm pack --json',
       'exact tarball path reported in the `filename` field',
-      'dsh plugin --profile web add "$PACKED_TARBALL"',
+      'dsh plugin --profile "$ACTIVE_PROFILE" add "$PACKED_TARBALL"',
     ]) {
       expect(normalized).toContain(required)
     }
-    expect(guide).not.toMatch(
-      /^\s*dsh plugin .*\badd\s+(?:["']?file:|["']?(?:\.\.?\/|\/)[^"'\n]*plugins\/?["']?\s*$)/gm,
-    )
+    expect(documentedPluginAddFindings(guide)).toEqual([])
     expect(normalized).toMatch(
       /Never install this plugin from a source directory with a `file:` specifier/i,
+    )
+  })
+
+  it('rejects source directories from fenced dsh plugin add commands', () => {
+    const fixture = (specifier: string) => `\`\`\`bash
+dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
+\`\`\``
+
+    for (const allowed of [
+      '"@anban/dsh-plugin@4.1.12"',
+      '"/tmp/anban-dsh-plugin-4.1.12.tgz"',
+      '"git+https://github.com/anbanai/creator-skills.git#v4.1.12"',
+      '"git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"',
+    ]) {
+      expect(documentedPluginAddFindings(fixture(allowed)), allowed).toEqual([])
+    }
+    for (const forbidden of [
+      '.',
+      '..',
+      '../creator-skills',
+      './plugins',
+      '/tmp/creator-skills',
+      'file:../creator-skills',
+      'file:/tmp/anban-dsh-plugin.tgz',
+      '"git+https://github.com/anbanai/creator-skills.git#main"',
+    ]) {
+      expect(
+        documentedPluginAddFindings(fixture(forbidden)),
+        forbidden,
+      ).not.toEqual([])
+    }
+  })
+
+  it('documents both executable Preset management surfaces', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+    const normalized = guide.replace(/\s+/g, ' ')
+    for (const command of [
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets --force',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets',
+      '/anban-presets-install',
+      '/anban-presets-status',
+      '/anban-presets-install force',
+      '/anban-presets-remove confirm',
+    ]) {
+      expect(guide).toContain(command)
+    }
+    expect(normalized).toMatch(/same Preset manager/i)
+    expect(normalized).toMatch(/shell.*automation.*recovery/i)
+    expect(normalized).toMatch(/interactive.*Web.*Desktop/i)
+    expect(normalized).toMatch(
+      /interactive confirmation.*differs.*explicit shell CLI removal/i,
+    )
+    expect(guide.match(/^ACTIVE_PROFILE=/gm)).toHaveLength(1)
+    expect(guide).not.toMatch(
+      /^dsh plugin --profile web (?:add|exec|remove)\b/gm,
+    )
+  })
+
+  it('marks the DSH package as explicitly unpublished', async () => {
+    const changelog = await readFile(changelogUrl, 'utf8')
+    const unreleased = changelog.slice(
+      changelog.indexOf('## [Unreleased]'),
+      changelog.indexOf('\n## [', changelog.indexOf('## [Unreleased]') + 1),
+    )
+    expect(unreleased).toContain('The package is not yet published.')
+    expect(unreleased.replace(/\s+/g, ' ')).toMatch(
+      /release workflow.*release operator.*required/i,
+    )
+    expect(unreleased).not.toMatch(
+      /(?:package|version) (?:is|is now|has been) (?:published|available) (?:on|from) npm/i,
     )
   })
 
@@ -462,14 +597,12 @@ describe('DSH package manifest', () => {
     const normalized = guide.replace(/\s+/g, ' ')
 
     for (const command of [
-      'dsh plugin --profile web add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
-      'dsh plugin --profile web exec anban-dsh install-presets',
-      'dsh plugin --profile web exec anban-dsh status',
-      'dsh plugin --profile web exec anban-dsh install-presets --force',
-      'dsh plugin --profile web exec anban-dsh remove-presets',
-      'dsh plugin --profile web remove @anban/dsh-plugin',
       'dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
-      `dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets`,
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets --force',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets',
+      'dsh plugin --profile "$ACTIVE_PROFILE" remove @anban/dsh-plugin',
     ]) {
       expect(guide).toContain(command)
     }
@@ -488,16 +621,16 @@ describe('DSH package manifest', () => {
     }
 
     const firstStatus = guide.indexOf(
-      'dsh plugin --profile web exec anban-dsh status',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status',
     )
     const force = guide.indexOf(
-      'dsh plugin --profile web exec anban-dsh install-presets --force',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets --force',
     )
     const removePresets = guide.indexOf(
-      'dsh plugin --profile web exec anban-dsh remove-presets',
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets',
     )
     const removeBundle = guide.indexOf(
-      'dsh plugin --profile web remove @anban/dsh-plugin',
+      'dsh plugin --profile "$ACTIVE_PROFILE" remove @anban/dsh-plugin',
     )
     expect(firstStatus).toBeGreaterThanOrEqual(0)
     expect(firstStatus).toBeLessThan(force)
@@ -543,17 +676,13 @@ describe('DSH package manifest', () => {
     expect(guide).not.toMatch(/rm\s+(?:-[^\s]*r[^\s]*\s+)?[^\n]*\.anban-dsh\.lock/)
   })
 
-  it('boots each fresh profile before invoking the standalone Bundle CLI', async () => {
+  it('boots the selected profile before invoking the standalone Bundle CLI', async () => {
     const guide = await readFile(installationGuideUrl, 'utf8')
 
-    expect(bashBlockUnder(guide, '## Web profile')).toEqual([
-      'PUBLISHED_VERSION="replace-with-published-version"',
-      'dsh plugin --profile web add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
-      'dsh --profile web --dump-config',
-      'dsh plugin --profile web exec anban-dsh install-presets',
+    expect(bashBlockUnder(guide, '## Select the active profile')).toEqual([
+      'ACTIVE_PROFILE="replace-with-web-or-desktop-profile-name"',
     ])
-    expect(bashBlockUnder(guide, '## Desktop active profile')).toEqual([
-      'ACTIVE_PROFILE="replace-with-desktop-profile-name"',
+    expect(bashBlockUnder(guide, '## Initial installation and boot')).toEqual([
       'PUBLISHED_VERSION="replace-with-published-version"',
       'dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"',
       'dsh --profile "$ACTIVE_PROFILE" --dump-config',
@@ -568,18 +697,19 @@ describe('DSH package manifest', () => {
 
   it('documents the destructive removal behavior for modified owned Presets', async () => {
     const guide = await readFile(installationGuideUrl, 'utf8')
-    const normalized = guide.replace(/\s+/g, ' ')
+    const removalSection = guide.slice(guide.indexOf('## Removal'))
+    const normalized = removalSection.replace(/\s+/g, ' ')
     const warning =
       'remove-presets removes Anban-owned Presets even if they are modified.'
-    const warningIndex = guide.indexOf(warning)
-    const backupPathIndex = guide.indexOf('$DSH_HOME/.agent-presets/<id>')
+    const warningIndex = removalSection.indexOf(warning)
+    const backupPathIndex = removalSection.indexOf('$DSH_HOME/.agent-presets/<id>')
     const removalCommands = [
-      ...guide.matchAll(
+      ...removalSection.matchAll(
         /^dsh plugin --profile .* exec anban-dsh remove-presets$/gm,
       ),
     ]
 
-    expect(removalCommands).toHaveLength(2)
+    expect(removalCommands).toHaveLength(1)
     expect(warningIndex).toBeGreaterThanOrEqual(0)
     for (const command of removalCommands) {
       expect(warningIndex).toBeLessThan(command.index)

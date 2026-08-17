@@ -40,6 +40,20 @@ effects when it changes the global Presets. Before `--force` or removal, check
 status, back up local changes, and confirm which other profiles still use
 `@anban/dsh-plugin`. Activation intentionally never mutates shared Presets.
 
+## Select the active profile
+
+Choose the target profile once and use it for every command in this guide:
+
+```bash
+ACTIVE_PROFILE="replace-with-web-or-desktop-profile-name"
+```
+
+For public DeepSeek Harness Web, set `ACTIVE_PROFILE` to `web`. For Desktop,
+read the exact active profile name from its profile selector or settings and
+use the corresponding directory name below `$DSH_HOME/profiles/<name>`. The DSH
+CLI does not infer Desktop's active profile. Restart Desktop after changing its
+active profile's Bundle so it reloads the Bundle and discovers global Presets.
+
 ## Credentials
 
 Create an Anban API key at <https://creator.anbanai.com/settings>. The official
@@ -96,11 +110,8 @@ Replace `<published-version>` with one exact version from the public registry:
 ```bash
 PUBLISHED_VERSION="replace-with-published-version"
 npm view "@anban/dsh-plugin@${PUBLISHED_VERSION}" version
-dsh plugin --profile web add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
+dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
 ```
-
-Use the same version pin for Desktop after replacing the profile name as shown
-below.
 
 ### Checksummed release tarball
 
@@ -114,7 +125,7 @@ PUBLISHED_VERSION="replace-with-published-version"
 curl -fLO "https://github.com/royalmorty/anbanwriter/releases/download/v${PUBLISHED_VERSION}/anban-dsh-plugin-${PUBLISHED_VERSION}.tgz"
 curl -fLO "https://github.com/royalmorty/anbanwriter/releases/download/v${PUBLISHED_VERSION}/anban-dsh-plugin-${PUBLISHED_VERSION}.tgz.sha256"
 shasum -a 256 -c "anban-dsh-plugin-${PUBLISHED_VERSION}.tgz.sha256"
-dsh plugin --profile web add "./anban-dsh-plugin-${PUBLISHED_VERSION}.tgz"
+dsh plugin --profile "$ACTIVE_PROFILE" add "./anban-dsh-plugin-${PUBLISHED_VERSION}.tgz"
 ```
 
 The checksum file names the exact tarball. Do not install when verification
@@ -129,11 +140,9 @@ same profile, then repeat the exact add command:
 
 ```bash
 SOURCE_REF="replace-with-immutable-tag-or-full-40-character-commit"
-dsh plugin --profile web add "git+https://github.com/anbanai/creator-skills.git#${SOURCE_REF}"
-dsh plugin --profile web approve-builds
-dsh plugin --profile web add "git+https://github.com/anbanai/creator-skills.git#${SOURCE_REF}"
-ACTIVE_PROFILE="replace-with-desktop-profile-name"
+dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#${SOURCE_REF}"
 dsh plugin --profile "$ACTIVE_PROFILE" approve-builds
+dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#${SOURCE_REF}"
 ```
 
 The first add may stop while pnpm reports the exact build approval it needs.
@@ -148,7 +157,7 @@ structured result:
 ```bash
 pnpm pack --json
 PACKED_TARBALL="/absolute/path/from-the-filename-field.tgz"
-dsh plugin --profile web add "$PACKED_TARBALL"
+dsh plugin --profile "$ACTIVE_PROFILE" add "$PACKED_TARBALL"
 ```
 
 Pass the exact tarball path reported in the `filename` field to the target
@@ -156,17 +165,17 @@ profile, then boot and install Presets. Never install this plugin from a source
 directory with a `file:` specifier; a package-manager snapshot can otherwise
 exist without the generated runtime files.
 
-## Web profile
+## Initial installation and boot
 
-The Web profile name is `web`. Install an exact public version, boot the
-profile once to initialize or refresh its peer fallback, then materialize the
-global Presets:
+Install an exact public version into the selected Web or Desktop profile, boot
+that profile once to initialize or refresh its peer fallback, then materialize
+the global Presets:
 
 ```bash
 PUBLISHED_VERSION="replace-with-published-version"
-dsh plugin --profile web add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
-dsh --profile web --dump-config
-dsh plugin --profile web exec anban-dsh install-presets
+dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
+dsh --profile "$ACTIVE_PROFILE" --dump-config
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets
 ```
 
 The official profile boot is required only to initialize or refresh the
@@ -183,22 +192,31 @@ shorthand:
 anban-dsh install-presets
 ```
 
-## Desktop active profile
+## Shell and interactive commands
 
-The DSH CLI does not infer Desktop's active profile. Read its exact name from
-Desktop's profile selector or settings. It is the corresponding directory name
-below `$DSH_HOME/profiles/`; the CLI syntax is `--profile <active-profile>`.
+The public plugin executable exposes these exact profile-explicit commands:
 
 ```bash
-ACTIVE_PROFILE="replace-with-desktop-profile-name"
-PUBLISHED_VERSION="replace-with-published-version"
-dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
-dsh --profile "$ACTIVE_PROFILE" --dump-config
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets --force
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets
 ```
 
-Restart DeepSeek Harness Desktop so the active profile reloads the Bundle and
-discovers the global Presets.
+Inside interactive Web and Desktop sessions, the registered commands are:
+
+```text
+/anban-presets-install
+/anban-presets-status
+/anban-presets-install force
+/anban-presets-remove confirm
+```
+
+Both surfaces call the same Preset manager. Use the shell CLI for automation
+and recovery, and use the registered commands inside interactive Web and
+Desktop sessions. Interactive confirmation differs from the already-explicit
+shell CLI removal: `/anban-presets-remove` requires `confirm`, while
+`remove-presets` is itself an explicit host command and takes no extra flag.
 
 ## Status and backups
 
@@ -206,7 +224,7 @@ Status is read-only and does not acquire the global mutation lock. Run it
 before an upgrade, rollback, `--force`, or removal:
 
 ```bash
-dsh plugin --profile web exec anban-dsh status
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
 ```
 
 The states are `absent`, `current`, `outdated`, `modified`, and `unowned`.
@@ -221,12 +239,12 @@ Presets. Upgrade the profile-local Bundle first, boot it, explicitly reconcile
 Presets, and check status again:
 
 ```bash
-dsh plugin --profile web exec anban-dsh status
-NEW_VERSION="replace-with-new-published-version"
-dsh plugin --profile web add "@anban/dsh-plugin@${NEW_VERSION}"
-dsh --profile web --dump-config
-dsh plugin --profile web exec anban-dsh install-presets
-dsh plugin --profile web exec anban-dsh status
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
+PUBLISHED_VERSION="replace-with-published-version"
+dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
+dsh --profile "$ACTIVE_PROFILE" --dump-config
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
 ```
 
 Normal upgrade replaces `outdated` owned Presets. It refuses `modified` and
@@ -234,7 +252,7 @@ Normal upgrade replaces `outdated` owned Presets. It refuses `modified` and
 intentional replacement uses:
 
 ```bash
-dsh plugin --profile web exec anban-dsh install-presets --force
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets --force
 ```
 
 Force is destructive. It can replace changed content, so status and backup
@@ -248,12 +266,12 @@ may appear modified to an older package, review status and back them up before
 forcing replacement:
 
 ```bash
-dsh plugin --profile web exec anban-dsh status
-PREVIOUS_VERSION="replace-with-previous-published-version"
-dsh plugin --profile web add "@anban/dsh-plugin@${PREVIOUS_VERSION}"
-dsh --profile web --dump-config
-dsh plugin --profile web exec anban-dsh install-presets --force
-dsh plugin --profile web exec anban-dsh status
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
+PUBLISHED_VERSION="replace-with-published-version"
+dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
+dsh --profile "$ACTIVE_PROFILE" --dump-config
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets --force
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
 ```
 
 If Bundle installation succeeds but Preset installation does not, the system
@@ -274,14 +292,6 @@ needs the global Presets. Then remove the global Presets before the profile-loca
 Bundle:
 
 ```bash
-dsh plugin --profile web exec anban-dsh remove-presets
-dsh plugin --profile web remove @anban/dsh-plugin
-```
-
-For Desktop, substitute the exact active profile name:
-
-```bash
-ACTIVE_PROFILE="replace-with-desktop-profile-name"
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets
 dsh plugin --profile "$ACTIVE_PROFILE" remove @anban/dsh-plugin
@@ -311,12 +321,12 @@ lack `dsh/lib/cli.js`. Remove only that profile dependency, then reinstall a
 verified artifact and finish both lifecycle steps:
 
 ```bash
-dsh plugin --profile web remove @anban/dsh-plugin
+dsh plugin --profile "$ACTIVE_PROFILE" remove @anban/dsh-plugin
 PUBLISHED_VERSION="replace-with-published-version"
-dsh plugin --profile web add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
-dsh --profile web --dump-config
-dsh plugin --profile web exec anban-dsh install-presets
-dsh plugin --profile web exec anban-dsh status
+dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSION}"
+dsh --profile "$ACTIVE_PROFILE" --dump-config
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
 ```
 
 ### Lock residue and manual recovery
@@ -333,7 +343,7 @@ never recursively delete it:
 ```bash
 LOCK_QUARANTINE="$DSH_HOME/.agent-presets/.anban-dsh.lock.manual-recovery-<unique-suffix>"
 mv -- "$DSH_HOME/.agent-presets/.anban-dsh.lock" "$LOCK_QUARANTINE"
-dsh plugin --profile web exec anban-dsh status
+dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh status
 ```
 
 Keep the quarantine directory until status and the next explicit mutation
