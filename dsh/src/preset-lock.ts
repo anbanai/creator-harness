@@ -25,7 +25,10 @@ export interface PresetLockOwner {
 
 interface PresetReclaimClaim {
   schemaVersion: 1
-  claimantOwnerId: string
+  pid: number
+  hostname: string
+  createdAt: string
+  ownerId: string
   expectedOwner: PresetLockOwner
 }
 
@@ -34,6 +37,7 @@ export interface PresetLock {
 }
 
 interface LockStats {
+  size: number
   isDirectory(): boolean
   isFile(): boolean
   isSymbolicLink(): boolean
@@ -107,7 +111,8 @@ interface ResolvedDependencies {
 
 const LOCK_NAME = '.anban-dsh.lock'
 const OWNER_NAME = 'owner.json'
-const RECLAIM_CLAIM_NAME = '.anban-dsh.reclaim-claim.json'
+const RECLAIM_CLAIM_NAME = '.anban-dsh.reclaim-claim'
+const RECLAIM_CLAIM_DOCUMENT = 'claim.json'
 const OWNER_KEYS = [
   'schemaVersion',
   'pid',
@@ -409,9 +414,12 @@ function reclaimClaimFromValue(value: unknown): PresetReclaimClaim | null {
   }
   const keys = Reflect.ownKeys(value)
   if (
-    keys.length !== 3 ||
+    keys.length !== 6 ||
     !keys.includes('schemaVersion') ||
-    !keys.includes('claimantOwnerId') ||
+    !keys.includes('pid') ||
+    !keys.includes('hostname') ||
+    !keys.includes('createdAt') ||
+    !keys.includes('ownerId') ||
     !keys.includes('expectedOwner')
   ) {
     return null
@@ -419,10 +427,20 @@ function reclaimClaimFromValue(value: unknown): PresetReclaimClaim | null {
   const claim = value as Partial<PresetReclaimClaim>
   if (
     claim.schemaVersion !== 1 ||
-    typeof claim.claimantOwnerId !== 'string' ||
-    claim.claimantOwnerId.length === 0 ||
-    claim.claimantOwnerId.length > MAX_OWNER_ID_LENGTH ||
-    !OWNER_ID_PATTERN.test(claim.claimantOwnerId)
+    typeof claim.pid !== 'number' ||
+    !Number.isSafeInteger(claim.pid) ||
+    claim.pid <= 0 ||
+    typeof claim.hostname !== 'string' ||
+    claim.hostname.length === 0 ||
+    claim.hostname.length > MAX_HOSTNAME_LENGTH ||
+    !SAFE_TOKEN_PATTERN.test(claim.hostname) ||
+    typeof claim.createdAt !== 'string' ||
+    !ISO_DATE_PATTERN.test(claim.createdAt) ||
+    new Date(claim.createdAt).toISOString() !== claim.createdAt ||
+    typeof claim.ownerId !== 'string' ||
+    claim.ownerId.length === 0 ||
+    claim.ownerId.length > MAX_OWNER_ID_LENGTH ||
+    !OWNER_ID_PATTERN.test(claim.ownerId)
   ) {
     return null
   }
@@ -432,7 +450,10 @@ function reclaimClaimFromValue(value: unknown): PresetReclaimClaim | null {
   }
   return {
     schemaVersion: 1,
-    claimantOwnerId: claim.claimantOwnerId,
+    pid: claim.pid,
+    hostname: claim.hostname,
+    createdAt: claim.createdAt,
+    ownerId: claim.ownerId,
     expectedOwner,
   }
 }
@@ -447,6 +468,9 @@ async function readOwnerFile(
   try {
     const stats = await dependencies.fileSystem.lstat(ownerPath)
     if (stats.isSymbolicLink() || !stats.isFile()) {
+      throw invalidLock()
+    }
+    if (stats.size < 0 || stats.size > MAX_OWNER_DOCUMENT_LENGTH) {
       throw invalidLock()
     }
     const contents = await dependencies.fileSystem.readFile(ownerPath, 'utf8')
@@ -479,12 +503,21 @@ async function readReclaimClaim(
   dependencies: ResolvedDependencies,
 ): Promise<PresetReclaimClaim> {
   assertContained(lockPath, claimPath)
+  const documentPath = join(claimPath, RECLAIM_CLAIM_DOCUMENT)
+  assertContained(claimPath, documentPath)
   try {
-    const stats = await dependencies.fileSystem.lstat(claimPath)
+    const claimStats = await dependencies.fileSystem.lstat(claimPath)
+    if (claimStats.isSymbolicLink() || !claimStats.isDirectory()) {
+      throw invalidLock()
+    }
+    const stats = await dependencies.fileSystem.lstat(documentPath)
     if (stats.isSymbolicLink() || !stats.isFile()) {
       throw invalidLock()
     }
-    const contents = await dependencies.fileSystem.readFile(claimPath, 'utf8')
+    if (stats.size < 0 || stats.size > MAX_CLAIM_DOCUMENT_LENGTH) {
+      throw invalidLock()
+    }
+    const contents = await dependencies.fileSystem.readFile(documentPath, 'utf8')
     if (contents.length > MAX_CLAIM_DOCUMENT_LENGTH) {
       throw invalidLock()
     }
@@ -554,51 +587,38 @@ async function assertSafeQuarantine(
   }
 }
 
-async function discardUnpublishedLock(
-  lockPath: string,
+async function removeOwnedDirectory(
   presetRoot: string,
+  path: string,
   dependencies: ResolvedDependencies,
 ): Promise<void> {
-  const failedPath = join(
-    presetRoot,
-    `${LOCK_NAME}.failed-${dependencies.ownerId}`,
-  )
-  assertContained(presetRoot, failedPath)
-  await assertSafePresetRoot(presetRoot, dependencies)
-  await assertVacantPath(failedPath, dependencies)
+  assertContained(presetRoot, path)
   try {
     await assertSafePresetRoot(presetRoot, dependencies)
-    await dependencies.fileSystem.rename(lockPath, failedPath)
-  } catch (error) {
-    if (hasErrno(error, 'ENOENT')) {
-      return
+    const stats = await dependencies.fileSystem.lstat(path)
+    if (stats.isSymbolicLink() || !stats.isDirectory()) {
+      throw invalidLock()
     }
-    throw operationFailure(error)
-  }
-  try {
-    await assertSafePresetRoot(presetRoot, dependencies)
-    await assertSafeQuarantine(failedPath, dependencies)
-    await dependencies.fileSystem.rm(failedPath, { force: true, recursive: true })
+    await dependencies.fileSystem.rm(path, { force: true, recursive: true })
   } catch (error) {
-    if (isOperationalError(error)) {
-      throw error
-    }
+    if (hasErrno(error, 'ENOENT')) return
+    if (isOperationalError(error)) throw error
     throw operationFailure(error)
   }
 }
 
-async function publishOwner(
+async function tryPublishLock(
   presetRoot: string,
   lockPath: string,
   dependencies: ResolvedDependencies,
-): Promise<PresetLockOwner> {
-  const ownerPath = join(lockPath, OWNER_NAME)
-  const temporaryOwnerPath = join(
-    lockPath,
-    `.owner-${dependencies.ownerId}.json.tmp`,
+): Promise<boolean> {
+  const stagingPath = join(
+    presetRoot,
+    `${LOCK_NAME}.acquire-${dependencies.ownerId}`,
   )
-  assertContained(lockPath, ownerPath)
-  assertContained(lockPath, temporaryOwnerPath)
+  const stagingOwnerPath = join(stagingPath, OWNER_NAME)
+  assertContained(presetRoot, stagingPath)
+  assertContained(stagingPath, stagingOwnerPath)
   const owner: PresetLockOwner = {
     schemaVersion: 1,
     pid: dependencies.pid,
@@ -607,32 +627,58 @@ async function publishOwner(
     packageVersion: dependencies.packageVersion,
     ownerId: dependencies.ownerId,
   }
+  let stagingCreated = false
+  let stagingValidated = false
+  const lockOccupied = Symbol('lock-occupied')
 
   try {
+    await assertVacantPath(stagingPath, dependencies)
+    await dependencies.fileSystem.mkdir(stagingPath, { mode: 0o700 })
+    stagingCreated = true
     await dependencies.fileSystem.writeFile(
-      temporaryOwnerPath,
+      stagingOwnerPath,
       `${JSON.stringify(owner)}\n`,
       { flag: 'wx', mode: 0o600 },
     )
     await dependencies.faults?.beforeOwnerPublish?.(
-      temporaryOwnerPath,
-      ownerPath,
+      stagingOwnerPath,
+      join(lockPath, OWNER_NAME),
     )
     await assertSafePresetRoot(presetRoot, dependencies)
-    await dependencies.fileSystem.rename(temporaryOwnerPath, ownerPath)
-    return owner
-  } catch (publicationError) {
+    const stagedOwner = await readOwnerFromLock(stagingPath, dependencies)
+    if (!ownersMatch(stagedOwner, owner)) throw invalidLock()
+    stagingValidated = true
     try {
-      await discardUnpublishedLock(lockPath, presetRoot, dependencies)
-    } catch (cleanupError) {
-      throw operationFailure(
-        new AggregateError(
-          [publicationError, cleanupError],
-          'Preset lock publication and cleanup failed.',
-        ),
-      )
+      await dependencies.fileSystem.lstat(lockPath)
+      throw lockOccupied
+    } catch (error) {
+      if (error === lockOccupied) throw error
+      if (!hasErrno(error, 'ENOENT')) throw invalidLock(error)
     }
-    throw operationFailure(publicationError)
+    await dependencies.fileSystem.rename(stagingPath, lockPath)
+    return true
+  } catch (error) {
+    const lostRace =
+      error === lockOccupied ||
+      (stagingValidated &&
+        (hasErrno(error, 'EEXIST') ||
+          hasErrno(error, 'ENOTEMPTY') ||
+          hasErrno(error, 'ENOTDIR')))
+    if (stagingCreated) {
+      try {
+        await removeOwnedDirectory(presetRoot, stagingPath, dependencies)
+      } catch (cleanupError) {
+        throw operationFailure(
+          new AggregateError(
+            [error, cleanupError],
+            'Preset lock publication and cleanup failed.',
+          ),
+        )
+      }
+    }
+    if (lostRace) return false
+    if (isOperationalError(error)) throw error
+    throw operationFailure(error)
   }
 }
 
@@ -649,7 +695,10 @@ function reclaimClaimsMatch(
 ): boolean {
   return (
     left.schemaVersion === right.schemaVersion &&
-    left.claimantOwnerId === right.claimantOwnerId &&
+    left.pid === right.pid &&
+    left.hostname === right.hostname &&
+    left.createdAt === right.createdAt &&
+    left.ownerId === right.ownerId &&
     ownersMatch(left.expectedOwner, right.expectedOwner)
   )
 }
@@ -676,7 +725,7 @@ async function removeOwnedReclaimClaim(
     await assertSafeQuarantine(lockPath, dependencies)
     await dependencies.fileSystem.rm(claimPath, {
       force: false,
-      recursive: false,
+      recursive: true,
     })
   } catch (error) {
     if (hasErrno(error, 'ENOENT')) {
@@ -685,6 +734,142 @@ async function removeOwnedReclaimClaim(
     if (isOperationalError(error)) {
       throw error
     }
+    throw invalidLock(error)
+  }
+}
+
+async function publishReclaimClaim(
+  lockPath: string,
+  claimPath: string,
+  claim: PresetReclaimClaim,
+  dependencies: ResolvedDependencies,
+): Promise<boolean> {
+  const stagePath = join(
+    lockPath,
+    `.anban-dsh.reclaim-stage-${dependencies.ownerId}`,
+  )
+  const retiredPath = join(
+    lockPath,
+    `.anban-dsh.reclaim-retired-${dependencies.ownerId}`,
+  )
+  const stageDocumentPath = join(stagePath, RECLAIM_CLAIM_DOCUMENT)
+  assertContained(lockPath, stagePath)
+  assertContained(lockPath, retiredPath)
+  assertContained(stagePath, stageDocumentPath)
+  let stageCreated = false
+  let stageValidated = false
+  const claimRace = Symbol('claim-race')
+  const claimOccupied = Symbol('claim-occupied')
+
+  try {
+    try {
+      await dependencies.fileSystem.mkdir(stagePath, { mode: 0o700 })
+      stageCreated = true
+      await dependencies.fileSystem.writeFile(
+        stageDocumentPath,
+        `${JSON.stringify(claim)}\n`,
+        { flag: 'wx', mode: 0o600 },
+      )
+      const staged = await readReclaimClaim(lockPath, stagePath, dependencies)
+      if (!reclaimClaimsMatch(staged, claim)) throw invalidLock()
+      stageValidated = true
+      try {
+        await dependencies.fileSystem.lstat(claimPath)
+        throw claimOccupied
+      } catch (error) {
+        if (error === claimOccupied) throw error
+        if (!hasErrno(error, 'ENOENT')) throw invalidLock(error)
+      }
+      await dependencies.fileSystem.rename(stagePath, claimPath)
+      stageCreated = false
+      return true
+    } catch (error) {
+      const canonicalOccupied =
+        error === claimOccupied ||
+        (stageValidated &&
+          (hasErrno(error, 'EEXIST') || hasErrno(error, 'ENOTEMPTY')))
+      if (!canonicalOccupied) {
+        if (hasErrno(error, 'ENOENT')) throw claimRace
+        throw isOperationalError(error) ? error : invalidLock(error)
+      }
+      if (!stageCreated) throw invalidLock(error)
+    }
+
+    const existing = await readReclaimClaim(lockPath, claimPath, dependencies)
+    if (existing.hostname !== dependencies.hostname) throw invalidLock()
+    let alive: boolean
+    try {
+      alive = await dependencies.isPidAlive(existing.pid)
+    } catch (error) {
+      throw invalidLock(error)
+    }
+    if (typeof alive !== 'boolean') throw invalidLock()
+    if (alive) throw locked()
+
+    await assertVacantPath(retiredPath, dependencies)
+    try {
+      await dependencies.fileSystem.rename(claimPath, retiredPath)
+    } catch (error) {
+      if (hasErrno(error, 'ENOENT')) throw claimRace
+      throw invalidLock(error)
+    }
+    const retired = await readReclaimClaim(lockPath, retiredPath, dependencies)
+    if (!reclaimClaimsMatch(retired, existing)) {
+      throw invalidLock()
+    }
+    try {
+      await dependencies.fileSystem.rename(stagePath, claimPath)
+      stageCreated = false
+    } catch (error) {
+      throw invalidLock(error)
+    }
+    await removeOwnedReclaimClaim(
+      lockPath,
+      lockPath,
+      retiredPath,
+      retired,
+      dependencies,
+    )
+    const published = await readReclaimClaim(lockPath, claimPath, dependencies)
+    if (!reclaimClaimsMatch(published, claim)) throw invalidLock()
+    return true
+  } catch (error) {
+    if (stageCreated) {
+      try {
+        await removeOwnedDirectory(lockPath, stagePath, dependencies)
+      } catch (cleanupError) {
+        throw invalidLock(
+          new AggregateError(
+            [error, cleanupError],
+            'Preset reclaim claim publication and cleanup failed.',
+          ),
+        )
+      }
+    }
+    if (error === claimRace) return false
+    throw error
+  }
+}
+
+async function restoreQuarantine(
+  presetRoot: string,
+  lockPath: string,
+  quarantinePath: string,
+  dependencies: ResolvedDependencies,
+): Promise<void> {
+  try {
+    await dependencies.fileSystem.lstat(lockPath)
+    throw invalidLock(undefined)
+  } catch (error) {
+    if (!hasErrno(error, 'ENOENT')) {
+      if (isOperationalError(error)) throw error
+      throw invalidLock(error)
+    }
+  }
+  try {
+    await assertSafePresetRoot(presetRoot, dependencies)
+    await dependencies.fileSystem.rename(quarantinePath, lockPath)
+  } catch (error) {
     throw invalidLock(error)
   }
 }
@@ -707,27 +892,19 @@ async function reclaimDeadOwner(
   await assertVacantPath(quarantinePath, dependencies)
   const reclaimClaim: PresetReclaimClaim = {
     schemaVersion: 1,
-    claimantOwnerId: dependencies.ownerId,
+    pid: dependencies.pid,
+    hostname: dependencies.hostname,
+    createdAt: creationTime(dependencies),
+    ownerId: dependencies.ownerId,
     expectedOwner,
   }
 
-  try {
-    await assertSafePresetRoot(presetRoot, dependencies)
-    await assertSafeQuarantine(lockPath, dependencies)
-    await dependencies.fileSystem.writeFile(
-      claimPath,
-      `${JSON.stringify(reclaimClaim)}\n`,
-      { flag: 'wx', mode: 0o600 },
-    )
-  } catch (error) {
-    if (hasErrno(error, 'ENOENT')) {
-      return false
-    }
-    if (isOperationalError(error)) {
-      throw error
-    }
-    throw invalidLock(error)
-  }
+  if (!(await publishReclaimClaim(
+    lockPath,
+    claimPath,
+    reclaimClaim,
+    dependencies,
+  ))) return false
 
   let storedClaim: PresetReclaimClaim
   let currentOwner: PresetLockOwner
@@ -783,9 +960,8 @@ async function reclaimDeadOwner(
     throw invalidLock(error)
   }
 
+  const quarantinedClaimPath = join(quarantinePath, RECLAIM_CLAIM_NAME)
   try {
-    const quarantinedClaimPath = join(quarantinePath, RECLAIM_CLAIM_NAME)
-    await dependencies.faults?.beforeQuarantineRemove?.(quarantinePath)
     await assertSafePresetRoot(presetRoot, dependencies)
     await assertSafeQuarantine(quarantinePath, dependencies)
     const quarantinedOwner = await readOwnerFromLock(
@@ -803,6 +979,24 @@ async function reclaimDeadOwner(
     ) {
       throw invalidLock()
     }
+  } catch (error) {
+    try {
+      await restoreQuarantine(
+        presetRoot,
+        lockPath,
+        quarantinePath,
+        dependencies,
+      )
+    } catch (restoreError) {
+      throw invalidLock(new AggregateError([error, restoreError]))
+    }
+    throw invalidLock(error)
+  }
+
+  try {
+    await dependencies.faults?.beforeQuarantineRemove?.(quarantinePath)
+    await assertSafePresetRoot(presetRoot, dependencies)
+    await assertSafeQuarantine(quarantinePath, dependencies)
     await dependencies.fileSystem.rm(quarantinePath, {
       force: true,
       recursive: true,
@@ -850,21 +1044,43 @@ async function releaseOwnedLock(
   dependencies: ResolvedDependencies,
 ): Promise<void> {
   await assertSafePresetRoot(presetRoot, dependencies)
+  const releasePath = join(
+    presetRoot,
+    `${LOCK_NAME}.release-${expectedOwnerId}`,
+  )
+  assertContained(presetRoot, releasePath)
   let owner: PresetLockOwner | null
   try {
     owner = await inspectLock(lockPath, dependencies)
   } catch (error) {
     throw isOperationalError(error) ? error : invalidLock(error)
   }
-  if (owner === null || owner.ownerId !== expectedOwnerId) {
+  if (owner === null) {
+    try {
+      const stagedOwner = await inspectLock(releasePath, dependencies)
+      if (stagedOwner?.ownerId === expectedOwnerId) {
+        await dependencies.faults?.beforeReleaseRemove?.(releasePath)
+        await assertSafePresetRoot(presetRoot, dependencies)
+        await assertSafeQuarantine(releasePath, dependencies)
+        const ownerBeforeRemove = await readOwnerFromLock(
+          releasePath,
+          dependencies,
+        )
+        if (ownerBeforeRemove.ownerId !== expectedOwnerId) return
+        await dependencies.fileSystem.rm(releasePath, {
+          force: true,
+          recursive: true,
+        })
+      }
+    } catch (error) {
+      if (isOperationalError(error)) throw error
+      throw operationFailure(error)
+    }
     return
   }
-
-  const releasePath = join(
-    presetRoot,
-    `${LOCK_NAME}.release-${expectedOwnerId}`,
-  )
-  assertContained(presetRoot, releasePath)
+  if (owner.ownerId !== expectedOwnerId) {
+    return
+  }
   await assertSafePresetRoot(presetRoot, dependencies)
   await assertVacantPath(releasePath, dependencies)
   try {
@@ -924,13 +1140,23 @@ function createLockHandle(
   dependencies: ResolvedDependencies,
 ): PresetLock {
   let releasePromise: Promise<void> | undefined
+  let released = false
   return {
     release(): Promise<void> {
+      if (released) return Promise.resolve()
       releasePromise ??= releaseOwnedLock(
         presetRoot,
         lockPath,
         ownerId,
         dependencies,
+      ).then(
+        () => {
+          released = true
+        },
+        (error: unknown) => {
+          releasePromise = undefined
+          throw error
+        },
       )
       return releasePromise
     },
@@ -954,26 +1180,26 @@ export async function acquirePresetLock(
   const deadline = startedAt + dependencies.timeoutMs
   let lastMonotonicReading = startedAt
   let raceRetries = 0
+  let contended = false
 
   while (true) {
     await assertSafePresetRoot(resolvedRoot, dependencies)
-    try {
-      await dependencies.fileSystem.mkdir(lockPath, { mode: 0o700 })
-      await publishOwner(resolvedRoot, lockPath, dependencies)
+    if (contended) {
+      const current = monotonicNow(dependencies)
+      if (current < lastMonotonicReading) throw operationFailure()
+      lastMonotonicReading = current
+      if (current >= deadline) throw locked()
+    }
+
+    if (await tryPublishLock(resolvedRoot, lockPath, dependencies)) {
       return createLockHandle(
         resolvedRoot,
         lockPath,
         dependencies.ownerId,
         dependencies,
       )
-    } catch (error) {
-      if (!hasErrno(error, 'EEXIST')) {
-        if (isOperationalError(error)) {
-          throw error
-        }
-        throw operationFailure(error)
-      }
     }
+    contended = true
 
     const owner = await inspectLock(lockPath, dependencies)
     if (owner === null) {
@@ -1008,9 +1234,7 @@ export async function acquirePresetLock(
       if (raceRetries > MAX_RACE_RETRIES) {
         throw locked()
       }
-      if (reclaimed) {
-        raceRetries = 0
-      }
+      void reclaimed
       continue
     }
 
