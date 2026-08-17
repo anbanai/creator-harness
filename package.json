@@ -34,7 +34,7 @@
     "prepack": "pnpm run build && pnpm run verify:source",
     "verify:source": "node dsh/scripts/package-integrity.mjs source",
     "verify:pack": "node dsh/scripts/package-integrity.mjs pack",
-    "smoke:profile": "pnpm run build && node dsh/scripts/smoke-profile.mjs",
+    "smoke:profile": "node dsh/scripts/smoke-profile.mjs",
     "check": "pnpm run typecheck && pnpm run build && pnpm run test && pnpm run verify:pack && pnpm run smoke:profile"
   },
   "exports": {

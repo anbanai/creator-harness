@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process'
+import { gzipSync } from 'node:zlib'
 import {
+  chmod,
   cp,
   copyFile,
   mkdir,
@@ -33,10 +35,86 @@ const integrityScriptUrl = new URL(
 )
 const {
   assertSafeArchiveEntries,
+  inspectAndExtractArchive,
   parsePackResult,
   verifyPackFileInventory,
+  verifyInstalledPackage,
   verifySourceIntegrity,
 } = await import(integrityScriptUrl.href)
+
+interface TarEntryFixture {
+  content?: Buffer | string
+  corruptChecksum?: boolean
+  linkName?: string
+  mode?: number
+  name: string
+  type?: string
+}
+
+function writeTarText(
+  header: Buffer,
+  value: string,
+  offset: number,
+  length: number,
+) {
+  header.write(value, offset, length, 'utf8')
+}
+
+function writeTarNumber(
+  header: Buffer,
+  value: number,
+  offset: number,
+  length: number,
+) {
+  writeTarText(
+    header,
+    value.toString(8).padStart(length - 1, '0'),
+    offset,
+    length - 1,
+  )
+}
+
+function tarGzip(entries: readonly TarEntryFixture[]) {
+  const blocks: Buffer[] = []
+  for (const entry of entries) {
+    const content = Buffer.isBuffer(entry.content)
+      ? entry.content
+      : Buffer.from(entry.content ?? '')
+    const header = Buffer.alloc(512)
+    writeTarText(header, entry.name, 0, 100)
+    writeTarNumber(header, entry.mode ?? 0o644, 100, 8)
+    writeTarNumber(header, 0, 108, 8)
+    writeTarNumber(header, 0, 116, 8)
+    writeTarNumber(header, content.length, 124, 12)
+    writeTarNumber(header, 0, 136, 12)
+    header.fill(0x20, 148, 156)
+    header[156] = (entry.type ?? '0').charCodeAt(0)
+    writeTarText(header, entry.linkName ?? '', 157, 100)
+    writeTarText(header, 'ustar\0', 257, 6)
+    writeTarText(header, '00', 263, 2)
+    const checksum = header.reduce((sum, byte) => sum + byte, 0)
+    writeTarText(header, checksum.toString(8).padStart(6, '0'), 148, 6)
+    header[154] = 0
+    header[155] = 0x20
+    if (entry.corruptChecksum) header[0] = (header[0] ?? 0) ^ 1
+    blocks.push(header, content)
+    const padding = (512 - (content.length % 512)) % 512
+    if (padding > 0) blocks.push(Buffer.alloc(padding))
+  }
+  blocks.push(Buffer.alloc(1024))
+  return gzipSync(Buffer.concat(blocks))
+}
+
+function paxRecord(key: string, value: string) {
+  const payload = `${key}=${value}\n`
+  let length = Buffer.byteLength(payload) + 3
+  while (true) {
+    const record = `${length} ${payload}`
+    const actual = Buffer.byteLength(record)
+    if (actual === length) return record
+    length = actual
+  }
+}
 
 function publishedRuntimeFindings(source: string) {
   const findings: string[] = []
@@ -125,6 +203,66 @@ async function createIntegrityFixture() {
   return { fixtureParent, root }
 }
 
+async function createInstalledPackageFixture({
+  cliSource =
+    `#!/usr/bin/env node\n` +
+    `process.stderr.write('anban-dsh: invalid command\\n')\n` +
+    `process.exitCode = 2\n`,
+  exportSources = {},
+}: {
+  cliSource?: string
+  exportSources?: Partial<
+    Record<'anban-mcp' | 'preset-manager' | 'skills-provider', string>
+  >
+} = {}) {
+  const root = await mkdtemp(join(tmpdir(), 'anban-dsh-runtime-'))
+  const packageDirectory = join(
+    root,
+    'node_modules',
+    '@anban',
+    'dsh-plugin',
+  )
+  await mkdir(join(packageDirectory, 'dsh', 'lib'), { recursive: true })
+  await mkdir(join(packageDirectory, 'dsh', 'bin'), { recursive: true })
+  await writeFile(
+    join(packageDirectory, 'package.json'),
+    JSON.stringify({
+      name: '@anban/dsh-plugin',
+      version: '1.0.0',
+      type: 'module',
+      bin: { 'anban-dsh': './dsh/bin/anban-dsh.js' },
+      exports: {
+        './anban-mcp': './dsh/lib/anban-mcp.js',
+        './preset-manager': './dsh/lib/preset-manager.js',
+        './skills-provider': './dsh/lib/skills-provider.js',
+        './package.json': './package.json',
+      },
+    }),
+  )
+  for (const exportName of [
+    'anban-mcp',
+    'preset-manager',
+    'skills-provider',
+  ] as const) {
+    await writeFile(
+      join(packageDirectory, 'dsh', 'lib', `${exportName}.js`),
+      exportSources[exportName] ?? 'export const loaded = true\n',
+    )
+  }
+  const binPath = join(packageDirectory, 'dsh', 'bin', 'anban-dsh.js')
+  await writeFile(binPath, cliSource)
+  await chmod(binPath, 0o755)
+  return { packageDirectory, root }
+}
+
+async function createArchiveFixture(entries: readonly TarEntryFixture[]) {
+  const root = await mkdtemp(join(tmpdir(), 'anban-dsh-archive-'))
+  const archivePath = join(root, 'fixture.tgz')
+  const destination = join(root, 'extracted')
+  await writeFile(archivePath, tarGzip(entries))
+  return { archivePath, destination, root }
+}
+
 describe('DSH package manifest', () => {
   it('declares the exact publishing and build contract', async () => {
     const manifest = JSON.parse(await readFile(packageUrl, 'utf8'))
@@ -179,8 +317,7 @@ describe('DSH package manifest', () => {
         prepack: 'pnpm run build && pnpm run verify:source',
         'verify:source': 'node dsh/scripts/package-integrity.mjs source',
         'verify:pack': 'node dsh/scripts/package-integrity.mjs pack',
-        'smoke:profile':
-          'pnpm run build && node dsh/scripts/smoke-profile.mjs',
+        'smoke:profile': 'node dsh/scripts/smoke-profile.mjs',
         check:
           'pnpm run typecheck && pnpm run build && pnpm run test && pnpm run verify:pack && pnpm run smoke:profile',
       },
@@ -399,6 +536,51 @@ describe('DSH package integrity verifier', () => {
     }
   })
 
+  it('requires exactly the three public code exports and package.json', async () => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const manifestPath = join(fixture.root, 'package.json')
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+      manifest.exports['./undeclared'] = './dsh/lib/cli.js'
+      await writeFile(manifestPath, JSON.stringify(manifest))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+        'exact public exports',
+      )
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it('requires a shebang on the declared package bin', async () => {
+    const fixture = await createIntegrityFixture()
+    try {
+      await writeFile(
+        join(fixture.root, 'dsh/bin/anban-dsh.js'),
+        "process.exitCode = 2\n",
+      )
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+        'bin anban-dsh must start with a Node shebang',
+      )
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
+  it.runIf(process.platform !== 'win32')(
+    'requires executable mode on the declared package bin',
+    async () => {
+      const fixture = await createIntegrityFixture()
+      try {
+        await chmod(join(fixture.root, 'dsh/bin/anban-dsh.js'), 0o644)
+        await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+          'bin anban-dsh is not executable',
+        )
+      } finally {
+        await rm(fixture.fixtureParent, { force: true, recursive: true })
+      }
+    },
+  )
+
   it('structurally consumes one pnpm pack JSON result', () => {
     expect(
       parsePackResult(
@@ -445,6 +627,272 @@ describe('DSH package integrity verifier', () => {
     [{ path: 'package/dsh/bin/link', type: 'symlink' }, 'symlink'],
   ])('rejects unsafe archive entry %#', (entry, expected) => {
     expect(() => assertSafeArchiveEntries([entry])).toThrow(expected)
+  })
+
+  it.each([
+    {
+      name: 'missing file',
+      entries: [{ name: 'package/package.json', content: '{}' }],
+      expectedFiles: ['package.json', 'dsh/bin/anban-dsh.js'],
+      error: 'missing: dsh/bin/anban-dsh.js',
+    },
+    {
+      name: 'unexpected file',
+      entries: [
+        { name: 'package/package.json', content: '{}' },
+        { name: 'package/undeclared.js', content: '' },
+      ],
+      expectedFiles: ['package.json'],
+      error: 'unexpected: undeclared.js',
+    },
+    {
+      name: 'traversal path',
+      entries: [{ name: 'package/../outside.txt', content: 'unsafe' }],
+      expectedFiles: [],
+      error: 'unsafe path',
+    },
+    {
+      name: 'absolute path',
+      entries: [{ name: '/absolute.txt', content: 'unsafe' }],
+      expectedFiles: [],
+      error: 'unsafe path',
+    },
+    {
+      name: 'symlink typeflag',
+      entries: [
+        {
+          name: 'package/link',
+          type: '2',
+          linkName: '../outside',
+        },
+      ],
+      expectedFiles: [],
+      error: 'symlink',
+    },
+    {
+      name: 'hardlink typeflag',
+      entries: [
+        {
+          name: 'package/link',
+          type: '1',
+          linkName: 'package/target',
+        },
+      ],
+      expectedFiles: [],
+      error: 'hardlink',
+    },
+    {
+      name: 'invalid checksum',
+      entries: [
+        {
+          name: 'package/package.json',
+          content: '{}',
+          corruptChecksum: true,
+        },
+      ],
+      expectedFiles: ['package.json'],
+      error: 'header checksum',
+    },
+    {
+      name: 'PAX path traversal',
+      entries: [
+        {
+          name: 'PaxHeader',
+          type: 'x',
+          content: paxRecord('path', 'package/../outside.txt'),
+        },
+        { name: 'package/safe.txt', content: 'unsafe' },
+      ],
+      expectedFiles: ['safe.txt'],
+      error: 'unsafe path',
+    },
+    {
+      name: 'unsupported PAX key',
+      entries: [
+        {
+          name: 'PaxHeader',
+          type: 'x',
+          content: paxRecord('SCHILY.xattr.user.test', 'value'),
+        },
+        { name: 'package/safe.txt', content: 'safe' },
+      ],
+      expectedFiles: ['safe.txt'],
+      error: 'unsupported PAX key',
+    },
+  ])('rejects a real tar.gz with $name', async (testCase) => {
+    const fixture = await createArchiveFixture(testCase.entries)
+    try {
+      await expect(
+        inspectAndExtractArchive({
+          archivePath: fixture.archivePath,
+          destination: fixture.destination,
+          expectedFiles: testCase.expectedFiles,
+        }),
+      ).rejects.toThrow(testCase.error)
+      await expect(
+        readFile(join(fixture.root, 'outside.txt')),
+      ).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(readdir(fixture.destination)).rejects.toMatchObject({
+        code: 'ENOENT',
+      })
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it.each([
+    {
+      name: 'entry size',
+      entries: [{ name: 'package/file', content: 'too-large' }],
+      limits: { maxEntryBytes: 4 },
+      error: 'entry size limit',
+    },
+    {
+      name: 'entry count',
+      entries: [
+        { name: 'package/one', content: '' },
+        { name: 'package/two', content: '' },
+      ],
+      expectedFiles: ['one', 'two'],
+      limits: { maxEntries: 1 },
+      error: 'entry count limit',
+    },
+    {
+      name: 'path length',
+      entries: [{ name: 'package/path-is-too-long', content: '' }],
+      limits: { maxPathBytes: 12 },
+      error: 'path length limit',
+    },
+  ])('enforces the tar $name bound', async (testCase) => {
+    const fixture = await createArchiveFixture(testCase.entries)
+    try {
+      await expect(
+        inspectAndExtractArchive({
+          archivePath: fixture.archivePath,
+          destination: fixture.destination,
+          expectedFiles: testCase.expectedFiles ?? [],
+          limits: testCase.limits,
+        }),
+      ).rejects.toThrow(testCase.error)
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('rejects compressed input before reading beyond its byte bound', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-compressed-limit-'))
+    const archivePath = join(root, 'fixture.tgz')
+    try {
+      await writeFile(archivePath, Buffer.alloc(2048))
+      await expect(
+        inspectAndExtractArchive({
+          archivePath,
+          destination: join(root, 'extracted'),
+          expectedFiles: [],
+          limits: { maxCompressedBytes: 1024 },
+        }),
+      ).rejects.toThrow('compressed byte limit')
+    } finally {
+      await rm(root, { force: true, recursive: true })
+    }
+  })
+
+  it('rejects a gzip bomb at the inflated byte bound', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-inflated-limit-'))
+    const archivePath = join(root, 'fixture.tgz')
+    try {
+      await writeFile(archivePath, gzipSync(Buffer.alloc(4096)))
+      await expect(
+        inspectAndExtractArchive({
+          archivePath,
+          destination: join(root, 'extracted'),
+          expectedFiles: [],
+          limits: { maxInflatedBytes: 1024 },
+        }),
+      ).rejects.toThrow('inflated byte limit')
+    } finally {
+      await rm(root, { force: true, recursive: true })
+    }
+  })
+
+  it.each([
+    {
+      name: 'non-executable bin mode',
+      entry: {
+        name: 'package/dsh/bin/anban-dsh.js',
+        content: '#!/usr/bin/env node\n',
+        mode: 0o644,
+      },
+      error: 'not executable',
+    },
+    {
+      name: 'missing Node shebang',
+      entry: {
+        name: 'package/dsh/bin/anban-dsh.js',
+        content: 'process.exitCode = 2\n',
+        mode: 0o755,
+      },
+      error: 'Node shebang',
+    },
+  ])('rejects a packed bin with $name', async ({ entry, error }) => {
+    const fixture = await createArchiveFixture([entry])
+    try {
+      await expect(
+        inspectAndExtractArchive({
+          archivePath: fixture.archivePath,
+          destination: fixture.destination,
+          executablePaths: ['dsh/bin/anban-dsh.js'],
+          expectedFiles: ['dsh/bin/anban-dsh.js'],
+        }),
+      ).rejects.toThrow(error)
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('does not resolve an undeclared dev-only dependency', async () => {
+    const fixture = await createInstalledPackageFixture({
+      exportSources: {
+        'anban-mcp': "import 'typescript'\nexport const loaded = true\n",
+      },
+    })
+    try {
+      await expect(verifyInstalledPackage(fixture.root)).rejects.toThrow(
+        'public export smoke failed',
+      )
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('times out a hanging public export deterministically', async () => {
+    const fixture = await createInstalledPackageFixture({
+      exportSources: {
+        'anban-mcp':
+          'await new Promise(() => setInterval(() => {}, 1000))\n',
+      },
+    })
+    try {
+      await expect(
+        verifyInstalledPackage(fixture.root, { childTimeoutMs: 50 }),
+      ).rejects.toThrow('public export smoke timed out')
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
+  })
+
+  it('times out a hanging packaged CLI deterministically', async () => {
+    const fixture = await createInstalledPackageFixture({
+      cliSource:
+        '#!/usr/bin/env node\nsetInterval(() => {}, 1000)\n',
+    })
+    try {
+      await expect(
+        verifyInstalledPackage(fixture.root, { childTimeoutMs: 50 }),
+      ).rejects.toThrow('packaged CLI smoke timed out')
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true })
+    }
   })
 })
 

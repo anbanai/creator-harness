@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
-import { gunzipSync } from 'node:zlib'
+import { createReadStream } from 'node:fs'
+import { createGunzip } from 'node:zlib'
 import {
   chmod,
   lstat,
@@ -10,6 +11,7 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -32,6 +34,19 @@ const PUBLIC_CODE_EXPORTS = [
   './preset-manager',
   './skills-provider',
 ]
+const EXPECTED_EXPORTS = [...PUBLIC_CODE_EXPORTS, './package.json'].sort()
+export const ARCHIVE_LIMITS = Object.freeze({
+  maxCompressedBytes: 8 * 1024 * 1024,
+  maxEntries: 4096,
+  maxEntryBytes: 16 * 1024 * 1024,
+  maxInflatedBytes: 32 * 1024 * 1024,
+  maxPathBytes: 1024,
+  maxPaxBytes: 64 * 1024,
+})
+const CHILD_MAX_BUFFER = 1024 * 1024
+const CHILD_TIMEOUT_MS = 30_000
+const COMMAND_TIMEOUT_MS = 120_000
+const NODE_SHEBANG = '#!/usr/bin/env node\n'
 const CORDIS_PATCH = [
   {
     insert: [
@@ -324,6 +339,11 @@ export async function verifySourceIntegrity(packageRoot = PACKAGE_ROOT) {
   sameStructure(manifest.files, FILES_CONTRACT, 'package files contract')
 
   if (!isRecord(manifest.exports)) fail('package manifest has no exports')
+  sameStructure(
+    Object.keys(manifest.exports).sort(),
+    EXPECTED_EXPORTS,
+    'exact public exports',
+  )
   if (manifest.exports['./package.json'] !== './package.json') {
     fail('package.json export is missing or invalid')
   }
@@ -342,6 +362,14 @@ export async function verifySourceIntegrity(packageRoot = PACKAGE_ROOT) {
   for (const [name, target] of Object.entries(manifest.bin)) {
     const path = relativeTarget(target, `bin ${name}`)
     await requireRegularFile(root, path, `bin ${name}`)
+    const source = await readFile(join(root, path))
+    if (!source.subarray(0, Buffer.byteLength(NODE_SHEBANG)).equals(Buffer.from(NODE_SHEBANG))) {
+      fail(`bin ${name} must start with a Node shebang`)
+    }
+    if (process.platform !== 'win32') {
+      const status = await lstat(join(root, path))
+      if ((status.mode & 0o111) === 0) fail(`bin ${name} is not executable`)
+    }
   }
 
   if (manifest.dsh?.bundle?.patch !== './dsh/cordis.patch.yml') {
@@ -475,78 +503,260 @@ function parsePax(data) {
     const record = data.subarray(space + 1, offset + length - 1).toString('utf8')
     const equals = record.indexOf('=')
     if (equals <= 0) fail('archive has invalid PAX metadata')
-    values[record.slice(0, equals)] = record.slice(equals + 1)
+    const key = record.slice(0, equals)
+    if (key !== 'path' && key !== 'linkpath') {
+      fail(`archive contains unsupported PAX key: ${key}`)
+    }
+    values[key] = record.slice(equals + 1)
     offset += length
   }
   return values
 }
 
-function parseTarArchive(compressed) {
-  let archive
-  try {
-    archive = gunzipSync(compressed)
-  } catch {
-    fail('packed artifact is not a valid gzip archive')
-  }
-  const entries = []
-  let offset = 0
-  let globalPax = {}
-  let nextPax = {}
-  let longPath
-  let longLink
-  while (offset + 512 <= archive.length) {
-    const header = archive.subarray(offset, offset + 512)
-    if (header.every((byte) => byte === 0)) break
-    const storedChecksum = tarNumber(header, 148, 8, 'checksum')
-    let checksum = 0
-    for (let index = 0; index < header.length; index += 1) {
-      checksum += index >= 148 && index < 156 ? 0x20 : header[index]
+function resolvedArchiveLimits(overrides = {}) {
+  const limits = { ...ARCHIVE_LIMITS, ...overrides }
+  for (const [name, value] of Object.entries(limits)) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      fail(`archive ${name} must be a positive safe integer`)
     }
-    if (checksum !== storedChecksum) fail('archive has an invalid header checksum')
+  }
+  return limits
+}
 
-    const size = tarNumber(header, 124, 12, 'entry size')
-    const dataStart = offset + 512
-    const dataEnd = dataStart + size
-    if (dataEnd > archive.length) fail('archive entry exceeds the archive bounds')
-    const data = archive.subarray(dataStart, dataEnd)
-    const typeFlag = String.fromCharCode(header[156] || 0)
-    const headerName = tarString(header, 0, 100)
-    const prefix = tarString(header, 345, 155)
-    const headerPath = prefix ? `${prefix}/${headerName}` : headerName
+function streamedInflatedReader(archivePath, maxInflatedBytes) {
+  const source = createReadStream(archivePath)
+  const gunzip = createGunzip()
+  const iterator = source.pipe(gunzip)[Symbol.asyncIterator]()
+  let buffered = Buffer.alloc(0)
+  let bufferedOffset = 0
+  let inflatedBytes = 0
 
-    if (typeFlag === 'x' || typeFlag === 'g') {
-      const pax = parsePax(data)
-      if (typeFlag === 'g') globalPax = { ...globalPax, ...pax }
-      else nextPax = pax
-    } else if (typeFlag === 'L') {
-      longPath = tarString(data, 0, data.length)
-    } else if (typeFlag === 'K') {
-      longLink = tarString(data, 0, data.length)
-    } else {
-      const metadata = { ...globalPax, ...nextPax }
-      const path = metadata.path ?? longPath ?? headerPath
-      const linkPath = metadata.linkpath ?? longLink ?? tarString(header, 157, 100)
-      let type
-      if (typeFlag === '\0' || typeFlag === '0' || typeFlag === '7') type = 'file'
-      else if (typeFlag === '5') type = 'directory'
-      else if (typeFlag === '1') type = 'hardlink'
-      else if (typeFlag === '2') type = 'symlink'
-      else type = `tar-${typeFlag}`
-      entries.push({
-        data,
+  async function nextChunk() {
+    const next = await iterator.next()
+    if (next.done) return undefined
+    inflatedBytes += next.value.length
+    if (inflatedBytes > maxInflatedBytes) {
+      source.destroy()
+      gunzip.destroy()
+      fail(`archive exceeds the inflated byte limit (${maxInflatedBytes})`)
+    }
+    return next.value
+  }
+
+  async function readExactly(size, { allowEnd = false } = {}) {
+    const output = Buffer.allocUnsafe(size)
+    let written = 0
+    while (written < size) {
+      if (bufferedOffset === buffered.length) {
+        buffered = (await nextChunk()) ?? Buffer.alloc(0)
+        bufferedOffset = 0
+        if (buffered.length === 0) {
+          if (allowEnd && written === 0) return undefined
+          fail('archive ended before the current tar record')
+        }
+      }
+      const available = Math.min(size - written, buffered.length - bufferedOffset)
+      buffered.copy(output, written, bufferedOffset, bufferedOffset + available)
+      bufferedOffset += available
+      written += available
+    }
+    return output
+  }
+
+  async function requireZeroRemainder() {
+    while (true) {
+      if (bufferedOffset < buffered.length) {
+        if (!buffered.subarray(bufferedOffset).every((byte) => byte === 0)) {
+          fail('archive has non-zero data after its end marker')
+        }
+        bufferedOffset = buffered.length
+      }
+      buffered = (await nextChunk()) ?? Buffer.alloc(0)
+      bufferedOffset = 0
+      if (buffered.length === 0) return
+    }
+  }
+
+  return {
+    close() {
+      source.destroy()
+      gunzip.destroy()
+    },
+    readExactly,
+    requireZeroRemainder,
+  }
+}
+
+function tarEntryType(typeFlag) {
+  if (typeFlag === '\0' || typeFlag === '0' || typeFlag === '7') return 'file'
+  if (typeFlag === '5') return 'directory'
+  if (typeFlag === '1') return 'hardlink'
+  if (typeFlag === '2') return 'symlink'
+  return `tar-${typeFlag}`
+}
+
+export async function inspectAndExtractArchive({
+  archivePath,
+  destination,
+  executablePaths = [],
+  expectedFiles,
+  limits: limitOverrides,
+}) {
+  const limits = resolvedArchiveLimits(limitOverrides)
+  const archiveStatus = await lstat(archivePath)
+  if (!archiveStatus.isFile() || archiveStatus.isSymbolicLink()) {
+    fail('packed artifact is not a regular file')
+  }
+  if (archiveStatus.size > limits.maxCompressedBytes) {
+    fail(
+      `archive exceeds the compressed byte limit (${limits.maxCompressedBytes})`,
+    )
+  }
+
+  const expected = new Set(sortedUnique(expectedFiles, 'expected inventory'))
+  const executables = new Set(
+    sortedUnique(executablePaths, 'expected executable inventory'),
+  )
+  for (const executable of executables) {
+    if (!expected.has(executable)) {
+      fail(`expected executable is absent from inventory: ${executable}`)
+    }
+  }
+
+  const reader = streamedInflatedReader(archivePath, limits.maxInflatedBytes)
+  const seenEntries = new Set()
+  const seenFiles = []
+  let entryCount = 0
+  let nextPax = {}
+  await mkdir(destination)
+  try {
+    while (true) {
+      const header = await reader.readExactly(512, { allowEnd: true })
+      if (header === undefined) fail('archive has no tar end marker')
+      if (header.every((byte) => byte === 0)) {
+        const secondEndBlock = await reader.readExactly(512)
+        if (!secondEndBlock.every((byte) => byte === 0)) {
+          fail('archive has an invalid tar end marker')
+        }
+        await reader.requireZeroRemainder()
+        break
+      }
+
+      entryCount += 1
+      if (entryCount > limits.maxEntries) {
+        fail(`archive exceeds the entry count limit (${limits.maxEntries})`)
+      }
+      const storedChecksum = tarNumber(header, 148, 8, 'checksum')
+      let checksum = 0
+      for (let index = 0; index < header.length; index += 1) {
+        checksum += index >= 148 && index < 156 ? 0x20 : header[index]
+      }
+      if (checksum !== storedChecksum) {
+        fail('archive has an invalid header checksum')
+      }
+
+      const size = tarNumber(header, 124, 12, 'entry size')
+      const typeFlag = String.fromCharCode(header[156] || 0)
+      const paxEntry = typeFlag === 'x'
+      if (typeFlag === 'g') fail('archive contains unsupported global PAX metadata')
+      const sizeLimit = paxEntry ? limits.maxPaxBytes : limits.maxEntryBytes
+      if (size > sizeLimit) {
+        fail(
+          `archive exceeds the ${paxEntry ? 'PAX' : 'entry size'} limit (${sizeLimit})`,
+        )
+      }
+      const data = await reader.readExactly(size)
+      const padding = (512 - (size % 512)) % 512
+      if (padding > 0) await reader.readExactly(padding)
+
+      if (paxEntry) {
+        if (Object.keys(nextPax).length > 0) {
+          fail('archive contains consecutive PAX headers')
+        }
+        nextPax = parsePax(data)
+        continue
+      }
+
+      const headerName = tarString(header, 0, 100)
+      const prefix = tarString(header, 345, 155)
+      const headerPath = prefix ? `${prefix}/${headerName}` : headerName
+      const path = nextPax.path ?? headerPath
+      const linkPath = nextPax.linkpath ?? tarString(header, 157, 100)
+      nextPax = {}
+      if (Buffer.byteLength(path) > limits.maxPathBytes) {
+        fail(`archive exceeds the path length limit (${limits.maxPathBytes})`)
+      }
+      const entry = {
         linkPath,
         mode: tarNumber(header, 100, 8, 'entry mode'),
         path,
-        type,
-      })
-      nextPax = {}
-      longPath = undefined
-      longLink = undefined
+        type: tarEntryType(typeFlag),
+      }
+      assertSafeArchiveEntries([entry])
+      const archivePathKey = path.endsWith('/') ? path.slice(0, -1) : path
+      if (seenEntries.has(archivePathKey)) {
+        fail(`archive contains duplicate entry: ${path}`)
+      }
+      seenEntries.add(archivePathKey)
+
+      const output = join(destination, ...path.split('/'))
+      const fromDestination = relative(destination, output)
+      if (
+        fromDestination === '' ||
+        fromDestination === '..' ||
+        fromDestination.startsWith(`..${sep}`) ||
+        isAbsolute(fromDestination)
+      ) {
+        fail(`archive contains an unsafe path: ${path}`)
+      }
+      if (entry.type === 'directory') {
+        await mkdir(output, { recursive: true })
+        continue
+      }
+
+      const packagedPath = path.slice('package/'.length)
+      if (!expected.has(packagedPath)) {
+        fail(`packed file inventory mismatch (unexpected: ${packagedPath})`)
+      }
+      seenFiles.push(packagedPath)
+      if (executables.has(packagedPath)) {
+        if ((entry.mode & 0o111) === 0) {
+          fail(`packed bin ${packagedPath} is not executable`)
+        }
+        if (
+          !data
+            .subarray(0, Buffer.byteLength(NODE_SHEBANG))
+            .equals(Buffer.from(NODE_SHEBANG))
+        ) {
+          fail(`packed bin ${packagedPath} must start with a Node shebang`)
+        }
+      }
+      await mkdir(dirname(output), { recursive: true })
+      await writeFile(output, data, { flag: 'wx' })
+      await chmod(output, entry.mode & 0o777)
     }
-    offset = dataStart + Math.ceil(size / 512) * 512
+    if (Object.keys(nextPax).length > 0) {
+      fail('archive ends with unused PAX metadata')
+    }
+    verifyPackFileInventory([...expected], seenFiles)
+    for (const executable of executables) {
+      if (!seenFiles.includes(executable)) {
+        fail(`packed executable is missing: ${executable}`)
+      }
+    }
+    return { files: [...seenFiles].sort() }
+  } catch (error) {
+    await rm(destination, { force: true, recursive: true })
+    if (
+      error instanceof Error &&
+      error.message.startsWith('Package integrity failed:')
+    ) {
+      throw error
+    }
+    fail('packed artifact is not a valid gzip archive')
+  } finally {
+    reader.close()
   }
-  assertSafeArchiveEntries(entries)
-  return entries
 }
 
 async function filesFromContract(root, manifest) {
@@ -574,91 +784,147 @@ async function filesFromContract(root, manifest) {
   return sortedUnique(files, 'expected package inventory')
 }
 
-function runPackCommand(root, destination) {
+function pnpmInvocation(args) {
   const npmEntrypoint = process.env.npm_execpath
-  const command = npmEntrypoint === undefined ? 'pnpm' : process.execPath
-  const prefix = npmEntrypoint === undefined ? [] : [npmEntrypoint]
-  const result = spawnSync(
-    command,
-    [...prefix, 'pack', '--json', '--pack-destination', destination],
-    {
-      cwd: root,
-      encoding: 'utf8',
-      env: process.env,
-      maxBuffer: 20 * 1024 * 1024,
-      shell: false,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  )
-  if (result.error !== undefined) throw result.error
-  if (result.status !== 0) {
-    if (result.stderr) process.stderr.write(result.stderr)
-    fail(`pnpm pack exited ${result.status ?? 1}`)
+  return npmEntrypoint === undefined
+    ? { command: 'pnpm', args }
+    : { command: process.execPath, args: [npmEntrypoint, ...args] }
+}
+
+function childEnvironment() {
+  const environment = {}
+  for (const key of [
+    'COMSPEC',
+    'LANG',
+    'LC_ALL',
+    'PATH',
+    'PATHEXT',
+    'SYSTEMROOT',
+    'SystemRoot',
+    'TEMP',
+    'TMP',
+    'WINDIR',
+  ]) {
+    if (process.env[key] !== undefined) environment[key] = process.env[key]
   }
+  return environment
+}
+
+function runBoundedCommand(
+  command,
+  args,
+  { cwd, environment = childEnvironment(), label, timeoutMs },
+) {
+  const result = spawnSync(command, args, {
+    cwd,
+    encoding: 'utf8',
+    env: environment,
+    maxBuffer: CHILD_MAX_BUFFER,
+    shell: false,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: timeoutMs,
+  })
+  if (result.error?.code === 'ETIMEDOUT') {
+    fail(`${label} timed out after ${timeoutMs}ms`)
+  }
+  if (result.error?.code === 'ENOBUFS') {
+    fail(`${label} exceeded the output byte limit (${CHILD_MAX_BUFFER})`)
+  }
+  if (result.error !== undefined) {
+    fail(`${label} failed to start: ${result.error.code ?? 'unknown error'}`)
+  }
+  return result
+}
+
+function runPackCommand(root, destination) {
+  const invocation = pnpmInvocation([
+    'pack',
+    '--json',
+    '--pack-destination',
+    destination,
+  ])
+  const result = runBoundedCommand(invocation.command, invocation.args, {
+    cwd: root,
+    environment: process.env,
+    label: 'pnpm pack',
+    timeoutMs: COMMAND_TIMEOUT_MS,
+  })
+  if (result.status !== 0) fail(`pnpm pack exited ${result.status ?? 1}`)
   return result.stdout
 }
 
-async function extractArchive(entries, destination) {
-  await mkdir(destination)
-  for (const entry of entries) {
-    const output = join(destination, ...entry.path.split('/'))
-    const fromDestination = relative(destination, output)
-    if (
-      fromDestination === '' ||
-      fromDestination === '..' ||
-      fromDestination.startsWith(`..${sep}`) ||
-      isAbsolute(fromDestination)
-    ) {
-      fail(`archive contains an unsafe path: ${entry.path}`)
-    }
-    if (entry.type === 'directory') {
-      await mkdir(output, { recursive: true })
-    } else {
-      await mkdir(dirname(output), { recursive: true })
-      await writeFile(output, entry.data, { flag: 'wx' })
-      await chmod(output, entry.mode & 0o777)
-    }
-  }
-}
-
-async function verifyExtractedPackage(packageDirectory) {
-  const checkPath = join(packageDirectory, '.package-integrity-check.mjs')
+export async function verifyInstalledPackage(
+  sandboxRoot,
+  { childTimeoutMs = CHILD_TIMEOUT_MS } = {},
+) {
+  const packageDirectory = join(
+    sandboxRoot,
+    'node_modules',
+    '@anban',
+    'dsh-plugin',
+  )
+  const manifest = await parseJsonFile(
+    packageDirectory,
+    'package.json',
+    'installed package manifest',
+  )
+  const checkPath = join(sandboxRoot, '.package-integrity-check.mjs')
   await writeFile(
     checkPath,
     `import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 await Promise.all([
-  import('@anban/dsh-plugin/anban-mcp'),
-  import('@anban/dsh-plugin/preset-manager'),
-  import('@anban/dsh-plugin/skills-provider'),
+${PUBLIC_CODE_EXPORTS.map((name) => `  import('@anban/dsh-plugin/${name.slice(2)}'),`).join('\n')}
 ])
 const require = createRequire(import.meta.url)
 const manifestPath = require.resolve('@anban/dsh-plugin/package.json')
 JSON.parse(await readFile(manifestPath, 'utf8'))
 `,
   )
-  const imported = spawnSync(process.execPath, [checkPath], {
-    cwd: packageDirectory,
-    encoding: 'utf8',
-    env: process.env,
-    shell: false,
+  const imported = runBoundedCommand(process.execPath, [checkPath], {
+    cwd: sandboxRoot,
+    label: 'public export smoke',
+    timeoutMs: childTimeoutMs,
   })
-  if (imported.error !== undefined) throw imported.error
   if (imported.status !== 0) {
-    fail(`public export smoke exited ${imported.status ?? 1}: ${imported.stderr.trim()}`)
+    fail(`public export smoke failed with exit ${imported.status ?? 1}`)
   }
 
-  const cli = spawnSync(
-    process.execPath,
-    [join(packageDirectory, 'dsh/bin/anban-dsh.js'), '--package-integrity-smoke'],
-    {
-      cwd: packageDirectory,
-      encoding: 'utf8',
-      env: process.env,
-      shell: false,
-    },
+  const binTarget = manifest.bin?.['anban-dsh']
+  const binPath = join(
+    packageDirectory,
+    relativeTarget(binTarget, 'installed bin anban-dsh'),
   )
-  if (cli.error !== undefined) throw cli.error
+  await requireRegularFile(
+    packageDirectory,
+    relative(packageDirectory, binPath),
+    'installed bin anban-dsh',
+  )
+  const binSource = await readFile(binPath)
+  if (
+    !binSource
+      .subarray(0, Buffer.byteLength(NODE_SHEBANG))
+      .equals(Buffer.from(NODE_SHEBANG))
+  ) {
+    fail('installed bin anban-dsh must start with a Node shebang')
+  }
+  if (process.platform !== 'win32') {
+    const status = await lstat(binPath)
+    if ((status.mode & 0o111) === 0) {
+      fail('installed bin anban-dsh is not executable')
+    }
+  }
+
+  const cliCommand = process.platform === 'win32' ? process.execPath : binPath
+  const cliArgs =
+    process.platform === 'win32'
+      ? [binPath, '--package-integrity-smoke']
+      : ['--package-integrity-smoke']
+  const cli = runBoundedCommand(cliCommand, cliArgs, {
+    cwd: sandboxRoot,
+    label: 'packaged CLI smoke',
+    timeoutMs: childTimeoutMs,
+  })
   if (
     cli.status !== 2 ||
     cli.stdout !== '' ||
@@ -668,10 +934,50 @@ JSON.parse(await readFile(manifestPath, 'utf8'))
   }
 }
 
+async function installPackedRuntime(sandboxRoot, tarball, manifest) {
+  const runtimeRoot = join(sandboxRoot, 'runtime')
+  await mkdir(runtimeRoot)
+  if (!isRecord(manifest.peerDependencies)) {
+    fail('package manifest has no peerDependencies')
+  }
+  const tarballReference = relative(runtimeRoot, tarball).split(sep).join('/')
+  await writeFile(
+    join(runtimeRoot, 'package.json'),
+    `${JSON.stringify(
+      {
+        private: true,
+        type: 'module',
+        dependencies: {
+          [manifest.name]: `file:${tarballReference}`,
+          ...manifest.peerDependencies,
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  const invocation = pnpmInvocation([
+    'install',
+    '--offline',
+    '--ignore-scripts',
+    '--lockfile=false',
+  ])
+  const installed = runBoundedCommand(invocation.command, invocation.args, {
+    cwd: runtimeRoot,
+    environment: process.env,
+    label: 'offline runtime install',
+    timeoutMs: COMMAND_TIMEOUT_MS,
+  })
+  if (installed.status !== 0) {
+    fail(`offline runtime install exited ${installed.status ?? 1}`)
+  }
+  return runtimeRoot
+}
+
 export async function verifyPackedArtifact(packageRoot = PACKAGE_ROOT) {
   const root = resolve(packageRoot)
   await verifySourceIntegrity(root)
-  const temporaryRoot = await mkdtemp(join(root, '.anban-dsh-pack-'))
+  const temporaryRoot = await mkdtemp(join(tmpdir(), 'anban-dsh-pack-'))
   try {
     const result = parsePackResult(runPackCommand(root, temporaryRoot))
     const manifest = await parseJsonFile(root, 'package.json', 'package manifest')
@@ -695,20 +1001,21 @@ export async function verifyPackedArtifact(packageRoot = PACKAGE_ROOT) {
     const expectedFiles = await filesFromContract(root, manifest)
     verifyPackFileInventory(expectedFiles, result.files)
 
-    const entries = parseTarArchive(await readFile(tarball))
-    const archiveFiles = entries
-      .filter((entry) => entry.type === 'file')
-      .map((entry) => {
-        if (!entry.path.startsWith('package/')) {
-          fail(`archive entry is outside the package root: ${entry.path}`)
-        }
-        return entry.path.slice('package/'.length)
-      })
-    verifyPackFileInventory(result.files, archiveFiles)
-
     const extractionRoot = join(temporaryRoot, 'extracted')
-    await extractArchive(entries, extractionRoot)
-    await verifyExtractedPackage(join(extractionRoot, 'package'))
+    await inspectAndExtractArchive({
+      archivePath: tarball,
+      destination: extractionRoot,
+      executablePaths: Object.values(manifest.bin).map((target) =>
+        relativeTarget(target, 'package bin'),
+      ),
+      expectedFiles: result.files,
+    })
+    const runtimeRoot = await installPackedRuntime(
+      temporaryRoot,
+      tarball,
+      manifest,
+    )
+    await verifyInstalledPackage(runtimeRoot)
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true })
   }
