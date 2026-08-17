@@ -228,10 +228,23 @@ describe('preset lock acquisition', () => {
     const fixture = await createFixture()
     await installLock(fixture, validOwner())
     const renamed: Array<[string, string]> = []
+    const written: Array<{
+      data: string
+      options: { flag?: string; mode?: number } | undefined
+      path: string
+    }> = []
     const fileSystem = {
       rename: async (source: string, destination: string) => {
         renamed.push([source, destination])
         await rename(source, destination)
+      },
+      writeFile: async (
+        path: string,
+        data: string,
+        options?: { flag?: string; mode?: number },
+      ) => {
+        written.push({ data, options, path })
+        await writeFile(path, data, options)
       },
     }
 
@@ -244,16 +257,21 @@ describe('preset lock acquisition', () => {
       }),
     )
 
-    expect(renamed).toHaveLength(3)
-    expect(renamed[0]).toEqual([
-      ownerPath(fixture),
-      join(lockPath(fixture), '.anban-dsh.reclaim-fresh-owner.json'),
-    ])
-    expect(renamed[1]?.[0]).toBe(lockPath(fixture))
-    expect(renamed[1]?.[1]).toBe(
+    expect(written[0]).toEqual({
+      data: `${JSON.stringify({
+        schemaVersion: 1,
+        claimantOwnerId: 'fresh-owner',
+        expectedOwner: validOwner(),
+      })}\n`,
+      options: { flag: 'wx', mode: 0o600 },
+      path: join(lockPath(fixture), '.anban-dsh.reclaim-claim.json'),
+    })
+    expect(renamed).toHaveLength(2)
+    expect(renamed[0]?.[0]).toBe(lockPath(fixture))
+    expect(renamed[0]?.[1]).toBe(
       join(fixture.presetRoot, '.anban-dsh.lock.quarantine-fresh-owner'),
     )
-    expect(renamed[2]?.[1]).toBe(ownerPath(fixture))
+    expect(renamed[1]?.[1]).toBe(ownerPath(fixture))
     expect(JSON.parse(await readFile(ownerPath(fixture), 'utf8'))).toEqual(
       validOwner({
         pid: 12_345,
@@ -356,6 +374,141 @@ describe('preset lock acquisition', () => {
     expect(await readdir(fixture.presetRoot)).toEqual([LOCK_NAME])
 
     await winnerLock.release()
+  })
+
+  it('keeps a fresh owner releasable while a stale contender validates its claim', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    let signalStalePaused!: () => void
+    const stalePaused = new Promise<void>((resolvePaused) => {
+      signalStalePaused = resolvePaused
+    })
+    let resumeStale!: () => void
+    const staleResume = new Promise<void>((resolveResume) => {
+      resumeStale = resolveResume
+    })
+    let signalClaimPaused!: () => void
+    const claimPaused = new Promise<void>((resolvePaused) => {
+      signalClaimPaused = resolvePaused
+    })
+    let resumeClaim!: () => void
+    const claimResume = new Promise<void>((resolveResume) => {
+      resumeClaim = resolveResume
+    })
+    let staleSnapshotValidated = false
+    let claimReadPaused = false
+    const loserPromise = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        fileSystem: {
+          readFile: async (path, encoding) => {
+            if (staleSnapshotValidated && !claimReadPaused) {
+              claimReadPaused = true
+              signalClaimPaused()
+              await claimResume
+            }
+            return readFile(path, encoding)
+          },
+        },
+        isPidAlive: async (pid) => {
+          if (pid === 41_234) {
+            staleSnapshotValidated = true
+            signalStalePaused()
+            await staleResume
+            return false
+          }
+          return true
+        },
+        pid: 30_002,
+        randomOwnerId: () => 'release-race-loser',
+        timeoutMs: 0,
+      }),
+    )
+    await stalePaused
+    const winnerLock = await acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        isPidAlive: (pid) => pid !== 41_234,
+        pid: 30_001,
+        randomOwnerId: () => 'release-race-winner',
+      }),
+    )
+    resumeStale()
+    await claimPaused
+
+    const releaseOutcome = await Promise.all([
+      winnerLock.release(),
+      winnerLock.release(),
+    ]).then(
+      () => ({ kind: 'released' as const }),
+      (error: unknown) => ({ error, kind: 'rejected' as const }),
+    )
+    resumeClaim()
+    const loserOutcome = await loserPromise.then(
+      (lock) => ({ kind: 'acquired' as const, lock }),
+      (error: unknown) => ({ error, kind: 'rejected' as const }),
+    )
+
+    expect(releaseOutcome).toEqual({ kind: 'released' })
+    expect(loserOutcome).toMatchObject({ kind: 'rejected' })
+    expect(await readdir(fixture.presetRoot)).toEqual([])
+    await expect(winnerLock.release()).resolves.toBeUndefined()
+  })
+
+  it('keeps a fresh owner releasable when a stale contender crashes after claim', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    let signalStalePaused!: () => void
+    const stalePaused = new Promise<void>((resolvePaused) => {
+      signalStalePaused = resolvePaused
+    })
+    let resumeStale!: () => void
+    const staleResume = new Promise<void>((resolveResume) => {
+      resumeStale = resolveResume
+    })
+    let staleSnapshotValidated = false
+    const loserPromise = acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        fileSystem: {
+          readFile: async (path, encoding) => {
+            if (staleSnapshotValidated) {
+              throw new Error('injected crash after fresh-directory claim')
+            }
+            return readFile(path, encoding)
+          },
+        },
+        isPidAlive: async (pid) => {
+          if (pid === 41_234) {
+            staleSnapshotValidated = true
+            signalStalePaused()
+            await staleResume
+            return false
+          }
+          return true
+        },
+        pid: 31_002,
+        randomOwnerId: () => 'crash-race-loser',
+      }),
+    )
+    await stalePaused
+    const winnerLock = await acquirePresetLock(
+      fixture.presetRoot,
+      dependencies({
+        isPidAlive: (pid) => pid !== 41_234,
+        pid: 31_001,
+        randomOwnerId: () => 'crash-race-winner',
+      }),
+    )
+    resumeStale()
+
+    await expect(loserPromise).rejects.toMatchObject({
+      code: 'ERR_PRESET_LOCK_INVALID',
+    })
+    await expect(
+      Promise.all([winnerLock.release(), winnerLock.release()]),
+    ).resolves.toEqual([undefined, undefined])
+    expect(await readdir(fixture.presetRoot)).toEqual([])
   })
 })
 
@@ -497,7 +650,7 @@ describe('preset lock refusal and fault handling', () => {
   it('leaves a crash-after-claim lock invalid instead of reclaiming it again', async () => {
     const fixture = await createFixture()
     await installLock(fixture, validOwner())
-    const claimName = '.anban-dsh.reclaim-crash-claimant.json'
+    const claimName = '.anban-dsh.reclaim-claim.json'
 
     await expect(
       acquirePresetLock(
@@ -514,8 +667,11 @@ describe('preset lock refusal and fault handling', () => {
       ),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
 
-    expect(await pathExists(ownerPath(fixture))).toBe(false)
-    expect(await readdir(lockPath(fixture))).toEqual([claimName])
+    expect(await pathExists(ownerPath(fixture))).toBe(true)
+    expect((await readdir(lockPath(fixture))).sort()).toEqual([
+      claimName,
+      OWNER_NAME,
+    ])
     await expect(
       acquirePresetLock(
         fixture.presetRoot,
@@ -525,7 +681,81 @@ describe('preset lock refusal and fault handling', () => {
         }),
       ),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
-    expect(await readdir(lockPath(fixture))).toEqual([claimName])
+    expect((await readdir(lockPath(fixture))).sort()).toEqual([
+      claimName,
+      OWNER_NAME,
+    ])
+  })
+
+  it('handles ENOENT claim creation races without deleting the replacement owner', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    const displacedLock = join(fixture.root, 'displaced-stale-lock')
+    const replacement = validOwner({
+      pid: 52_001,
+      packageVersion: '4.1.11',
+      ownerId: 'claim-race-replacement',
+    })
+    let raced = false
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          fileSystem: {
+            writeFile: async (path, data, options) => {
+              if (!raced && path.endsWith('.anban-dsh.reclaim-claim.json')) {
+                raced = true
+                await rename(lockPath(fixture), displacedLock)
+                await mkdir(lockPath(fixture))
+                await writeFile(
+                  ownerPath(fixture),
+                  `${JSON.stringify(replacement)}\n`,
+                )
+                throw errno('ENOENT', 'stale lock disappeared before claim')
+              }
+              await writeFile(path, data, options)
+            },
+          },
+          isPidAlive: (pid) => pid !== 41_234,
+          randomOwnerId: () => 'enoent-claimant',
+          timeoutMs: 0,
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCKED' })
+
+    expect(raced).toBe(true)
+    expect(JSON.parse(await readFile(ownerPath(fixture), 'utf8'))).toEqual(
+      replacement,
+    )
+  })
+
+  it('leaves ownership untouched when sentinel creation is permission-denied', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          fileSystem: {
+            writeFile: async (path, data, options) => {
+              if (path.endsWith('.anban-dsh.reclaim-claim.json')) {
+                throw errno('EACCES', 'claim creation permission denied')
+              }
+              await writeFile(path, data, options)
+            },
+          },
+          isPidAlive: () => false,
+          randomOwnerId: () => 'permission-claimant',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect(JSON.parse(await readFile(ownerPath(fixture), 'utf8'))).toEqual(
+      validOwner(),
+    )
+    expect(await readdir(lockPath(fixture))).toEqual([OWNER_NAME])
   })
 })
 
@@ -583,7 +813,32 @@ describe('preset lock path safety and bounds', () => {
     expect(await readFile(join(target, 'sentinel'), 'utf8')).toBe('keep')
   })
 
-  it('revalidates the lock directory before claiming its owner file', async () => {
+  it('treats a pre-existing symlink claim sentinel as invalid without following it', async () => {
+    const fixture = await createFixture()
+    await installLock(fixture, validOwner())
+    const target = join(fixture.root, 'outside-claim-sentinel')
+    const claimPath = join(lockPath(fixture), '.anban-dsh.reclaim-claim.json')
+    await writeFile(target, 'keep')
+    await symlink(target, claimPath, 'file')
+
+    await expect(
+      acquirePresetLock(
+        fixture.presetRoot,
+        dependencies({
+          isPidAlive: () => false,
+          randomOwnerId: () => 'symlink-sentinel-claimant',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCK_INVALID' })
+
+    expect(await readFile(target, 'utf8')).toBe('keep')
+    expect((await lstat(claimPath)).isSymbolicLink()).toBe(true)
+    expect(JSON.parse(await readFile(ownerPath(fixture), 'utf8'))).toEqual(
+      validOwner(),
+    )
+  })
+
+  it('revalidates the lock directory before creating its claim sentinel', async () => {
     const fixture = await createFixture()
     await installLock(fixture, validOwner())
     const movedLock = join(fixture.root, 'moved-stale-lock')
@@ -645,8 +900,9 @@ describe('preset lock path safety and bounds', () => {
 
     expect((await lstat(lockPath(fixture))).isSymbolicLink()).toBe(true)
     expect(await readFile(join(outsideLock, 'sentinel'), 'utf8')).toBe('keep')
-    expect(await readdir(movedClaim)).toEqual([
-      '.anban-dsh.reclaim-post-claim-symlink.json',
+    expect((await readdir(movedClaim)).sort()).toEqual([
+      '.anban-dsh.reclaim-claim.json',
+      OWNER_NAME,
     ])
   })
 

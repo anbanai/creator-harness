@@ -23,6 +23,12 @@ export interface PresetLockOwner {
   ownerId: string
 }
 
+interface PresetReclaimClaim {
+  schemaVersion: 1
+  claimantOwnerId: string
+  expectedOwner: PresetLockOwner
+}
+
 export interface PresetLock {
   release(): Promise<void>
 }
@@ -101,6 +107,7 @@ interface ResolvedDependencies {
 
 const LOCK_NAME = '.anban-dsh.lock'
 const OWNER_NAME = 'owner.json'
+const RECLAIM_CLAIM_NAME = '.anban-dsh.reclaim-claim.json'
 const OWNER_KEYS = [
   'schemaVersion',
   'pid',
@@ -113,6 +120,7 @@ const MAX_HOSTNAME_LENGTH = 255
 const MAX_OWNER_ID_LENGTH = 128
 const MAX_PACKAGE_VERSION_LENGTH = 128
 const MAX_OWNER_DOCUMENT_LENGTH = 4_096
+const MAX_CLAIM_DOCUMENT_LENGTH = 8_192
 const MAX_TIMEOUT_MS = 60_000
 const MAX_RETRY_INTERVAL_MS = 5_000
 const MAX_RACE_RETRIES = 64
@@ -390,6 +398,45 @@ function ownerFromValue(value: unknown): PresetLockOwner | null {
   return owner as PresetLockOwner
 }
 
+function reclaimClaimFromValue(value: unknown): PresetReclaimClaim | null {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    return null
+  }
+  const keys = Reflect.ownKeys(value)
+  if (
+    keys.length !== 3 ||
+    !keys.includes('schemaVersion') ||
+    !keys.includes('claimantOwnerId') ||
+    !keys.includes('expectedOwner')
+  ) {
+    return null
+  }
+  const claim = value as Partial<PresetReclaimClaim>
+  if (
+    claim.schemaVersion !== 1 ||
+    typeof claim.claimantOwnerId !== 'string' ||
+    claim.claimantOwnerId.length === 0 ||
+    claim.claimantOwnerId.length > MAX_OWNER_ID_LENGTH ||
+    !OWNER_ID_PATTERN.test(claim.claimantOwnerId)
+  ) {
+    return null
+  }
+  const expectedOwner = ownerFromValue(claim.expectedOwner)
+  if (expectedOwner === null) {
+    return null
+  }
+  return {
+    schemaVersion: 1,
+    claimantOwnerId: claim.claimantOwnerId,
+    expectedOwner,
+  }
+}
+
 async function readOwnerFile(
   directoryPath: string,
   ownerPath: string,
@@ -424,6 +471,34 @@ async function readOwnerFromLock(
   dependencies: ResolvedDependencies,
 ): Promise<PresetLockOwner> {
   return readOwnerFile(lockPath, join(lockPath, OWNER_NAME), dependencies)
+}
+
+async function readReclaimClaim(
+  lockPath: string,
+  claimPath: string,
+  dependencies: ResolvedDependencies,
+): Promise<PresetReclaimClaim> {
+  assertContained(lockPath, claimPath)
+  try {
+    const stats = await dependencies.fileSystem.lstat(claimPath)
+    if (stats.isSymbolicLink() || !stats.isFile()) {
+      throw invalidLock()
+    }
+    const contents = await dependencies.fileSystem.readFile(claimPath, 'utf8')
+    if (contents.length > MAX_CLAIM_DOCUMENT_LENGTH) {
+      throw invalidLock()
+    }
+    const claim = reclaimClaimFromValue(JSON.parse(contents) as unknown)
+    if (claim === null) {
+      throw invalidLock()
+    }
+    return claim
+  } catch (error) {
+    if (isOperationalError(error)) {
+      throw error
+    }
+    throw invalidLock(error)
+  }
 }
 
 async function inspectLock(
@@ -568,33 +643,50 @@ function ownersMatch(
   return OWNER_KEYS.every((key) => left[key] === right[key])
 }
 
-async function restoreMismatchedClaim(
+function reclaimClaimsMatch(
+  left: PresetReclaimClaim,
+  right: PresetReclaimClaim,
+): boolean {
+  return (
+    left.schemaVersion === right.schemaVersion &&
+    left.claimantOwnerId === right.claimantOwnerId &&
+    ownersMatch(left.expectedOwner, right.expectedOwner)
+  )
+}
+
+async function removeOwnedReclaimClaim(
   presetRoot: string,
   lockPath: string,
   claimPath: string,
+  expectedClaim: PresetReclaimClaim,
   dependencies: ResolvedDependencies,
 ): Promise<void> {
-  const ownerPath = join(lockPath, OWNER_NAME)
-  assertContained(lockPath, ownerPath)
   await assertSafePresetRoot(presetRoot, dependencies)
-  await assertSafeQuarantine(lockPath, dependencies)
-
   try {
-    await dependencies.fileSystem.lstat(ownerPath)
+    await assertSafeQuarantine(lockPath, dependencies)
+    const storedClaim = await readReclaimClaim(
+      lockPath,
+      claimPath,
+      dependencies,
+    )
+    if (!reclaimClaimsMatch(storedClaim, expectedClaim)) {
+      throw invalidLock()
+    }
+    await assertSafePresetRoot(presetRoot, dependencies)
+    await assertSafeQuarantine(lockPath, dependencies)
+    await dependencies.fileSystem.rm(claimPath, {
+      force: false,
+      recursive: false,
+    })
   } catch (error) {
     if (hasErrno(error, 'ENOENT')) {
-      try {
-        await assertSafePresetRoot(presetRoot, dependencies)
-        await assertSafeQuarantine(lockPath, dependencies)
-        await dependencies.fileSystem.rename(claimPath, ownerPath)
-        return
-      } catch (restoreError) {
-        throw invalidLock(restoreError)
-      }
+      return
+    }
+    if (isOperationalError(error)) {
+      throw error
     }
     throw invalidLock(error)
   }
-  throw invalidLock()
 }
 
 async function reclaimDeadOwner(
@@ -603,25 +695,30 @@ async function reclaimDeadOwner(
   expectedOwner: PresetLockOwner,
   dependencies: ResolvedDependencies,
 ): Promise<boolean> {
-  const claimName = `.anban-dsh.reclaim-${dependencies.ownerId}.json`
-  const ownerPath = join(lockPath, OWNER_NAME)
-  const claimPath = join(lockPath, claimName)
+  const claimPath = join(lockPath, RECLAIM_CLAIM_NAME)
   const quarantinePath = join(
     presetRoot,
     `${LOCK_NAME}.quarantine-${dependencies.ownerId}`,
   )
-  assertContained(lockPath, ownerPath)
   assertContained(lockPath, claimPath)
   assertContained(presetRoot, quarantinePath)
   await assertSafePresetRoot(presetRoot, dependencies)
   await assertSafeQuarantine(lockPath, dependencies)
   await assertVacantPath(quarantinePath, dependencies)
-  await assertVacantPath(claimPath, dependencies)
+  const reclaimClaim: PresetReclaimClaim = {
+    schemaVersion: 1,
+    claimantOwnerId: dependencies.ownerId,
+    expectedOwner,
+  }
 
   try {
     await assertSafePresetRoot(presetRoot, dependencies)
     await assertSafeQuarantine(lockPath, dependencies)
-    await dependencies.fileSystem.rename(ownerPath, claimPath)
+    await dependencies.fileSystem.writeFile(
+      claimPath,
+      `${JSON.stringify(reclaimClaim)}\n`,
+      { flag: 'wx', mode: 0o600 },
+    )
   } catch (error) {
     if (hasErrno(error, 'ENOENT')) {
       return false
@@ -632,19 +729,25 @@ async function reclaimDeadOwner(
     throw invalidLock(error)
   }
 
-  let claimedOwner: PresetLockOwner
+  let storedClaim: PresetReclaimClaim
+  let currentOwner: PresetLockOwner
   try {
     await assertSafePresetRoot(presetRoot, dependencies)
     await assertSafeQuarantine(lockPath, dependencies)
-    claimedOwner = await readOwnerFile(lockPath, claimPath, dependencies)
+    storedClaim = await readReclaimClaim(lockPath, claimPath, dependencies)
+    if (!reclaimClaimsMatch(storedClaim, reclaimClaim)) {
+      throw invalidLock()
+    }
+    currentOwner = await readOwnerFromLock(lockPath, dependencies)
   } catch (error) {
     throw isOperationalError(error) ? error : invalidLock(error)
   }
-  if (!ownersMatch(claimedOwner, expectedOwner)) {
-    await restoreMismatchedClaim(
+  if (!ownersMatch(currentOwner, expectedOwner)) {
+    await removeOwnedReclaimClaim(
       presetRoot,
       lockPath,
       claimPath,
+      reclaimClaim,
       dependencies,
     )
     return false
@@ -657,6 +760,18 @@ async function reclaimDeadOwner(
     )
     await assertSafePresetRoot(presetRoot, dependencies)
     await assertSafeQuarantine(lockPath, dependencies)
+    const ownerBeforeRename = await readOwnerFromLock(lockPath, dependencies)
+    const claimBeforeRename = await readReclaimClaim(
+      lockPath,
+      claimPath,
+      dependencies,
+    )
+    if (
+      !ownersMatch(ownerBeforeRename, expectedOwner) ||
+      !reclaimClaimsMatch(claimBeforeRename, reclaimClaim)
+    ) {
+      throw invalidLock()
+    }
     await dependencies.fileSystem.rename(lockPath, quarantinePath)
   } catch (error) {
     if (hasErrno(error, 'ENOENT')) {
@@ -669,16 +784,23 @@ async function reclaimDeadOwner(
   }
 
   try {
-    const quarantinedClaimPath = join(quarantinePath, claimName)
+    const quarantinedClaimPath = join(quarantinePath, RECLAIM_CLAIM_NAME)
     await dependencies.faults?.beforeQuarantineRemove?.(quarantinePath)
     await assertSafePresetRoot(presetRoot, dependencies)
     await assertSafeQuarantine(quarantinePath, dependencies)
-    const quarantinedOwner = await readOwnerFile(
+    const quarantinedOwner = await readOwnerFromLock(
+      quarantinePath,
+      dependencies,
+    )
+    const quarantinedClaim = await readReclaimClaim(
       quarantinePath,
       quarantinedClaimPath,
       dependencies,
     )
-    if (!ownersMatch(quarantinedOwner, expectedOwner)) {
+    if (
+      !ownersMatch(quarantinedOwner, expectedOwner) ||
+      !reclaimClaimsMatch(quarantinedClaim, reclaimClaim)
+    ) {
       throw invalidLock()
     }
     await dependencies.fileSystem.rm(quarantinePath, {
