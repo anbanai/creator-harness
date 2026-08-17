@@ -506,6 +506,7 @@ export async function smokeProfile(overrides = {}) {
     join(dependencies.tmpdir(), 'anban-dsh-profile-smoke-'),
   )
 
+  let primaryFailure
   try {
     const dshHome = join(smokeRoot, 'home')
     const profileDir = join(dshHome, 'profiles', PROFILE)
@@ -583,8 +584,25 @@ export async function smokeProfile(overrides = {}) {
     )
     dependencies.log('Healthy Presets: article, seednote')
     dependencies.log(`Export resolution: ${PUBLIC_EXPORTS.join(', ')}`)
+  } catch (error) {
+    primaryFailure = error
   } finally {
-    await dependencies.rm(smokeRoot, { force: true, recursive: true })
+    try {
+      await dependencies.rm(smokeRoot, { force: true, recursive: true })
+    } catch (cleanupFailure) {
+      if (primaryFailure !== undefined) {
+        throw new AggregateError(
+          [primaryFailure, cleanupFailure],
+          primaryFailure instanceof Error
+            ? primaryFailure.message
+            : 'Profile smoke failed',
+        )
+      }
+      throw cleanupFailure
+    }
+  }
+  if (primaryFailure !== undefined) {
+    throw primaryFailure
   }
 }
 

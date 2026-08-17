@@ -13,6 +13,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url))
 const smokeScriptUrl = new URL('../scripts/smoke-profile.mjs', import.meta.url)
+const packageManifest = JSON.parse(
+  await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
+) as { version: string }
+const packageVersion = packageManifest.version
+const packageTarball = `anban-dsh-plugin-${packageVersion}.tgz`
 const publicExports = [
   '@anban/dsh-plugin/anban-mcp',
   '@anban/dsh-plugin/preset-manager',
@@ -28,8 +33,8 @@ interface PortableCommand {
 function packResult(overrides: Record<string, unknown> = {}) {
   return JSON.stringify({
     name: '@anban/dsh-plugin',
-    version: '4.1.12',
-    filename: 'anban-dsh-plugin-4.1.12.tgz',
+    version: packageVersion,
+    filename: packageTarball,
     files: [
       { path: 'dsh/bin/anban-dsh.js' },
       { path: 'dsh/lib/anban-mcp.d.ts' },
@@ -503,11 +508,11 @@ describe('profile-smoke process supervision', () => {
   )
 })
 
-function profileFixture(version = '4.1.12') {
+function profileFixture(version = packageVersion) {
   const smokeRoot = join(tmpdir(), 'anban-dsh-profile-smoke-contract')
   const dshHome = join(smokeRoot, 'home')
   const profileDir = join(dshHome, 'profiles', 'web')
-  const packTarball = join(smokeRoot, 'anban-dsh-plugin-4.1.12.tgz')
+  const packTarball = join(smokeRoot, packageTarball)
   const pnpmCommand: PortableCommand = {
     executable: 'pnpm',
     prefixArgs: [],
@@ -636,6 +641,47 @@ function profileFixture(version = '4.1.12') {
 }
 
 describe('DSH profile smoke flow', () => {
+  it('preserves the primary smoke failure when cleanup also fails', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+    const primaryFailure = smokeModule.profileCommandFailure(
+      { exitCode: 7 },
+      { label: 'package pack', timeoutMs: 1_000 },
+    )
+    const cleanupSecret = 'Authorization Bearer cleanup-secret'
+    const cleanupFailure = new Error(cleanupSecret)
+    fixture.overrides.runCommand.mockImplementationOnce(() => {
+      throw primaryFailure
+    })
+    fixture.overrides.rm.mockRejectedValueOnce(cleanupFailure)
+
+    let failure: unknown
+    try {
+      await smokeModule.smokeProfile(fixture.overrides)
+    } catch (error) {
+      failure = error
+    }
+
+    expect(failure).toBeInstanceOf(AggregateError)
+    expect((failure as AggregateError).errors).toEqual([
+      primaryFailure,
+      cleanupFailure,
+    ])
+    expect((failure as AggregateError).message).toBe(primaryFailure.message)
+    expect((failure as AggregateError).message).not.toContain(cleanupSecret)
+  })
+
+  it('reports cleanup failure when the smoke flow succeeds', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+    const cleanupFailure = new Error('cleanup failed')
+    fixture.overrides.rm.mockRejectedValueOnce(cleanupFailure)
+
+    await expect(smokeModule.smokeProfile(fixture.overrides)).rejects.toBe(
+      cleanupFailure,
+    )
+  })
+
   it('packs structured output and validates the fresh local profile', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
     const fixture = profileFixture()
@@ -737,7 +783,7 @@ describe('DSH profile smoke flow', () => {
   it('installs an exact registry package into a clean profile without packing', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
     const fixture = profileFixture()
-    const artifactSource = '@anban/dsh-plugin@4.1.12'
+    const artifactSource = `@anban/dsh-plugin@${packageVersion}`
 
     await smokeModule.smokeProfile({
       ...fixture.overrides,
