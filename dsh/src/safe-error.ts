@@ -5,8 +5,8 @@ const MAX_SAFE_ERROR_LENGTH = 512
 const MIN_SAFE_SECRET_LENGTH = 8
 const OMITTED_ERROR_LINE = 'Error details omitted'
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001f\u007f-\u009f]+/g
-const FORMAT_CONTROL_CHARACTERS_PATTERN =
-  /[\u00ad\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff]+/g
+const FORMAT_CONTROL_CHARACTERS_PATTERN = /\p{Cf}+/gu
+const FORMAT_CONTROL_CHARACTER_PATTERN = /^\p{Cf}$/u
 const IDENTIFIER_CONTINUATION_PATTERN = /^[$\p{ID_Continue}]$/u
 const WHITESPACE_PATTERN = /\s+/g
 const AUTHORIZATION_KEY = 'authorization'
@@ -99,45 +99,44 @@ function isAuthorizationSeparator(code: number): boolean {
   )
 }
 
-function isRemovedFormatControl(code: number): boolean {
-  return (
-    code === 0x00ad ||
-    code === 0x061c ||
-    code === 0x180e ||
-    (code >= 0x200b && code <= 0x200f) ||
-    (code >= 0x202a && code <= 0x202e) ||
-    (code >= 0x2060 && code <= 0x2064) ||
-    (code >= 0x2066 && code <= 0x206f) ||
-    code === 0xfeff
-  )
+function formatControlLengthAt(line: string, start: number): number {
+  const codePoint = line.codePointAt(start)
+  if (codePoint === undefined) {
+    return 0
+  }
+  const character = String.fromCodePoint(codePoint)
+  return FORMAT_CONTROL_CHARACTER_PATTERN.test(character) ? character.length : 0
 }
 
-function isAuthorizationSchemeSeparator(code: number): boolean {
-  return isAuthorizationSeparator(code) || isRemovedFormatControl(code)
+function authorizationSchemeSeparatorLength(
+  line: string,
+  start: number,
+): number {
+  return isAuthorizationSeparator(line.charCodeAt(start))
+    ? 1
+    : formatControlLengthAt(line, start)
 }
 
-function isAuthorizationPayloadSeparator(code: number): boolean {
-  return (
-    isAuthorizationSchemeSeparator(code) ||
-    code === 40 ||
-    code === 41 ||
-    code === 44 ||
-    code === 58 ||
-    code === 59 ||
-    code === 61 ||
-    code === 91 ||
-    code === 93 ||
-    code === 123 ||
-    code === 125
-  )
+function isAuthorizationPayloadPunctuation(code: number): boolean {
+  return code === 44 || code === 58 || code === 59 || code === 61
+}
+
+function matchingAuthorizationWrapperEnd(code: number): number | undefined {
+  switch (code) {
+    case 40:
+      return 41
+    case 91:
+      return 93
+    case 123:
+      return 125
+    default:
+      return undefined
+  }
 }
 
 function isIdentifierContinuationBefore(line: string, start: number): boolean {
   let previous = start - 1
   const code = line.charCodeAt(previous)
-  if (isRemovedFormatControl(code)) {
-    return true
-  }
   if (
     code >= 0xdc00 &&
     code <= 0xdfff &&
@@ -147,7 +146,11 @@ function isIdentifierContinuationBefore(line: string, start: number): boolean {
   ) {
     previous -= 1
   }
-  return IDENTIFIER_CONTINUATION_PATTERN.test(line.slice(previous, start))
+  const character = line.slice(previous, start)
+  return (
+    FORMAT_CONTROL_CHARACTER_PATTERN.test(character) ||
+    IDENTIFIER_CONTINUATION_PATTERN.test(character)
+  )
 }
 
 function isAuthorizationWrapperEnd(code: number): boolean {
@@ -178,25 +181,48 @@ function hasAuthorizationScheme(line: string, start: number): boolean {
     const end = start + scheme.length
     if (
       end === line.length ||
-      !isAuthorizationSchemeSeparator(line.charCodeAt(end))
+      authorizationSchemeSeparatorLength(line, end) === 0
     ) {
       continue
     }
-    let payload = end
-    while (
-      payload < line.length &&
-      isAuthorizationSchemeSeparator(line.charCodeAt(payload))
-    ) {
-      payload += 1
-    }
-    if (
-      payload < line.length &&
-      !isAuthorizationPayloadSeparator(line.charCodeAt(payload))
-    ) {
+    if (hasAuthorizationPayload(line, end)) {
       return true
     }
   }
   return false
+}
+
+function hasAuthorizationPayload(line: string, start: number): boolean {
+  let cursor = start
+  const wrapperEnds: number[] = []
+  while (cursor < line.length) {
+    const separatorLength = authorizationSchemeSeparatorLength(line, cursor)
+    if (separatorLength > 0) {
+      cursor += separatorLength
+      continue
+    }
+
+    const code = line.charCodeAt(cursor)
+    const wrapperEnd = matchingAuthorizationWrapperEnd(code)
+    if (wrapperEnd !== undefined) {
+      wrapperEnds.push(wrapperEnd)
+      cursor += 1
+      continue
+    }
+    if (code === 41 || code === 93 || code === 125) {
+      if (wrapperEnds.pop() !== code) {
+        return true
+      }
+      cursor += 1
+      continue
+    }
+    if (isAuthorizationPayloadPunctuation(code)) {
+      cursor += 1
+      continue
+    }
+    return true
+  }
+  return wrapperEnds.length > 0
 }
 
 function hasDottedAuthorizationValue(line: string, start: number): boolean {

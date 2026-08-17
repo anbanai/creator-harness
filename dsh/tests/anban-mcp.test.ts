@@ -559,6 +559,18 @@ describe('anban MCP failure containment', () => {
 
   it.each([
     ['Bearer value', 'request Authorization Bearer leaked-secret'],
+    [
+      'parenthesized Bearer payload',
+      'request Authorization Bearer (leaked-secret)',
+    ],
+    [
+      'bracketed Bearer payload',
+      'request Authorization Bearer [leaked-secret]',
+    ],
+    [
+      'braced Bearer payload',
+      'request Authorization Bearer {leaked-secret}',
+    ],
     ['dotted token', 'request authorization.token=leaked-secret'],
     ['braced boundary', 'request {Authorization: Bearer leaked-secret}'],
     ['hyphen boundary', 'request -authorization=leaked-secret'],
@@ -597,6 +609,14 @@ describe('anban MCP failure containment', () => {
       'word-joiner-interrupted key',
       'request Authori\u2060zation: Bearer leaked-secret',
     ],
+    [
+      'language-tag-interrupted key',
+      'request Authori\u{e0001}zation: Bearer leaked-secret',
+    ],
+    [
+      'Syriac-mark-interrupted key',
+      'request Authori\u070fzation: Bearer leaked-secret',
+    ],
   ])('redacts Authorization carried by %s', (_label, diagnostic) => {
     const line = safeErrorLine(diagnostic)
 
@@ -612,12 +632,25 @@ describe('anban MCP failure containment', () => {
     ['ordinary prose', 'request failed because authorization is required'],
     ['Bearer scheme without payload', 'request authorization Bearer'],
     ['Basic scheme without payload', 'request authorization Basic'],
+    ['empty parenthesized payload', 'request Authorization Bearer ()'],
+    ['empty bracketed payload', 'request Authorization Bearer []'],
+    ['empty braced payload', 'request Authorization Bearer {}'],
+    [
+      'nested empty balanced payload',
+      'request Authorization Bearer ({[]})',
+    ],
   ])('preserves non-Authorization carrier text from %s', (_label, diagnostic) => {
     expect(safeErrorLine(diagnostic)).toBe(diagnostic)
   })
 
   it('preserves a scheme without a payload hidden by a format control', () => {
     expect(safeErrorLine('request authorization Bearer \u200b')).toBe(
+      'request authorization Bearer',
+    )
+  })
+
+  it('preserves a scheme followed only by trailing whitespace', () => {
+    expect(safeErrorLine('request authorization Bearer   ')).toBe(
       'request authorization Bearer',
     )
   })
