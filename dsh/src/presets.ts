@@ -17,6 +17,12 @@ import { fileURLToPath } from 'node:url'
 
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 
+import {
+  acquirePresetLock,
+  type PresetLockDependencies,
+} from './preset-lock.js'
+import { OperationalError } from './operational-error.js'
+
 export const PRESET_IDS = ['article', 'seednote'] as const
 export type PresetId = (typeof PRESET_IDS)[number]
 
@@ -50,6 +56,7 @@ interface PresetContext {
   dshHome: string
   faults: PresetFaults | undefined
   force: boolean
+  lockDependencies: PresetLockDependencies
   packageVersion: string
   presetIds: readonly PresetId[]
   sourceRoot: string
@@ -59,6 +66,7 @@ interface TestPresetOptions {
   dshHome: string
   faults?: PresetFaults
   force?: boolean
+  lockDependencies?: Omit<PresetLockDependencies, 'packageVersion'>
   packageVersion: string
   presetIds?: readonly string[]
   sourceRoot: string
@@ -69,6 +77,54 @@ const PACKAGE_NAME = '@anban/dsh-plugin'
 const PRESET_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
 const SOURCE_ROOT = fileURLToPath(new URL('../presets/', import.meta.url))
 const PACKAGE_URL = new URL('../../package.json', import.meta.url)
+
+function unownedPreset(cause?: unknown): OperationalError {
+  return new OperationalError(
+    'ERR_PRESET_UNOWNED',
+    'An Anban preset is not owned by this package.',
+    {
+      cause,
+      recovery: 'Review preset status and use force only to replace trusted content.',
+    },
+  )
+}
+
+function modifiedPreset(cause?: unknown): OperationalError {
+  return new OperationalError(
+    'ERR_PRESET_MODIFIED',
+    'An Anban preset has local changes.',
+    {
+      cause,
+      recovery: 'Review local changes and use force only when replacement is intended.',
+    },
+  )
+}
+
+function rollbackFailure(cause: unknown): OperationalError {
+  return new OperationalError(
+    'ERR_PRESET_ROLLBACK',
+    'An Anban preset rollback failed.',
+    {
+      cause,
+      recovery: 'Inspect the preset directory before retrying the operation.',
+    },
+  )
+}
+
+function operationFailure(cause: unknown): OperationalError {
+  return new OperationalError(
+    'ERR_PRESET_OPERATION',
+    'An Anban preset operation failed.',
+    {
+      cause,
+      recovery: 'Review preset status before retrying.',
+    },
+  )
+}
+
+function mapOperationFailure(error: unknown): OperationalError {
+  return error instanceof OperationalError ? error : operationFailure(error)
+}
 
 function isNodeError(error: unknown, code: string): boolean {
   return (
@@ -469,8 +525,14 @@ async function installPreset(
         currentStatus.state !== 'outdated' &&
         currentStatus.state !== 'current'
       ) {
-        throw new Error(
-          `Preset ${id} became ${currentStatus.state}; rerun with force to replace it`,
+        if (currentStatus.state === 'unowned') {
+          throw unownedPreset()
+        }
+        if (currentStatus.state === 'modified') {
+          throw modifiedPreset()
+        }
+        throw operationFailure(
+          new Error(`Preset ${id} changed while preparing installation`),
         )
       }
       if (context.force) {
@@ -492,9 +554,11 @@ async function installPreset(
           await renameOperationPath(context, backup, destination)
           backupMayContainOnlyOriginal = false
         } catch (rollbackError) {
-          throw new AggregateError(
-            [error, rollbackError],
-            `Preset ${id} replacement and rollback both failed`,
+          throw rollbackFailure(
+            new AggregateError(
+              [error, rollbackError],
+              `Preset ${id} replacement and rollback both failed`,
+            ),
           )
         }
       }
@@ -563,9 +627,9 @@ async function installWithContext(
       !context.force &&
       (status.state === 'modified' || status.state === 'unowned')
     ) {
-      throw new Error(
-        `Preset ${status.id} is ${status.state}; rerun with force to replace it`,
-      )
+      throw status.state === 'unowned'
+        ? unownedPreset()
+        : modifiedPreset()
     }
     if (context.force && status.state === 'unowned') {
       await assertSafeReplacementTarget(context, status.id)
@@ -586,7 +650,7 @@ async function removeWithContext(context: PresetContext): Promise<PresetId[]> {
 
   for (const status of statuses) {
     if (status.state === 'unowned') {
-      throw new Error(`Refusing to remove unowned preset: ${status.id}`)
+      throw unownedPreset()
     }
   }
 
@@ -599,7 +663,7 @@ async function removeWithContext(context: PresetContext): Promise<PresetId[]> {
     const destination = presetDestination(context, status.id)
     const ownership = await readOwnership(destination, status.id)
     if (ownership === null) {
-      throw new Error(`Preset ownership changed before removal: ${status.id}`)
+      throw unownedPreset()
     }
     await listFiles(destination)
 
@@ -611,9 +675,11 @@ async function removeWithContext(context: PresetContext): Promise<PresetId[]> {
       try {
         await renameOperationPath(context, removalPath, destination)
       } catch (rollbackError) {
-        throw new AggregateError(
-          [removalError, rollbackError],
-          `Preset ${status.id} removal and rollback failed; inspect recovery path ${removalPath}`,
+        throw rollbackFailure(
+          new AggregateError(
+            [removalError, rollbackError],
+            `Preset ${status.id} removal and rollback failed; inspect recovery path ${removalPath}`,
+          ),
         )
       }
       throw removalError
@@ -641,11 +707,13 @@ async function packageVersion(): Promise<string> {
 async function publicContext(
   options: InstallOptions | Pick<InstallOptions, 'dshHome'> = {},
 ): Promise<PresetContext> {
+  const resolvedPackageVersion = await packageVersion()
   return {
     dshHome: resolveDshHome(options.dshHome),
     faults: undefined,
     force: 'force' in options && options.force === true,
-    packageVersion: await packageVersion(),
+    lockDependencies: { packageVersion: resolvedPackageVersion },
+    packageVersion: resolvedPackageVersion,
     presetIds: PRESET_IDS,
     sourceRoot: SOURCE_ROOT,
   }
@@ -656,6 +724,10 @@ function testContext(options: TestPresetOptions): PresetContext {
     dshHome: resolveDshHome(options.dshHome),
     faults: options.faults,
     force: options.force === true,
+    lockDependencies: {
+      ...options.lockDependencies,
+      packageVersion: options.packageVersion,
+    },
     packageVersion: options.packageVersion,
     presetIds: validatePresetIds(options.presetIds ?? PRESET_IDS),
     sourceRoot: resolve(options.sourceRoot),
@@ -665,7 +737,7 @@ function testContext(options: TestPresetOptions): PresetContext {
 export async function installPresets(
   options: InstallOptions = {},
 ): Promise<PresetStatus[]> {
-  return installWithContext(await publicContext(options))
+  return mutateWithContext(await publicContext(options), installWithContext)
 }
 
 export async function statusPresets(
@@ -677,16 +749,34 @@ export async function statusPresets(
 export async function removePresets(
   options: Pick<InstallOptions, 'dshHome'> = {},
 ): Promise<PresetId[]> {
-  return removeWithContext(await publicContext(options))
+  return mutateWithContext(await publicContext(options), removeWithContext)
+}
+
+async function mutateWithContext<Result>(
+  context: PresetContext,
+  operation: (context: PresetContext) => Promise<Result>,
+): Promise<Result> {
+  let lock: Awaited<ReturnType<typeof acquirePresetLock>> | undefined
+  try {
+    await assertSafePresetRoot(context)
+    await mkdir(presetRoot(context), { recursive: true })
+    await assertSafePresetRoot(context)
+    lock = await acquirePresetLock(presetRoot(context), context.lockDependencies)
+    return await operation(context)
+  } catch (error) {
+    throw mapOperationFailure(error)
+  } finally {
+    await lock?.release()
+  }
 }
 
 /** @internal Test boundary for isolated source fixtures; not part of package exports. */
 export const presetTestInternals = {
   install(options: TestPresetOptions): Promise<PresetStatus[]> {
-    return installWithContext(testContext(options))
+    return mutateWithContext(testContext(options), installWithContext)
   },
   remove(options: TestPresetOptions): Promise<PresetId[]> {
-    return removeWithContext(testContext(options))
+    return mutateWithContext(testContext(options), removeWithContext)
   },
   status(options: TestPresetOptions): Promise<PresetStatus[]> {
     return statusWithContext(testContext(options))

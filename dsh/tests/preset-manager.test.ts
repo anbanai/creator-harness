@@ -226,28 +226,32 @@ describe('preset manager handlers', () => {
     },
   )
 
-  it('uses the same formatter as the CLI for known operational errors', async () => {
-    presetOperations.installPresets.mockRejectedValue(
-      new OperationalError(
-        'ERR_PRESET_MODIFIED',
-        'The Article preset has local changes.',
-        {
+  it.each([
+    ['ERR_PRESET_UNOWNED', 'An Anban preset is not owned by this package.'],
+    ['ERR_PRESET_MODIFIED', 'An Anban preset has local changes.'],
+    ['ERR_PRESET_ROLLBACK', 'An Anban preset rollback failed.'],
+    ['ERR_PRESET_OPERATION', 'An Anban preset operation failed.'],
+  ] as const)(
+    'uses the same formatter as the CLI for %s mutation failures',
+    async (code, message) => {
+      presetOperations.installPresets.mockRejectedValue(
+        new OperationalError(code, message, {
           cause: new Error('Authorization Bearer leaked-secret'),
-          recovery: 'Rerun with --force after reviewing those changes.',
-        },
-      ),
-    )
-    const fake = createContext()
-    apply(fake.context)
+          recovery: 'Review preset status before retrying.',
+        }),
+      )
+      const fake = createContext()
+      apply(fake.context)
 
-    const result = await fake.definitions[0]!.handler(invocation(''))
+      const result = await fake.definitions[0]!.handler(invocation(''))
 
-    expect(result).toEqual({
-      kind: 'error',
-      text: 'ERR_PRESET_MODIFIED: The Article preset has local changes. Rerun with --force after reviewing those changes.',
-    })
-    expect(JSON.stringify(result)).not.toContain('leaked-secret')
-  })
+      expect(result).toEqual({
+        kind: 'error',
+        text: `${code}: ${message} Review preset status before retrying.`,
+      })
+      expect(JSON.stringify(result)).not.toContain('leaked-secret')
+    },
+  )
 
   it('uses injected debug configuration without trusting a replaced stack', async () => {
     const failure = new OperationalError(

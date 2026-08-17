@@ -1,5 +1,6 @@
 import {
   chmod,
+  cp,
   copyFile as realCopyFile,
   lstat,
   mkdir,
@@ -10,13 +11,19 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises'
+import { execFile, fork, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { tmpdir } from 'node:os'
+import { hostname, tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { promisify } from 'node:util'
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-const copyFault = vi.hoisted(() => ({ path: '' }))
+const copyFault = vi.hoisted(() => ({
+  before: undefined as (() => Promise<void> | void) | undefined,
+  path: '',
+}))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()
@@ -24,6 +31,11 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   return {
     ...actual,
     copyFile: async (...args: Parameters<typeof actual.copyFile>) => {
+      if (copyFault.before !== undefined) {
+        const before = copyFault.before
+        copyFault.before = undefined
+        await before()
+      }
       if (copyFault.path !== '' && String(args[0]) === copyFault.path) {
         copyFault.path = ''
         throw new Error('injected copy interruption')
@@ -41,9 +53,16 @@ import {
   removePresets,
   statusPresets,
 } from '../src/presets.js'
+import {
+  acquirePresetLock,
+  type PresetLockDependencies,
+} from '../src/preset-lock.js'
 
 const OWNERSHIP_FILE = '.anban-dsh-preset.json'
+const LOCK_NAME = '.anban-dsh.lock'
+const execFileAsync = promisify(execFile)
 const fixtureRoots: string[] = []
+let processPackageRoot = ''
 
 interface Fixture {
   dshHome: string
@@ -86,6 +105,7 @@ function fixtureOptions(
     force?: boolean
     packageVersion?: string
     presetIds?: readonly string[]
+    lockDependencies?: Omit<PresetLockDependencies, 'packageVersion'>
   } = {},
 ) {
   return {
@@ -97,10 +117,206 @@ function fixtureOptions(
     ...(overrides.presetIds === undefined
       ? {}
       : { presetIds: overrides.presetIds }),
+    ...(overrides.lockDependencies === undefined
+      ? {}
+      : { lockDependencies: overrides.lockDependencies }),
   }
 }
 
+function lockDependencies(
+  ownerId: string,
+  overrides: Omit<PresetLockDependencies, 'packageVersion'> = {},
+): PresetLockDependencies {
+  return {
+    packageVersion: '1.2.3',
+    hostname,
+    isPidAlive: () => true,
+    pid: process.pid,
+    randomOwnerId: () => ownerId,
+    retryIntervalMs: 1,
+    timeoutMs: 250,
+    ...overrides,
+  }
+}
+
+interface WorkerResult {
+  error?: { code?: string; message?: string; recovery?: string }
+  ok: boolean
+  type: 'result'
+  value?: unknown
+}
+
+interface PresetWorker {
+  child: ChildProcess
+  output(): string
+  ready: Promise<void>
+  result: Promise<WorkerResult>
+  start(): void
+}
+
+function spawnPresetWorker(action: string, dshHome: string): PresetWorker {
+  const workerPath = fileURLToPath(
+    new URL('./fixtures/preset-process-worker.mjs', import.meta.url),
+  )
+  const moduleUrl = pathToFileURL(
+    join(processPackageRoot, 'dsh', 'lib', 'presets.js'),
+  ).href
+  const child = fork(workerPath, [moduleUrl, action, dshHome], {
+    silent: true,
+  })
+  let output = ''
+  child.stdout?.on('data', (chunk) => {
+    output += String(chunk)
+  })
+  child.stderr?.on('data', (chunk) => {
+    output += String(chunk)
+  })
+  let resolveReady!: () => void
+  let resolveResult!: (result: WorkerResult) => void
+  const ready = new Promise<void>((resolve) => {
+    resolveReady = resolve
+  })
+  const result = new Promise<WorkerResult>((resolve, reject) => {
+    resolveResult = resolve
+    child.once('error', reject)
+    child.once('exit', (code) => {
+      if (code !== 0 && action !== 'crash-lock') {
+        reject(new Error(`preset worker exited ${String(code)}: ${output}`))
+      }
+    })
+  })
+  child.on('message', (message) => {
+    if (
+      typeof message === 'object' &&
+      message !== null &&
+      'type' in message
+    ) {
+      if (message.type === 'ready') resolveReady()
+      if (message.type === 'result') resolveResult(message as WorkerResult)
+    }
+  })
+
+  return {
+    child,
+    output: () => output,
+    ready,
+    result,
+    start() {
+      child.send({ type: 'start' })
+    },
+  }
+}
+
+async function waitForLockOwner(dshHome: string, pid: number): Promise<void> {
+  const ownerPath = join(dshHome, '.agent-presets', LOCK_NAME, 'owner.json')
+  const deadline = Date.now() + 3_000
+  while (Date.now() < deadline) {
+    try {
+      const owner = JSON.parse(await readFile(ownerPath, 'utf8')) as { pid?: unknown }
+      if (owner.pid === pid) return
+    } catch (error) {
+      if (
+        !(
+          error instanceof SyntaxError ||
+          (error instanceof Error &&
+            'code' in error &&
+            (error as NodeJS.ErrnoException).code === 'ENOENT')
+        )
+      ) {
+        throw error
+      }
+    }
+    await new Promise<void>((resolve) => setImmediate(resolve))
+  }
+  throw new Error(`worker ${pid} did not publish the preset lock`)
+}
+
+async function expectNoLockResidue(dshHome: string): Promise<void> {
+  const entries = await readdir(join(dshHome, '.agent-presets')).catch(
+    (error: unknown) => {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        return []
+      }
+      throw error
+    },
+  )
+  expect(entries.filter((entry) => entry.startsWith('.anban-dsh'))).toEqual([])
+}
+
+async function expectHealthyOwnership(dshHome: string): Promise<void> {
+  const statusWorker = spawnPresetWorker('status', dshHome)
+  await statusWorker.ready
+  statusWorker.start()
+  const result = await statusWorker.result
+  expect(result).toMatchObject({ ok: true })
+  const statuses = result.value as Array<{
+    id: string
+    sourceDigest: string
+    state: string
+  }>
+  for (const status of statuses) {
+    expect(['absent', 'current']).toContain(status.state)
+    if (status.state === 'current') {
+      const ownership = JSON.parse(
+        await readFile(
+          join(dshHome, '.agent-presets', status.id, OWNERSHIP_FILE),
+          'utf8',
+        ),
+      ) as { presetId?: unknown; sourceDigest?: unknown }
+      expect(ownership).toMatchObject({
+        presetId: status.id,
+        sourceDigest: status.sourceDigest,
+      })
+    }
+  }
+  await expectNoLockResidue(dshHome)
+}
+
+beforeAll(async () => {
+  const templateRoot = await mkdtemp(join(tmpdir(), 'anban-dsh-process-package-'))
+  processPackageRoot = join(templateRoot, 'package')
+  await mkdir(join(processPackageRoot, 'dsh', 'presets'), { recursive: true })
+  await writeFile(
+    join(processPackageRoot, 'package.json'),
+    `${JSON.stringify({ name: '@anban/dsh-plugin-test', type: 'module', version: '9.8.7' })}\n`,
+  )
+  await cp(
+    fileURLToPath(new URL('../presets/', import.meta.url)),
+    join(processPackageRoot, 'dsh', 'presets'),
+    { recursive: true },
+  )
+  await symlink(
+    fileURLToPath(new URL('../../node_modules', import.meta.url)),
+    join(processPackageRoot, 'node_modules'),
+    'dir',
+  )
+  await execFileAsync(
+    fileURLToPath(new URL('../../node_modules/.bin/tsc', import.meta.url)),
+    [
+      '-p',
+      fileURLToPath(new URL('../../tsconfig.json', import.meta.url)),
+      '--outDir',
+      join(processPackageRoot, 'dsh', 'lib'),
+      '--declaration',
+      'false',
+    ],
+  )
+}, 30_000)
+
+afterAll(async () => {
+  const templateRoot = processPackageRoot === '' ? '' : join(processPackageRoot, '..')
+  processPackageRoot = ''
+  if (templateRoot !== '') {
+    await rm(templateRoot, { force: true, recursive: true })
+  }
+})
+
 afterEach(async () => {
+  copyFault.before = undefined
   copyFault.path = ''
   await Promise.all(
     fixtureRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })),
@@ -113,6 +329,117 @@ describe('preset public contract', () => {
     expect(installPresets).toBeTypeOf('function')
     expect(statusPresets).toBeTypeOf('function')
     expect(removePresets).toBeTypeOf('function')
+  })
+})
+
+describe('preset transaction locking', () => {
+  it('keeps status lock-free while install and remove wait for the global lock', async () => {
+    const fixture = await createFixture()
+    const root = join(fixture.dshHome, '.agent-presets')
+    await mkdir(root, { recursive: true })
+    const held = await acquirePresetLock(root, lockDependencies('held-owner'))
+
+    await expect(
+      presetTestInternals.status(fixtureOptions(fixture)),
+    ).resolves.toEqual([
+      expect.objectContaining({ state: 'absent' }),
+      expect.objectContaining({ state: 'absent' }),
+    ])
+    await expect(
+      presetTestInternals.install(
+        fixtureOptions(fixture, {
+          lockDependencies: { timeoutMs: 0 },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCKED' })
+    await expect(
+      presetTestInternals.remove(
+        fixtureOptions(fixture, {
+          lockDependencies: { timeoutMs: 0 },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_LOCKED' })
+
+    await held.release()
+  })
+
+  it('re-reads preset state only after acquiring the lock', async () => {
+    const fixture = await createFixture()
+    const root = join(fixture.dshHome, '.agent-presets')
+    await mkdir(root, { recursive: true })
+    const held = await acquirePresetLock(root, lockDependencies('state-writer'))
+    let signalWaiting!: () => void
+    const waiting = new Promise<void>((resolve) => {
+      signalWaiting = resolve
+    })
+    let resumeWait!: () => void
+    const waitResume = new Promise<void>((resolve) => {
+      resumeWait = resolve
+    })
+    let elapsed = 0
+    const installPromise = presetTestInternals.install(
+      fixtureOptions(fixture, {
+        lockDependencies: {
+          clock: { monotonicNow: () => elapsed },
+          hostname,
+          isPidAlive: () => true,
+          pid: process.pid,
+          randomOwnerId: () => 'state-reader',
+          retryIntervalMs: 1,
+          timeoutMs: 250,
+          async wait(milliseconds) {
+            signalWaiting()
+            await waitResume
+            elapsed += milliseconds
+          },
+        },
+      }),
+    )
+    const initialOutcome = await Promise.race([
+      waiting.then(() => 'waiting' as const),
+      installPromise.then(() => 'completed' as const),
+    ])
+    expect(initialOutcome).toBe('waiting')
+
+    const before = await presetTestInternals.status(fixtureOptions(fixture))
+    for (const status of before) {
+      const target = destination(fixture, status.id)
+      await cp(join(fixture.sourceRoot, status.id), target, { recursive: true })
+      await writeFile(
+        join(target, OWNERSHIP_FILE),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          packageName: '@anban/dsh-plugin',
+          packageVersion: '1.2.3',
+          presetId: status.id,
+          sourceDigest: status.sourceDigest,
+        }, null, 2)}\n`,
+      )
+    }
+    const articleBefore = await lstat(destination(fixture, 'article'))
+    await held.release()
+    resumeWait()
+
+    const result = await installPromise
+    expect(result.every((status) => status.state === 'current')).toBe(true)
+    expect((await lstat(destination(fixture, 'article'))).ino).toBe(
+      articleBefore.ino,
+    )
+    await expectNoLockResidue(fixture.dshHome)
+  })
+
+  it('releases the lock after a failed mutation', async () => {
+    const fixture = await createFixture()
+    copyFault.path = join(fixture.sourceRoot, 'article', 'preset.yml')
+
+    await expect(
+      presetTestInternals.install(fixtureOptions(fixture)),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
+
+    const root = join(fixture.dshHome, '.agent-presets')
+    const next = await acquirePresetLock(root, lockDependencies('next-owner'))
+    await next.release()
+    await expectNoLockResidue(fixture.dshHome)
   })
 })
 
@@ -203,7 +530,10 @@ describe('preset installation', () => {
 
     await expect(
       presetTestInternals.install(fixtureOptions(fixture)),
-    ).rejects.toThrow(/unowned.*force/i)
+    ).rejects.toMatchObject({
+      code: 'ERR_PRESET_UNOWNED',
+      recovery: 'Review preset status and use force only to replace trusted content.',
+    })
     expect(await readFile(join(article, 'personal.txt'), 'utf8')).toBe('keep me')
     expect(await presetTestInternals.status(fixtureOptions(fixture))).toEqual([
       expect.objectContaining({ id: 'article', state: 'unowned' }),
@@ -223,11 +553,44 @@ describe('preset installation', () => {
     ])
     await expect(
       presetTestInternals.install(fixtureOptions(fixture)),
-    ).rejects.toThrow(/modified.*force/i)
+    ).rejects.toMatchObject({
+      code: 'ERR_PRESET_MODIFIED',
+      recovery: 'Review local changes and use force only when replacement is intended.',
+    })
     expect(await readFile(installedPreset, 'utf8')).toBe(
       'name: locally-modified\n',
     )
   })
+
+  it.each([
+    ['unowned', 'ERR_PRESET_UNOWNED'],
+    ['modified', 'ERR_PRESET_MODIFIED'],
+  ] as const)(
+    'maps a destination that becomes %s while copying to its ownership code',
+    async (state, code) => {
+      const fixture = await createFixture()
+      await presetTestInternals.install(
+        fixtureOptions(fixture, { presetIds: ['article'] }),
+      )
+      await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'new\n')
+      copyFault.before = async () => {
+        if (state === 'unowned') {
+          await rm(join(destination(fixture, 'article'), OWNERSHIP_FILE))
+        } else {
+          await writeFile(
+            join(destination(fixture, 'article'), 'preset.yml'),
+            'locally modified\n',
+          )
+        }
+      }
+
+      await expect(
+        presetTestInternals.install(
+          fixtureOptions(fixture, { presetIds: ['article'] }),
+        ),
+      ).rejects.toMatchObject({ code })
+    },
+  )
 
   it('force replaces unowned and modified directories without retaining old files', async () => {
     const fixture = await createFixture()
@@ -258,7 +621,7 @@ describe('preset installation', () => {
 
     await expect(
       presetTestInternals.install(fixtureOptions(fixture)),
-    ).rejects.toThrow('injected copy interruption')
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
 
     await expect(lstat(destination(fixture, 'article'))).rejects.toMatchObject({
       code: 'ENOENT',
@@ -294,7 +657,7 @@ describe('preset installation', () => {
           presetIds: ['article'],
         }),
       ),
-    ).rejects.toThrow('injected replacement rename failure')
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
 
     expect(await readFile(join(article, 'preset.yml'), 'utf8')).toBe('name: article\n')
     expect(await readFile(join(article, OWNERSHIP_FILE), 'utf8')).toBe(
@@ -372,7 +735,7 @@ describe('preset installation', () => {
           presetIds: ['article'],
         }),
       ),
-    ).rejects.toThrow('injected temporary cleanup failure')
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
 
     expect(backupRemovalAttempts).toBe(2)
     expect(
@@ -412,7 +775,7 @@ describe('preset removal', () => {
 
     await expect(
       presetTestInternals.remove(fixtureOptions(fixture)),
-    ).rejects.toThrow(/unowned/i)
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_UNOWNED' })
     expect(
       await readFile(join(destination(fixture, 'article'), 'personal.txt'), 'utf8'),
     ).toBe('keep')
@@ -440,7 +803,7 @@ describe('preset removal', () => {
           presetIds: ['article'],
         }),
       ),
-    ).rejects.toThrow('injected preset deletion failure')
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
 
     expect(
       await readFile(join(destination(fixture, 'article'), 'preset.yml'), 'utf8'),
@@ -481,20 +844,17 @@ describe('preset removal', () => {
       failure = error
     }
 
-    expect(failure).toBeInstanceOf(AggregateError)
-    if (!(failure instanceof AggregateError)) {
-      throw new Error('Expected removal failure to retain both errors')
-    }
-    expect(failure.errors).toEqual([
-      expect.objectContaining({ message: 'injected preset deletion failure' }),
-      expect.objectContaining({ message: 'injected removal rollback failure' }),
-    ])
+    expect(failure).toMatchObject({
+      code: 'ERR_PRESET_ROLLBACK',
+      recovery: 'Inspect the preset directory before retrying the operation.',
+    })
+    expect(JSON.stringify(failure)).not.toContain('injected')
+    expect(JSON.stringify(failure)).not.toContain(presetRoot)
     const entries = await readdir(presetRoot)
     const recoveryName = entries.find((entry) =>
       entry.startsWith('.article.anban-remove-'),
     )
     expect(recoveryName).toBeDefined()
-    expect(failure.message).toContain(join(presetRoot, recoveryName!))
     await expect(lstat(article)).rejects.toMatchObject({ code: 'ENOENT' })
     expect(
       await readFile(join(presetRoot, recoveryName!, OWNERSHIP_FILE), 'utf8'),
@@ -526,10 +886,10 @@ describe('preset containment and digest safety', () => {
 
     await expect(
       presetTestInternals.install(fixtureOptions(fixture, { force: true })),
-    ).rejects.toThrow(/symbolic link/i)
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
     await expect(
       presetTestInternals.remove(fixtureOptions(fixture)),
-    ).rejects.toThrow(/symbolic link|unowned/i)
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
     expect(await readFile(join(outside, 'keep.txt'), 'utf8')).toBe('outside')
 
     await rm(destination(fixture, 'article'))
@@ -678,5 +1038,167 @@ describe('preset containment and digest safety', () => {
       fixtureOptions(fixture, { presetIds: ['article'] }),
     )
     expect(status?.sourceDigest).toBe(expected.digest('hex'))
+  })
+})
+
+describe('preset cross-process transactions', () => {
+  async function runWorker(action: string, dshHome: string): Promise<{
+    output: string
+    result: WorkerResult
+  }> {
+    const worker = spawnPresetWorker(action, dshHome)
+    await worker.ready
+    worker.start()
+    const result = await worker.result
+    return { output: worker.output(), result }
+  }
+
+  function waitForMessage(child: ChildProcess, type: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const onMessage = (message: unknown) => {
+        if (
+          typeof message === 'object' &&
+          message !== null &&
+          'type' in message &&
+          message.type === type
+        ) {
+          child.off('error', onError)
+          child.off('message', onMessage)
+          resolve()
+        }
+      }
+      const onError = (error: Error) => {
+        child.off('message', onMessage)
+        reject(error)
+      }
+      child.on('message', onMessage)
+      child.once('error', onError)
+    })
+  }
+
+  it('makes concurrent install/install idempotent across Node processes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-install-'))
+    fixtureRoots.push(root)
+    const dshHome = join(root, 'home')
+    const first = spawnPresetWorker('install', dshHome)
+    const second = spawnPresetWorker('install', dshHome)
+    await Promise.all([first.ready, second.ready])
+
+    first.start()
+    second.start()
+    const results = await Promise.all([first.result, second.result])
+
+    expect(results).toEqual([
+      expect.objectContaining({ ok: true }),
+      expect.objectContaining({ ok: true }),
+    ])
+    expect(`${first.output()}\n${second.output()}`).not.toContain('ENOTEMPTY')
+    await expectHealthyOwnership(dshHome)
+  })
+
+  it('serializes install then remove in observed acquisition order', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-remove-'))
+    fixtureRoots.push(root)
+    const dshHome = join(root, 'home')
+    const install = spawnPresetWorker('install', dshHome)
+    const remove = spawnPresetWorker('remove', dshHome)
+    await Promise.all([install.ready, remove.ready])
+    install.start()
+    await waitForLockOwner(dshHome, install.child.pid!)
+    remove.start()
+
+    const [installResult, removeResult] = await Promise.all([
+      install.result,
+      remove.result,
+    ])
+
+    expect(installResult).toMatchObject({ ok: true })
+    expect(removeResult).toMatchObject({
+      ok: true,
+      value: ['article', 'seednote'],
+    })
+    expect(`${install.output()}\n${remove.output()}`).not.toContain('ENOTEMPTY')
+    await expectHealthyOwnership(dshHome)
+  })
+
+  it('serializes force install then regular install in observed acquisition order', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-force-'))
+    fixtureRoots.push(root)
+    const dshHome = join(root, 'home')
+    expect((await runWorker('install', dshHome)).result).toMatchObject({ ok: true })
+    await writeFile(join(dshHome, '.agent-presets', 'article', 'preset.yml'), 'modified\n')
+    const force = spawnPresetWorker('force-install', dshHome)
+    const install = spawnPresetWorker('install', dshHome)
+    await Promise.all([force.ready, install.ready])
+    force.start()
+    await waitForLockOwner(dshHome, force.child.pid!)
+    install.start()
+
+    const [forceResult, installResult] = await Promise.all([
+      force.result,
+      install.result,
+    ])
+
+    expect(forceResult).toMatchObject({ ok: true })
+    expect(installResult).toMatchObject({ ok: true })
+    expect(`${force.output()}\n${install.output()}`).not.toContain('ENOTEMPTY')
+    await expectHealthyOwnership(dshHome)
+  })
+
+  it('releases its process lock when a preset operation fails', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-failure-'))
+    fixtureRoots.push(root)
+    const dshHome = join(root, 'home')
+    const badSource = join(
+      processPackageRoot,
+      'dsh',
+      'presets',
+      'article',
+      'unexpected-link',
+    )
+    await symlink(join(processPackageRoot, 'package.json'), badSource)
+
+    let failed: Awaited<ReturnType<typeof runWorker>>
+    try {
+      failed = await runWorker('install', dshHome)
+    } finally {
+      await rm(badSource, { force: true })
+    }
+
+    expect(failed.result).toMatchObject({
+      error: { code: 'ERR_PRESET_OPERATION' },
+      ok: false,
+    })
+    expect(failed.output).not.toContain('ENOTEMPTY')
+    await expectNoLockResidue(dshHome)
+    expect((await runWorker('install', dshHome)).result).toMatchObject({ ok: true })
+    await expectHealthyOwnership(dshHome)
+  })
+
+  it('reclaims process-crash lock residue before the next install', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-crash-'))
+    fixtureRoots.push(root)
+    const dshHome = join(root, 'home')
+    const crashed = spawnPresetWorker('crash-lock', dshHome)
+    await crashed.ready
+    const acquired = waitForMessage(crashed.child, 'acquired')
+    crashed.start()
+    await acquired
+    const exitCode = await new Promise<number | null>((resolve) =>
+      crashed.child.once('exit', resolve),
+    )
+    expect(exitCode).toBe(73)
+    expect(
+      await readFile(
+        join(dshHome, '.agent-presets', LOCK_NAME, 'owner.json'),
+        'utf8',
+      ),
+    ).toContain(`"pid":${String(crashed.child.pid)}`)
+
+    const recovered = await runWorker('install', dshHome)
+
+    expect(recovered.result).toMatchObject({ ok: true })
+    expect(recovered.output).not.toContain('ENOTEMPTY')
+    await expectHealthyOwnership(dshHome)
   })
 })
