@@ -227,19 +227,6 @@ function profileFixture() {
     kind: 'native',
     prefixArgs: [],
   }
-  const installedCommand: NativeCommand = {
-    executable: join(
-      profileDir,
-      'node_modules',
-      '@anban',
-      'dsh-plugin',
-      'dsh',
-      'bin',
-      'anban-dsh.js',
-    ),
-    kind: 'native',
-    prefixArgs: [],
-  }
   const commandCalls: Array<{
     args: readonly string[]
     command: PortableCommand
@@ -304,6 +291,9 @@ function profileFixture() {
       name: '@anban/dsh-plugin/preset-manager',
     },
   ])
+  const resolveInstalledCommand = vi.fn(async () => {
+    throw new Error('profile smoke must not resolve a private installed bin')
+  })
   const overrides = {
     access: vi.fn(async () => undefined),
     discoverPresets,
@@ -312,7 +302,7 @@ function profileFixture() {
     mkdtemp: vi.fn(async () => smokeRoot),
     parseConfig,
     resolveDshCommand: vi.fn(async () => dshCommand),
-    resolveInstalledCommand: vi.fn(async () => installedCommand),
+    resolveInstalledCommand,
     resolvePnpmCommand: vi.fn(async () => pnpmCommand),
     rm: vi.fn(async () => undefined),
     runCommand,
@@ -324,12 +314,12 @@ function profileFixture() {
     dshCommand,
     dshHome,
     importInstalledExport,
-    installedCommand,
     overrides,
     packTarball,
     parseConfig,
     pnpmCommand,
     profileDir,
+    resolveInstalledCommand,
     smokeRoot,
   }
 }
@@ -357,8 +347,15 @@ describe('DSH profile smoke flow', () => {
         args: ['--profile', 'web', '--dump-config'],
       },
       {
-        command: fixture.installedCommand,
-        args: ['install-presets'],
+        command: fixture.dshCommand,
+        args: [
+          'plugin',
+          '--profile',
+          'web',
+          'exec',
+          'anban-dsh',
+          'install-presets',
+        ],
       },
       {
         command: fixture.dshCommand,
@@ -369,7 +366,7 @@ describe('DSH profile smoke flow', () => {
       packageRoot,
       packageRoot,
       packageRoot,
-      fixture.profileDir,
+      packageRoot,
       packageRoot,
     ])
     const localEnvironment = fixture.commandCalls[0]?.options.env
@@ -384,6 +381,7 @@ describe('DSH profile smoke flow', () => {
     expect(fixture.importInstalledExport.mock.calls).toEqual(
       publicExports.map((specifier) => [fixture.profileDir, specifier]),
     )
+    expect(fixture.resolveInstalledCommand).not.toHaveBeenCalled()
     expect(fixture.overrides.log.mock.calls.map(([line]) => line)).toEqual([
       'Bundle rows: anban-mcp=1 anban-preset-manager=1 preset-local-mcp=0',
       'Healthy Presets: article, seednote',
@@ -439,9 +437,16 @@ describe('DSH profile smoke flow', () => {
         cwd: packageRoot,
       },
       {
-        command: fixture.installedCommand,
-        args: ['install-presets'],
-        cwd: fixture.profileDir,
+        command: fixture.dshCommand,
+        args: [
+          'plugin',
+          '--profile',
+          'web',
+          'exec',
+          'anban-dsh',
+          'install-presets',
+        ],
+        cwd: packageRoot,
       },
       {
         command: fixture.dshCommand,
@@ -457,6 +462,7 @@ describe('DSH profile smoke flow', () => {
     expect(fixture.importInstalledExport.mock.calls).toEqual(
       publicExports.map((specifier) => [fixture.profileDir, specifier]),
     )
+    expect(fixture.resolveInstalledCommand).not.toHaveBeenCalled()
   })
 
   it('rejects ambiguous pack output and unsafe registry sources', async () => {

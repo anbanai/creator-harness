@@ -226,14 +226,6 @@ function defaultResolveDshCommand() {
   )
 }
 
-function defaultResolveInstalledCommand(profileDir) {
-  return packageBinCommand(
-    join(profileDir, 'package.json'),
-    PACKAGE_NAME,
-    'anban-dsh',
-  )
-}
-
 async function defaultDiscoverPresets(roots) {
   const { discoverPresets } = await import('@deepseek-ai/dsh-agent-presets')
   return discoverPresets(roots)
@@ -433,7 +425,6 @@ export async function smokeProfile(overrides = {}) {
     parseConfig: defaultParseConfig,
     readFile,
     resolveDshCommand: defaultResolveDshCommand,
-    resolveInstalledCommand: defaultResolveInstalledCommand,
     resolvePnpmCommand,
     rm,
     runCommand: defaultRunCommand,
@@ -479,13 +470,18 @@ export async function smokeProfile(overrides = {}) {
       ['--profile', PROFILE, '--dump-config'],
       { cwd: PACKAGE_ROOT, env: environment },
     )
-    const installedCommand = await dependencies.resolveInstalledCommand(
-      profileDir,
+    await dependencies.runCommand(
+      dshCommand,
+      [
+        'plugin',
+        '--profile',
+        PROFILE,
+        'exec',
+        'anban-dsh',
+        'install-presets',
+      ],
+      { cwd: PACKAGE_ROOT, env: environment },
     )
-    await dependencies.runCommand(installedCommand, ['install-presets'], {
-      cwd: profileDir,
-      env: environment,
-    })
 
     const presets = await dependencies.discoverPresets([
       { path: join(dshHome, '.agent-presets'), trust: 'user' },
