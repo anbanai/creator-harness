@@ -96,11 +96,78 @@ function isAuthorizationSeparator(code: number): boolean {
   )
 }
 
+function isAuthorizationBoundary(code: number): boolean {
+  return (
+    isAuthorizationSeparator(code) ||
+    code === 40 ||
+    code === 44 ||
+    code === 46 ||
+    code === 58 ||
+    code === 61 ||
+    code === 91
+  )
+}
+
+function isAuthorizationWrapperEnd(code: number): boolean {
+  return (
+    isAuthorizationSeparator(code) ||
+    code === 41 ||
+    code === 93
+  )
+}
+
+function asciiEqualAt(line: string, start: number, expected: string): boolean {
+  if (start + expected.length > line.length) {
+    return false
+  }
+  for (let index = 0; index < expected.length; index += 1) {
+    if (line[start + index]?.toLowerCase() !== expected[index]) {
+      return false
+    }
+  }
+  return true
+}
+
+function hasAuthorizationScheme(line: string, start: number): boolean {
+  for (const scheme of ['bearer', 'basic']) {
+    if (!asciiEqualAt(line, start, scheme)) {
+      continue
+    }
+    const end = start + scheme.length
+    if (
+      end === line.length ||
+      isAuthorizationSeparator(line.charCodeAt(end))
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+function hasDottedAuthorizationValue(line: string, start: number): boolean {
+  let cursor = start + 1
+  const fieldStart = cursor
+  while (cursor < line.length && isAsciiWord(line.charCodeAt(cursor))) {
+    cursor += 1
+  }
+  if (cursor === fieldStart) {
+    return false
+  }
+
+  while (
+    cursor < line.length &&
+    isAuthorizationWrapperEnd(line.charCodeAt(cursor))
+  ) {
+    cursor += 1
+  }
+  return line[cursor] === ':' || line[cursor] === '=' || line[cursor] === ','
+}
+
 function authorizationStart(line: string): number | undefined {
   for (let start = 0; start < line.length; start += 1) {
     if (
       line[start]?.toLowerCase() !== AUTHORIZATION_KEY[0] ||
-      (start > 0 && isAsciiWord(line.charCodeAt(start - 1)))
+      (start > 0 && !isAuthorizationBoundary(line.charCodeAt(start - 1)))
     ) {
       continue
     }
@@ -131,13 +198,23 @@ function authorizationStart(line: string): number | undefined {
       continue
     }
 
+    let separatedByWhitespace = false
     while (
       cursor < line.length &&
-      isAuthorizationSeparator(line.charCodeAt(cursor))
+      isAuthorizationWrapperEnd(line.charCodeAt(cursor))
     ) {
+      const code = line.charCodeAt(cursor)
+      separatedByWhitespace ||=
+        code <= 32 || (code >= 127 && code <= 159)
       cursor += 1
     }
     if (line[cursor] === ':' || line[cursor] === '=' || line[cursor] === ',') {
+      return start
+    }
+    if (line[cursor] === '.' && hasDottedAuthorizationValue(line, cursor)) {
+      return start
+    }
+    if (separatedByWhitespace && hasAuthorizationScheme(line, cursor)) {
       return start
     }
   }

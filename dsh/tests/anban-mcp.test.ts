@@ -558,6 +558,43 @@ describe('anban MCP failure containment', () => {
   })
 
   it.each([
+    ['Bearer value', 'request Authorization Bearer leaked-secret'],
+    ['dotted token', 'request authorization.token=leaked-secret'],
+    ['nested header', 'request headers.authorization=leaked-secret'],
+    ['bracketed key', 'request [Authorization]=leaked-secret'],
+    ['spaced assignment', 'request authorization = leaked-secret'],
+    ['mixed case', 'request aUtHoRiZaTiOn: Bearer leaked-secret'],
+    [
+      'escaped quotes',
+      String.raw`request {\"Authorization\":\"Bearer leaked-secret\"}`,
+    ],
+    [
+      'array JSON',
+      'request ["headers",{"authorization":"Bearer leaked-secret"}]',
+    ],
+    ['tab separator', 'request Authorization\tBearer leaked-secret'],
+    [
+      'NUL-interrupted key',
+      'request Authoriza\u0000tion: Bearer leaked-secret',
+    ],
+  ])('redacts Authorization carried by %s', (_label, diagnostic) => {
+    const line = safeErrorLine(diagnostic)
+
+    expect(line).toContain('[REDACTED]')
+    expect(line).not.toContain('leaked-secret')
+    expect(line).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/)
+    expect(line.length).toBeLessThanOrEqual(512)
+  })
+
+  it.each([
+    ['xauthorization key', 'request xauthorization=public-value'],
+    ['longer identifier key', 'request authorizationPolicy=public-value'],
+    ['ordinary prose', 'request failed because authorization is required'],
+  ])('preserves non-Authorization carrier text from %s', (_label, diagnostic) => {
+    expect(safeErrorLine(diagnostic)).toBe(diagnostic)
+  })
+
+  it.each([
     [
       'escaped JSON',
       String.raw`{\"Authorization\":\"Bearer leaked-secret\"}`,
