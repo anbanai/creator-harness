@@ -105,11 +105,16 @@ export async function apply(
   } catch (readinessFailure) {
     try {
       await disposeChild()
-    } catch {
+    } catch (disposalFailure) {
       throw new OperationalError(
         'ERR_PRESET_OPERATION',
         'Anban preset Skills failed to become ready and cleanup also failed.',
-        { cause: readinessFailure },
+        {
+          cause: new AggregateError(
+            [readinessFailure, disposalFailure],
+            'Anban preset Skills readiness and cleanup failed.',
+          ),
+        },
       )
     }
     throw readinessFailure

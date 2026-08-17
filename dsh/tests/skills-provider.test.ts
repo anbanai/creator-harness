@@ -1,16 +1,40 @@
-import type { Context } from '@deepseek-ai/cordis'
+import { Context, type Message } from '@deepseek-ai/cordis'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const operationalErrorConstruction = vi.hoisted(() => ({
+  causes: [] as unknown[],
+}))
+
 vi.mock('@deepseek-ai/dsh-skill-filesystem', () => ({
   apply: vi.fn(),
+  Config: undefined,
   inject: ['skills'],
   name: 'skill-filesystem',
 }))
 
+vi.mock('../src/operational-error.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../src/operational-error.js')>()
+  return {
+    ...actual,
+    OperationalError: class extends actual.OperationalError {
+      constructor(
+        ...args: ConstructorParameters<typeof actual.OperationalError>
+      ) {
+        super(...args)
+        operationalErrorConstruction.causes.push(args[2]?.cause)
+      }
+    },
+  }
+})
+
 import * as skillFilesystem from '@deepseek-ai/dsh-skill-filesystem'
 
-import { OperationalError } from '../src/operational-error.js'
+import {
+  OperationalError,
+  formatOperationalError,
+} from '../src/operational-error.js'
 import { apply, name, type Config } from '../src/skills-provider.js'
 
 interface Deferred {
@@ -70,6 +94,7 @@ function proxyConfig(
 
 beforeEach(() => {
   vi.clearAllMocks()
+  operationalErrorConstruction.causes.length = 0
 })
 
 describe('skills provider registration', () => {
@@ -194,18 +219,21 @@ describe('skills provider registration', () => {
     expect(dispose).toHaveBeenCalledTimes(1)
   })
 
-  it('reports a controlled readiness failure when rollback disposal also fails', async () => {
+  it('retains both adapter-boundary failures in one private aggregate cause', async () => {
     const readinessSecret = 'readiness-token-secret'
     const disposalSecret = 'disposal-password-secret'
-    const dispose = vi.fn().mockRejectedValue(new Error(disposalSecret))
+    const readinessFailure = new Error(readinessSecret)
+    const disposalFailure = new Error(disposalSecret)
+    const dispose = vi.fn().mockRejectedValue(disposalFailure)
     const fake = createContext(
-      childFiber(Promise.reject(new Error(readinessSecret)), dispose),
+      childFiber(Promise.reject(readinessFailure), dispose),
     )
 
     const failure = await apply(fake.context, {
       presetId: 'seednote',
       providerName: 'anban-seednote',
     }).catch((error: unknown) => error)
+    const internalAggregate = operationalErrorConstruction.causes[0]
 
     expect(failure).toBeInstanceOf(OperationalError)
     expect(failure).toHaveProperty('code', 'ERR_PRESET_OPERATION')
@@ -214,14 +242,25 @@ describe('skills provider registration', () => {
       'Anban preset Skills failed to become ready and cleanup also failed.',
     )
     expect(failure).not.toHaveProperty('cause')
+    expect(internalAggregate).toBeInstanceOf(AggregateError)
+    expect((internalAggregate as AggregateError).errors).toEqual([
+      readinessFailure,
+      disposalFailure,
+    ])
     expect(String(failure)).not.toContain(readinessSecret)
     expect(String(failure)).not.toContain(disposalSecret)
     expect(JSON.stringify(failure)).not.toContain(readinessSecret)
     expect(JSON.stringify(failure)).not.toContain(disposalSecret)
+    expect(
+      formatOperationalError(failure, { debug: true }),
+    ).not.toContain(readinessSecret)
+    expect(
+      formatOperationalError(failure, { debug: true }),
+    ).not.toContain(disposalSecret)
     expect(dispose).toHaveBeenCalledTimes(1)
   })
 
-  it('shares one controlled secret-safe rejection when cleanup disposal fails', async () => {
+  it('shares one controlled secret-safe rejection when an adapter-boundary disposer rejects', async () => {
     const disposalSecret = 'cleanup-authorization-secret'
     const dispose = vi.fn().mockRejectedValue(new Error(disposalSecret))
     const fake = createContext(childFiber(Promise.resolve(), dispose))
@@ -248,6 +287,90 @@ describe('skills provider registration', () => {
     expect(JSON.stringify(firstFailure)).not.toContain(disposalSecret)
     expect(cleanup()).toBe(first)
     expect(dispose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('skills provider Cordis integration', () => {
+  it('disposes and awaits the exact failed child Fiber before rethrowing readiness', async () => {
+    const readinessFailure = new Error('cordis-readiness-secret')
+    const rollback = deferred()
+    vi.mocked(skillFilesystem.apply).mockImplementationOnce(
+      function (childContext) {
+        childContext.effect(() => () => rollback.promise)
+        throw readinessFailure
+      },
+    )
+    const context = new Context()
+    context.provide('skills', {})
+    const messages: Message[] = []
+    context.logger.exporter({ export: (message) => messages.push(message) })
+
+    let settled = false
+    const applying = apply(context, {
+      presetId: 'article',
+      providerName: 'anban-article',
+    }).catch((error: unknown) => {
+      settled = true
+      return error
+    })
+
+    await vi.waitFor(() =>
+      expect(
+        messages.some(
+          (message) =>
+            message.type === 'error' && message.args[0] === readinessFailure,
+        ),
+      ).toBe(true),
+    )
+    expect(settled).toBe(false)
+
+    rollback.resolve()
+    await expect(applying).resolves.toBe(readinessFailure)
+    expect(context.registry.has(skillFilesystem)).toBe(false)
+  })
+
+  it('awaits one Fiber disposal while Cordis logs and swallows teardown failure', async () => {
+    const teardownFailure = new Error('cordis-teardown-secret')
+    const teardown = deferred()
+    vi.mocked(skillFilesystem.apply).mockImplementationOnce(
+      function (childContext) {
+        childContext.effect(() => () => teardown.promise)
+      },
+    )
+    const context = new Context()
+    context.provide('skills', {})
+    const messages: Message[] = []
+    context.logger.exporter({ export: (message) => messages.push(message) })
+    const register = vi.spyOn(context.registry, 'plugin')
+    const cleanup = await apply(context, {
+      presetId: 'seednote',
+      providerName: 'anban-seednote',
+    })
+    const child = register.mock.results[0]?.value
+    expect(child).toBeDefined()
+    const dispose = vi.spyOn(child!, 'dispose')
+
+    let settled = false
+    const first = cleanup().then(() => {
+      settled = true
+    })
+    const shared = cleanup()
+
+    expect(dispose).toHaveBeenCalledTimes(1)
+    await Promise.resolve()
+    expect(settled).toBe(false)
+
+    teardown.reject(teardownFailure)
+    await expect(first).resolves.toBeUndefined()
+    await expect(shared).resolves.toBeUndefined()
+    expect(dispose).toHaveBeenCalledTimes(1)
+    expect(context.registry.has(skillFilesystem)).toBe(false)
+    expect(
+      messages.some(
+        (message) =>
+          message.type === 'error' && message.args[0] === teardownFailure,
+      ),
+    ).toBe(true)
   })
 })
 
