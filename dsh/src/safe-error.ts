@@ -5,6 +5,9 @@ const MAX_SAFE_ERROR_LENGTH = 512
 const MIN_SAFE_SECRET_LENGTH = 8
 const OMITTED_ERROR_LINE = 'Error details omitted'
 const CONTROL_CHARACTERS_PATTERN = /[\u0000-\u001f\u007f-\u009f]+/g
+const FORMAT_CONTROL_CHARACTERS_PATTERN =
+  /[\u00ad\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff]+/g
+const IDENTIFIER_CONTINUATION_PATTERN = /^[$\p{ID_Continue}]$/u
 const WHITESPACE_PATTERN = /\s+/g
 const AUTHORIZATION_KEY = 'authorization'
 const REDACTED_AUTHORIZATION = 'Authorization: [REDACTED]'
@@ -96,16 +99,55 @@ function isAuthorizationSeparator(code: number): boolean {
   )
 }
 
-function isAuthorizationBoundary(code: number): boolean {
+function isRemovedFormatControl(code: number): boolean {
   return (
-    isAuthorizationSeparator(code) ||
-    code === 40 ||
-    code === 44 ||
-    code === 46 ||
-    code === 58 ||
-    code === 61 ||
-    code === 91
+    code === 0x00ad ||
+    code === 0x061c ||
+    code === 0x180e ||
+    (code >= 0x200b && code <= 0x200f) ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2060 && code <= 0x2064) ||
+    (code >= 0x2066 && code <= 0x206f) ||
+    code === 0xfeff
   )
+}
+
+function isAuthorizationSchemeSeparator(code: number): boolean {
+  return isAuthorizationSeparator(code) || isRemovedFormatControl(code)
+}
+
+function isAuthorizationPayloadSeparator(code: number): boolean {
+  return (
+    isAuthorizationSchemeSeparator(code) ||
+    code === 40 ||
+    code === 41 ||
+    code === 44 ||
+    code === 58 ||
+    code === 59 ||
+    code === 61 ||
+    code === 91 ||
+    code === 93 ||
+    code === 123 ||
+    code === 125
+  )
+}
+
+function isIdentifierContinuationBefore(line: string, start: number): boolean {
+  let previous = start - 1
+  const code = line.charCodeAt(previous)
+  if (isRemovedFormatControl(code)) {
+    return true
+  }
+  if (
+    code >= 0xdc00 &&
+    code <= 0xdfff &&
+    previous > 0 &&
+    line.charCodeAt(previous - 1) >= 0xd800 &&
+    line.charCodeAt(previous - 1) <= 0xdbff
+  ) {
+    previous -= 1
+  }
+  return IDENTIFIER_CONTINUATION_PATTERN.test(line.slice(previous, start))
 }
 
 function isAuthorizationWrapperEnd(code: number): boolean {
@@ -136,7 +178,20 @@ function hasAuthorizationScheme(line: string, start: number): boolean {
     const end = start + scheme.length
     if (
       end === line.length ||
-      isAuthorizationSeparator(line.charCodeAt(end))
+      !isAuthorizationSchemeSeparator(line.charCodeAt(end))
+    ) {
+      continue
+    }
+    let payload = end
+    while (
+      payload < line.length &&
+      isAuthorizationSchemeSeparator(line.charCodeAt(payload))
+    ) {
+      payload += 1
+    }
+    if (
+      payload < line.length &&
+      !isAuthorizationPayloadSeparator(line.charCodeAt(payload))
     ) {
       return true
     }
@@ -167,7 +222,7 @@ function authorizationStart(line: string): number | undefined {
   for (let start = 0; start < line.length; start += 1) {
     if (
       line[start]?.toLowerCase() !== AUTHORIZATION_KEY[0] ||
-      (start > 0 && !isAuthorizationBoundary(line.charCodeAt(start - 1)))
+      (start > 0 && isIdentifierContinuationBefore(line, start))
     ) {
       continue
     }
@@ -265,6 +320,7 @@ export function safeErrorLine(error: unknown, secret?: string): string {
 
   line = line
     .replace(CONTROL_CHARACTERS_PATTERN, '')
+    .replace(FORMAT_CONTROL_CHARACTERS_PATTERN, '')
     .replace(WHITESPACE_PATTERN, ' ')
     .trim()
 

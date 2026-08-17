@@ -560,6 +560,9 @@ describe('anban MCP failure containment', () => {
   it.each([
     ['Bearer value', 'request Authorization Bearer leaked-secret'],
     ['dotted token', 'request authorization.token=leaked-secret'],
+    ['braced boundary', 'request {Authorization: Bearer leaked-secret}'],
+    ['hyphen boundary', 'request -authorization=leaked-secret'],
+    ['slash boundary', 'request /authorization.token=leaked-secret'],
     ['indexed value', 'request authorization[0]=leaked-secret'],
     [
       'quoted indexed value',
@@ -586,6 +589,14 @@ describe('anban MCP failure containment', () => {
       'NUL-interrupted key',
       'request Authoriza\u0000tion: Bearer leaked-secret',
     ],
+    [
+      'zero-width-space-interrupted key',
+      'request Authori\u200bzation: Bearer leaked-secret',
+    ],
+    [
+      'word-joiner-interrupted key',
+      'request Authori\u2060zation: Bearer leaked-secret',
+    ],
   ])('redacts Authorization carried by %s', (_label, diagnostic) => {
     const line = safeErrorLine(diagnostic)
 
@@ -599,8 +610,16 @@ describe('anban MCP failure containment', () => {
     ['xauthorization key', 'request xauthorization=public-value'],
     ['longer identifier key', 'request authorizationPolicy=public-value'],
     ['ordinary prose', 'request failed because authorization is required'],
+    ['Bearer scheme without payload', 'request authorization Bearer'],
+    ['Basic scheme without payload', 'request authorization Basic'],
   ])('preserves non-Authorization carrier text from %s', (_label, diagnostic) => {
     expect(safeErrorLine(diagnostic)).toBe(diagnostic)
+  })
+
+  it('preserves a scheme without a payload hidden by a format control', () => {
+    expect(safeErrorLine('request authorization Bearer \u200b')).toBe(
+      'request authorization Bearer',
+    )
   })
 
   it.each([
