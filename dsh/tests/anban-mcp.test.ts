@@ -615,6 +615,26 @@ describe('anban MCP failure containment', () => {
       'Syriac-mark boundary',
       'request \u070fAuthorization: Bearer leaked-secret',
     ],
+    [
+      'standalone ZWNJ boundary',
+      '\u200cAuthorization: Bearer leaked-secret',
+    ],
+    [
+      'standalone ZWJ boundary',
+      '\u200dAuthorization: Bearer leaked-secret',
+    ],
+    [
+      'punctuation-prefixed ZWNJ boundary',
+      'request /\u200cAuthorization: Bearer leaked-secret',
+    ],
+    [
+      'punctuation-prefixed ZWJ boundary',
+      'request -\u200dAuthorization: Bearer leaked-secret',
+    ],
+    [
+      'standalone join-control run boundary',
+      '\u200c\u200dAuthorization: Bearer leaked-secret',
+    ],
     ['indexed value', 'request authorization[0]=leaked-secret'],
     [
       'quoted indexed value',
@@ -694,6 +714,18 @@ describe('anban MCP failure containment', () => {
     ],
   ])('preserves non-Authorization carrier text from %s', (_label, diagnostic) => {
     expect(safeErrorLine(diagnostic)).toBe(diagnostic)
+  })
+
+  it.each([
+    ['ZWNJ', 'request x\u200cauthorization=public-value'],
+    ['ZWJ', 'request x\u200dauthorization=public-value'],
+    ['join-control run', 'request x\u200c\u200dauthorization=public-value'],
+    ['astral ZWNJ', 'request \u{10400}\u200cauthorization=public-value'],
+  ])('does not redact an identifier-attached %s prefix', (_label, diagnostic) => {
+    const line = safeErrorLine(diagnostic)
+
+    expect(line).not.toContain('[REDACTED]')
+    expect(line).toContain('authorization=public-value')
   })
 
   it('preserves a scheme without a payload hidden by a format control', () => {

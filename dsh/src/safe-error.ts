@@ -135,19 +135,26 @@ function matchingAuthorizationWrapperEnd(code: number): number | undefined {
 }
 
 function isIdentifierContinuationBefore(line: string, start: number): boolean {
-  let previous = start - 1
-  const code = line.charCodeAt(previous)
-  if (
-    code >= 0xdc00 &&
-    code <= 0xdfff &&
-    previous > 0 &&
-    line.charCodeAt(previous - 1) >= 0xd800 &&
-    line.charCodeAt(previous - 1) <= 0xdbff
-  ) {
-    previous -= 1
+  let end = start
+  while (end > 0) {
+    let previous = end - 1
+    const code = line.charCodeAt(previous)
+    if (
+      code >= 0xdc00 &&
+      code <= 0xdfff &&
+      previous > 0 &&
+      line.charCodeAt(previous - 1) >= 0xd800 &&
+      line.charCodeAt(previous - 1) <= 0xdbff
+    ) {
+      previous -= 1
+    }
+    const character = line.slice(previous, end)
+    if (character !== '\u200c' && character !== '\u200d') {
+      return IDENTIFIER_CONTINUATION_PATTERN.test(character)
+    }
+    end = previous
   }
-  const character = line.slice(previous, start)
-  return IDENTIFIER_CONTINUATION_PATTERN.test(character)
+  return false
 }
 
 function isAuthorizationWrapperEnd(code: number): boolean {
