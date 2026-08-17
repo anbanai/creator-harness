@@ -23,6 +23,7 @@ import {
 } from './preset-lock.js'
 import {
   OperationalError,
+  attachOperationalErrorSecondary,
   isOperationalError,
 } from './operational-error.js'
 
@@ -128,19 +129,6 @@ function operationFailure(cause: unknown): OperationalError {
 
 function mapOperationFailure(error: unknown): OperationalError {
   return isOperationalError(error) ? error : operationFailure(error)
-}
-
-function withSecondaryFailure(
-  primary: OperationalError,
-  secondary: OperationalError,
-): OperationalError {
-  return new OperationalError(primary.code, primary.message, {
-    cause: new AggregateError(
-      [primary, secondary],
-      'Preset mutation and lock release both failed',
-    ),
-    ...(primary.recovery === undefined ? {} : { recovery: primary.recovery }),
-  })
 }
 
 function isNodeError(error: unknown, code: string): boolean {
@@ -613,8 +601,15 @@ async function installPreset(
 
   if (operationFailed) {
     if (cleanupErrors.length > 0) {
+      const cleanupFailure = new AggregateError(
+        cleanupErrors,
+        `Preset ${id} installation cleanup was incomplete`,
+      )
+      if (isOperationalError(operationError)) {
+        throw attachOperationalErrorSecondary(operationError, cleanupFailure)
+      }
       throw new AggregateError(
-        [operationError, ...cleanupErrors],
+        [operationError, cleanupFailure],
         `Preset ${id} installation failed and cleanup was incomplete`,
       )
     }
@@ -830,7 +825,7 @@ async function mutateWithContext<Result>(
   if (outcome.kind === 'failure') {
     throw releaseFailure === undefined
       ? outcome.error
-      : withSecondaryFailure(outcome.error, releaseFailure)
+      : attachOperationalErrorSecondary(outcome.error, releaseFailure)
   }
   if (releaseFailure !== undefined) {
     throw releaseFailure

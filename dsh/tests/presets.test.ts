@@ -178,6 +178,7 @@ interface PresetWorker {
   output(): string
   ready: Promise<void>
   result: Promise<WorkerResult>
+  signal(type: string): void
   start(): void
   terminate(): Promise<void>
 }
@@ -185,11 +186,13 @@ interface PresetWorker {
 interface PresetWorkerOptions {
   execPath?: string
   moduleUrl?: string
-  timeoutMs?: number
+  readyTimeoutMs?: number
+  resultTimeoutMs?: number
 }
 
 const activePresetWorkers = new Set<PresetWorker>()
-const DEFAULT_WORKER_TIMEOUT_MS = 10_000
+const DEFAULT_WORKER_READY_TIMEOUT_MS = 10_000
+const DEFAULT_WORKER_RESULT_TIMEOUT_MS = 10_000
 const WORKER_TERMINATION_TIMEOUT_MS = 1_000
 
 function workerFailure(
@@ -227,7 +230,10 @@ function spawnPresetWorker(
   child.stderr?.on('data', (chunk) => {
     output += String(chunk)
   })
-  const timeoutMs = options.timeoutMs ?? DEFAULT_WORKER_TIMEOUT_MS
+  const readyTimeoutMs =
+    options.readyTimeoutMs ?? DEFAULT_WORKER_READY_TIMEOUT_MS
+  const resultTimeoutMs =
+    options.resultTimeoutMs ?? DEFAULT_WORKER_RESULT_TIMEOUT_MS
   let resolveReady!: () => void
   let rejectReady!: (error: unknown) => void
   let readySettled = false
@@ -263,11 +269,13 @@ function spawnPresetWorker(
   }
 
   const readyTimer = setTimeout(() => {
-    const error = new Error(`preset worker ready timed out after ${timeoutMs}ms`)
+    const error = new Error(
+      `preset worker ready timed out after ${readyTimeoutMs}ms`,
+    )
     settleReady(error)
     settleResult(undefined, error)
     child.kill('SIGTERM')
-  }, timeoutMs)
+  }, readyTimeoutMs)
   readyTimer.unref()
 
   child.once('error', (error) => {
@@ -317,10 +325,13 @@ function spawnPresetWorker(
     closed,
     message(type: string): Promise<void> {
       return new Promise((resolve, reject) => {
+        const messageTimeoutMs = readySettled
+          ? resultTimeoutMs
+          : readyTimeoutMs
         const timer = setTimeout(() => {
           cleanup()
           reject(new Error(`preset worker message ${type} timed out`))
-        }, timeoutMs)
+        }, messageTimeoutMs)
         timer.unref()
         const onMessage = (message: unknown) => {
           if (
@@ -355,16 +366,19 @@ function spawnPresetWorker(
     output: () => output,
     ready,
     result,
+    signal(type: string): void {
+      child.send({ type })
+    },
     start() {
       if (started) throw new Error('preset worker already started')
       started = true
       resultTimer = setTimeout(() => {
         const error = new Error(
-          `preset worker result timed out after ${timeoutMs}ms`,
+          `preset worker result timed out after ${resultTimeoutMs}ms`,
         )
         settleResult(undefined, error)
         child.kill('SIGTERM')
-      }, timeoutMs)
+      }, resultTimeoutMs)
       resultTimer.unref()
       child.send({ type: 'start' }, (error) => {
         if (error !== null) settleResult(undefined, error)
@@ -755,6 +769,10 @@ describe('preset transaction locking', () => {
       code: 'ERR_PRESET_UNOWNED',
       message: 'An Anban preset is not owned by this package.',
     })
+    const debugDiagnostic = formatOperationalError(failure, { debug: true })
+    expect(debugDiagnostic).toContain('unownedPreset')
+    expect(debugDiagnostic).not.toContain('attachOperationalErrorSecondary')
+    expect(debugDiagnostic).not.toContain('leaked-release-secret')
     expect(releaseAttempts).toBe(3)
     expect(JSON.stringify(failure)).not.toContain('leaked-release-secret')
   })
@@ -1030,6 +1048,63 @@ describe('preset installation', () => {
     expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
       'article',
     ])
+  })
+
+  it('preserves rollback recovery when operation cleanup also fails', async () => {
+    const fixture = await createFixture()
+    const article = destination(fixture, 'article')
+    await presetTestInternals.install(
+      fixtureOptions(fixture, { presetIds: ['article'] }),
+    )
+    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+
+    const failure = await presetTestInternals
+      .install(
+        fixtureOptions(fixture, {
+          faults: {
+            beforeRemoveOperationPath(path) {
+              if (path.includes('.article.anban-temporary-')) {
+                throw new Error('Authorization Bearer cleanup-secret')
+              }
+            },
+            beforeRename(source, target) {
+              if (
+                source.includes('.article.anban-temporary-') &&
+                target === article
+              ) {
+                throw new Error('replacement-secret')
+              }
+              if (
+                source.includes('.article.anban-backup-') &&
+                target === article
+              ) {
+                throw new Error('rollback-secret')
+              }
+            },
+          },
+          presetIds: ['article'],
+        }),
+      )
+      .catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({
+      code: 'ERR_PRESET_ROLLBACK',
+      message: 'An Anban preset rollback failed.',
+      recovery: 'Inspect the preset directory before retrying the operation.',
+    })
+    expect(formatOperationalError(failure)).toBe(
+      'ERR_PRESET_ROLLBACK: An Anban preset rollback failed. Inspect the preset directory before retrying the operation.',
+    )
+    for (const secret of [
+      'replacement-secret',
+      'rollback-secret',
+      'cleanup-secret',
+    ]) {
+      expect(formatOperationalError(failure, { debug: true })).not.toContain(
+        secret,
+      )
+      expect(JSON.stringify(failure)).not.toContain(secret)
+    }
   })
 
   it('retries backup cleanup after a successful replacement', async () => {
@@ -1406,29 +1481,6 @@ describe('preset containment and digest safety', () => {
 })
 
 describe('preset cross-process transactions', () => {
-  async function settleWithin<T>(
-    promise: Promise<T>,
-    milliseconds = 300,
-  ): Promise<
-    | { kind: 'fulfilled'; value: T }
-    | { error: unknown; kind: 'rejected' }
-    | { kind: 'timeout' }
-  > {
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve({ kind: 'timeout' }), milliseconds)
-      promise.then(
-        (value) => {
-          clearTimeout(timer)
-          resolve({ kind: 'fulfilled', value })
-        },
-        (error: unknown) => {
-          clearTimeout(timer)
-          resolve({ error, kind: 'rejected' })
-        },
-      )
-    })
-  }
-
   async function runWorker(action: string, dshHome: string): Promise<{
     output: string
     result: WorkerResult
@@ -1453,13 +1505,13 @@ describe('preset cross-process transactions', () => {
     fixtureRoots.push(root)
     const worker = spawnPresetWorker('exit-before-ready', join(root, 'home'))
 
-    const [ready, result] = await Promise.all([
-      settleWithin(worker.ready),
-      settleWithin(worker.result),
+    const [ready, result] = await Promise.allSettled([
+      worker.ready,
+      worker.result,
     ])
 
-    expect(ready).toMatchObject({ kind: 'rejected' })
-    expect(result).toMatchObject({ kind: 'rejected' })
+    expect(ready).toMatchObject({ status: 'rejected' })
+    expect(result).toMatchObject({ status: 'rejected' })
   })
 
   it('rejects a zero exit that sends no result', async () => {
@@ -1469,9 +1521,7 @@ describe('preset cross-process transactions', () => {
     await worker.ready
     worker.start()
 
-    expect(await settleWithin(worker.result)).toMatchObject({
-      kind: 'rejected',
-    })
+    await expect(worker.result).rejects.toThrow('before result')
   })
 
   it('rejects ready and result on module setup failure', async () => {
@@ -1481,13 +1531,13 @@ describe('preset cross-process transactions', () => {
       moduleUrl: pathToFileURL(join(root, 'missing-presets.js')).href,
     })
 
-    const [ready, result] = await Promise.all([
-      settleWithin(worker.ready),
-      settleWithin(worker.result),
+    const [ready, result] = await Promise.allSettled([
+      worker.ready,
+      worker.result,
     ])
 
-    expect(ready).toMatchObject({ kind: 'rejected' })
-    expect(result).toMatchObject({ kind: 'rejected' })
+    expect(ready).toMatchObject({ status: 'rejected' })
+    expect(result).toMatchObject({ status: 'rejected' })
   })
 
   it('reports the terminating signal while waiting for a result', async () => {
@@ -1498,30 +1548,41 @@ describe('preset cross-process transactions', () => {
     worker.start()
     worker.child.kill('SIGTERM')
 
-    const outcome = await settleWithin(worker.result)
-
-    expect(outcome).toMatchObject({
-      error: { message: expect.stringContaining('SIGTERM') },
-      kind: 'rejected',
-    })
+    await expect(worker.result).rejects.toThrow('SIGTERM')
   })
 
   it('bounds ready and result waits and leaves teardown able to stop the worker', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-timeout-'))
     fixtureRoots.push(root)
     const worker = spawnPresetWorker('wait-without-result', join(root, 'home'), {
-      timeoutMs: 50,
+      resultTimeoutMs: 50,
     })
     await worker.ready
     worker.start()
 
-    const outcome = await settleWithin(worker.result)
+    await expect(worker.result).rejects.toThrow('result timed out')
     await worker.closed
+  })
 
-    expect(outcome).toMatchObject({
-      error: { message: expect.stringContaining('timed out') },
-      kind: 'rejected',
-    })
+  it('allows readiness to exceed the result deadline before starting result phase', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-process-phase-timeout-'))
+    fixtureRoots.push(root)
+    const worker = spawnPresetWorker(
+      'delayed-ready-without-result',
+      join(root, 'home'),
+      {
+        readyTimeoutMs: 2_000,
+        resultTimeoutMs: 20,
+      },
+    )
+    const setupStarted = worker.message('setup-started')
+    worker.signal('begin-setup')
+    await setupStarted
+
+    await expect(worker.ready).resolves.toBeUndefined()
+    worker.start()
+    await expect(worker.result).rejects.toThrow('result timed out')
+    await worker.closed
   })
 
   it('terminates and awaits every tracked worker before fixture cleanup', async () => {
@@ -1545,13 +1606,13 @@ describe('preset cross-process transactions', () => {
       execPath: join(root, 'missing-node-executable'),
     })
 
-    const [ready, result] = await Promise.all([
-      settleWithin(worker.ready),
-      settleWithin(worker.result),
+    const [ready, result] = await Promise.allSettled([
+      worker.ready,
+      worker.result,
     ])
 
-    expect(ready).toMatchObject({ kind: 'rejected' })
-    expect(result).toMatchObject({ kind: 'rejected' })
+    expect(ready).toMatchObject({ status: 'rejected' })
+    expect(result).toMatchObject({ status: 'rejected' })
   })
 
   it('makes concurrent install/install idempotent across Node processes', async () => {

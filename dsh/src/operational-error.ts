@@ -163,6 +163,24 @@ export function isOperationalError(error: unknown): error is OperationalError {
   )
 }
 
+export function attachOperationalErrorSecondary(
+  primary: OperationalError,
+  secondary: unknown,
+): OperationalError {
+  if (!isOperationalError(primary)) {
+    throw new TypeError('Invalid primary operational error')
+  }
+  const combined = new OperationalError(primary.code, primary.message, {
+    cause: new AggregateError(
+      [primary, secondary],
+      'Operational failure had a secondary failure',
+    ),
+    ...(primary.recovery === undefined ? {} : { recovery: primary.recovery }),
+  })
+  OPERATIONAL_STACKS.set(combined, OPERATIONAL_STACKS.get(primary))
+  return combined
+}
+
 export function formatOperationalError(
   error: unknown,
   options: OperationalErrorFormatOptions = {},

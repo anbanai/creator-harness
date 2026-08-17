@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   OPERATIONAL_ERROR_CODES,
   OperationalError,
+  attachOperationalErrorSecondary,
   formatOperationalError,
   isDshDebugEnabled,
   isOperationalError,
@@ -136,6 +137,45 @@ describe('OperationalError', () => {
     expect(rendered).not.toContain('leaked-secret')
     expect(rendered).not.toContain('Authorization')
     expect(error).not.toHaveProperty('cause')
+  })
+
+  it('attaches a private secondary cause without replacing the primary stack', () => {
+    const previousPrepareStackTrace = Error.prepareStackTrace
+    let primary: OperationalError
+    try {
+      Error.prepareStackTrace = () => [
+        'OperationalError: Primary failure.',
+        '    at primary-stack-marker',
+      ].join('\n')
+      primary = new OperationalError(
+        'ERR_PRESET_ROLLBACK',
+        'Primary failure.',
+        { recovery: 'Inspect the recovery path.' },
+      )
+      void primary.stack
+    } finally {
+      Error.prepareStackTrace = previousPrepareStackTrace
+    }
+
+    const combined = attachOperationalErrorSecondary(
+      primary,
+      new Error('Authorization Bearer leaked-secondary-secret'),
+    )
+    const rendered = formatOperationalError(combined, { debug: true })
+
+    expect(combined).toMatchObject({
+      code: 'ERR_PRESET_ROLLBACK',
+      message: 'Primary failure.',
+      recovery: 'Inspect the recovery path.',
+    })
+    expect(rendered.split('\n').slice(0, 3)).toEqual([
+      'ERR_PRESET_ROLLBACK: Primary failure. Inspect the recovery path.',
+      'OperationalError: Primary failure.',
+      'at primary-stack-marker',
+    ])
+    expect(rendered).not.toContain('attachOperationalErrorSecondary')
+    expect(rendered).not.toContain('leaked-secondary-secret')
+    expect(JSON.stringify(combined)).not.toContain('leaked-secondary-secret')
   })
 
   it('sanitizes and bounds every appended debug stack line', () => {

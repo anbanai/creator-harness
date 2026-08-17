@@ -35,6 +35,16 @@ function serializeError(error) {
   }
 }
 
+if (action === 'delayed-ready-without-result') {
+  await new Promise((resolve) => {
+    process.once('message', (message) => {
+      if (message?.type === 'begin-setup') resolve()
+    })
+  })
+  await send({ type: 'setup-started' })
+  await new Promise((resolve) => setTimeout(resolve, 120))
+}
+
 const presets = await import(presetsModuleUrl)
 await send({ type: 'ready' })
 await new Promise((resolve) => process.once('message', resolve))
@@ -42,7 +52,10 @@ await new Promise((resolve) => process.once('message', resolve))
 if (action === 'exit-without-result') {
   process.exit(0)
 }
-if (action === 'wait-without-result') {
+if (
+  action === 'wait-without-result' ||
+  action === 'delayed-ready-without-result'
+) {
   await new Promise(() => setInterval(() => {}, 60_000))
 }
 
