@@ -249,7 +249,7 @@ describe('preset manager handlers', () => {
     expect(JSON.stringify(result)).not.toContain('leaked-secret')
   })
 
-  it('accepts injected debug configuration without mutating process state', async () => {
+  it('uses injected debug configuration without trusting a replaced stack', async () => {
     const failure = new OperationalError(
       'ERR_PRESET_LOCKED',
       'Another preset operation is running.',
@@ -264,13 +264,15 @@ describe('preset manager handlers', () => {
 
     const result = await fake.definitions[0]!.handler(invocation(''))
 
-    expect(result).toEqual({
-      kind: 'error',
-      text: [
-        'ERR_PRESET_LOCKED: Another preset operation is running.',
-        'OperationalError: Another preset operation is running.',
-        'at Authorization: [REDACTED]',
-      ].join('\n'),
-    })
+    expect(result.kind).toBe('error')
+    if (result.kind !== 'error' || result.text === undefined) {
+      throw new Error('Expected an error result with diagnostic text')
+    }
+    expect(result.text.split('\n').slice(0, 2)).toEqual([
+      'ERR_PRESET_LOCKED: Another preset operation is running.',
+      'OperationalError: Another preset operation is running.',
+    ])
+    expect(result.text).not.toContain('leaked-debug-secret')
+    expect(result.text).not.toContain('Authorization: [REDACTED]')
   })
 })

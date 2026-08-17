@@ -123,16 +123,24 @@ describe('OperationalError', () => {
   })
 
   it('sanitizes and bounds every appended debug stack line', () => {
-    const error = new OperationalError(
-      'ERR_PRESET_OPERATION',
-      'Unable to install Anban Presets.',
-      { cause: { config: { authorization: 'leaked-object-secret' } } },
-    )
-    error.stack = [
+    const preparedStack = [
       'OperationalError: Unable to install Anban Presets.',
       '    at Authorization Bearer leaked-stack-secret',
       `    at ${'x'.repeat(700)}`,
     ].join('\n')
+    const previousPrepareStackTrace = Error.prepareStackTrace
+    let error: OperationalError
+    try {
+      Error.prepareStackTrace = () => preparedStack
+      error = new OperationalError(
+        'ERR_PRESET_OPERATION',
+        'Unable to install Anban Presets.',
+        { cause: { config: { authorization: 'leaked-object-secret' } } },
+      )
+      void error.stack
+    } finally {
+      Error.prepareStackTrace = previousPrepareStackTrace
+    }
 
     const rendered = formatOperationalError(error, { debug: true })
     const lines = rendered.split('\n')
@@ -149,6 +157,47 @@ describe('OperationalError', () => {
     expect(rendered).not.toContain('leaked-stack-secret')
     expect(rendered).not.toContain('leaked-object-secret')
     expect(rendered).not.toContain('config')
+  })
+
+  it('never executes a stack getter installed after construction', () => {
+    const error = new OperationalError(
+      'ERR_PRESET_OPERATION',
+      'Unable to install Anban Presets.',
+    )
+    let getterCalls = 0
+    Object.defineProperty(error, 'stack', {
+      configurable: true,
+      get() {
+        getterCalls += 1
+        return 'token=credential-secret'
+      },
+    })
+
+    const rendered = formatOperationalError(error, { debug: true })
+
+    expect(getterCalls).toBe(0)
+    expect(rendered).not.toContain('credential-secret')
+  })
+
+  it('does not scan a trusted stack snapshot past 4096 characters', () => {
+    const preparedStack = `${'x'.repeat(4_096)}\ntail-marker-secret`
+    const previousPrepareStackTrace = Error.prepareStackTrace
+    let error: OperationalError
+    try {
+      Error.prepareStackTrace = () => preparedStack
+      error = new OperationalError(
+        'ERR_PRESET_OPERATION',
+        'Unable to install Anban Presets.',
+      )
+      void error.stack
+    } finally {
+      Error.prepareStackTrace = previousPrepareStackTrace
+    }
+
+    const rendered = formatOperationalError(error, { debug: true })
+
+    expect(rendered).not.toContain('tail-marker-secret')
+    expect(rendered.split('\n')).toHaveLength(2)
   })
 
   it('maps unknown failures to a safe operation diagnostic without inspecting them', () => {

@@ -207,7 +207,7 @@ describe('runCLI output', () => {
     expect(JSON.stringify(io.error.mock.calls)).not.toContain('leaked-secret')
   })
 
-  it('accepts injected debug configuration without mutating process state', async () => {
+  it('uses injected debug configuration without trusting a replaced stack', async () => {
     const failure = new OperationalError(
       'ERR_PRESET_LOCKED',
       'Another preset operation is running.',
@@ -225,12 +225,15 @@ describe('runCLI output', () => {
       }),
     ).resolves.toBe(1)
 
-    expect(io.error).toHaveBeenCalledWith(
-      [
-        'ERR_PRESET_LOCKED: Another preset operation is running.',
-        'OperationalError: Another preset operation is running.',
-        'at Authorization: [REDACTED]',
-      ].join('\n'),
+    expect(io.error).toHaveBeenCalledOnce()
+    const output = io.error.mock.calls[0]![0] as string
+    expect(output.split('\n').slice(0, 2)).toEqual([
+      'ERR_PRESET_LOCKED: Another preset operation is running.',
+      'OperationalError: Another preset operation is running.',
+    ])
+    expect(output).not.toContain('leaked-debug-secret')
+    expect(output).not.toContain(
+      'Authorization: [REDACTED]',
     )
   })
 })

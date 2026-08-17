@@ -33,8 +33,10 @@ export interface OperationalErrorFormatOptions {
 
 const MAX_PUBLIC_TEXT_LENGTH = 240
 const MAX_DEBUG_STACK_LINES = 32
+const MAX_DEBUG_STACK_SCAN_LENGTH = 4_096
 const PUBLIC_TEXT_PATTERN = /^[\x20-\x7e]+$/
 const OPERATIONAL_ERRORS = new WeakSet<object>()
+const OPERATIONAL_STACKS = new WeakMap<object, string | undefined>()
 
 function validateCode(code: OperationalErrorCode): OperationalErrorCode {
   if (!(OPERATIONAL_ERROR_CODES as readonly unknown[]).includes(code)) {
@@ -54,7 +56,7 @@ function validatePublicText(value: string, field: 'message' | 'recovery'): strin
   return value
 }
 
-function ownStack(error: OperationalError): string | undefined {
+function captureOwnStack(error: OperationalError): string | undefined {
   try {
     const descriptor = Object.getOwnPropertyDescriptor(error, 'stack')
     if (descriptor === undefined) {
@@ -62,10 +64,35 @@ function ownStack(error: OperationalError): string | undefined {
     }
     const stack =
       'value' in descriptor ? descriptor.value : descriptor.get?.call(error)
-    return typeof stack === 'string' ? stack : undefined
+    if (typeof stack !== 'string') {
+      return undefined
+    }
+    return stack.slice(0, MAX_DEBUG_STACK_SCAN_LENGTH)
   } catch {
     return undefined
   }
+}
+
+function formatDebugStack(stack: string | undefined): string[] {
+  if (stack === undefined || stack === '') {
+    return []
+  }
+
+  const lines: string[] = []
+  let lineStart = 0
+  while (
+    lineStart < stack.length &&
+    lines.length < MAX_DEBUG_STACK_LINES
+  ) {
+    const lineBreak = stack.indexOf('\n', lineStart)
+    const lineEnd = lineBreak === -1 ? stack.length : lineBreak
+    lines.push(safeErrorLine(stack.slice(lineStart, lineEnd)))
+    if (lineBreak === -1) {
+      break
+    }
+    lineStart = lineBreak + 1
+  }
+  return lines
 }
 
 export class OperationalError extends Error {
@@ -105,6 +132,7 @@ export class OperationalError extends Error {
       value: recovery,
       writable: false,
     })
+    OPERATIONAL_STACKS.set(this, captureOwnStack(this))
     OPERATIONAL_ERRORS.add(this)
   }
 }
@@ -154,14 +182,7 @@ export function formatOperationalError(
     return diagnostic
   }
 
-  const stack = ownStack(error)
-  if (stack === undefined) {
-    return diagnostic
-  }
-  const stackLines = stack
-    .split('\n')
-    .slice(0, MAX_DEBUG_STACK_LINES)
-    .map((line) => safeErrorLine(line))
+  const stackLines = formatDebugStack(OPERATIONAL_STACKS.get(error))
   return stackLines.length === 0
     ? diagnostic
     : [diagnostic, ...stackLines].join('\n')
