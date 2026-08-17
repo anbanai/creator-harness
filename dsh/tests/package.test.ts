@@ -236,6 +236,26 @@ describe('DSH package manifest', () => {
     )
   })
 
+  it('documents the destructive removal behavior for modified owned Presets', async () => {
+    const guide = await readFile(installationGuideUrl, 'utf8')
+    const normalized = guide.replace(/\s+/g, ' ')
+
+    expect(guide).toContain(
+      'dsh plugin --profile web exec anban-dsh remove-presets',
+    )
+    expect(guide).toContain(
+      'dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets',
+    )
+    expect(normalized).toMatch(
+      /remove-presets removes Anban-owned Presets even if they are modified/i,
+    )
+    expect(normalized).toMatch(
+      /run .*status.*back up .*local modifications.*before removing/i,
+    )
+    expect(normalized).toMatch(/refuses to remove unowned Preset directories/i)
+    expect(normalized).not.toMatch(/refuses to (?:remove|delete)[^.]*modified/i)
+  })
+
   it('scans every built runtime payload during the check sequence', async () => {
     let entries
     try {

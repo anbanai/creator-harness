@@ -83,8 +83,9 @@ dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets
 dsh plugin --profile "$ACTIVE_PROFILE" remove @anban/dsh-plugin
 ```
 
-The removal command refuses to delete an unowned or modified Preset. Inspect
-its status instead of deleting profile files manually.
+remove-presets removes Anban-owned Presets even if they are modified. Run the
+profile-explicit status command and back up any local modifications before
+removing Presets. It refuses to remove unowned Preset directories.
 
 ## Git-source installs
 
