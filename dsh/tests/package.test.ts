@@ -11,8 +11,8 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { join, parse, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
@@ -175,9 +175,67 @@ function bashBlockUnder(source: string, heading: string) {
 }
 
 function shellWords(line: string) {
-  return [...line.matchAll(/"([^"]*)"|'([^']*)'|([^\s]+)/g)].map(
-    (match) => match[1] ?? match[2] ?? match[3] ?? '',
-  )
+  const words: string[] = []
+  let word = ''
+  let wordStarted = false
+  let quote: '"' | "'" | undefined
+  let ambiguous = false
+  const flush = () => {
+    if (wordStarted) words.push(word)
+    word = ''
+    wordStarted = false
+  }
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index] ?? ''
+    if (quote !== undefined) {
+      if (character === quote) {
+        quote = undefined
+      } else if (quote === '"' && character === '\\') {
+        const escaped = line[index + 1]
+        if (escaped === undefined) ambiguous = true
+        else {
+          word += escaped
+          index += 1
+        }
+      } else {
+        word += character
+      }
+      wordStarted = true
+      continue
+    }
+    if (/\s/.test(character)) {
+      flush()
+      continue
+    }
+    if (character === '"' || character === "'") {
+      quote = character
+      wordStarted = true
+      continue
+    }
+    if (character === '\\') {
+      const escaped = line[index + 1]
+      if (escaped === undefined) ambiguous = true
+      else {
+        word += escaped
+        wordStarted = true
+        index += 1
+      }
+      continue
+    }
+    if (character === ';' || character === '&' || character === '|') {
+      flush()
+      const doubled = line[index + 1] === character && character !== ';'
+      words.push(doubled ? character + character : character)
+      if (doubled) index += 1
+      continue
+    }
+    word += character
+    wordStarted = true
+  }
+  if (quote !== undefined) ambiguous = true
+  flush()
+  return { ambiguous, words }
 }
 
 function expandDocVariables(value: string, variables: Map<string, string>) {
@@ -216,65 +274,75 @@ function documentedPluginAddFindings(source: string) {
         continue
       }
 
-      const words = shellWords(line)
-      let commandIndex = 0
-      if (words[commandIndex] === '$') commandIndex += 1
-      while (
-        words[commandIndex] === 'command' ||
-        words[commandIndex] === 'env' ||
-        /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[commandIndex] ?? '')
-      ) {
-        commandIndex += 1
+      const commandLine = line.replace(/^\$\s+/, '')
+      const { ambiguous, words } = shellWords(commandLine)
+      let sawAddSequence = false
+      for (let commandIndex = 0; commandIndex + 1 < words.length; commandIndex += 1) {
+        if (words[commandIndex] !== 'dsh' || words[commandIndex + 1] !== 'plugin') {
+          continue
+        }
+        let commandEnd = words.length
+        for (let index = commandIndex + 2; index < words.length; index += 1) {
+          if ([';', '&', '&&', '|', '||'].includes(words[index] ?? '')) {
+            commandEnd = index
+            break
+          }
+        }
+        const addIndex = words.indexOf('add', commandIndex + 2)
+        if (addIndex === -1 || addIndex >= commandEnd) continue
+        sawAddSequence = true
+        if (ambiguous) {
+          findings.push(`${line}: ambiguous shell tokenization`)
+          break
+        }
+        const rawSpecifier = words[addIndex + 1]
+        if (rawSpecifier === undefined || addIndex + 1 >= commandEnd) {
+          findings.push(`${line}: missing add specifier`)
+          continue
+        }
+        const specifier = expandDocVariables(rawSpecifier, variables)
+        const npmPackage =
+          /^@anban\/dsh-plugin@(?:replace-with-published-version|(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(
+            specifier,
+          )
+        const localTarballPattern =
+          /(?:^|[/\\])anban-dsh-plugin-(?:replace-with-published-version|(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/
+        const fileTarball =
+          specifier.startsWith('file:') &&
+          localTarballPattern.test(specifier.slice('file:'.length))
+        const releaseTarballMatch =
+          /^https:\/\/github\.com\/royalmorty\/anbanwriter\/releases\/download\/v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\/anban-dsh-plugin-((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/.exec(
+            specifier,
+          )
+        const releaseTarball =
+          releaseTarballMatch !== null &&
+          releaseTarballMatch[1] === releaseTarballMatch[2]
+        const localTarball =
+          !specifier.startsWith('file:') &&
+          !specifier.includes('://') &&
+          localTarballPattern.test(specifier)
+        const tarball = fileTarball || releaseTarball || localTarball
+        const gitMatch =
+          /^git\+https:\/\/github\.com\/anbanai\/creator-skills\.git#(.+)$/.exec(
+            specifier,
+          )
+        const gitRef = gitMatch?.[1]
+        const immutableGit =
+          gitRef !== undefined &&
+          (gitRef === 'replace-with-immutable-tag-or-full-40-character-commit' ||
+            /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(gitRef) ||
+            /^[0-9a-f]{40}$/.test(gitRef))
+
+        if (!npmPackage && !tarball && !immutableGit) {
+          findings.push(`${line}: unsupported add specifier ${specifier}`)
+        }
       }
       if (
-        words[commandIndex] !== 'dsh' ||
-        words[commandIndex + 1] !== 'plugin'
+        ambiguous &&
+        !sawAddSequence &&
+        /\bdsh\s+plugin\b.*\badd\b/.test(commandLine)
       ) {
-        continue
-      }
-
-      const addIndex = words.indexOf('add', commandIndex + 2)
-      if (addIndex === -1) continue
-      const rawSpecifier = words[addIndex + 1]
-      if (rawSpecifier === undefined) {
-        findings.push(`${line}: missing add specifier`)
-        continue
-      }
-      const specifier = expandDocVariables(rawSpecifier, variables)
-      const npmPackage =
-        /^@anban\/dsh-plugin@(?:replace-with-published-version|(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(
-          specifier,
-        )
-      const localTarballPattern =
-        /(?:^|[/\\])anban-dsh-plugin-(?:replace-with-published-version|(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/
-      const fileTarball =
-        specifier.startsWith('file:') &&
-        localTarballPattern.test(specifier.slice('file:'.length))
-      const releaseTarballMatch =
-        /^https:\/\/github\.com\/royalmorty\/anbanwriter\/releases\/download\/v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\/anban-dsh-plugin-((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/.exec(
-          specifier,
-        )
-      const releaseTarball =
-        releaseTarballMatch !== null &&
-        releaseTarballMatch[1] === releaseTarballMatch[2]
-      const localTarball =
-        !specifier.startsWith('file:') &&
-        !specifier.includes('://') &&
-        localTarballPattern.test(specifier)
-      const tarball = fileTarball || releaseTarball || localTarball
-      const gitMatch =
-        /^git\+https:\/\/github\.com\/anbanai\/creator-skills\.git#(.+)$/.exec(
-          specifier,
-        )
-      const gitRef = gitMatch?.[1]
-      const immutableGit =
-        gitRef !== undefined &&
-        (gitRef === 'replace-with-immutable-tag-or-full-40-character-commit' ||
-          /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(gitRef) ||
-          /^[0-9a-f]{40}$/.test(gitRef))
-
-      if (!npmPackage && !tarball && !immutableGit) {
-        findings.push(`${line}: unsupported add specifier ${specifier}`)
+        findings.push(`${line}: ambiguous shell tokenization`)
       }
     }
   }
@@ -620,6 +688,27 @@ command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anban
 dsh plugin --profile "$ACTIVE_PROFILE" add \\
   "file:/tmp/creator-skills"
 \`\`\``,
+      `\`\`\`bash
+env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin"
+\`\`\``,
+      `\`\`\`bash
+command -- dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/arbitrary-plugin-4.1.12.tgz"
+\`\`\``,
+      `\`\`\`bash
+env -u DSH_HOME dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#main"
+\`\`\``,
+      `\`\`\`bash
+ONE=1 TWO=2 wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/creator-skills"
+\`\`\``,
+      `\`\`\`bash
+LABEL="two words" dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/with spaces/arbitrary-plugin-4.1.12.tgz"
+\`\`\``,
+      `\`\`\`bash
+dsh plugin --profile "$ACTIVE_PROFILE" add
+\`\`\``,
+      `\`\`\`bash
+dsh plugin --profile "$ACTIVE_PROFILE" add "unterminated
+\`\`\``,
     ]) {
       expect(documentedPluginAddFindings(source), source).not.toEqual([])
     }
@@ -637,26 +726,80 @@ command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anban
 dsh plugin --profile "$ACTIVE_PROFILE" add \\
   "https://github.com/royalmorty/anbanwriter/releases/download/v4.1.12/anban-dsh-plugin-4.1.12.tgz"
 \`\`\``,
+      `\`\`\`bash
+env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.12"
+\`\`\``,
+      `\`\`\`bash
+command -- dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.12.tgz"
+\`\`\``,
+      `\`\`\`bash
+env -u DSH_HOME dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"
+\`\`\``,
+      `\`\`\`bash
+ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/with spaces/anban-dsh-plugin-4.1.12.tgz"
+\`\`\``,
     ]) {
       expect(documentedPluginAddFindings(source), source).toEqual([])
     }
+    expect(
+      documentedPluginAddFindings(
+        'Run dsh plugin --profile web add "@anban/dsh-plugin" in a shell.',
+      ),
+    ).toEqual([])
   })
 
-  it('resolves an effective DSH home before any home filesystem use', async () => {
+  it('normalizes the effective DSH home before any home filesystem use', async () => {
     const guide = await readFile(installationGuideUrl, 'utf8')
-    const definition = 'export DSH_HOME="${DSH_HOME:-$HOME/.dsh}"'
-    const definitionIndex = guide.indexOf(definition)
+    const sectionStart = guide.indexOf('## Resolve DSH home')
+    const sectionEnd = guide.indexOf('\n## ', sectionStart + 1)
+    const section = guide.slice(sectionStart, sectionEnd)
+    const scriptMatch = /node <<'NODE'\n([\s\S]*?)\nNODE/.exec(section)
+    const script = scriptMatch?.[1]
+    expect(script).toBeDefined()
 
-    expect(guide.match(/^export DSH_HOME=.*$/gm)).toEqual([definition])
-    expect(definitionIndex).toBeGreaterThanOrEqual(0)
-    expect(guide.slice(0, definitionIndex)).not.toContain('$DSH_HOME')
-    expect(guide).not.toMatch(/^DSH_HOME=(?:""|''|"?\$DSH_HOME"?)$/gm)
+    for (const [input, expected] of [
+      [undefined, resolve(homedir(), '.dsh')],
+      ['  \t ', resolve(homedir(), '.dsh')],
+      ['~', resolve(homedir())],
+      ['~/custom', resolve(homedir(), 'custom')],
+      ['relative/dsh-home', resolve(packageRootPath, 'relative/dsh-home')],
+      [join(tmpdir(), 'absolute-dsh-home'), resolve(tmpdir(), 'absolute-dsh-home')],
+    ] as const) {
+      const env = { ...process.env }
+      if (input === undefined) delete env.DSH_HOME
+      else env.DSH_HOME = input
+      const result = spawnSync(process.execPath, ['-e', script ?? ''], {
+        cwd: packageRootPath,
+        encoding: 'utf8',
+        env,
+      })
+      expect(result.status, `${input ?? '<unset>'}: ${result.stderr}`).toBe(0)
+      expect(result.stdout).toBe(expected)
+    }
+
+    const rootResult = spawnSync(process.execPath, ['-e', script ?? ''], {
+      cwd: packageRootPath,
+      encoding: 'utf8',
+      env: { ...process.env, DSH_HOME: parse(resolve('/')).root },
+    })
+    expect(rootResult.status).not.toBe(0)
+    expect(rootResult.stderr).toMatch(/filesystem root/i)
+
+    const captureIndex = section.indexOf('NORMALIZED_DSH_HOME="$(')
+    const emptyGuardIndex = section.indexOf('[ -n "$NORMALIZED_DSH_HOME" ]')
+    const exportIndex = section.indexOf('export DSH_HOME="$NORMALIZED_DSH_HOME"')
+    expect(captureIndex).toBeGreaterThanOrEqual(0)
+    expect(emptyGuardIndex).toBeGreaterThan(captureIndex)
+    expect(exportIndex).toBeGreaterThan(emptyGuardIndex)
+    expect(guide.slice(0, sectionStart)).not.toContain('$DSH_HOME')
 
     const filesystemLines = guide.match(
       /^(?:install|mkdir|chmod|mv|cp|rm)\b[^\n]*\$DSH_HOME[^\n]*$/gm,
     ) ?? []
     expect(filesystemLines.length).toBeGreaterThan(0)
-    expect(guide.indexOf(filesystemLines[0] ?? '')).toBeGreaterThan(definitionIndex)
+    expect(guide.indexOf(filesystemLines[0] ?? '')).toBeGreaterThan(
+      sectionStart + exportIndex,
+    )
     for (const line of filesystemLines) {
       expect(line).toMatch(/"\$DSH_HOME(?:\/[^"\n]*)?"/)
     }
