@@ -6,6 +6,7 @@ import {
   copyFile,
   lstat,
   mkdir,
+  open,
   readFile,
   readdir,
   rename,
@@ -82,6 +83,7 @@ const PRESET_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/
 const SOURCE_ROOT = fileURLToPath(new URL('../presets/', import.meta.url))
 const PACKAGE_URL = new URL('../../package.json', import.meta.url)
 const RELEASE_ATTEMPTS = 3
+const OWNERSHIP_MAX_BYTES = 64 * 1024
 
 function unownedPreset(cause?: unknown): OperationalError {
   return new OperationalError(
@@ -223,7 +225,16 @@ function comparePaths(left: string, right: string): number {
 async function listFiles(
   root: string,
   excludedRelativePath?: string,
-): Promise<Array<{ absolutePath: string; mode: number; relativePath: string }>> {
+): Promise<
+  Array<{
+    absolutePath: string
+    device: number
+    inode: number
+    mode: number
+    relativePath: string
+    size: number
+  }>
+> {
   const rootStats = await lstat(root)
   if (rootStats.isSymbolicLink()) {
     throw new Error(`Symbolic link is not allowed in preset tree: ${root}`)
@@ -234,8 +245,11 @@ async function listFiles(
 
   const files: Array<{
     absolutePath: string
+    device: number
+    inode: number
     mode: number
     relativePath: string
+    size: number
   }> = []
 
   async function visit(directory: string, prefix: string): Promise<void> {
@@ -245,6 +259,7 @@ async function listFiles(
     for (const name of entries) {
       const absolutePath = join(directory, name)
       const relativePath = prefix === '' ? name : `${prefix}/${name}`
+      assertContained(root, absolutePath)
       const stats = await lstat(absolutePath)
 
       if (stats.isSymbolicLink()) {
@@ -263,7 +278,14 @@ async function listFiles(
         continue
       }
 
-      files.push({ absolutePath, mode: stats.mode, relativePath })
+      files.push({
+        absolutePath,
+        device: stats.dev,
+        inode: stats.ino,
+        mode: stats.mode,
+        relativePath,
+        size: stats.size,
+      })
     }
   }
 
@@ -281,7 +303,6 @@ async function digestDirectory(
 
   for (const file of files) {
     const pathBytes = Buffer.from(file.relativePath, 'utf8')
-    const contents = await readFile(file.absolutePath)
     digest.update('file')
     digest.update('\0')
     digest.update(String(pathBytes.byteLength))
@@ -290,13 +311,92 @@ async function digestDirectory(
     digest.update('\0')
     digest.update(modeClass(file.mode))
     digest.update('\0')
-    digest.update(String(contents.byteLength))
+    digest.update(String(file.size))
     digest.update('\0')
-    digest.update(contents)
+
+    const handle = await open(file.absolutePath, 'r')
+    try {
+      const openedStats = await handle.stat()
+      if (
+        !openedStats.isFile() ||
+        openedStats.dev !== file.device ||
+        openedStats.ino !== file.inode ||
+        openedStats.size !== file.size
+      ) {
+        throw new Error(`Preset file changed while hashing: ${file.relativePath}`)
+      }
+
+      let bytesRead = 0
+      for await (const chunk of handle.createReadStream({ autoClose: false })) {
+        bytesRead += chunk.byteLength
+        if (bytesRead > file.size) {
+          throw new Error(`Preset file changed while hashing: ${file.relativePath}`)
+        }
+        digest.update(chunk)
+      }
+
+      const finalStats = await handle.stat()
+      if (
+        bytesRead !== file.size ||
+        finalStats.dev !== file.device ||
+        finalStats.ino !== file.inode ||
+        finalStats.size !== file.size
+      ) {
+        throw new Error(`Preset file changed while hashing: ${file.relativePath}`)
+      }
+    } finally {
+      await handle.close()
+    }
     digest.update('\0')
   }
 
   return digest.digest('hex')
+}
+
+async function readBoundedOwnershipFile(path: string): Promise<string> {
+  const pathStats = await lstat(path)
+  if (pathStats.isSymbolicLink()) {
+    throw new Error(`Symbolic link is not allowed in preset tree: ${OWNERSHIP_FILE}`)
+  }
+  if (!pathStats.isFile()) {
+    return ''
+  }
+  if (pathStats.size > OWNERSHIP_MAX_BYTES) {
+    throw new Error(`Preset ownership manifest exceeds ${OWNERSHIP_MAX_BYTES} bytes`)
+  }
+
+  const handle = await open(path, 'r')
+  try {
+    const openedStats = await handle.stat()
+    if (
+      !openedStats.isFile() ||
+      openedStats.dev !== pathStats.dev ||
+      openedStats.ino !== pathStats.ino ||
+      openedStats.size !== pathStats.size
+    ) {
+      throw new Error('Preset ownership manifest changed while opening')
+    }
+
+    const buffer = Buffer.alloc(OWNERSHIP_MAX_BYTES + 1)
+    let total = 0
+    while (total < buffer.byteLength) {
+      const { bytesRead } = await handle.read(
+        buffer,
+        total,
+        buffer.byteLength - total,
+        total,
+      )
+      if (bytesRead === 0) break
+      total += bytesRead
+    }
+    const finalStats = await handle.stat()
+    if (total > OWNERSHIP_MAX_BYTES || finalStats.size !== total) {
+      throw new Error(`Preset ownership manifest exceeds ${OWNERSHIP_MAX_BYTES} bytes or changed while reading`)
+    }
+    return buffer.subarray(0, total).toString('utf8')
+  } finally {
+    await handle.close()
+  }
 }
 
 async function copyDirectory(source: string, destination: string): Promise<void> {
@@ -361,15 +461,8 @@ async function readOwnership(
   const ownershipPath = join(destination, OWNERSHIP_FILE)
 
   try {
-    const stats = await lstat(ownershipPath)
-    if (stats.isSymbolicLink()) {
-      throw new Error(`Symbolic link is not allowed in preset tree: ${OWNERSHIP_FILE}`)
-    }
-    if (!stats.isFile()) {
-      return null
-    }
     return parseOwnership(
-      JSON.parse(await readFile(ownershipPath, 'utf8')) as unknown,
+      JSON.parse(await readBoundedOwnershipFile(ownershipPath)) as unknown,
       id,
     )
   } catch (error) {

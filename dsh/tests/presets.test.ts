@@ -527,6 +527,24 @@ afterEach(async () => {
 })
 
 describe('preset public contract', () => {
+  it('rejects oversized ownership manifests with a controlled operation error', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anban-dsh-oversized-ownership-'))
+    fixtureRoots.push(root)
+    await installPresets({ dshHome: root })
+
+    const ownershipPath = join(
+      root,
+      '.agent-presets',
+      PRESET_IDS[0],
+      OWNERSHIP_FILE,
+    )
+    await writeFile(ownershipPath, `${' '.repeat(70 * 1024)}\n`)
+
+    await expect(statusPresets({ dshHome: root })).rejects.toMatchObject({
+      code: 'ERR_PRESET_OPERATION',
+    })
+  })
+
   it('uses a Windows-portable Node command to compile the process fixture', () => {
     const windowsCommand = processFixtureCompileCommand(
       'win32',
@@ -1416,6 +1434,41 @@ describe('preset containment and digest safety', () => {
         fixtureOptions(fixture, { presetIds: ['article'] }),
       ),
     ).toEqual([expect.objectContaining({ state: 'current' })])
+  })
+
+  it('streams large Skill files while preserving digest semantics', async () => {
+    const source = await readFile(
+      fileURLToPath(new URL('../src/presets.ts', import.meta.url)),
+      'utf8',
+    )
+    expect(source).toContain('handle.createReadStream')
+    expect(source).not.toContain('readFile(file.absolutePath)')
+
+    const fixture = await createFixture()
+    const skillPath = join(
+      fixture.sourceRoot,
+      'article',
+      'skills',
+      'article-skill',
+      'SKILL.md',
+    )
+    await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'a'))
+
+    await presetTestInternals.install(
+      fixtureOptions(fixture, { presetIds: ['article'] }),
+    )
+    await expect(
+      presetTestInternals.status(
+        fixtureOptions(fixture, { presetIds: ['article'] }),
+      ),
+    ).resolves.toEqual([expect.objectContaining({ state: 'current' })])
+
+    await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'b'))
+    await expect(
+      presetTestInternals.status(
+        fixtureOptions(fixture, { presetIds: ['article'] }),
+      ),
+    ).resolves.toEqual([expect.objectContaining({ state: 'outdated' })])
   })
 
   it('frames digest records so content cannot forge a following file', async () => {
