@@ -138,7 +138,7 @@ The Creator MCP endpoint is fixed at `https://creator.anbanai.com/mcp`. It is
 not a profile option. Never put a key or serialized Authorization header in a
 Preset, command argument, log, screenshot, test fixture, or generated artifact.
 
-## 4.1.12 release-operator checklist
+## 4.1.13 release-operator checklist
 
 Perform this manual production check after automated code gates and before
 public announcement:
@@ -164,7 +164,7 @@ replace this real authenticated MCP verification.
 Install only a published, immutable artifact. In priority order:
 
 1. **public npm package (primary)**: an exact stable SemVer specifier such as
-   `@anban/dsh-plugin@4.1.12`; do not use an unversioned package, dist-tag, or
+   `@anban/dsh-plugin@4.1.13`; do not use an unversioned package, dist-tag, or
    version range.
 2. **checksummed GitHub Release**: the exact versioned
    `anban-dsh-plugin-X.Y.Z.tgz` and matching SHA-256 file attached to the same
@@ -204,7 +204,7 @@ dsh plugin --profile "$ACTIVE_PROFILE" add "./anban-dsh-plugin-${PUBLISHED_VERSI
 The checksum file names the exact tarball. A tarball add must resolve to a
 versioned `anban-dsh-plugin-X.Y.Z.tgz` path or URL. A `file:` specifier is
 acceptable only when it names that exact archive, for example
-`file:/absolute/path/anban-dsh-plugin-4.1.12.tgz`; a `file:` directory and an
+`file:/absolute/path/anban-dsh-plugin-4.1.13.tgz`; a `file:` directory and an
 arbitrarily named `.tgz` are not supported. Do not install when verification
 fails or when the asset tag and package version differ.
 
@@ -237,7 +237,7 @@ structured result:
 
 ```bash
 pnpm pack --json
-PACKED_TARBALL="/absolute/path/anban-dsh-plugin-4.1.12.tgz"
+PACKED_TARBALL="/absolute/path/anban-dsh-plugin-4.1.13.tgz"
 dsh plugin --profile "$ACTIVE_PROFILE" add "$PACKED_TARBALL"
 ```
 

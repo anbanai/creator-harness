@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [4.1.13] - 2026-08-18
+
+### Fixed
+
+- Made the release workflow build one provenance candidate and reuse its exact
+  tarball, metadata, and digest in macOS, Windows, npm, and GitHub gates.
+- Added awaited process-tree termination for DSH Desktop command and packaged
+  application timeouts on POSIX and Windows.
+- Required packaged Desktop profile smoke to compare the installed plugin
+  manifest against an explicit expected release version.
+- Prepared the 4.1.13 release workflow and release-operator gates. This release
+  does not claim npm publication; an authorized release operator must still
+  run the publishing workflow.
+
 ## [4.1.12] - 2026-08-17
 
 ### Changed

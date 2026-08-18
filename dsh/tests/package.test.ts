@@ -479,7 +479,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.12',
+      version: '4.1.13',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -850,7 +850,7 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
 
   it('keeps package publication under operator control for the current release', async () => {
     const changelog = await readFile(changelogUrl, 'utf8')
-    const releaseHeading = '## [4.1.12] - 2026-08-17'
+    const releaseHeading = '## [4.1.13] - 2026-08-18'
     const release = changelog.slice(
       changelog.indexOf(releaseHeading),
       changelog.indexOf('\n## [', changelog.indexOf(releaseHeading) + 1),

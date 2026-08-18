@@ -715,6 +715,7 @@ describe('DSH profile smoke flow', () => {
     await smokeModule.verifyInstalledProfile({
       ...fixture.overrides,
       dshHome: fixture.dshHome,
+      expectedVersion: packageVersion,
       profile: 'desktop',
       profileDir: fixture.profileDir.replace(/web$/, 'desktop'),
       smokeRoot: fixture.smokeRoot,
@@ -735,6 +736,22 @@ describe('DSH profile smoke flow', () => {
       fixture.dshHome,
       expect.anything(),
     )
+  })
+
+  it('rejects an existing profile whose plugin version differs from the explicit release version', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+
+    await expect(
+      smokeModule.verifyInstalledProfile({
+        ...fixture.overrides,
+        dshHome: fixture.dshHome,
+        expectedVersion: '9.9.9',
+        profile: 'desktop',
+        profileDir: fixture.profileDir.replace(/web$/, 'desktop'),
+        smokeRoot: fixture.smokeRoot,
+      }),
+    ).rejects.toThrow('Installed package.json export is invalid')
   })
 
   it('preserves the primary smoke failure when cleanup also fails', async () => {
