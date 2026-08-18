@@ -24,9 +24,25 @@ maxTurns: 20
 
 ## 工具边界
 
-- 必须使用 Anban MCP 工具：`list_projects`、`get_project_profile`、`generate_image`、`update_task_progress`。
+- 必须使用 Anban MCP 工具：`list_projects`、`get_project_profile`、`generate_image`。
 - 不编写自定义 HTTP 客户端绕过 MCP。
 - 不伪造客户案例、成交数据、用户反馈。
+
+## 官方 Task 管理与进度派生
+
+开始执行时，使用官方 `TaskCreate` 分别创建下列七个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。
+
+| 阶段 | TaskCreate metadata |
+| --- | --- |
+| project | `{"anban_progress_stage":"project"}` |
+| material_analysis | `{"anban_progress_stage":"material_analysis"}` |
+| writing | `{"anban_progress_stage":"writing"}` |
+| image_generation | `{"anban_progress_stage":"image_generation"}` |
+| quality_review | `{"anban_progress_stage":"quality_review"}` |
+| delivery_validation | `{"anban_progress_stage":"delivery_validation"}` |
+| finalize | `{"anban_progress_stage":"finalize"}` |
+
+进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后，对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
 
 ## Runtime workspace contract
 
@@ -43,8 +59,6 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 2. 获取项目
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="project", title="项目选择", description="选择朋友圈项目")`。
-
 通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`。若非空，直接作为 `$PROJECT_ID`。若为空，调用 `list_projects(platform="moments")`。只有一个匹配项目时自动选择；多个项目时按用户素材、项目 `name`、`positioning`、`keywords` 语义匹配并自动选择 Top 1，同时记录选择依据。
 
 ### 3. 获取项目画像
@@ -55,19 +69,13 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 4. 素材分析
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="material_analysis", title="素材分析", description="分类素材并做四层提炼")`。
-
 按六类素材（发售、人设、产品、案例、生活、认知）判断主类型和辅助类型，再做四层提炼（观点层、框架层、风格层、人设层）。写 `output/material-analysis.md`。
 
 ### 5. 正文生成
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="writing", title="朋友圈正文", description="生成正文、备选开头结尾和发布建议")`。
-
 生成 `output/content.md`，并按 `humanizer` 方法轻量去 AI 味。正文必须保留证据边界，不能把推测写成事实。
 
 ### 6. 配图生成
-
-调用 `update_task_progress(task_id=$TASK_ID, stage="image_generation", title="朋友圈配图", description="根据正文生成一张朋友圈配图")`。
 
 根据 `output/content.md` 与项目视觉风格写 `output/image-prompts.md`，其中记录用途、`$EFFECTIVE_ASPECT_RATIO`、`image_capability_key` 和最终提示词。提示词必须明确写出“最终图片画布宽高比严格为 `$EFFECTIVE_ASPECT_RATIO`”，再调用：
 
@@ -79,19 +87,13 @@ generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<output/image-pr
 
 ### 7. 质量复盘
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="quality_review", title="质量复盘", description="检查真实感、诱导互动、营销空泛与证据不足")`。
-
 写 `output/quality-review.md`，至少覆盖：真实感、诱导互动、空泛营销、证据不足、隐私与合规。
 
 ### 8. 交付校验
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="delivery_validation", title="交付校验", description="校验朋友圈素材包最终产物")`。
-
 直接校验 `output/material-analysis.md`、`output/content.md`、`output/image-prompts.md`、`output/moments-image.png` 与 `output/quality-review.md` 均存在且内容完整。
 
 ### 9. 完成反馈
-
-调用 `update_task_progress(task_id=$TASK_ID, stage="finalize", title="完成", description="朋友圈素材包已完成交付校验")`。
 
 最终摘要包含：`output/material-analysis.md`、`output/content.md`、`output/image-prompts.md`、`output/moments-image.png`、`output/quality-review.md`，以及主素材类型、正文标题/首句、有效图片比例、质量复盘状态、任何证据不足或人工复核点。最后调用 `submit_agent_feedback(task_id=$TASK_ID, agent_name="moments", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<交付路径、主素材类型、正文标题/首句、有效图片比例、质量复盘状态、证据不足或人工复核点摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数。
 
