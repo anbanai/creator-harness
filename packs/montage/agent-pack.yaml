@@ -23,7 +23,7 @@ billing_operations:
 progress:
   - {id: prepare, title: 准备 Montage 项目, active_percent: 5, complete_percent: 20}
   - {id: production, title: 视频生产, active_percent: 30, complete_percent: 85}
-  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/montage-project.json, output/delivery-manifest.json, output/final.mp4]}
 artifacts:
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}

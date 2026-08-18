@@ -146,23 +146,37 @@ reference-usage-summary.json
 
 ---
 
+## 托管进度阶段
+
+开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；原创或复刻模式的细粒度业务任务继续保持原有数量、排序与依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+
+| 阶段 | TaskCreate metadata |
+|------|---------------------|
+| research | `{"anban_progress_stage":"research"}` |
+| writing | `{"anban_progress_stage":"writing"}` |
+| delivery | `{"anban_progress_stage":"delivery"}` |
+
+进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+
+阶段边界必须按现有模式流程执行：`research` 覆盖公共前置流程以及原创选题研究，或复刻源笔记获取与证据驱动拆解，全部研究产物落盘后才完成；`writing` 覆盖内容创作或改写、标题终稿锁定、图片生成与合规检查，全部计划图片和质量闸门完成后才完成；`delivery` 覆盖交付校验、最终报告与 feedback，所有必需产物通过校验且失败态按既有恢复规则处理后才完成。
+
 ## 创作流程
 
 > **图片构成以结构化运行控制 `seednote_image_mode` 为准（覆盖本 agent 与 seednote-visual-design skill 的默认数量规则）**。缺失时按 `cover_content`。四种模式：`cover_only`（仅封面）、`cover_content`（封面 + 1~3 张内容图）、`cover_tail`（封面 + 尾图）、`full`（封面 + 1~3 张内容图 + 尾图）。未包含尾图的模式禁止生成 `tail.png`，`image-plan.md` 不得含 `## tail` 节；未包含内容图的模式禁止生成 `image_0N.png`。内容图张数由信息点分组决定（1~3 张）。
 
 ### 公共前置流程
 
-> **读取 `$TASK_ID`**（一次读取、全程复用）：该值由结构化运行时上下文提供。后续所有需要它的 MCP 工具（`update_task_progress`、`get_project_profile` 等）以及本 agent 内部变量都直接复用此值。
+> **读取 `$TASK_ID`**（一次读取、全程复用）：该值由结构化运行时上下文提供。后续所有需要它的 MCP 工具（如 `get_project_profile`）以及本 agent 内部变量都直接复用此值。
 
 #### 步骤 1：判断模式并创建任务
 
 如果用户提供种草笔记 ID、链接、xsec_token 线索，或明确说复刻、仿写、改写、克隆，则选择复刻模式（8 个任务：公共前置、源笔记获取、爆款拆解、内容改写、标题终稿锁定、图片生成、合规检查、交付校验与最终报告）；否则选择原创模式（7 个任务：公共前置、选题研究、内容写作、标题终稿锁定、图片生成、交付校验、最终报告）。
 
-使用 `TaskCreate` 创建任务列表，设置依赖：每个任务 `blockedBy` 前一个任务。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`。
+使用 `TaskCreate` 创建上述细粒度业务任务列表，设置依赖：每个任务 `blockedBy` 前一个任务，且都不携带 `anban_progress_stage`。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`；这些更新不替代三个阶段 Task 的独立生命周期。
 
 #### 步骤 2：获取项目 ID
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="project", title="项目选择", description="选择目标项目")`。通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT` 检查环境变量，若非空则直接使用其值作为 `$PROJECT_ID`。若为空，调用 `list_projects` MCP 工具（参数：`platform="seednote"`）获取项目列表。如果只有一个匹配项目，直接使用其 `project_id`。如果有多个匹配项目，根据用户需求与项目 `name`、`positioning`、`keywords` 计算语义相关性，并按“相关性降序、`project_id` 升序”稳定排序后自动选择第一名；把候选、分数和选择依据写入 `request-analysis.md`，不得询问用户。
+通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT` 检查环境变量，若非空则直接使用其值作为 `$PROJECT_ID`。若为空，调用 `list_projects` MCP 工具（参数：`platform="seednote"`）获取项目列表。如果只有一个匹配项目，直接使用其 `project_id`。如果有多个匹配项目，根据用户需求与项目 `name`、`positioning`、`keywords` 计算语义相关性，并按“相关性降序、`project_id` 升序”稳定排序后自动选择第一名；把候选、分数和选择依据写入 `request-analysis.md`，不得询问用户。
 
 #### 步骤 3：获取账号画像与已有标题
 
@@ -179,13 +193,13 @@ reference-usage-summary.json
 
 #### 步骤 5：研究选题
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 评估主题并补充真实热门笔记数据")`。按 `seednote-research` 方法调用 `search_seednote_feeds`，再用搜索返回的真实 `feed_id` / `xsec_token` 调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。`feed_id` / `xsec_token` 只能使用 MCP 工具返回，不得从用户输入的链接直接提取。登录会话由 Server 管理员在任务外维护；Agent 不得调用登录管理能力或等待扫码。传输失败时只重试一次。只有取得真实互动字段时才按互动率、时效性和新颖度评分。研究能力不可用、工具不可用或重试后仍无外部数据时，基于用户明确主题、选题池、账号画像和已有标题完成保守选题，原创模式不得因此写 `output/failure-state.json` 或停止。将候选列表、外部评分或降级依据、避重判断、`mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason` 写入 `output/topic-analysis.md`；取得 MCP 外部数据时记录 `data_source=xiaohongshu-mcp`，否则按实际主要输入记录 `data_source=task_topic`、`data_source=topic_pool` 或 `data_source=project_context`，不得把降级结果描述为热门数据。
+按 `seednote-research` 方法调用 `search_seednote_feeds`，再用搜索返回的真实 `feed_id` / `xsec_token` 调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。`feed_id` / `xsec_token` 只能使用 MCP 工具返回，不得从用户输入的链接直接提取。登录会话由 Server 管理员在任务外维护；Agent 不得调用登录管理能力或等待扫码。传输失败时只重试一次。只有取得真实互动字段时才按互动率、时效性和新颖度评分。研究能力不可用、工具不可用或重试后仍无外部数据时，基于用户明确主题、选题池、账号画像和已有标题完成保守选题，原创模式不得因此写 `output/failure-state.json` 或停止。将候选列表、外部评分或降级依据、避重判断、`mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason` 写入 `output/topic-analysis.md`；取得 MCP 外部数据时记录 `data_source=xiaohongshu-mcp`，否则按实际主要输入记录 `data_source=task_topic`、`data_source=topic_pool` 或 `data_source=project_context`，不得把降级结果描述为热门数据。
 
 **产出**：`output/topic-analysis.md`
 
 #### 步骤 6：创作内容
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="writing", title="内容写作", description="生成标题、正文和话题标签并去 AI 味")`。按 `seednote-writing` 方法，基于账号画像与 `output/topic-analysis.md` 生成 `output/content.md`，完成轻量去 AI 改写并复核字数仍 ≤1000 字，不得引入新的违禁词、虚假承诺或诱导互动表达。
+按 `seednote-writing` 方法，基于账号画像与 `output/topic-analysis.md` 生成 `output/content.md`，完成轻量去 AI 改写并复核字数仍 ≤1000 字，不得引入新的违禁词、虚假承诺或诱导互动表达。
 
 **产出**：`output/content.md`
 
@@ -195,19 +209,19 @@ reference-usage-summary.json
 
 #### 步骤 5：获取源笔记
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="通过已认证的 Anban MCP 获取源笔记详情与互动数据")`。按 `seednote-research` 方法通过 `search_seednote_feeds` 或 `get_seednote_user_profile` 的工具返回获取真实 `feed_id` / `xsec_token`，再调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。`feed_id` / `xsec_token` 只能使用 MCP 工具返回，不得从用户输入的链接直接提取或凭空构造。登录会话由 Server 管理员在任务外维护；Agent 不得调用登录管理能力或等待扫码。详情、互动与评论写入 `output/source-note.md`，并记录 `data_source=xiaohongshu-mcp`、`mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason`。仅传输失败时重试一次；研究能力或工具不可用时不盲目重试。若任务只有外部 ID/链接且仍无源内容，写结构化 `output/failure-state.json` 并从 `research` 恢复。
+按 `seednote-research` 方法通过 `search_seednote_feeds` 或 `get_seednote_user_profile` 的工具返回获取真实 `feed_id` / `xsec_token`，再调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。`feed_id` / `xsec_token` 只能使用 MCP 工具返回，不得从用户输入的链接直接提取或凭空构造。登录会话由 Server 管理员在任务外维护；Agent 不得调用登录管理能力或等待扫码。详情、互动与评论写入 `output/source-note.md`，并记录 `data_source=xiaohongshu-mcp`、`mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason`。仅传输失败时重试一次；研究能力或工具不可用时不盲目重试。若任务只有外部 ID/链接且仍无源内容，写结构化 `output/failure-state.json` 并从 `research` 恢复。
 
 **产出**：源笔记详情、`output/source-note.md`
 
 #### 步骤 6：证据驱动拆解爆款
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="viral_analysis", title="爆款拆解", description="证据驱动拆解源笔记爆款结构")`。按 `seednote-viral-analysis` 方法分析 `output/source-note.md`，生成 `output/source-analysis.md` 和任务内 `output/viral-template.json`。每个核心结论必须绑定源内容、封面、互动数据或评论证据；缺失数据写入 `missing_data` 并降低 `confidence`。该模板仅供当前任务后续步骤消费，不持久化到全局模板库。
+按 `seednote-viral-analysis` 方法分析 `output/source-note.md`，生成 `output/source-analysis.md` 和任务内 `output/viral-template.json`。每个核心结论必须绑定源内容、封面、互动数据或评论证据；缺失数据写入 `missing_data` 并降低 `confidence`。该模板仅供当前任务后续步骤消费，不持久化到全局模板库。
 
 **产出**：`output/source-analysis.md`、`output/viral-template.json`
 
 #### 步骤 7：改写内容
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="writing", title="内容写作", description="基于爆款模板改写标题、正文和话题标签并去 AI 味")`。按 `seednote-writing` 方法基于 `output/viral-template.json`、`output/source-analysis.md`、账号画像和用户指定模式生成 `output/content.md`，并完成轻量去 AI 改写。若用户指定强度高于模板建议，但 `confidence=low` 或 `do_not_copy` 风险高，自动降级并记录原因。内容相似度过高时重新改写角度；改写后复核字数仍 ≤1000 字，且不得引入新的违禁词、虚假承诺或诱导互动表达。
+按 `seednote-writing` 方法基于 `output/viral-template.json`、`output/source-analysis.md`、账号画像和用户指定模式生成 `output/content.md`，并完成轻量去 AI 改写。若用户指定强度高于模板建议，但 `confidence=low` 或 `do_not_copy` 风险高，自动降级并记录原因。内容相似度过高时重新改写角度；改写后复核字数仍 ≤1000 字，且不得引入新的违禁词、虚假承诺或诱导互动表达。
 
 **产出**：`output/content.md`
 
@@ -215,7 +229,7 @@ reference-usage-summary.json
 
 #### 步骤 7b：标题终稿锁定
 
-原创与复刻模式完成各自的写作与内置去 AI 后，调用 `update_task_progress(task_id=$TASK_ID, stage="title_finalization", title="标题终稿锁定", description="在视觉产物生成前完成标题排重与入库")`。从 `output/content.md` 第一行读取可发布标题为 `$FINAL_TITLE`，调用 `finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)`，最多进行 3 次调用尝试（首次计入）：
+原创与复刻模式完成各自的写作与内置去 AI 后，从 `output/content.md` 第一行读取可发布标题为 `$FINAL_TITLE`，调用 `finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)`，最多进行 3 次调用尝试（首次计入）：
 
 - 成功后以服务端接受的标题锁定 `$FINAL_TITLE`，并确认 `output/content.md` 第一行完全一致。后续 `image-plan`、`cover`、`prompts`、`review`、`compliance`、交付校验与最终报告只能读取这个已接受标题，不得静默改名。
 - 返回 `duplicate title` 错误时，按 `seednote-writing` 方法更新 `output/content.md` 第一行为新标题，执行轻量去 AI 与标题合规检查，通过后才用新的 `$FINAL_TITLE` 重试。连续 3 次均返回重复标题时停止。
@@ -225,19 +239,19 @@ reference-usage-summary.json
 
 #### 步骤 8a：原创模式图片生成
 
-原创模式调用 `update_task_progress(task_id=$TASK_ID, stage="image_generation", title="图片生成", description="基于已锁定标题规划并生成封面、内容图和尾图")`。按 `seednote-visual-design` 方法读取 `output/content.md`、图片模式和附件索引，完成逐页参考选择、图片规划、生成与核验。按计划逐张调用 `generate_image`；生成成功后继续下一张。需要内容质量审核时单独调用 `analyze_image`，把可见内容质量观察写入 `output/image-review.md`；审核结果只影响 Agent 的创作修订和交付判断。`analyze_image` 传输或运行失败只记录为“审核不可用” warning，写入 `output/image-review.md` 和 `output/reference-usage-summary.json` 的 `warnings`；不得写入 `output/failure-state.json`，不能阻止后续计划图片生成，也不能单独导致最终交付失败。只有 `generate_image` 本身失败或超时时，才写入 `output/failure-state.json` 并停止图片阶段；已成功生成的文件必须保留。可用的分析结果或可见内容质量结论只影响当前输出图的记录与创作重试；当前图达到创作重试上限时标记 `quality_status=failed`，必须继续生成剩余计划图片。全部计划图片生成完成后再执行整体质量闸门，决定是否交付或写入结构化失败；审核不可用 warning 不计为质量失败。
+原创模式按 `seednote-visual-design` 方法读取 `output/content.md`、图片模式和附件索引，完成逐页参考选择、图片规划、生成与核验。按计划逐张调用 `generate_image`；生成成功后继续下一张。需要内容质量审核时单独调用 `analyze_image`，把可见内容质量观察写入 `output/image-review.md`；审核结果只影响 Agent 的创作修订和交付判断。`analyze_image` 传输或运行失败只记录为“审核不可用” warning，写入 `output/image-review.md` 和 `output/reference-usage-summary.json` 的 `warnings`；不得写入 `output/failure-state.json`，不能阻止后续计划图片生成，也不能单独导致最终交付失败。只有 `generate_image` 本身失败或超时时，才写入 `output/failure-state.json` 并停止图片阶段；已成功生成的文件必须保留。可用的分析结果或可见内容质量结论只影响当前输出图的记录与创作重试；当前图达到创作重试上限时标记 `quality_status=failed`，必须继续生成剩余计划图片。全部计划图片生成完成后再执行整体质量闸门，决定是否交付或写入结构化失败；审核不可用 warning 不计为质量失败。
 
 **产出**：`output/image-plan.md`、`output/cover.png`、内容图（按 `seednote_image_mode`）、尾图（按 `seednote_image_mode`）
 
 #### 步骤 8b：复刻模式图片生成
 
-复刻模式调用 `update_task_progress(task_id=$TASK_ID, stage="image_generation", title="图片生成", description="基于已锁定标题与爆款模板规划并生成封面、内容图和尾图")`。按 `seednote-visual-design` 方法读取 `output/content.md`、`output/viral-template.json`、图片模式和附件索引完成规划、生成与核验。图片数量必须受 `seednote_image_mode` 限制；若已降级为 `medium`，按常规流程规划图片。不得照搬源图构图到不可区分。
+复刻模式按 `seednote-visual-design` 方法读取 `output/content.md`、`output/viral-template.json`、图片模式和附件索引完成规划、生成与核验。图片数量必须受 `seednote_image_mode` 限制；若已降级为 `medium`，按常规流程规划图片。不得照搬源图构图到不可区分。
 
 **产出**：`output/image-plan.md`、`output/cover.png`、内容图（按 `seednote_image_mode`）、尾图（按 `seednote_image_mode`）
 
 #### 步骤 9：合规检查
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="compliance", title="合规检查", description="扫描违禁词与诱导互动表述")`。按 `seednote-writing` 合规规则扫描 `output/content.md`，生成 `output/compliance-report.md`。高风险诱导互动表述必须删除或改写；疑似误报只记录并标注人工复核，不自动删除核心信息。
+按 `seednote-writing` 合规规则扫描 `output/content.md`，生成 `output/compliance-report.md`。高风险诱导互动表述必须删除或改写；疑似误报只记录并标注人工复核，不自动删除核心信息。
 
 合规检查必须确认 `output/content.md` 第一行仍等于服务端接受的 `$FINAL_TITLE`。图片生成后不得静默修改标题；若最终合规要求改标题，写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"compliance","error_code":"title_changed_after_visuals","message":"标题合规变更会使现有视觉产物与标题不一致","resume_from":"title_finalization"}`，停止并从 `title_finalization` 恢复，随后必须重新执行 `image_generation`，不得交付不一致资产。
 
@@ -249,7 +263,7 @@ reference-usage-summary.json
 
 #### 步骤 10：交付校验
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="delivery_validation", title="交付校验", description="校验任务成果目录中的最终产物")`。再次确认 `output/content.md` 第一行等于已接受 `$FINAL_TITLE`，并逐项校验 `content.md`、`image-plan.md`、`image-prompts.md`、`image-review.md`、`reference-usage-summary.json`、合规报告（复刻模式）以及计划中的全部图片都直接位于 `output`。图片数量必须与计划一致；每张计划图片都必须成功生成。`image-review.md` 记录可见内容质量观察和“审核不可用” warning；`analyze_image` 运行错误只保留在服务端观测记录中，不创建失败态，也不单独让交付校验失败。所有产物始终保留在 `output`，不得移动、复制或按标题重命名成果目录。`output/failure-state.json` 存在时不得报告成功；恢复执行仅在所有交付校验通过后、即将报告成功前删除 `output/failure-state.json`。
+再次确认 `output/content.md` 第一行等于已接受 `$FINAL_TITLE`，并逐项校验 `content.md`、`image-plan.md`、`image-prompts.md`、`image-review.md`、`reference-usage-summary.json`、合规报告（复刻模式）以及计划中的全部图片都直接位于 `output`。图片数量必须与计划一致；每张计划图片都必须成功生成。`image-review.md` 记录可见内容质量观察和“审核不可用” warning；`analyze_image` 运行错误只保留在服务端观测记录中，不创建失败态，也不单独让交付校验失败。所有产物始终保留在 `output`，不得移动、复制或按标题重命名成果目录。`output/failure-state.json` 存在时不得报告成功；恢复执行仅在所有交付校验通过后、即将报告成功前删除 `output/failure-state.json`。
 
 **产出**：`output`
 

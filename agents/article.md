@@ -87,13 +87,25 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 
 ---
 
+## 托管进度阶段
+
+开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；十步业务任务可以另建细粒度 Task 并保持原依赖顺序，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+
+| 阶段 | TaskCreate metadata |
+|------|---------------------|
+| research | `{"anban_progress_stage":"research"}` |
+| writing | `{"anban_progress_stage":"writing"}` |
+| delivery | `{"anban_progress_stage":"delivery"}` |
+
+进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+
+阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，正文、合规、SEO、视觉、图片与 HTML 全部完成后才完成；`delivery` 覆盖步骤 9、步骤 10、最终报告与 feedback，发布前总验收、草稿发布或明确跳过发布、最终反馈全部结束后才完成。
+
 ## 创作流程（10 步）
 
 ### Phase 1: 信息收集
 
 #### 步骤 1：获取项目信息
-
-Call `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研究", description="获取项目信息、历史文章并研究选题方向")`。
 
 **项目选择（必须先完成，再调用项目 API）：**
 
@@ -113,8 +125,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="research", title="选题研�
 **产出**：`$PROJECT_ID`
 
 #### 步骤 2：选题研究
-
-Call `update_task_progress(task_id=$TASK_ID, stage="outline", title="大纲生成", description="基于研究结果生成文章大纲和上下文锚点")`。
 
 按 `topic-research` 方法结合账号关键词和用户需求搜索热门话题，创作文章大纲。
 
@@ -143,8 +153,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="outline", title="大纲生�
 
 #### 步骤 3：撰写文章
 
-Call `update_task_progress(task_id=$TASK_ID, stage="writing", title="AI写作", description="基于大纲和上下文锚点撰写文章")`。
-
 按 `content-writing` 方法基于账号定位、大纲和 `output/context-brief.md` 输出 Markdown 格式文章。
 
 **硬性要求**：
@@ -170,8 +178,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="writing", title="AI写作", 
 
 #### 步骤 4：去 AI 味与合规检查
 
-Call `update_task_progress(task_id=$TASK_ID, stage="humanize", title="去AI味", description="用 humanizer skill 去 AI 改写并执行违禁词合规检查")`。
-
 先按 `humanizer` 方法对 `output/03-article.md` 全文执行去 AI 改写：扫描 33 类 AI 写作模式（意义拔高、AI 高频词、三段式、否定排比、破折号滥用、空洞结尾等），按 draft → audit → final 流程改写。**改写而非删除**——覆盖原文全部信息点，保持段落数与字数量级，保留人称代入、情绪节奏与具体细节等人味。这是自动流水线步骤，不得调用 `AskUserQuestion`；没有写作样本时按账号定位、上下文锚点和当前稿件语气直接改写。本步骤不调用任何 MCP 工具、不计费、无强度档位，且不得引入新的违禁词或导流风险。改写产物保存为 `output/04-article-final.md`。
 
 再按 `content-writing` 方法对 `output/04-article-final.md` 执行违禁词合规检查，输出检查报告，并创建 `output/content-quality-report.md`，逐项检查：
@@ -194,8 +200,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="humanize", title="去AI味",
 
 #### 步骤 5：SEO 优化
 
-Call `update_task_progress(task_id=$TASK_ID, stage="seo", title="SEO优化", description="优化标题、关键词和摘要")`。
-
 按 `seo-optimization` 方法优化标题、关键词、摘要。
 
 由 seo-optimization skill 直接读取成文与上下文，生成标题、摘要、关键词和 CTR 变体评分。**将结果保存为 `output/seo-result.md`**，供发布前总验收和草稿发布使用。
@@ -215,8 +219,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="seo", title="SEO优化", des
 **产出**：`output/seo-result.md`（含优化后的标题、摘要、关键词 + 3 标题变体打分记录）
 
 #### 步骤 6：模板选择、节奏规划、封面与配图规划
-
-Call `update_task_progress(task_id=$TASK_ID, stage="cover", title="视觉规划", description="模板选择、节奏规划、三维风格分析、封面生成（带视觉校验）、配图内容规划")`。
 
 按 `article-visual-design` 方法完成以下五个子步骤。
 
@@ -308,8 +310,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="cover", title="视觉规划"
 
 > **配图开关守卫**：当 article_image_mode 为 `cover_only` 或 `text_only`（见「图片生成模式」），**整个步骤 7 跳过**——不创建/留空 `images.json`，正文不内联 `<img>`，模板 `image_count.min` 不再强制。**封面关·配图开**时仍执行步骤 7，但正文图的 `ref_image_path` 不得指向未生成的 `output/cover.png`（改为不传 `ref_image_path`，或链到首张已生成图）。
 
-Call `update_task_progress(task_id=$TASK_ID, stage="illustration", title="插图生成", description="按节奏计划逐 slot 生成配图，按需独立审核并修订")`。
-
 按 `article-visual-design` 方法和 `output/visual-rhythm-plan.md` 中 slot 顺序生成。每个需要图的 slot 执行：
 
 ##### 7a：构建 prompt 并生成
@@ -378,8 +378,6 @@ generate_image(
 
 #### 步骤 8：HTML 渲染（render_template）
 
-Call `update_task_progress(task_id=$TASK_ID, stage="html", title="HTML渲染", description="按节奏计划用 render_template 确定性渲染 HTML")`。
-
 按 `content-writing` 方法渲染 HTML。**不再使用 `convert_markdown` 自由发挥**，改用新的 `render_template` MCP 工具：
 
 ```
@@ -429,8 +427,6 @@ render_template(
 **产出**：`output/final-review.md`
 
 #### 步骤 10：草稿发布
-
-Call `update_task_progress(task_id=$TASK_ID, stage="draft", title="草稿创建", description="创建微信草稿并发布到草稿箱")`。
 
 按 `article-publishing` 方法创建 `draft.json` 并发布：
 - `title`：步骤 5 优化后的标题（从 `output/seo-result.md` 读取）
@@ -639,8 +635,8 @@ Call `update_task_progress(task_id=$TASK_ID, stage="draft", title="草稿创建"
 
 ### 任务追踪
 
-- 流程启动时用 TaskCreate 创建任务列表
-- 每个任务对应一个流程步骤
+- 除三个可追踪阶段 Task 外，用 TaskCreate 创建十步细粒度业务任务列表
+- 每个业务 Task 对应一个流程步骤，不携带 `anban_progress_stage`
 - 开始前：`TaskUpdate status → in_progress`
 - 完成后：`TaskUpdate status → completed`
 - 设置依赖：每个任务 blockedBy 前一个任务

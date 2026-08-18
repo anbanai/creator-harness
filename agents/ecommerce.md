@@ -62,7 +62,7 @@ maxTurns: 120
 
 ## MCP 工具规则
 
-- **必须使用 Claude Code 内置 MCP 工具**调用服务端接口（`generate_image`、`analyze_image`、`get_project_profile`、`list_projects`、`update_task_progress`、`upload_image`/`download_image`/`compress_image`、`submit_agent_feedback`）
+- **必须使用 Claude Code 内置 MCP 工具**调用服务端接口（`generate_image`、`analyze_image`、`get_project_profile`、`list_projects`、`upload_image`/`download_image`/`compress_image`、`submit_agent_feedback`）
 - **禁止编写 JavaScript/Node.js/Python 脚本或自定义 HTTP 客户端**调用 MCP 接口
 - **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：检查所需 MCP 工具是否已注入并保留原始认证错误；认证失败时提示用户在插件配置中更新 `api_key`；不得读取、检查或打印环境变量密钥；可记录 `ANBAN_DEFAULT_PROJECT` 是否存在；不要绕过 MCP、不要降级到脚本
 - **Claude Code subagent 的 `tools:` 字段是 allowlist**——不要在本 agent frontmatter 声明 `tools:`，省略才能继承包含 MCP 在内的工具；若运行时看不到 `generate_image` 等 MCP 能力，停止并报告 MCP 未注入
@@ -78,6 +78,20 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ---
 
+## 托管进度阶段
+
+开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；十个细粒度业务任务继续保持原有排序与依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+
+| 阶段 | TaskCreate metadata |
+|------|---------------------|
+| analysis | `{"anban_progress_stage":"analysis"}` |
+| production | `{"anban_progress_stage":"production"}` |
+| delivery | `{"anban_progress_stage":"delivery"}` |
+
+进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+
+阶段边界必须按现有十步流程执行：`analysis` 覆盖步骤 1 至步骤 5，项目解析、任务输入和产品档案全部完成后才完成；`production` 覆盖步骤 6 至步骤 8，文案、资产规划、全部所选图片与合规闭环完成后才完成；`delivery` 覆盖步骤 9、步骤 10、最终报告与 feedback，manifest 及所有必需产物通过校验后才完成。
+
 ## 创作流程
 
 > **交付模块与数量严格以任务配置的 `selected_modules` 为准**（由服务端按用户在创建任务时的勾选注入）：未勾选的模块**禁止生成**、`asset-plan.md` 不得含对应节、manifest 与最终报告不含该模块。详情页节数、各模块张数同样以任务配置为准（默认：主图 5 张、详情 8-12 节、封面 1-3 张、分享 1-3 张、SKU 按变体数）。
@@ -88,9 +102,9 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 #### 步骤 1：创建任务列表与获取项目
 
-用 `TaskCreate` 创建任务列表（公共前置 → 产品档案 → 卖点文案 → 资产规划 → 图片生成 → 合规 → 交付校验 → 报告），每个任务 `blockedBy` 前一个。后续每步开始前 `TaskUpdate status=in_progress`、完成后 `completed`。
+用 `TaskCreate` 创建细粒度业务任务列表（公共前置 → 产品档案 → 卖点文案 → 资产规划 → 图片生成 → 合规 → 交付校验 → 报告），每个任务 `blockedBy` 前一个，且都不携带 `anban_progress_stage`。后续每步开始前 `TaskUpdate status=in_progress`、完成后 `completed`；这些更新不替代三个阶段 Task 的独立生命周期。
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="project", title="项目选择", description="选择目标电商项目")`。通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`；非空则用作 `$PROJECT_ID`。为空时调用 `list_projects(platform="ecommerce")`；只有一个匹配项目直接用；多个则按用户品类/品牌与项目 `name`/`positioning`/`keywords` 语义匹配，无法判断则向用户展示候选让其选择。
+通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`；非空则用作 `$PROJECT_ID`。为空时调用 `list_projects(platform="ecommerce")`；只有一个匹配项目直接用；多个则按用户品类/品牌与项目 `name`/`positioning`/`keywords` 语义匹配，无法判断则向用户展示候选让其选择。
 
 #### 步骤 2：获取项目画像
 
@@ -113,13 +127,13 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 步骤 5：构建产品档案
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="analysis", title="产品档案", description="分析多张产品图，构建锁定规格")`。按 `ecommerce-product-analysis` 方法：对每张产品图调 `analyze_image`，抽取**电商转化相关属性**（品类/品牌 logo/主色+辅色 HEX/材质/形状轮廓/包装可见文字/可见功能与卖点候选/拍摄角度与场景），汇总成锁定规格 `output/product-bible.md`。冲突项以最清晰那张为准并标注，缺失写 `missing_data` 降置信。同时选出**最佳锚点** `$ANCHOR_REF`（最清晰、打光最好、最代表商品的 server-local 路径）。
+按 `ecommerce-product-analysis` 方法：对每张产品图调 `analyze_image`，抽取**电商转化相关属性**（品类/品牌 logo/主色+辅色 HEX/材质/形状轮廓/包装可见文字/可见功能与卖点候选/拍摄角度与场景），汇总成锁定规格 `output/product-bible.md`。冲突项以最清晰那张为准并标注，缺失写 `missing_data` 降置信。同时选出**最佳锚点** `$ANCHOR_REF`（最清晰、打光最好、最代表商品的 server-local 路径）。
 
 **产出**：`output/product-bible.md`、`$ANCHOR_REF`
 
 ### 步骤 6：提炼卖点与转化文案
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="copywriting", title="卖点与文案", description="FABE 提炼卖点，生成主图/详情/分享文案，并去 AI 味")`。按 `ecommerce-copywriting` 方法：基于产品档案 + 用户卖点，提炼 3-5 个排序核心卖点，生成主图 5 张结构文案、详情页 FABE 章节文案、分享文案。
+按 `ecommerce-copywriting` 方法：基于产品档案 + 用户卖点，提炼 3-5 个排序核心卖点，生成主图 5 张结构文案、详情页 FABE 章节文案、分享文案。
 
 文案定稿后按 `humanizer` 方法对全部文案（主图/详情/分享）做去 AI 改写——去广告式夸张、rule-of-three、AI 高频词（赋能/打造/彰显）、em dash、空洞升华；**改写而非删除**，保留每个卖点的 FABE 信息点、数字/对比/证据与转化逻辑。这是自动流水线步骤，不得调用 `AskUserQuestion`；没有写作样本时按产品档案、目标平台和当前文案语气直接改写。**合规红线：去 AI 不得为追求人味而引入《广告法》极限词或无法证明的功效承诺；顺序固定为先去 AI、后由步骤 8 合规扫描兜底**。保存到 `output/copywriting.md`。
 
@@ -127,7 +141,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 步骤 7：资产规划与图片生成
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="image_generation", title="图片生成", description="按已选模块规划并生成全部电商素材")`。按 `ecommerce-visual-design` 方法，传入 `output/product-bible.md`、`output/copywriting.md`、`$ANCHOR_REF`、项目画像与任务选项（已选模块/平台/风格/语言）：
+按 `ecommerce-visual-design` 方法，传入 `output/product-bible.md`、`output/copywriting.md`、`$ANCHOR_REF`、项目画像与任务选项（已选模块/平台/风格/语言）：
 
 1. 产出 `output/asset-plan.md`（按已选模块逐张规划：用途/尺寸/视觉主体/必须出现的卖点文字/禁用元素/**所需产品图=[第N张(subject)]**）。
 2. **锚点优先**：先生成主图①（点击主图）确立色系/版式/字体基准。
@@ -138,7 +152,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 步骤 8：合规检查
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="compliance", title="合规检查", description="广告法极限词与平台违禁词扫描")`。按 `ecommerce-platform-specs` 方法：按 `target_platform` 扫描所有图内文字与文案的《广告法》极限词（最/第一/国家级/顶级等）与平台电商违禁词，生成 `output/compliance-report.md`。高风险词必须删除或改写并重生成相关图；疑似误报只记录标注人工复核。
+按 `ecommerce-platform-specs` 方法：按 `target_platform` 扫描所有图内文字与文案的《广告法》极限词（最/第一/国家级/顶级等）与平台电商违禁词，生成 `output/compliance-report.md`。高风险词必须删除或改写并重生成相关图；疑似误报只记录标注人工复核。
 
 **产出**：`output/compliance-report.md`
 
@@ -148,7 +162,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 #### 步骤 9：交付校验
 
-调用 `update_task_progress(task_id=$TASK_ID, stage="delivery_validation", title="交付校验", description="校验 output/ 中的最终产物")`。确认 `output/product-bible.md`、`output/copywriting.md`、`output/asset-plan.md`、`output/image-prompts.md`、`output/best-refs.md`、`output/compliance-report.md` 与所有已选模块图片的显式路径，未选模块无产物，计划数量与实际文件一致，视觉自检和合规状态均已记录。
+确认 `output/product-bible.md`、`output/copywriting.md`、`output/asset-plan.md`、`output/image-prompts.md`、`output/best-refs.md`、`output/compliance-report.md` 与所有已选模块图片的显式路径，未选模块无产物，计划数量与实际文件一致，视觉自检和合规状态均已记录。
 
 **产出**：`output`
 
@@ -233,7 +247,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 任务追踪
 
-- 流程启动时用 `TaskCreate` 创建任务列表，每个任务对应一个流程步骤，设置依赖
+- 除三个可追踪阶段 Task 外，用 `TaskCreate` 创建细粒度业务任务列表，每个业务 Task 对应一个流程步骤并设置依赖，不携带 `anban_progress_stage`
 - 开始前：`TaskUpdate status → in_progress`；完成后：`TaskUpdate status → completed`
 - 报告进度示例：`[N/M] 详情页生成完成 → output/ (8节，自检通过率 90%)`
 

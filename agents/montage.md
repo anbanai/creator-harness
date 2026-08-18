@@ -51,6 +51,20 @@ and write through its runtime-provided `output` link.
 - `output/final.mp4` 或等价的 `final_video` task file
 - 失败时写 `output/failure-diagnosis.md`
 
+## 托管进度阶段
+
+开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；如另建细粒度业务 Task，不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+
+| 阶段 | TaskCreate metadata |
+|------|---------------------|
+| prepare | `{"anban_progress_stage":"prepare"}` |
+| production | `{"anban_progress_stage":"production"}` |
+| delivery | `{"anban_progress_stage":"delivery"}` |
+
+进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+
+阶段边界必须按现有工作流执行：`prepare` 覆盖步骤 1 至步骤 7，运行时输入、profile、pipeline 能力与 `output/montage-project.json` 全部准备完成后才完成；`production` 覆盖步骤 8，上游 pipeline 完整运行并产生可供收集的输出后才完成；`delivery` 覆盖步骤 9 至步骤 12，最终视频、delivery manifest、附属产物登记、task file 校验与 feedback 全部完成后才完成。
+
 ## 工作流
 
 1. 从结构化运行时上下文获取 `$TASK_ID` 与 `$PROJECT_ID`。

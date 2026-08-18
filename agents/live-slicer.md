@@ -65,17 +65,29 @@ output directory. TASK_ID is supplied by structured runtime context.
 - Write
 - Bash
 
-其中 `TaskCreate`/`TaskUpdate` 推进 8 步任务进度，`Read`/`Write` 落盘并核对 JSON/Markdown 产物，`Bash` 仅运行 `ffmpeg`/`ffprobe` 及目录/文件检查命令。
+其中 `TaskCreate`/`TaskUpdate` 同时维护三个可追踪阶段 Task 和原有 8 个细粒度业务 Task，`Read`/`Write` 落盘并核对 JSON/Markdown 产物，`Bash` 仅运行 `ffmpeg`/`ffprobe` 及目录/文件检查命令。
 
 ---
+
+## 托管进度阶段
+
+开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；原有 8 个细粒度业务 Task 继续保持顺序依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+
+| 阶段 | TaskCreate metadata |
+|------|---------------------|
+| transcription | `{"anban_progress_stage":"transcription"}` |
+| slicing | `{"anban_progress_stage":"slicing"}` |
+| delivery | `{"anban_progress_stage":"delivery"}` |
+
+进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+
+阶段边界必须按现有执行流程处理：`transcription` 覆盖步骤 1 至步骤 4，输入确认、媒体准备和完整听悟结果落盘后才完成；`slicing` 覆盖步骤 5 至步骤 8，无效句、切片规划、全部裁剪与可选剪映草稿处理结束后才完成；`delivery` 覆盖步骤 9、质量闸门与最终报告，manifest、plan、summary 和逐片结果完成校验后才完成。
 
 ## 执行流程
 
 ### 步骤 1：创建任务和确认输入
 
-Call `update_task_progress(task_id=$TASK_ID, stage="prep", title="视频预处理", description="确认视频输入和任务列表")`。
-
-使用 `TaskCreate` 创建 8 个任务：输入确认、媒体准备、听悟分析、无效句过滤、切片规划、批量裁剪、剪映草稿导出、验收与报告。每个任务按顺序依赖前一个任务。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`。
+使用 `TaskCreate` 创建 8 个细粒度业务任务：输入确认、媒体准备、听悟分析、无效句过滤、切片规划、批量裁剪、剪映草稿导出、验收与报告。每个任务按顺序依赖前一个任务，且都不携带 `anban_progress_stage`。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`；这些更新不替代三个阶段 Task 的独立生命周期。
 
 确认 `$VIDEO`：
 
@@ -88,8 +100,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="prep", title="视频预处�
 **产出**：`$VIDEO`、`$TASK_ID`、任务列表
 
 ### 步骤 2：媒体准备
-
-Call `update_task_progress(task_id=$TASK_ID, stage="transcription", title="语音转写", description="提取音频、上传并创建听悟转写任务")`。
 
 先检查依赖：
 
@@ -164,8 +174,6 @@ create_live_analysis_task(
 
 ### 步骤 5：识别无效句
 
-Call `update_task_progress(task_id=$TASK_ID, stage="filter", title="无效句过滤", description="识别并过滤无效句子，保留有价值内容")`。
-
 从 `analysis.json` 读取 `sentences`，由当前 Agent 直接判断不可用句并写入 `output/invalid-sentences.json`，结构为 `{"invalid":[{"index":3,"reason":"与直播主题无关的广告口播"}]}`。
 
 过滤规则：
@@ -179,8 +187,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="filter", title="无效句过
 **产出**：`invalid-sentences.json`、`valid-sentences.json`
 
 ### 步骤 6：生成切片方案
-
-Call `update_task_progress(task_id=$TASK_ID, stage="planning", title="切片规划", description="智能规划短视频切片方案")`。
 
 根据用户原始需求生成 `$ASK`。没有明确要求时，设为：
 
@@ -209,8 +215,6 @@ Call `update_task_progress(task_id=$TASK_ID, stage="planning", title="切片规�
 写入后先自检所有 index 唯一且存在、range 单调、start <= end、source ID 与 `analysis.json` 一致，再调用确定性 MCP。MCP 拒绝时必须在当前 Agent 修正循环内修改对应 JSON 并重试，不得寻找另一个模型工具修复。需要理解完整画面时可单独调用 `analyze_video(project_id, task_id, task_file_id|video_url, prompt)`；结果只作判断输入，不替代 TingWu transcript。
 
 ### 步骤 7：批量裁剪
-
-Call `update_task_progress(task_id=$TASK_ID, stage="export", title="批量导出", description="批量裁剪视频切片并导出")`。
 
 调用 `build_live_clip_plan(sentences=analysis.sentences, segments=segments.segments, invalid=invalid.invalid, video_path=$VIDEO, output_dir=output, min_duration_seconds=5, max_duration_seconds=120, head_padding_seconds=0.15, tail_padding_seconds=0.30, target_mode="vertical", vertical_fill="blur", source_width=$SRC_W, source_height=$SRC_H, target_width=1080, target_height=1920, normalize_audio_loudness=true)`，保存完整返回为 `output/clip-plan.json`。该工具确定性生成每条切片的 `start`、`end`、`duration`、`output`、`fast_cut_args`、`accurate_cut_args`、`parts`、`transcript`，并回显 `orientation`、`vertical_filter`。
 
@@ -283,8 +287,6 @@ ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:no
 **产出**：`clip-draft-results.json`（可选，剪映未安装时不生成）
 
 ### 步骤 9：导出全文和报告
-
-Call `update_task_progress(task_id=$TASK_ID, stage="report", title="交付报告", description="生成全文转录、切片清单和交付报告")`。
 
 调用 `build_live_clip_manifest(source_video=$VIDEO, tingwu_task_id=$TINGWU_TASK_ID, analysis_title=analysis.title, sentences=analysis.sentences, invalid=invalid.invalid, warnings=$PLAN_JSON.warnings, rejected=$PLAN_JSON.rejected, clips=$PLAN_JSON.clips, clip_results=clip_results)`。
 
