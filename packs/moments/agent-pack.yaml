@@ -21,9 +21,13 @@ features: [reference-images]
 billing_operations:
   moments: task.moments
 progress:
-  - {id: analysis, title: 素材分析}
-  - {id: writing, title: 内容创作}
-  - {id: delivery, title: 交付验收}
+  - {id: project, title: 项目选择, active_percent: 5, complete_percent: 10}
+  - {id: material_analysis, title: 素材分析, active_percent: 15, complete_percent: 25, required_artifacts: [output/material-analysis.md]}
+  - {id: writing, title: 朋友圈正文, active_percent: 35, complete_percent: 55, required_artifacts: [output/content.md]}
+  - {id: image_generation, title: 朋友圈配图, active_percent: 65, complete_percent: 75, required_artifacts: [output/image-prompts.md, output/moments-image.png]}
+  - {id: quality_review, title: 质量复盘, active_percent: 80, complete_percent: 88, required_artifacts: [output/quality-review.md]}
+  - {id: delivery_validation, title: 交付校验, active_percent: 92, complete_percent: 97, required_artifacts: [output/material-analysis.md, output/content.md, output/image-prompts.md, output/moments-image.png, output/quality-review.md]}
+  - {id: finalize, title: 完成, active_percent: 99, complete_percent: 100}
 artifacts:
   - {role: analysis, path: output/material-analysis.md, mime_type: text/markdown, required: true}
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
