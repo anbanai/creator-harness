@@ -16,6 +16,12 @@
   `update_task_progress` calls.
 - Explicitly excluded `/btw`, model prompts, title inference, shell polling, and
   custom protocols from progress telemetry.
+- Aligned the DSH npm package and lockfile metadata with both native plugin
+  manifests and the Claude marketplace at `4.1.13`; this metadata-only change
+  does not migrate DSH progress behavior.
+- Prepared the `4.1.13` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; a release operator must complete
+  the existing automated and manual release gates before public announcement.
 
 ## [4.1.12] - 2026-08-17
 

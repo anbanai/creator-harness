@@ -75,9 +75,11 @@ YAML files defining **writing** styles (the writer dimension only). Each has `na
 Codex supports plugin-bundled lifecycle Hooks, including `PostToolUse`,
 `SubagentStop`, and `Stop`. Plugins can load them from the default
 `hooks/hooks.json` location or a manifest `hooks` entry. The current Anban
-`hooks/hooks.json` uses the Claude Code adapter schema and is not registered as
-a Codex fallback. Each TOML subagent therefore continues to own delivery
-validation and its final quality summary in `developer_instructions`.
+`hooks/hooks.json` uses the Claude Code adapter schema. To prevent Codex's
+default plugin-root discovery from loading that unvalidated adapter, the Codex
+manifest explicitly sets `"hooks": []`. Each TOML subagent therefore continues
+to own delivery validation and its final quality summary in
+`developer_instructions`.
 
 ### Progress Compatibility Boundary
 
@@ -137,7 +139,7 @@ Official references: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 | Subagent auto-spawn | Not applicable (parent calls subagent) | Never — must be explicit (`use the X subagent`) |
 | Skills inheritance | Skills inherit from parent session | Skills MUST be declared per-subagent via `[[skills.config]]` |
 | Lifecycle checks | `hooks/hooks.json` plus managed runtime Hooks | Embedded in each TOML subagent instruction until Anban ships a Codex reporter adapter |
-| Bundled Hooks | Supported by Claude Code manifest | Supported officially; Anban's current Claude-specific Hook adapter is not registered for Codex |
+| Bundled Hooks | Supported by Claude Code manifest | Supported officially; Anban's Codex manifest explicitly suppresses default discovery with `"hooks": []` until a validated reporter adapter exists |
 | MCP server list | `mcpServers` in frontmatter | `[mcp_servers.X]` table in TOML |
 | Tools allowlist | `tools:` frontmatter field | `sandbox_mode` field (read-only / workspace-write / danger-full-access) |
 | Model override | `model: inherit` | Omit `model` field to inherit parent session |

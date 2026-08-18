@@ -28,6 +28,7 @@
     "Montage"
   ],
   "skills": "./skills/",
+  "hooks": [],
   "interface": {
     "displayName": "Anban Creator",
     "shortDescription": "Chinese social content creation workflows",

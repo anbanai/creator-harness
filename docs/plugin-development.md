@@ -179,8 +179,9 @@ Classify a Skill before editing it:
   `https://creator.anbanai.com/mcp`. Presets must not embed MCP clients,
   credential values, or host-specific adapter files.
 - Keep deterministic validation in scripts or server tests.
-- Bump `package.json`, `.claude-plugin/plugin.json`, the marketplace plugin
-  entry, and `.codex-plugin/plugin.json` together, and update `CHANGELOG.md` for
-  any distributed runtime or documentation change.
+- Bump `package.json`, the `pnpm-lock.yaml` root importer metadata,
+  `.claude-plugin/plugin.json`, the marketplace plugin entry, and
+  `.codex-plugin/plugin.json` together, and update `CHANGELOG.md` for any
+  distributed runtime or documentation change.
 - Validate metadata, run affected contract tests, run `claude plugin validate`,
   run `make dsh-check dsh-smoke`, and check the final diff before release.
