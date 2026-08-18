@@ -39,6 +39,7 @@ const {
   assertSafeArchiveEntries,
   inspectAndExtractArchive,
   parsePackResult,
+  runBoundedCommand,
   verifyPackFileInventory,
   verifyInstalledPackage,
   verifySourceIntegrity,
@@ -1592,7 +1593,15 @@ describe('DSH package integrity verifier', () => {
     })
     try {
       await expect(
-        verifyInstalledPackage(fixture.root, { childTimeoutMs: 50 }),
+        verifyInstalledPackage(fixture.root, {
+          childTimeoutMs: 50,
+          runCommand(command: string, args: string[], options: { label: string }) {
+            if (options.label === 'public export smoke') {
+              return Promise.resolve({ status: 0, stderr: '', stdout: '' })
+            }
+            return runBoundedCommand(command, args, options)
+          },
+        }),
       ).rejects.toThrow('packaged CLI smoke timed out')
     } finally {
       await rm(fixture.root, { force: true, recursive: true })
