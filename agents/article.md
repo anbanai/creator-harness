@@ -99,7 +99,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 
 进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
 
-阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，正文、合规、SEO、视觉、图片与 HTML 全部完成后才完成；`delivery` 覆盖步骤 9、步骤 10、最终报告与 feedback，发布前总验收、草稿发布或明确跳过发布、最终反馈全部结束后才完成。
+阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，正文、合规、SEO、视觉、图片与 HTML 全部完成后才完成；`delivery` 覆盖步骤 9、步骤 10、最终报告与 feedback，发布前总验收、`publish_draft` 成功、最终 feedback 全部结束后才完成。
 
 ## 创作流程（10 步）
 
