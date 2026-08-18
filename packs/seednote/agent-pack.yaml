@@ -23,9 +23,9 @@ billing_operations:
   seednote: task.seednote
   viral_analysis: task.viral_analysis
 progress:
-  - {id: research, title: 素材研究}
-  - {id: writing, title: 笔记创作}
-  - {id: delivery, title: 交付验收}
+  - {id: research, title: 素材研究, active_percent: 5, complete_percent: 25}
+  - {id: writing, title: 笔记创作, active_percent: 35, complete_percent: 80}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100}
 artifacts:
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
   - {role: image_plan, path: output/image-plan.md, mime_type: text/markdown, required: true}

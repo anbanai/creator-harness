@@ -22,9 +22,9 @@ features: [publishing, image-generation, reference-images]
 billing_operations:
   article: task.article
 progress:
-  - {id: research, title: 选题研究}
-  - {id: writing, title: 内容创作}
-  - {id: delivery, title: 交付验收}
+  - {id: research, title: 选题研究, active_percent: 5, complete_percent: 25}
+  - {id: writing, title: 内容创作, active_percent: 35, complete_percent: 80}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100}
 artifacts:
   - {role: final_markdown, path: output/04-article-final.md, mime_type: text/markdown, required: true}
   - {role: html, path: output/05-article.html, mime_type: text/html, required: true}

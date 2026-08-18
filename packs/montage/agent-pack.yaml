@@ -21,9 +21,9 @@ features: [video-generation, source-assets]
 billing_operations:
   montage: task.montage
 progress:
-  - {id: prepare, title: 准备 Montage 项目}
-  - {id: production, title: 视频生产}
-  - {id: delivery, title: 交付验收}
+  - {id: prepare, title: 准备 Montage 项目, active_percent: 5, complete_percent: 20}
+  - {id: production, title: 视频生产, active_percent: 30, complete_percent: 85}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100}
 artifacts:
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}

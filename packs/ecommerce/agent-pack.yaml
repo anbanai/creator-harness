@@ -21,9 +21,9 @@ features: [image-generation, product-assets]
 billing_operations:
   ecommerce: task.ecommerce
 progress:
-  - {id: analysis, title: 产品分析}
-  - {id: production, title: 素材生产}
-  - {id: delivery, title: 交付验收}
+  - {id: analysis, title: 产品分析, active_percent: 5, complete_percent: 20}
+  - {id: production, title: 素材生产, active_percent: 30, complete_percent: 85}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100}
 artifacts:
   - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
   - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown, required: true}

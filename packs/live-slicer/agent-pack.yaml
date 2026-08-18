@@ -18,9 +18,9 @@ runtime:
 surfaces: [plugin]
 features: [video-processing, transcription]
 progress:
-  - {id: transcription, title: 视频转写}
-  - {id: slicing, title: 切片导出}
-  - {id: delivery, title: 交付验收}
+  - {id: transcription, title: 视频转写, active_percent: 5, complete_percent: 20}
+  - {id: slicing, title: 切片导出, active_percent: 30, complete_percent: 85}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100}
 artifacts:
   - {role: summary, path: output/summary.md, mime_type: text/markdown, required: true}
   - {role: manifest, path: output/clip-manifest.json, mime_type: application/json, required: true}
