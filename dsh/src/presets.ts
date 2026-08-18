@@ -55,6 +55,7 @@ interface PresetOwnership {
 interface PresetFaults {
   beforeRemoveOperationPath?: (path: string) => Promise<void> | void
   beforeRename?: (source: string, destination: string) => Promise<void> | void
+  duringDigestFile?: (path: string) => Promise<void> | void
 }
 
 interface PresetContext {
@@ -228,11 +229,13 @@ async function listFiles(
 ): Promise<
   Array<{
     absolutePath: string
-    device: number
-    inode: number
-    mode: number
+    ctimeNs: bigint
+    device: bigint
+    inode: bigint
+    modeClass: 'executable' | 'file'
+    mtimeNs: bigint
     relativePath: string
-    size: number
+    size: bigint
   }>
 > {
   const rootStats = await lstat(root)
@@ -245,11 +248,13 @@ async function listFiles(
 
   const files: Array<{
     absolutePath: string
-    device: number
-    inode: number
-    mode: number
+    ctimeNs: bigint
+    device: bigint
+    inode: bigint
+    modeClass: 'executable' | 'file'
+    mtimeNs: bigint
     relativePath: string
-    size: number
+    size: bigint
   }> = []
 
   async function visit(directory: string, prefix: string): Promise<void> {
@@ -260,7 +265,7 @@ async function listFiles(
       const absolutePath = join(directory, name)
       const relativePath = prefix === '' ? name : `${prefix}/${name}`
       assertContained(root, absolutePath)
-      const stats = await lstat(absolutePath)
+      const stats = await lstat(absolutePath, { bigint: true })
 
       if (stats.isSymbolicLink()) {
         throw new Error(
@@ -280,9 +285,11 @@ async function listFiles(
 
       files.push({
         absolutePath,
+        ctimeNs: stats.ctimeNs,
         device: stats.dev,
         inode: stats.ino,
-        mode: stats.mode,
+        modeClass: modeClass(Number(stats.mode)),
+        mtimeNs: stats.mtimeNs,
         relativePath,
         size: stats.size,
       })
@@ -297,6 +304,7 @@ async function listFiles(
 async function digestDirectory(
   root: string,
   excludedRelativePath?: string,
+  faults?: PresetFaults,
 ): Promise<string> {
   const digest = createHash('sha256')
   const files = await listFiles(root, excludedRelativePath)
@@ -309,38 +317,49 @@ async function digestDirectory(
     digest.update('\0')
     digest.update(pathBytes)
     digest.update('\0')
-    digest.update(modeClass(file.mode))
+    digest.update(file.modeClass)
     digest.update('\0')
     digest.update(String(file.size))
     digest.update('\0')
 
     const handle = await open(file.absolutePath, 'r')
     try {
-      const openedStats = await handle.stat()
+      const openedStats = await handle.stat({ bigint: true })
       if (
         !openedStats.isFile() ||
         openedStats.dev !== file.device ||
         openedStats.ino !== file.inode ||
-        openedStats.size !== file.size
+        openedStats.size !== file.size ||
+        openedStats.mtimeNs !== file.mtimeNs ||
+        openedStats.ctimeNs !== file.ctimeNs ||
+        modeClass(Number(openedStats.mode)) !== file.modeClass
       ) {
         throw new Error(`Preset file changed while hashing: ${file.relativePath}`)
       }
 
       let bytesRead = 0
+      let faultInvoked = false
       for await (const chunk of handle.createReadStream({ autoClose: false })) {
         bytesRead += chunk.byteLength
-        if (bytesRead > file.size) {
+        if (BigInt(bytesRead) > file.size) {
           throw new Error(`Preset file changed while hashing: ${file.relativePath}`)
         }
         digest.update(chunk)
+        if (!faultInvoked) {
+          faultInvoked = true
+          await faults?.duringDigestFile?.(file.absolutePath)
+        }
       }
 
-      const finalStats = await handle.stat()
+      const finalStats = await handle.stat({ bigint: true })
       if (
-        bytesRead !== file.size ||
+        BigInt(bytesRead) !== file.size ||
         finalStats.dev !== file.device ||
         finalStats.ino !== file.inode ||
-        finalStats.size !== file.size
+        finalStats.size !== file.size ||
+        finalStats.mtimeNs !== file.mtimeNs ||
+        finalStats.ctimeNs !== file.ctimeNs ||
+        modeClass(Number(finalStats.mode)) !== file.modeClass
       ) {
         throw new Error(`Preset file changed while hashing: ${file.relativePath}`)
       }
@@ -477,7 +496,11 @@ async function statusPreset(
   context: PresetContext,
   id: PresetId,
 ): Promise<PresetStatus> {
-  const sourceDigest = await digestDirectory(presetSource(context, id))
+  const sourceDigest = await digestDirectory(
+    presetSource(context, id),
+    undefined,
+    context.faults,
+  )
   const destination = presetDestination(context, id)
 
   let destinationStats
@@ -502,7 +525,11 @@ async function statusPreset(
     return { id, sourceDigest, state: 'unowned' }
   }
 
-  const installedDigest = await digestDirectory(destination, OWNERSHIP_FILE)
+  const installedDigest = await digestDirectory(
+    destination,
+    OWNERSHIP_FILE,
+    context.faults,
+  )
 
   if (installedDigest !== ownership.sourceDigest) {
     return {
@@ -587,7 +614,7 @@ async function installPreset(
 
   try {
     await copyDirectory(presetSource(context, id), temporary)
-    const copiedDigest = await digestDirectory(temporary)
+    const copiedDigest = await digestDirectory(temporary, undefined, context.faults)
     if (copiedDigest !== expectedStatus.sourceDigest) {
       throw new Error(`Preset source changed while copying: ${id}`)
     }

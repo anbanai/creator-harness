@@ -5,6 +5,7 @@ import {
   lstat,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   readdir,
   rm,
@@ -126,6 +127,7 @@ function fixtureOptions(
     faults?: {
       beforeRemoveOperationPath?: (path: string) => Promise<void> | void
       beforeRename?: (source: string, destination: string) => Promise<void> | void
+      duringDigestFile?: (path: string) => Promise<void> | void
     }
     force?: boolean
     packageVersion?: string
@@ -1442,6 +1444,12 @@ describe('preset containment and digest safety', () => {
       'utf8',
     )
     expect(source).toContain('handle.createReadStream')
+    expect(source).toContain('handle.stat({ bigint: true })')
+    expect(source).toContain('mtimeNs')
+    expect(source).toContain('ctimeNs')
+    expect(source).toContain(
+      'modeClass(Number(finalStats.mode)) !== file.modeClass',
+    )
     expect(source).not.toContain('readFile(file.absolutePath)')
 
     const fixture = await createFixture()
@@ -1470,6 +1478,97 @@ describe('preset containment and digest safety', () => {
       ),
     ).resolves.toEqual([expect.objectContaining({ state: 'outdated' })])
   })
+
+  it('rejects same-length in-place mutation while streaming a digest', async () => {
+    const fixture = await createFixture()
+    const skillPath = join(
+      fixture.sourceRoot,
+      'article',
+      'skills',
+      'article-skill',
+      'SKILL.md',
+    )
+    await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'a'))
+
+    let mutation:
+      | { afterSize: bigint; beforeSize: bigint; inode: bigint }
+      | undefined
+    await expect(
+      presetTestInternals.install(
+        fixtureOptions(fixture, {
+          faults: {
+            async duringDigestFile(path) {
+              if (path !== skillPath || mutation !== undefined) return
+              const before = await lstat(path, { bigint: true })
+              const handle = await open(path, 'r+')
+              try {
+                await handle.write(Buffer.alloc(64 * 1024, 'b'), 0, 64 * 1024, 0)
+                await handle.sync()
+              } finally {
+                await handle.close()
+              }
+              const after = await lstat(path, { bigint: true })
+              mutation = {
+                afterSize: after.size,
+                beforeSize: before.size,
+                inode: after.ino,
+              }
+              expect(after.ino).toBe(before.ino)
+              expect(after.size).toBe(before.size)
+            },
+          },
+          presetIds: ['article'],
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
+    expect(mutation).toMatchObject({
+      afterSize: 2n * 1024n * 1024n,
+      beforeSize: 2n * 1024n * 1024n,
+    })
+    await expect(lstat(destination(fixture, 'article'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    })
+  })
+
+  it.runIf(process.platform !== 'win32')(
+    'rejects executable mode changes while streaming a digest',
+    async () => {
+      const fixture = await createFixture()
+      const skillPath = join(
+        fixture.sourceRoot,
+        'article',
+        'skills',
+        'article-skill',
+        'SKILL.md',
+      )
+      await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'a'))
+      await chmod(skillPath, 0o600)
+
+      let modeChanged = false
+      await expect(
+        presetTestInternals.install(
+          fixtureOptions(fixture, {
+            faults: {
+              async duringDigestFile(path) {
+                if (path !== skillPath || modeChanged) return
+                const before = await lstat(path)
+                await chmod(path, 0o700)
+                const after = await lstat(path)
+                modeChanged = true
+                expect(before.mode & 0o111).toBe(0)
+                expect(after.mode & 0o111).not.toBe(0)
+              },
+            },
+            presetIds: ['article'],
+          }),
+        ),
+      ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
+      expect(modeChanged).toBe(true)
+      await expect(lstat(destination(fixture, 'article'))).rejects.toMatchObject({
+        code: 'ENOENT',
+      })
+    },
+  )
 
   it('frames digest records so content cannot forge a following file', async () => {
     const twoFiles = await createFixture()
