@@ -26,6 +26,10 @@ progress:
   - {id: research, title: 素材研究, active_percent: 5, complete_percent: 25}
   - {id: writing, title: 笔记创作, active_percent: 35, complete_percent: 80}
   - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/content.md, output/image-plan.md]}
+progress_by_task_type:
+  viral_analysis:
+    - {id: research, title: 素材研究, active_percent: 5, complete_percent: 80}
+    - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/source-analysis.md, output/viral-template.json]}
 artifacts:
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
   - {role: image_plan, path: output/image-plan.md, mime_type: text/markdown, required: true}

@@ -62,7 +62,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ## `viral_analysis` 任务停止闸门
 
-最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，按 `seednote-viral-analysis` 完成证据拆解，生成 `output/source-analysis.md`、`output/viral-template.json`，更新进度并提交 feedback 后立即结束。该分支禁止进入 `seednote-writing`、视觉生成或发布步骤，不得生成 `output/content.md` 或任何发布图片。
+最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，按 `seednote-viral-analysis` 完成证据拆解，生成 `output/source-analysis.md`、`output/viral-template.json`，更新进度并提交 feedback 后立即结束。该分支禁止进入 `seednote-writing`、视觉生成或发布步骤，不得生成 `output/content.md` 或任何发布图片。进度 Task 只创建 `research`、`delivery`，不得创建 `writing`，也不得对 `writing` 执行任何 `TaskUpdate`。
 
 ---
 
@@ -148,7 +148,7 @@ reference-usage-summary.json
 
 ## 托管进度阶段
 
-开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；原创或复刻模式的细粒度业务任务继续保持原有数量、排序与依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+开始执行时先按结构化运行时上下文中的任务类型选择阶段合同，并使用官方 `TaskCreate` 分别创建下列与任务类型匹配的阶段 Task。普通 `seednote` 创建 `research`、`writing`、`delivery` 三个阶段任务；`viral_analysis` 只创建 `research`、`delivery`，不得创建 `writing`，也不得对 `writing` 执行任何 `TaskUpdate`。保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；原创或复刻模式的细粒度业务任务继续保持原有数量、排序与依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
 
 | 阶段 | TaskCreate metadata |
 |------|---------------------|
@@ -158,7 +158,7 @@ reference-usage-summary.json
 
 进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
 
-阶段边界必须按现有模式流程执行：`research` 覆盖公共前置流程以及原创选题研究，或复刻源笔记获取与证据驱动拆解，全部研究产物落盘后才完成；`writing` 覆盖内容创作或改写、标题终稿锁定、图片生成与合规检查，全部计划图片和质量闸门完成后才完成；`delivery` 覆盖交付校验、最终报告与 feedback，所有必需产物通过校验且失败态按既有恢复规则处理后才完成。
+阶段边界必须按现有模式流程执行：`research` 覆盖公共前置流程以及原创选题研究，或复刻源笔记获取与证据驱动拆解，全部研究产物落盘后才完成；普通 `seednote` 的 `writing` 覆盖内容创作或改写、标题终稿锁定、图片生成与合规检查，全部计划图片和质量闸门完成后才完成；`viral_analysis` 没有 `writing` 阶段；`delivery` 覆盖交付校验、最终报告与 feedback，所有必需产物通过校验且失败态按既有恢复规则处理后才完成。
 
 ## 创作流程
 
