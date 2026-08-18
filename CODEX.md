@@ -21,7 +21,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 - **Skills** (`skills/`) — the canonical shared Skill tree auto-discovered by both hosts
 - **Subagents** (`agents/`) — six TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
 - **MCP server** (`install/agents-registration.toml`) — installed into Codex config with `ANBAN_API_KEY`; each TOML subagent also declares its MCP dependency
-- **Completion checks** — embedded in TOML subagent instructions because the current Codex plugin manifest does not accept bundled Hooks
+- **Completion checks** — embedded in TOML subagent instructions because Anban does not yet ship a Codex Hook-based completion or progress reporter adapter
 
 ### Subagents (`agents/`)
 
@@ -72,7 +72,43 @@ YAML files defining **writing** styles (the writer dimension only). Each has `na
 
 ### Completion Checks
 
-The current Codex plugin manifest does not accept bundled Hooks. Each TOML subagent therefore owns its delivery validation and final quality summary in `developer_instructions`. `hooks/hooks.json` is the Claude Code adapter and is not a Codex fallback.
+Codex supports plugin-bundled lifecycle Hooks, including `PostToolUse`,
+`SubagentStop`, and `Stop`. Plugins can load them from the default
+`hooks/hooks.json` location or a manifest `hooks` entry. The current Anban
+`hooks/hooks.json` uses the Claude Code adapter schema and is not registered as
+a Codex fallback. Each TOML subagent therefore continues to own delivery
+validation and its final quality summary in `developer_instructions`.
+
+### Progress Compatibility Boundary
+
+Managed Claude execution derives progress from Task metadata and Agent SDK
+Hooks. The Runner observes the stable `metadata.anban_progress_stage` declared
+by Agent Packs, validates required file-backed artifacts, and sends structured
+events through the authenticated managed progress endpoint.
+
+Codex has official lifecycle surfaces, but the current Anban integration is a
+distributed plugin and subagent installation, not an App Server host:
+
+- Official `PostToolUse` can observe `update_plan` and other local tools. Its
+  structured input exposes `tool_name`, `tool_input`, and `tool_response`, but
+  it provides no stable Agent Pack stage identifier equivalent to Claude Task
+  metadata.
+- An App Server host can consume `turn/*` and `item/*` notifications, including
+  `turn/plan/updated`, but plan entries contain only `step` and `status`.
+- This Codex plugin does not currently include an authenticated reporter adapter
+  that combines either official event surface with Anban's managed progress
+  endpoint.
+
+For that reason, existing Codex TOML agents that publish business-stage progress
+retain explicit `update_task_progress` calls as a temporary compatibility path.
+`/btw` and model prompts are not telemetry. Do not infer stages from plan/task
+titles, add shell polling, or introduce a custom Codex protocol. A future
+migration should build on official `PostToolUse`/`Stop` Hooks or App Server plan
+notifications once stable stage identity and authenticated transport are both
+available.
+
+Official references: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
+[Codex App Server](https://learn.chatgpt.com/docs/app-server).
 
 ## Key Conventions
 
@@ -100,8 +136,8 @@ The current Codex plugin manifest does not accept bundled Hooks. Each TOML subag
 | Subagent format | `agents/*.md` with YAML frontmatter | `~/.codex/agents/*.toml` (TOML) + registration in `~/.codex/config.toml` |
 | Subagent auto-spawn | Not applicable (parent calls subagent) | Never — must be explicit (`use the X subagent`) |
 | Skills inheritance | Skills inherit from parent session | Skills MUST be declared per-subagent via `[[skills.config]]` |
-| Lifecycle checks | `hooks/hooks.json` plus managed runtime Hooks | Embedded in each TOML subagent instruction |
-| Bundled Hooks | Supported by Claude Code manifest | Not accepted by the current Codex plugin manifest |
+| Lifecycle checks | `hooks/hooks.json` plus managed runtime Hooks | Embedded in each TOML subagent instruction until Anban ships a Codex reporter adapter |
+| Bundled Hooks | Supported by Claude Code manifest | Supported officially; Anban's current Claude-specific Hook adapter is not registered for Codex |
 | MCP server list | `mcpServers` in frontmatter | `[mcp_servers.X]` table in TOML |
 | Tools allowlist | `tools:` frontmatter field | `sandbox_mode` field (read-only / workspace-write / danger-full-access) |
 | Model override | `model: inherit` | Omit `model` field to inherit parent session |

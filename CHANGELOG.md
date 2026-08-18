@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [4.1.13] - 2026-08-18
+
+### Changed
+
+- Managed Claude execution now derives structured progress from Agent Pack stage
+  metadata observed by Agent SDK Hooks and validates file-backed delivery before
+  reporting completion.
+- Documented the current Codex compatibility boundary: official Codex lifecycle
+  Hooks and App Server plan notifications do not yet provide this distributed
+  plugin with both stable Agent Pack stage identity and authenticated progress
+  transport, so existing Codex progress-enabled subagents retain explicit
+  `update_task_progress` calls.
+- Explicitly excluded `/btw`, model prompts, title inference, shell polling, and
+  custom protocols from progress telemetry.
+
 ## [4.1.12] - 2026-08-17
 
 ### Changed
