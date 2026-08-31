@@ -57,7 +57,7 @@ developer_instructions = """
 - **必须使用 Codex 内置的 MCP 工具调用服务端接口**（如 list_projects、generate_image 等）
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 topic-research / content-writing / seo-optimization Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-- **必需 MCP 能力调用不可用或失败**：list_projects、get_project_profile、list_drafts、list_published_articles、render_template 或 publish_draft 任一调用不可用或失败时，在 output/failure-state.json 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
+- **必需 MCP 能力调用不可用或失败**：list_projects、get_project_profile、list_drafts、list_published_articles、render_template 或 create_draft 任一调用不可用或失败时，在 output/failure-state.json 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
 - **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败写入 `{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_image_upload_failed","message":"图片上传在限定重试后仍失败","resume_from":"image_generation"}` 并结束当前托管执行。
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受发布前质量闸门约束。
 - **唯一配置兜底**：仅当 get_project_profile 调用成功但缺少可选语义配置（如 visual_style、writer 或 theme）时，才可采用 Agent 默认值并记录来源；只有这种成功响应中的可选字段缺失允许继续，调用失败不属于配置缺失。
@@ -321,7 +321,7 @@ generate_image(
 - [ ] **内容审核通过率**：至少 80% 的内容图 quality_status=passed
 - [ ] **审计完整性**：images.json 每条含 visual_brief / required_entities / must_match_excerpts / 可见内容质量结论 / slot_id / section_index / wechat_url / media_id
 - [ ] **CDN 持久化**：images.json 每条都有非空 wechat_url（即每张图已独立上传到微信 CDN）；缺 wechat_url 的 slot 只重试 upload_image，不得重新生成
-- [ ] **正文图片互不相同**：images.json 中所有内容图的 wechat_url 两两不同，且没有任何一张等于封面 $COVER_CDN_URL（封面只能用于 thumb_media_id，**不得复用为正文图**）；服务端 publish_draft 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿，配图失败时宁可缺图降级也不得用封面/他图顶替
+- [ ] **正文图片互不相同**：images.json 中所有内容图的 wechat_url 两两不同，且没有任何一张等于封面 $COVER_CDN_URL（封面只能用于 thumb_media_id，**不得复用为正文图**）；服务端 create_draft 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿，配图失败时宁可缺图降级也不得用封面/他图顶替
 
 未通过检查时按问题类型处理：单图可见内容质量未通过则降级、节奏/模板违规回 Phase 0、内容审核通过率 <80% 回 Phase 3。超过一半章节配图在各自限定重试后仍失败时，保留已生成产物，写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_content_images_failed","message":"超过一半章节配图在限定重试后仍失败","resume_from":"image_generation"}`，结束当前托管执行并等待从 image_generation 恢复，不得请求用户协助。
 
@@ -377,7 +377,7 @@ render_template 服务端按 layout_plan 中的 slot 顺序确定性渲染 HTML 
 
 审计 rubric、阈值、输出格式详见 `article-viral-strategy` skill 的 `references/viral-audit.md`。
 
-**审阅闭环**：任一项审阅未通过时标记待调整，自动回到对应步骤（正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染）修订并重新审阅；全部通过前不得调用 publish_draft。缺 `viral-audit.md` 不得发布；`viral-audit.md` 未通过（整体 <7.0 或任一硬性必过项不通过）同样先调整再复审。
+**审阅闭环**：任一项审阅未通过时标记待调整，自动回到对应步骤（正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染）修订并重新审阅；全部通过前不得调用 create_draft。缺 `viral-audit.md` 不得发布；`viral-audit.md` 未通过（整体 <7.0 或任一硬性必过项不通过）同样先调整再复审。
 
 **产出**：output/final-review.md
 
@@ -392,7 +392,7 @@ using the article-publishing skill 创建 draft.json 并发布：
 - thumb_media_id：**仅当封面开关开启时**填步骤 6 的封面 $COVER_MEDIA_ID；**封面开关关闭时（含"仅配图"和"纯文字"）一律不带 thumb_media_id**（即使有正文配图也**不复用**作封面——公众号后台将不显示封面/需手动设置，此为用户选择），并在 final-review.md 记录提示
 - author：**仅**取自步骤 1 get_project_profile 顶层 byline（公众号署名，原样填入；空则省略，**禁用** writing_voice 顶替——见 article-publishing skill「作者字段来源」）
 
-仅当 output/final-review.md 所有硬性项通过时，调用 publish_draft 发布到草稿箱。
+仅当 output/final-review.md 所有硬性项通过时，调用 create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles) 发布到草稿箱。
 
 **产出**：output/draft.json
 
@@ -447,7 +447,7 @@ using the article-publishing skill 创建 draft.json 并发布：
 | **去 AI 过度改写丢信息** | humanizer skill 改写而非删除，保留人称代入/情绪节奏/具体细节，覆盖全部信息点 |
 | **违禁词检测误报** | 记录疑似词，人工复核标记，不自动删除 |
 | **HTML 输入预检失败** | 在调用前检查并修复 Markdown 与 layout_plan；render_template 实际调用失败按 article_mcp_call_failed 终止 |
-| **草稿创建失败** | publish_draft 实际调用失败立即写 article_draft_creation_failed 失败态并终止 |
+| **草稿创建失败** | create_draft 实际调用失败立即写 article_draft_creation_failed 失败态并终止 |
 
 ---
 
@@ -509,7 +509,7 @@ using the article-publishing skill 创建 draft.json 并发布：
 - [ ] **required_entities 是抽象词**（"美感"、"氛围"）→ 重写为可识别的物体
 - [ ] **must_match_excerpts 是论点而非原句** → 从章节中摘真实段落
 - [ ] 内容配图未使用 ref_image_path="output/cover.png" → 风格不一致风险；正文图复刻封面主体/构图/核心物件 → 必须重写章节 visual_brief / required_entities
-- [ ] **正文 <img src> 出现封面 $COVER_CDN_URL，或多张正文图共用同一 wechat_url** → 服务端 publish_draft 会拒绝发布；回步骤 7 为缺失 slot 独立生成，不得用封面/他图顶替
+- [ ] **正文 <img src> 出现封面 $COVER_CDN_URL，或多张正文图共用同一 wechat_url** → 服务端 create_draft 会拒绝发布；回步骤 7 为缺失 slot 独立生成，不得用封面/他图顶替
 - [ ] **output/cover-prompt.md 缺失或无 `visual_quality_scorecard` / `cover_effectiveness_scorecard` / `cover_strategy`** → 步骤 6d 第 11 步必须原子写入；仅有旧的 6 维视觉评分全为 high 不得通过
 - [ ] images.json 缺少可见内容质量结论 → 独立审核未完成，回步骤 7b
 - [ ] **内容审核通过率 < 80%** → 回到步骤 6e 检查 prompt 构建逻辑
@@ -547,7 +547,7 @@ using the article-publishing skill 创建 draft.json 并发布：
 **关键步骤失败**（封面生成、草稿创建）：
 
 - 封面生成沿用步骤 6 的两次自动重试；耗尽后写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_generation_failed","message":"封面生成在限定重试后仍失败","resume_from":"image_generation"}`
-- publish_draft 调用失败立即写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"publishing","error_code":"article_draft_creation_failed","message":"publish_draft MCP 调用失败","resume_from":"publishing"}`，不得重试发布或继续后续阶段
+- create_draft 调用失败立即写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"publishing","error_code":"article_draft_creation_failed","message":"create_draft MCP 调用失败","resume_from":"publishing"}`，不得重试发布或继续后续阶段
 - 两类失败都保留已有产物并结束当前托管执行，等待从 resume_from 恢复；不得请求用户协助，也不得伪造成功
 
 **质量审阅未通过**（内容质量、视觉审计、发布前总验收）：
@@ -642,7 +642,7 @@ article agent 已完成执行。请检查 output/ 目录下的产出文件，生
 5. **HTML 渲染检查**：
    - 05-article.html 是否由 render_template 生成？（通过 final-review.md 的 render_audit 段确认）
    - 是否仍用 convert_markdown？
-6. **草稿状态**：是否成功创建草稿，draft_url 是什么
+6. **草稿状态**：是否成功创建草稿，draft_media_id 与 lifecycle status 是什么
 7. **问题检查**：文件是否完整、HTML 是否符合微信规范、是否有视觉节奏违规
 
 如发现问题请明确指出并建议修复方案（如：visual_brief 抽象化请重写、内容审核通过率低请回 Phase 3 重做 image-plan）。

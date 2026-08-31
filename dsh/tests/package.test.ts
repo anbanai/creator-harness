@@ -479,7 +479,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.13',
+      version: '4.1.14',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -639,11 +639,11 @@ dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
 \`\`\``
 
     for (const allowed of [
-      '"@anban/dsh-plugin@4.1.13"',
-      '"/tmp/anban-dsh-plugin-4.1.13.tgz"',
-      '"file:/tmp/anban-dsh-plugin-4.1.13.tgz"',
-      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.13/anban-dsh-plugin-4.1.13.tgz"',
-      '"git+https://github.com/anbanai/creator-skills.git#v4.1.13"',
+      '"@anban/dsh-plugin@4.1.14"',
+      '"/tmp/anban-dsh-plugin-4.1.14.tgz"',
+      '"file:/tmp/anban-dsh-plugin-4.1.14.tgz"',
+      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.14/anban-dsh-plugin-4.1.14.tgz"',
+      '"git+https://github.com/anbanai/creator-skills.git#v4.1.14"',
       '"git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"',
     ]) {
       expect(documentedPluginAddFindings(fixture(allowed)), allowed).toEqual([])
@@ -659,11 +659,11 @@ dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
       'file:/tmp/anban-dsh-plugin.tgz',
       '"@anban/dsh-plugin"',
       '"@anban/dsh-plugin@latest"',
-      '"@anban/dsh-plugin@^4.1.13"',
+      '"@anban/dsh-plugin@^4.1.14"',
       '"@anban/dsh-plugin@01.2.3"',
       '"/tmp/arbitrary-plugin-4.1.12.tgz"',
       '"https://example.com/anban-dsh-plugin-4.1.12.tgz"',
-      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.13/anban-dsh-plugin-4.1.14.tgz"',
+      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.14/anban-dsh-plugin-4.1.15.tgz"',
       '"git+https://github.com/anbanai/creator-skills.git#main"',
       '"git+https://github.com/anbanai/creator-skills.git#HEAD"',
       '"git+https://github.com/anbanai/creator-skills.git#v01.2.3"',
@@ -715,29 +715,29 @@ dsh plugin --profile "$ACTIVE_PROFILE" add "unterminated
     }
     for (const source of [
       `\`\`\`bash
-$ dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.13"
+$ dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.14"
 \`\`\``,
       `\`\`\`bash
-CHECK_ONLY=1 dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.13.tgz"
+CHECK_ONLY=1 dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.14.tgz"
 \`\`\``,
       `\`\`\`bash
 command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"
 \`\`\``,
       `\`\`\`bash
 dsh plugin --profile "$ACTIVE_PROFILE" add \\
-  "https://github.com/royalmorty/anbanwriter/releases/download/v4.1.13/anban-dsh-plugin-4.1.13.tgz"
+  "https://github.com/royalmorty/anbanwriter/releases/download/v4.1.14/anban-dsh-plugin-4.1.14.tgz"
 \`\`\``,
       `\`\`\`bash
-env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.13"
+env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.14"
 \`\`\``,
       `\`\`\`bash
-command -- dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.13.tgz"
+command -- dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.14.tgz"
 \`\`\``,
       `\`\`\`bash
 env -u DSH_HOME dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"
 \`\`\``,
       `\`\`\`bash
-ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/with spaces/anban-dsh-plugin-4.1.13.tgz"
+ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/with spaces/anban-dsh-plugin-4.1.14.tgz"
 \`\`\``,
     ]) {
       expect(documentedPluginAddFindings(source), source).toEqual([])
@@ -850,7 +850,7 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
 
   it('keeps package publication under operator control for the current release', async () => {
     const changelog = await readFile(changelogUrl, 'utf8')
-    const releaseHeading = '## [4.1.13] - 2026-08-18'
+    const releaseHeading = '## [4.1.14] - 2026-09-01'
     const release = changelog.slice(
       changelog.indexOf(releaseHeading),
       changelog.indexOf('\n## [', changelog.indexOf(releaseHeading) + 1),

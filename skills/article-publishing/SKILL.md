@@ -15,7 +15,7 @@ description: 'Use when creating or managing WeChat news article drafts. Also use
 | MCP 工具 | 说明 |
 |----------|------|
 | `upload_image` (project_id, file_path) | 上传图片到微信素材库 |
-| `publish_draft` (project_id, articles) | 创建图文文章草稿 |
+| `create_draft` (project_id, task_id, articles) | 为当前文章任务创建图文草稿 |
 | `list_drafts` (project_id) | 查看已有草稿 |
 | `list_published_articles` (project_id) | 查看已发布文章 |
 
@@ -29,7 +29,7 @@ description: 'Use when creating or managing WeChat news article drafts. Also use
 
 ## 使用方式
 
-通过 MCP 工具调用 `publish_draft`，传入 articles 数组创建草稿。
+通过 MCP 工具调用 `create_draft`，传入当前运行上下文中的 `project_id`、`task_id` 和 `draft.json` 的 `articles` 数组创建草稿。项目与任务必须属于当前认证用户，且任务必须属于该项目。
 
 ## draft.json 格式
 
@@ -81,17 +81,14 @@ author 为空                         → 省略 author 字段（切勿用 write
 | `content_only` | 关 | **省略 `thumb_media_id` 字段**（即使有正文配图也**不复用**作封面） |
 | `text_only` | 关 | **省略 `thumb_media_id` 字段**；在 `final-review.md` 记录「未生成封面，公众号后台可能不显示封面/需手动设置」 |
 
-**关键约束**：封面开关关闭 → 一律不设 `thumb_media_id`，**绝不**用任何正文配图的 `media_id` 顶替。服务端 `publish_draft` 对 `thumb_media_id` 是可选的，省略它不会导致发布失败——公众号后台只是不显示封面（用户已知情选择）。封面开关开启但封面 `media_id` 缺失（生成失败）才是真正的发布阻塞，需回到 `article-cover-design` skill 重新生成。
+**关键约束**：封面开关关闭 → 一律不设 `thumb_media_id`，**绝不**用任何正文配图的 `media_id` 顶替。服务端 `create_draft` 对 `thumb_media_id` 是可选的，省略它不会导致发布失败——公众号后台只是不显示封面（用户已知情选择）。封面开关开启但封面 `media_id` 缺失（生成失败）才是真正的发布阻塞，需回到 `article-cover-design` skill 重新生成。
 
 ## 响应格式
 
 ```json
 {
-  "success": true,
-  "data": {
-    "media_id": "draft_media_id_xxx",
-    "draft_url": "https://mp.weixin.qq.com/..."
-  }
+  "draft_media_id": "draft_media_id_xxx",
+  "status": "drafted"
 }
 ```
 
@@ -100,7 +97,7 @@ author 为空                         → 省略 author 字段（切勿用 write
 1. 调用 `render_template`（带 `layout_plan`）将 Markdown + 节奏计划确定性渲染为 WeChat HTML（替代旧的 `convert_markdown`）
 2. 调用 `generate_image` 生成封面；如需质量审核则单独调用 `analyze_image`。**流水线场景**：已有封面 `media_id` 时直接复用，跳过本步
 3. 质量通过后调用 `upload_image` 取得 `media_id` + `wechat_url`。上传失败只重试上传，不重新生成
-4. 调用 `publish_draft` 创建草稿
+4. 调用 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)` 创建草稿；调用失败时不得在 Agent 侧重试创建
 
 ## 流水线集成
 

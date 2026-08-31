@@ -208,7 +208,7 @@ generate_image(
 - [ ] **内容审核通过率**：至少 80% 的内容图 `quality_status=passed`
 - [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / 可见内容质量结论 / `slot_id` / `section_index` / `wechat_url` / `media_id`
 - [ ] **CDN 持久化**：`images.json` 每条都有非空 `wechat_url`（即每张图已上微信 CDN）
-- [ ] **正文图片互不相同**：`images.json` 中所有内容图的 `wechat_url` 两两不同，且没有任何一张等于封面 `$COVER_CDN_URL`（封面只能用于 `thumb_media_id`，**不得复用为正文图**）；服务端 `publish_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿，配图失败时宁可缺图降级也不得用封面/他图顶替
+- [ ] **正文图片互不相同**：`images.json` 中所有内容图的 `wechat_url` 两两不同，且没有任何一张等于封面 `$COVER_CDN_URL`（封面只能用于 `thumb_media_id`，**不得复用为正文图**）；服务端 `create_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿，配图失败时宁可缺图降级也不得用封面/他图顶替
 
 未通过检查时按问题类型处理：单图可见内容质量未通过则降级、节奏/模板违规回步骤 6a/b、内容审核通过率 <80% 回步骤 6e。超过一半章节配图在各自限定重试后仍失败时，按“错误处理”写入 `article_content_images_failed` 失败态并从 `image_generation` 恢复。
 
@@ -251,7 +251,7 @@ render_template(
 - HTML：`05-article.html` 由 `render_template` 生成（记录在 `final-review.md` 的 `render_audit` 段），图片链接有效，内容未超过平台限制
 - 草稿字段：title、digest、content 可从前序产物读取；`thumb_media_id` 仅封面开关开启时要求可读取
 
-**审阅闭环**：任一项审阅未通过时标记为待调整，自动回到正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染步骤修订，并重新写入 `final-review.md`。全部通过前不得调用 `publish_draft`。
+**审阅闭环**：任一项审阅未通过时标记为待调整，自动回到正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染步骤修订，并重新写入 `final-review.md`。全部通过前不得调用 `create_draft`。
 
 ### 步骤 10：草稿发布
 
@@ -262,7 +262,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - `thumb_media_id`：**仅当封面开关开启时**填步骤 6 的封面 `$COVER_MEDIA_ID`；封面开关关闭时一律不带 `thumb_media_id`，并在 `final-review.md` 记录提示
 - `author`：**仅**取自步骤 1 `get_project_profile` 顶层 `author`（公众号署名，原样填入 `draft.json` 的 `author` 键；空则省略，**禁用** `writer` 顶替——见 article-publishing skill「作者字段来源」）
 
-仅当 `output/final-review.md` 所有硬性项通过时，调用 `publish_draft` 发布到草稿箱。产出：
+仅当 `output/final-review.md` 所有硬性项通过时，调用 `create_draft` 发布到草稿箱。产出：
 - `output/draft.json`
 
 ---
@@ -288,7 +288,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 ## 硬性规则（违反即发布失败或质量不达标）
 
 - **禁止把封面 wechat_url 当作正文 img src**：封面 `$COVER_CDN_URL` 只能用于 `thumb_media_id`，正文每张图必须独立生成上 CDN。
-- **禁止多张正文图共用同一 wechat_url**：服务端 `publish_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿。
+- **禁止多张正文图共用同一 wechat_url**：服务端 `create_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿。
 - **正文全图相同时不得发布**：服务端发布前会做图片去重硬拦截；配图失败时宁可缺图降级，也不得用封面/他图顶替。
 - **封面必须通过内容审核与有效性检查**才可作为 `thumb_media_id`（仅封面开关开启时）；仅有旧的 6 维视觉评分全为 high 不得通过。缺 `cover_strategy`、缺 `cover_effectiveness_scorecard` 或 `cover_effectiveness_scorecard.overall_pass=false` 均不得发布。
 - **超过一半章节配图失败**：保留已生成产物，写入 `article_content_images_failed` 失败态并结束当前托管执行；不得用降级顶替方式强行凑齐。
@@ -300,7 +300,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 
 - **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image`、`render_template` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`render_template` 或 `publish_draft` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段
+- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`render_template` 或 `create_draft` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段
 - **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败写入 `{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_image_upload_failed","message":"图片上传在限定重试后仍失败","resume_from":"image_generation"}` 并结束当前托管执行
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受发布前质量闸门约束
 - **唯一配置兜底**：仅当 `get_project_profile` 调用成功但缺少可选语义配置（如 `visual_style`、`writer` 或 `theme`）时，才可采用 Agent 默认值并记录来源；只有这种成功响应中的可选字段缺失允许继续，调用失败不属于配置缺失
@@ -350,11 +350,11 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 | **配图提示词设计质量差** | 提示词必须引用章节具体内容，使用 ref_image_path 保持风格一致 |
 | **单张配图生成失败** | 重试一次（更换提示词），仍失败则标记该章节缺图，继续后续章节 |
 | **超过一半章节配图失败** | 写 `article_content_images_failed` 失败态，从 `image_generation` 恢复，不得请求用户协助 |
-| **正文图片全图相同 / 复用封面 URL** | 服务端 `publish_draft` 硬拦截；为每个 slot 独立 `generate_image` 后独立 `upload_image`，不得用封面/他图顶替 |
+| **正文图片全图相同 / 复用封面 URL** | 服务端 `create_draft` 硬拦截；为每个 slot 独立 `generate_image` 后独立 `upload_image`，不得用封面/他图顶替 |
 | **AI 去痕过度** | 由 `humanizer` skill draft→audit→final 改写，保留人称/情绪/细节等人味 |
 | **违禁词检测误报** | 记录疑似词，人工复核标记，不自动删除 |
 | **HTML 输入预检失败** | 在调用前检查并修复 Markdown 与 `layout_plan`；`render_template` 实际调用失败按 `article_mcp_call_failed` 终止 |
-| **草稿创建失败** | `publish_draft` 实际调用失败立即写 `article_draft_creation_failed` 失败态并终止 |
+| **草稿创建失败** | `create_draft` 实际调用失败立即写 `article_draft_creation_failed` 失败态并终止 |
 
 ---
 
@@ -394,7 +394,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 
 **配图步骤失败**（单张配图生成失败）：重试一次（锐化 prompt 后），仍失败则记录该章节缺少配图继续后续章节。如果超过一半章节配图在各自限定重试后仍失败，保留已有产物并写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_content_images_failed","message":"超过一半章节配图在限定重试后仍失败","resume_from":"image_generation"}`。
 
-**关键步骤失败**（封面生成、草稿创建）：封面生成沿用步骤 6 的两次自动重试，耗尽后写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_generation_failed","message":"封面生成在限定重试后仍失败","resume_from":"image_generation"}`。`publish_draft` 调用失败立即写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"publishing","error_code":"article_draft_creation_failed","message":"publish_draft MCP 调用失败","resume_from":"publishing"}`，不得重试发布或继续后续阶段。封面质量创作预算耗尽时使用 `error_code=article_cover_quality_failed`、`resume_from=image_generation`。以上失败都保留已有产物并结束当前托管执行，不得请求用户协助，也不得伪造成功。
+**关键步骤失败**（封面生成、草稿创建）：封面生成沿用步骤 6 的两次自动重试，耗尽后写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_generation_failed","message":"封面生成在限定重试后仍失败","resume_from":"image_generation"}`。`create_draft` 调用失败立即写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"publishing","error_code":"article_draft_creation_failed","message":"create_draft MCP 调用失败","resume_from":"publishing"}`，不得重试发布或继续后续阶段。封面质量创作预算耗尽时使用 `error_code=article_cover_quality_failed`、`resume_from=image_generation`。以上失败都保留已有产物并结束当前托管执行，不得请求用户协助，也不得伪造成功。
 
 **配置与 MCP 失败边界**：`get_project_profile` 调用成功但缺少可选语义配置时，采用并记录 Agent 默认值后继续。`get_project_profile` 或其他必需 MCP 调用不可用、报错或无有效响应时，按 `article_mcp_call_failed` 写结构化失败态并结束；不得把调用失败解释成配置缺失。
 
@@ -452,7 +452,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - [ ] **`required_entities` 是抽象词**（"美感"、"氛围"）→ 重写为可识别的物体
 - [ ] **`must_match_excerpts` 是论点而非原句** → 从章节中摘真实段落
 - [ ] 封面+配图均开启时，内容配图未使用 `ref_image_path="output/cover.png"` → 风格不一致风险；封面关·配图开时，内容配图指向不存在的 `output/cover.png` → 必须移除或链到首张已生成图
-- [ ] **正文 `<img src>` 出现封面 `$COVER_CDN_URL`，或多张正文图共用同一 `wechat_url`** → 服务端 `publish_draft` 会拒绝发布；回步骤 7 为缺失 slot 独立生成，不得用封面/他图顶替
+- [ ] **正文 `<img src>` 出现封面 `$COVER_CDN_URL`，或多张正文图共用同一 `wechat_url`** → 服务端 `create_draft` 会拒绝发布；回步骤 7 为缺失 slot 独立生成，不得用封面/他图顶替
 - [ ] **`output/cover-prompt.md` 缺失或无 `cover_strategy` / `cover_effectiveness_scorecard`** → 步骤 6d 第 8 步必须原子写入
 - [ ] `images.json` 缺少可见内容质量结论 → 独立审核未执行，回步骤 7b
 - [ ] **内容审核通过率 < 80%** → 回到步骤 6e 检查 prompt 构建逻辑

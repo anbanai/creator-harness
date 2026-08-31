@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [4.1.14] - 2026-09-01
+
+### Changed
+
+- Replaced the WeChat draft MCP contract with task-bound `create_draft` and its
+  durable `draft_media_id`/`status` lifecycle response.
+- Prepared the `4.1.14` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.13] - 2026-08-18
 
 ### Changed

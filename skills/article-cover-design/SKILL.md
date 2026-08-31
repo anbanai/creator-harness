@@ -253,7 +253,7 @@ crop_image(
 
 **产出**：`output/cover.png`、`media_id`、`$COVER_CDN_URL`、`output/cover-prompt.md`。
 
-**注意**：封面仅用于 `thumb_media_id`，**不得复用为正文内容图**。正文每张图必须独立生成并调用 `upload_image` 取得自己的 `wechat_url`——服务端 `publish_draft` 会硬拦截「正文 ≥2 图但唯一 URL==1」的草稿。
+**注意**：封面仅用于 `thumb_media_id`，**不得复用为正文内容图**。正文每张图必须独立生成并调用 `upload_image` 取得自己的 `wechat_url`——服务端 `create_draft` 会硬拦截「正文 ≥2 图但唯一 URL==1」的草稿。
 
 ---
 

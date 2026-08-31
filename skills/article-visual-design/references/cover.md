@@ -156,4 +156,4 @@ An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditi
 
 封面图必须通过 Agent 的内容质量判断，并由独立 `upload_image` 获得 `media_id` 后，才可作为发布草稿的 `thumb_media_id`；未通过时按创作预算重试，耗尽后写入 `output/failure-state.json`，不得使用失败封面发布。
 
-**注意**：封面仅用于 `thumb_media_id`，**不得复用为正文内容图**。正文每张图都必须独立生成并调用 `upload_image` 取得自己的 `wechat_url`——服务端 `publish_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿。
+**注意**：封面仅用于 `thumb_media_id`，**不得复用为正文内容图**。正文每张图都必须独立生成并调用 `upload_image` 取得自己的 `wechat_url`——服务端 `create_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿。

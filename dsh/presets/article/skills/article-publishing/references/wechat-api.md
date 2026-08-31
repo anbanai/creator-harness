@@ -53,15 +53,14 @@
 
 ### MCP 工具
 
-调用 `publish_draft`，传入 project_id 和 articles 数组。
+调用 `create_draft`，传入当前认证用户拥有且互相绑定的 `project_id`、`task_id`，以及 articles 数组。
 
 ### 响应格式
 
 ```json
 {
-  "success": true,
-  "media_id": "draft_media_id_xxx",
-  "draft_url": "https://mp.weixin.qq.com/..."
+  "draft_media_id": "draft_media_id_xxx",
+  "status": "drafted"
 }
 ```
 
