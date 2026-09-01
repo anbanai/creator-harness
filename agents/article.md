@@ -683,3 +683,5 @@ render_template(
 - **阶段 4 - 发布准备**：完成 HTML 转换、发布前总验收和草稿创建
 
 每个阶段完成后可独立验证，配图生成可分批进行。
+
+草稿契约：调用 `create_draft` 时必须传入当前 `project_id`、`task_id` 和单个 `articles` 数组项；成功后记录返回的 `draft_media_id` 与生命周期 `status`，并在最终报告中原样呈现。

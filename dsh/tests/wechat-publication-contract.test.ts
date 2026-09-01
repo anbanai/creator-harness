@@ -42,6 +42,28 @@ describe('WeChat draft lifecycle contract', () => {
     expect(skill).toContain('"status": "drafted"')
   })
 
+  it('keeps the single-article request and lifecycle result contract across active article assets', async () => {
+    const paths = [
+      'skills/article-publishing/SKILL.md',
+      'agents/article.md',
+      'agents/article.toml',
+      'packs/article/agent.claude.md',
+      'packs/article/agent.codex.toml',
+      'packs/article/agent.dsh.yml',
+      'dsh/presets/article/agent.cordis.yml',
+      'dsh/presets/article/skills/article-publishing/SKILL.md',
+    ]
+    for (const path of paths) {
+      const text = await readFile(join(root, path), 'utf8')
+      expect(text, path).toContain('create_draft')
+      expect(text, path).toContain('project_id')
+      expect(text, path).toContain('task_id')
+      expect(text, path).toContain('articles')
+      expect(text, path).toContain('draft_media_id')
+      expect(text, path).toContain('status')
+    }
+  })
+
   it('keeps both native manifests and the Claude marketplace at 4.1.14', async () => {
     const paths = [
       '.claude-plugin/plugin.json',

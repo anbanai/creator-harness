@@ -717,3 +717,5 @@
   name: '@deepseek-ai/dsh-tool-todo'
   config:
     allowParallelInProgress: false
+
+# 草稿契约：create_draft 只接受一个 articles 项，并要求 project_id/task_id；成功后报告 draft_media_id 与 status。
