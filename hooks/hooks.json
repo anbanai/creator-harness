@@ -1,7 +1,31 @@
 {
   "description": "Anban 智能创作助手 plugin lifecycle hooks for agent delivery summaries and quality verification",
   "hooks": {
+    "Stop": [
+      {
+        "matcher": "^anban:[a-z][a-z0-9-]*$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/completion-metadata.sh",
+            "args": [],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
+      {
+        "matcher": "^anban:[a-z][a-z0-9-]*$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/completion-metadata.sh",
+            "args": [],
+            "timeout": 30
+          }
+        ]
+      },
       {
         "matcher": "^anban:seednote$",
         "hooks": [

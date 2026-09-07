@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [4.1.15] - 2026-09-07
+
+### Changed
+
+- Unified Agent Skill startup dependencies for Article and Seednote, with the
+  shared Humanizer preloaded for Seednote writing workflows.
+- Removed the legacy `claudecode/` compatibility checkout from the supported
+  plugin layout and synchronized generated Agent Pack outputs.
+- Prepared the `4.1.15` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.14] - 2026-09-01
 
 ### Changed
