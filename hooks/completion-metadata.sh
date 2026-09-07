@@ -11,7 +11,14 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const [output, taskId, executionId, taskType] = process.argv.slice(2);
-const files = fs.existsSync(output) ? fs.readdirSync(output, {withFileTypes:true}).filter(e => e.isFile()).map(e => e.name).sort() : [];
+const existingMetadata = path.join(output, 'completion-metadata.json');
+if ((!taskId || !executionId) && fs.existsSync(existingMetadata)) {
+  try {
+    const prior = JSON.parse(fs.readFileSync(existingMetadata, 'utf8'));
+    if (prior && typeof prior.task_id === 'string' && prior.task_id && typeof prior.execution_id === 'string' && prior.execution_id) process.exit(0);
+  } catch {}
+}
+const files = fs.existsSync(output) ? fs.readdirSync(output, {withFileTypes:true}).filter(e => e.isFile()).map(e => e.name).filter(name => name !== 'completion-metadata.json').sort() : [];
 const contentFiles = files.filter(name => /\.(md|txt|json)$/i.test(name));
 const contents = contentFiles.map(name => { try { return { name, text: fs.readFileSync(path.join(output, name), 'utf8') }; } catch { return { name, text: '' }; } });
 const text = contents.map(item => item.text).join('\n').toLowerCase();
