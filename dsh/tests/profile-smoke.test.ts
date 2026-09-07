@@ -40,6 +40,7 @@ const expectedSkillNames = {
     'topic-research',
   ],
   seednote: [
+    'humanizer',
     'seednote-research',
     'seednote-viral-analysis',
     'seednote-visual-design',
@@ -861,7 +862,7 @@ describe('DSH profile smoke flow', () => {
     expect(fixture.overrides.log.mock.calls.map(([line]) => line)).toEqual([
       'Bundle rows: anban-mcp=1 anban-preset-manager=1 preset-local-mcp=0',
       'Healthy Presets: article, seednote',
-      'Mounted Skill catalogs: article=8 seednote=4',
+      'Mounted Skill catalogs: article=8 seednote=5',
       `Export resolution: ${publicExports.join(', ')}`,
     ])
     expect(fixture.overrides.rm).toHaveBeenCalledWith(fixture.smokeRoot, {

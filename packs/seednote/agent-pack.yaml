@@ -8,7 +8,7 @@ agent:
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   dsh_source: agent.dsh.yml
-  skills: [seednote-research, seednote-viral-analysis, seednote-writing, seednote-visual-design]
+  skills: [humanizer, seednote-research, seednote-viral-analysis, seednote-writing, seednote-visual-design]
   max_turns: 20
 bindings:
   project_platforms: [seednote]

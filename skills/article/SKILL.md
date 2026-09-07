@@ -281,7 +281,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 | **视觉风格** | **配置优先**：优先取自任务解析的 `visual_style` 字段（`get_project_profile` 的 `visual_style`/`visual_style_source`，按 `task > project` 解析）；配置为空时由账号定位+内容主题+受众三维分析兜底；**不使用 writer YAML 的 `cover_style`/`cover_prompt`**（writer 仅决定文字风格）。封面+配图均开启时配图通过 `ref_image_path="output/cover.png"` 保持一致；封面关·配图开时不传 `ref_image_path` 或链首图 |
 | **HTML 渲染** | 用 `render_template`（带 `layout_plan`）确定性渲染，不再用 `convert_markdown` 自由发挥 |
 | **SEO 优化** | 自动提取关键词，生成标题/摘要/标签，结果用于草稿发布 |
-| **AI 去痕** | 自动检测并移除 AI 写作模式（33 类，详见 `humanizer` skill） |
+| **AI 去痕** | 自动检测并移除 AI 写作模式（详见 `humanizer` skill 当前规则） |
 | **文章预检** | 自动检查导流风险、内容完整性、标题摘要一致性和互动合规；审阅未通过时自动调整并复审 |
 | **错误处理** | 创作质量问题按审阅闭环自动修订；MCP 调用按「MCP 工具使用规则」分类处理 |
 
@@ -461,7 +461,7 @@ using the article-publishing skill 创建 `draft.json` 并发布：
 - [ ] 封面图包含马赛克/播放标记 → 需重新生成
 - [ ] 标题使用省略号隐藏关键信息 → 需补全信息
 - [ ] 文章字数过短（<500 字）→ 需扩展内容
-- [ ] AI 痕迹明显（33 类模式检测得分低）→ 需加强去痕
+- [ ] AI 痕迹明显（按 `humanizer` 当前规则检测得分低）→ 需加强去痕
 - [ ] 违禁词报告显示高风险词汇 → 需人工复核
 - [ ] **HTML 用 `convert_markdown` 生成**（而非 `render_template`）→ 回到步骤 8 重新渲染
 - [ ] **`layout_plan` JSON 中 `image_url` 未回填 CDN URL** → 步骤 7d 未完成

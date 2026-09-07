@@ -40,7 +40,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 
 ### Skills (`skills/`)
 
-Each shared skill has a `SKILL.md` with YAML frontmatter (`name` + `description`). Codex loads skills based on prompt matching and subagent declarations; there is no second Codex Skill copy.
+Each shared skill has a `SKILL.md` with YAML frontmatter (`name` + `description`). The main agent discovers plugin Skills from the plugin manifest; every subagent declares its startup dependencies explicitly through `[[skills.config]]`. There is no second Codex Skill copy.
 
 Key skill groups:
 - **Content**: `content-writing`, `topic-research`, `seo-optimization`
@@ -118,14 +118,14 @@ Official references: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 - **Runtime-owned workspace**: Every managed execution receives a task-private workspace, a pre-created `output/`, and `TASK_ID` in structured runtime context. Agents and Skills write named `output/<filename>` artifacts and never create, discover, move, or rename the output directory.
 - **File naming**: Subagents use numbered prefixes (`01-research.md`, `02-outline.md`...) or semantic names (`cover.png`, `content.md`, `image-plan.md`).
 - **Image reference chain**: First image establishes visual style; subsequent images use the first as reference to maintain consistency.
-- **Skill references**: Subagents invoke skills via `using the <skill-name> skill` phrasing, not the Skill tool.
+- **Skill dependencies**: Agent Pack `agent.skills` is the canonical list. Generated Codex subagents preload the same dependencies through `[[skills.config]]`; their instructions refer to the loaded method with `using the <skill-name> skill` phrasing.
 - **Content is Chinese**: All generated content targets Chinese social media platforms. Prohibited words lists (违禁词) are in `references/prohibited-words.md`.
 - **Live media dependency**: `live-slicer` and `live-slice` require local `ffmpeg` and `ffprobe`; TingWu provides transcription.
 - **Subagent invocation**: Codex subagents do NOT auto-spawn. To run a full pipeline, the user must explicitly invoke: "use the article subagent to write an article about X".
 
 ## Modifying This Plugin
 
-- **Adding a new skill**: Create `skills/<name>/SKILL.md` with YAML frontmatter `name` + `description`. Add `references/` for detailed guides. Codex auto-discovers skills via the plugin's `skills` manifest field.
+- **Adding a new skill**: Create `skills/<name>/SKILL.md` with YAML frontmatter `name` + `description`. Add `references/` for detailed guides. The main agent auto-discovers it through the plugin manifest; add it to the owning Agent Pack so generated subagents preload it.
 - **Adding a new subagent**: Create `agents/<name>.toml` with required fields (`name`, `description`, `developer_instructions`) and optional `[mcp_servers.*]` / `[[skills.config]]` sections. Update `install/agents-registration.toml` to add the `[agents.<name>]` block. Re-run `install/install-subagents.sh`.
 - **Adding a new theme**: Themes are managed server-side. Contact the server admin to add new themes.
 - **Adding a new writer style**: Add `skills/writers/<name>.yaml` with required `name`, `english_name`, `writing_prompt`.
@@ -137,7 +137,7 @@ Official references: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 | Plugin manifest | `.claude-plugin/plugin.json` | `.codex-plugin/plugin.json` (camelCase fields) |
 | Subagent format | `agents/*.md` with YAML frontmatter | `~/.codex/agents/*.toml` (TOML) + registration in `~/.codex/config.toml` |
 | Subagent auto-spawn | Not applicable (parent calls subagent) | Never — must be explicit (`use the X subagent`) |
-| Skills inheritance | Skills inherit from parent session | Skills MUST be declared per-subagent via `[[skills.config]]` |
+| Skills startup | Agent Pack dependencies are generated into Agent frontmatter `skills:` | Agent Pack dependencies are generated into per-subagent `[[skills.config]]` entries |
 | Lifecycle checks | `hooks/hooks.json` plus managed runtime Hooks | Embedded in each TOML subagent instruction until Anban ships a Codex reporter adapter |
 | Bundled Hooks | Supported by Claude Code manifest | Supported officially; Anban's Codex manifest explicitly suppresses default discovery with `"hooks": []` until a validated reporter adapter exists |
 | MCP server list | `mcpServers` in frontmatter | `[mcp_servers.X]` table in TOML |

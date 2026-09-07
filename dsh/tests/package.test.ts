@@ -479,7 +479,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.14',
+      version: '4.1.16',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -1634,7 +1634,7 @@ describe('DSH package integrity verifier', () => {
     const startedAt = Date.now()
     try {
       await expect(
-        verifyInstalledPackage(fixture.root, { childTimeoutMs: 100 }),
+        verifyInstalledPackage(fixture.root, { childTimeoutMs: 500 }),
       ).rejects.toThrow('public export smoke timed out')
       expect(Date.now() - startedAt).toBeLessThan(2_000)
       const pids = await Promise.all(

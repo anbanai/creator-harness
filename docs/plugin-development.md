@@ -61,10 +61,14 @@ Skills are discovered automatically. Supporting files are read only when needed;
 keep self-authored `SKILL.md` entrypoints under 500 lines and link directly to
 one-level references.
 
-Agent frontmatter `skills:` injects the complete declared Skill content when the
-Agent starts. Declare only specialized capabilities that the Agent actually uses.
-Do not preload an umbrella Skill that duplicates the Agent's end-to-end workflow,
-and do not repeat Skill-loading instructions in the Agent body.
+Agent frontmatter `skills:` declares startup dependencies and injects each
+declared top-level Skill's complete content when the Agent starts. The matching
+Agent Pack `agent.skills` list is the canonical dependency set; generated Claude
+frontmatter and Codex `[[skills.config]]` declarations must match it. Declare only
+specialized capabilities that the Agent actually uses. Do not preload an umbrella
+Skill that duplicates the Agent's end-to-end workflow. Progressive disclosure
+applies to supporting `references/`, not to top-level Skills already declared by
+the Agent, and Agent bodies must not describe a second phase-loading mechanism.
 
 Every distributed top-level Skill must have an Agent owner or be an explicit
 user entrypoint. Delete obsolete aliases and orphan Skills instead of retaining

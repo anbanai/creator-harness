@@ -4,6 +4,7 @@ description: 种草笔记图文全自动创作引擎——从选题到图文生�
 model: inherit
 memory: project
 skills:
+  - humanizer
   - seednote-research
   - seednote-viral-analysis
   - seednote-writing
@@ -62,7 +63,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ## `viral_analysis` 任务停止闸门
 
-最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，按 `seednote-viral-analysis` 完成证据拆解，生成 `output/source-analysis.md`、`output/viral-template.json`，更新进度并提交 feedback 后立即结束。该分支禁止进入 `seednote-writing`、视觉生成或发布步骤，不得生成 `output/content.md` 或任何发布图片。进度 Task 只创建 `research`、`delivery`，不得创建 `writing`，也不得对 `writing` 执行任何 `TaskUpdate`。
+最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，按 `seednote-viral-analysis` 完成证据拆解，生成 `output/source-analysis.md`、`output/viral-template.json`，更新进度并提交 feedback 后立即结束。该分支不生成正文，不调用 `humanizer`，禁止进入 `seednote-writing`、视觉生成或发布步骤，不得生成 `output/content.md` 或任何发布图片。进度 Task 只创建 `research`、`delivery`，不得创建 `writing`，也不得对 `writing` 执行任何 `TaskUpdate`。
 
 ---
 
@@ -199,7 +200,9 @@ reference-usage-summary.json
 
 #### 步骤 6：创作内容
 
-按 `seednote-writing` 方法，基于账号画像与 `output/topic-analysis.md` 生成 `output/content.md`，完成轻量去 AI 改写并复核字数仍 ≤1000 字，不得引入新的违禁词、虚假承诺或诱导互动表达。
+按 `seednote-writing` 方法，基于账号画像与 `output/topic-analysis.md` 生成 `output/content.md`，完成平台格式处理与 §2.6 字数压缩，正文目标 ≤950 字。
+
+随后按 `humanizer` 方法对 `output/content.md` 的标题和正文执行通用去 AI 改写：改写而非删除，保留原有事实、信息点、人称代入、口语表达、emoji 与情绪节奏。完成后再按 `seednote-writing` §2.7 复核正文仍 ≤1000 字，并检查标题/正文格式、违禁词、虚假承诺和诱导互动表达；超出字数时只回到 §2.6 压缩，不执行第二套去 AI 规则。这是自动流水线步骤，不得调用 `AskUserQuestion`。
 
 **产出**：`output/content.md`
 
@@ -221,7 +224,9 @@ reference-usage-summary.json
 
 #### 步骤 7：改写内容
 
-按 `seednote-writing` 方法基于 `output/viral-template.json`、`output/source-analysis.md`、账号画像和用户指定模式生成 `output/content.md`，并完成轻量去 AI 改写。若用户指定强度高于模板建议，但 `confidence=low` 或 `do_not_copy` 风险高，自动降级并记录原因。内容相似度过高时重新改写角度；改写后复核字数仍 ≤1000 字，且不得引入新的违禁词、虚假承诺或诱导互动表达。
+按 `seednote-writing` 方法基于 `output/viral-template.json`、`output/source-analysis.md`、账号画像和用户指定模式生成 `output/content.md`，完成平台格式处理与 §2.6 字数压缩，正文目标 ≤950 字。若用户指定强度高于模板建议，但 `confidence=low` 或 `do_not_copy` 风险高，自动降级并记录原因；内容相似度过高时重新改写角度。
+
+随后按 `humanizer` 方法对 `output/content.md` 的标题和正文执行通用去 AI 改写：改写而非删除，保留原有事实、信息点、人称代入、口语表达、emoji 与情绪节奏。完成后再按 `seednote-writing` §2.7 复核正文仍 ≤1000 字，并检查标题/正文格式、违禁词、虚假承诺和诱导互动表达；超出字数时只回到 §2.6 压缩，不执行第二套去 AI 规则。这是自动流水线步骤，不得调用 `AskUserQuestion`。
 
 **产出**：`output/content.md`
 
@@ -229,10 +234,10 @@ reference-usage-summary.json
 
 #### 步骤 7b：标题终稿锁定
 
-原创与复刻模式完成各自的写作与内置去 AI 后，从 `output/content.md` 第一行读取可发布标题为 `$FINAL_TITLE`，调用 `finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)`，最多进行 3 次调用尝试（首次计入）：
+原创与复刻模式完成各自的写作、压缩、`humanizer` 改写与 Seednote 业务复核后，从 `output/content.md` 第一行读取可发布标题为 `$FINAL_TITLE`，调用 `finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)`，最多进行 3 次调用尝试（首次计入）：
 
 - 成功后以服务端接受的标题锁定 `$FINAL_TITLE`，并确认 `output/content.md` 第一行完全一致。后续 `image-plan`、`cover`、`prompts`、`review`、`compliance`、交付校验与最终报告只能读取这个已接受标题，不得静默改名。
-- 返回 `duplicate title` 错误时，按 `seednote-writing` 方法更新 `output/content.md` 第一行为新标题，执行轻量去 AI 与标题合规检查，通过后才用新的 `$FINAL_TITLE` 重试。连续 3 次均返回重复标题时停止。
+- 返回 `duplicate title` 错误时，按 `seednote-writing` 方法更新 `output/content.md` 第一行为新标题，先按 `humanizer` 方法处理新标题，再按 `seednote-writing` 复核标题合规与全文 ≤1000 字，通过后才用新的 `$FINAL_TITLE` 重试。连续 3 次均返回重复标题时停止。
 - 返回非重复错误，或连续 3 次重复标题均未解决时，写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`。非重复错误使用 `error_code="finalize_title_failed"`，重复耗尽使用 `error_code="duplicate_title_exhausted"`；随后停止，不得进入图片生成、合规、交付校验或最终报告。
 
 ### 图片生成

@@ -54,6 +54,7 @@ const EXPECTED_SKILL_NAMES = {
     'topic-research',
   ],
   seednote: [
+    'humanizer',
     'seednote-research',
     'seednote-viral-analysis',
     'seednote-visual-design',

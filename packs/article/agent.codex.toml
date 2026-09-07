@@ -33,7 +33,7 @@ developer_instructions = """
 | **HTML 渲染** | 用 `render_template`（带 `layout_plan`）确定性渲染，不再用 `convert_markdown` 自由发挥 |
 | **SEO 优化** | 自动提取关键词，生成标题/摘要/标签，结果用于草稿发布 |
 | **封面质量闸门** | 封面生成前先产出 `cover_strategy`（含 `target_reader` / `reader_pain_or_job` / `article_promise` / `content_proof_points` / `click_trigger` / `cover_concept_candidates` / `selected_cover_concept`），三选一概念评审通过 `generic_swap_test` / `promise_proof_test` / `audience_motivation_test` 后再生成；生成后把 `visual_quality_scorecard` + `cover_effectiveness_scorecard` 写入 `cover-prompt.md`；`final-review.md` 的 `cover_quality_gate` 与 `viral-audit.md` 必须读取该结果 |
-| **去 AI 味** | 用 humanizer skill 扫描 33 类 AI 写作模式并按 draft→audit→final 改写（不改原意） |
+| **去 AI 味** | 用 humanizer skill 扫描其定义的 AI 写作模式并按 draft→audit→final 改写（不改原意） |
 | **文章预检** | 用 SKILL/Agent 自审导流风险、内容完整性、标题摘要一致性和互动合规；审阅未通过即待调整，自动修订后复审 |
 | **错误处理** | 创作质量问题按审阅闭环自动修订；MCP 调用按「MCP 工具使用规则」分类处理 |
 
@@ -130,7 +130,7 @@ using the content-writing skill 基于账号定位、大纲和 output/context-br
 
 Call update_task_progress(task_id=$TASK_ID, stage="humanize", title="去AI味", description="用 humanizer skill 去 AI 改写并执行违禁词合规检查")。
 
-先 using the humanizer skill 对 output/03-article.md 全文执行去 AI 改写：扫描 33 类 AI 写作模式（意义拔高、AI 高频词、三段式、否定排比、破折号滥用、空洞结尾等），按 draft → audit → final 流程改写。**改写而非删除**——覆盖原文全部信息点，保持段落数与字数量级，保留人称代入、情绪节奏与具体细节等人味。这是自动流水线步骤，不得调用 AskUserQuestion；没有写作样本时按账号定位、上下文锚点和当前稿件语气直接改写。本步骤不调用任何 MCP 工具、不计费、无强度档位，且不得引入新的违禁词或导流风险。改写产物保存为 output/04-article-final.md。
+先 using the humanizer skill 对 output/03-article.md 全文执行去 AI 改写：扫描其定义的 AI 写作模式（意义拔高、AI 高频词、三段式、否定排比、破折号滥用、空洞结尾等），按 draft → audit → final 流程改写。**改写而非删除**——覆盖原文全部信息点，保持段落数与字数量级，保留人称代入、情绪节奏与具体细节等人味。这是自动流水线步骤，不得调用 AskUserQuestion；没有写作样本时按账号定位、上下文锚点和当前稿件语气直接改写。本步骤不调用任何 MCP 工具、不计费、无强度档位，且不得引入新的违禁词或导流风险。改写产物保存为 output/04-article-final.md。
 
 再 using the content-writing skill 对 output/04-article-final.md 执行违禁词合规检查，输出检查报告，并创建 output/content-quality-report.md，逐项检查：
   - 用户需求覆盖：文章是否回应用户原始主题、角度和限制
@@ -142,7 +142,7 @@ Call update_task_progress(task_id=$TASK_ID, stage="humanize", title="去AI味", 
   - 内容完整性：读者是否能在当前文章内获得完整信息，没有用半截内容诱导离开当前页面
   - 标题摘要一致性：标题、digest、开头和正文承诺是否一致，不用省略号隐藏关键信息
   - 互动合规：评论/收藏/转发诱因是否自然连接正文价值，没有绑定福利、资料包、联系方式或站外动作
-  - AI 套话风险：是否仍存在泛化表达、三段式套话、过度总结、无来源判断（参考 humanizer skill 33 类模式）
+  - AI 套话风险：是否仍存在泛化表达、三段式套话、过度总结、无来源判断（参考 humanizer skill 当前规则）
 
 **审阅闭环**：content-quality-report.md 中任一项审阅未通过时，标记为待调整并自动回到步骤 3/4 改写，随后重新检查；无待调整项后才能进入 SEO、视觉或发布阶段。内容 review 不通过不是任务失败。
 

@@ -53,7 +53,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ## `viral_analysis` 任务停止闸门
 
-最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，using the seednote-viral-analysis skill 完成证据拆解，生成 output/source-analysis.md、output/viral-template.json，更新进度并提交 feedback 后立即结束。该分支禁止进入 seednote-writing、视觉生成或发布步骤，不得生成 output/content.md 或任何发布图片。
+最先读取结构化运行时上下文中的任务类型。若任务类型为 `viral_analysis`，只获取链接指向的源笔记，using the seednote-viral-analysis skill 完成证据拆解，生成 output/source-analysis.md、output/viral-template.json，更新进度并提交 feedback 后立即结束。该分支不生成正文，不调用 humanizer，禁止进入 seednote-writing、视觉生成或发布步骤，不得生成 output/content.md 或任何发布图片。
 
 ---
 
@@ -176,15 +176,15 @@ reference-usage-summary.json
 
 #### 步骤 6：创作内容
 
-调用 update_task_progress(task_id=$TASK_ID, stage="writing", title="内容写作", description="生成标题、正文和话题标签并去 AI 味")。using the seednote-writing skill 基于账号画像和 output/topic-analysis.md 生成标题、正文和话题标签，保存到 output/content.md。标题、正文格式和话题标签规范以 seednote-writing skill 为准。
+调用 update_task_progress(task_id=$TASK_ID, stage="writing", title="内容写作", description="生成标题、正文和话题标签并去 AI 味")。using the seednote-writing skill 基于账号画像和 output/topic-analysis.md 生成标题、正文和话题标签，完成平台格式处理与 §2.6 字数压缩，正文目标 ≤950 字，并保存到 output/content.md。
 
-随后继续使用 seednote-writing skill §2.7 的内置轻量去 AI 流程处理 output/content.md 的标题+正文：重点去掉空洞升华、三段式套话、AI 高频词、过度总结，保留种草笔记的人称代入与情绪节奏。这是自动流水线步骤，不得调用 AskUserQuestion；没有写作样本时直接按账号画像和当前稿件语气改写。改写后复核字数仍 ≤1000 字，且不得引入新的违禁词、虚假承诺或诱导互动表达。直接覆写 output/content.md。
+随后 using the humanizer skill 对 output/content.md 的标题和正文执行通用去 AI 改写：改写而非删除，保留原有事实、信息点、人称代入、口语表达、emoji 与情绪节奏。完成后 using the seednote-writing skill §2.7 复核正文仍 ≤1000 字，并检查标题/正文格式、违禁词、虚假承诺和诱导互动表达；超出字数时只回到 §2.6 压缩，不执行第二套去 AI 规则。这是自动流水线步骤，不得调用 AskUserQuestion。
 
 **产出**：output/content.md
 
 #### 步骤 6b：标题终稿锁定
 
-从 output/content.md 第一行读取可发布标题为 $FINAL_TITLE，在任何图片规划或生成前调用 finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)，最多尝试 3 次。返回重复标题时先更新 content.md 第一行，重跑 seednote-writing 内置去 AI 与标题合规后再重试；非重复错误或连续 3 次重复时写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`。非重复错误使用 error_code="finalize_title_failed"，重复耗尽使用 error_code="duplicate_title_exhausted"；随后停止，不得进入图片生成。成功后以服务端接受标题锁定 $FINAL_TITLE，后续视觉、合规、交付校验和最终报告不得静默改名。
+从 output/content.md 第一行读取可发布标题为 $FINAL_TITLE，在任何图片规划或生成前调用 finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)，最多尝试 3 次。返回重复标题时先更新 content.md 第一行，using the humanizer skill 处理新标题，再 using the seednote-writing skill 复核标题合规与全文 ≤1000 字后重试；非重复错误或连续 3 次重复时写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`。非重复错误使用 error_code="finalize_title_failed"，重复耗尽使用 error_code="duplicate_title_exhausted"；随后停止，不得进入图片生成。成功后以服务端接受标题锁定 $FINAL_TITLE，后续视觉、合规、交付校验和最终报告不得静默改名。
 
 #### 步骤 7：生成图片
 
@@ -210,15 +210,15 @@ reference-usage-summary.json
 
 #### 步骤 7：改写内容
 
-调用 update_task_progress(task_id=$TASK_ID, stage="writing", title="内容写作", description="基于爆款模板改写标题、正文和话题标签并去 AI 味")。using the seednote-writing skill 读取 output/viral-template.json，根据 recommended_clone_depth、用户指定模式和账号画像生成标题、正文和话题标签。若用户指定强度高于模板建议，但 confidence=low 或 do_not_copy 风险高，自动降级并记录原因。内容相似度过高时重新改写角度并记录原因。
+调用 update_task_progress(task_id=$TASK_ID, stage="writing", title="内容写作", description="基于爆款模板改写标题、正文和话题标签并去 AI 味")。using the seednote-writing skill 读取 output/viral-template.json，根据 recommended_clone_depth、用户指定模式和账号画像生成标题、正文和话题标签，完成平台格式处理与 §2.6 字数压缩，正文目标 ≤950 字。若用户指定强度高于模板建议，但 confidence=low 或 do_not_copy 风险高，自动降级并记录原因。内容相似度过高时重新改写角度并记录原因。
 
-随后继续使用 seednote-writing skill §2.7 的内置轻量去 AI 流程处理 output/content.md 的标题+正文：重点去掉空洞升华、三段式套话、AI 高频词、过度总结，保留种草笔记的人称代入与情绪节奏。这是自动流水线步骤，不得调用 AskUserQuestion；没有写作样本时直接按账号画像和当前稿件语气改写。改写后复核字数仍 ≤1000 字，且不得引入新的违禁词、虚假承诺或诱导互动表达。直接覆写 output/content.md。
+随后 using the humanizer skill 对 output/content.md 的标题和正文执行通用去 AI 改写：改写而非删除，保留原有事实、信息点、人称代入、口语表达、emoji 与情绪节奏。完成后 using the seednote-writing skill §2.7 复核正文仍 ≤1000 字，并检查标题/正文格式、违禁词、虚假承诺和诱导互动表达；超出字数时只回到 §2.6 压缩，不执行第二套去 AI 规则。这是自动流水线步骤，不得调用 AskUserQuestion。
 
 **产出**：output/content.md
 
 #### 步骤 7b：标题终稿锁定
 
-从 output/content.md 第一行读取可发布标题为 $FINAL_TITLE，在任何图片规划或生成前调用 finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)，最多尝试 3 次。返回重复标题时先更新 content.md 第一行，重跑 seednote-writing 内置去 AI 与标题合规后再重试；非重复错误或连续 3 次重复时写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`。非重复错误使用 error_code="finalize_title_failed"，重复耗尽使用 error_code="duplicate_title_exhausted"；随后停止，不得进入图片生成。成功后以服务端接受标题锁定 $FINAL_TITLE，后续视觉、合规、交付校验和最终报告不得静默改名。
+从 output/content.md 第一行读取可发布标题为 $FINAL_TITLE，在任何图片规划或生成前调用 finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE)，最多尝试 3 次。返回重复标题时先更新 content.md 第一行，using the humanizer skill 处理新标题，再 using the seednote-writing skill 复核标题合规与全文 ≤1000 字后重试；非重复错误或连续 3 次重复时写入 output/failure-state.json：`{"version":"1.0","status":"recoverable_failure","stage":"title_finalization","error_code":"<stable_code>","message":"<原始错误摘要>","resume_from":"title_finalization"}`。非重复错误使用 error_code="finalize_title_failed"，重复耗尽使用 error_code="duplicate_title_exhausted"；随后停止，不得进入图片生成。成功后以服务端接受标题锁定 $FINAL_TITLE，后续视觉、合规、交付校验和最终报告不得静默改名。
 
 #### 步骤 8：生成图片
 
@@ -383,6 +383,10 @@ reference-usage-summary.json
 [mcp_servers.creator]
 url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/humanizer/SKILL.md"
+enabled = true
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/seednote-research/SKILL.md"
