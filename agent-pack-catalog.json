@@ -509,7 +509,8 @@
       "agent": {
         "name": "montage",
         "skills": [
-          "montage"
+          "montage",
+          "video-cover-design"
         ],
         "max_turns": 180
       },
@@ -558,13 +559,20 @@
           "active_percent": 90,
           "complete_percent": 100,
           "required_artifacts": [
+            "output/final.mp4",
             "output/montage-project.json",
-            "output/delivery-manifest.json",
-            "output/final.mp4"
+            "output/cover.png",
+            "output/delivery-manifest.json"
           ]
         }
       ],
       "artifacts": [
+        {
+          "role": "final_video",
+          "path": "output/final.mp4",
+          "mime_type": "video/mp4",
+          "required": true
+        },
         {
           "role": "project_manifest",
           "path": "output/montage-project.json",
@@ -572,15 +580,15 @@
           "required": true
         },
         {
-          "role": "delivery_manifest",
-          "path": "output/delivery-manifest.json",
-          "mime_type": "application/json",
+          "role": "cover",
+          "path": "output/cover.png",
+          "mime_type": "image/png",
           "required": true
         },
         {
-          "role": "final_video",
-          "path": "output/final.mp4",
-          "mime_type": "video/mp4",
+          "role": "delivery_manifest",
+          "path": "output/delivery-manifest.json",
+          "mime_type": "application/json",
           "required": true
         }
       ],
@@ -591,6 +599,16 @@
           "mime_type": "video/mp4"
         },
         {
+          "role": "project_manifest",
+          "path": "output/montage-project.json",
+          "mime_type": "application/json"
+        },
+        {
+          "role": "cover",
+          "path": "output/cover.png",
+          "mime_type": "image/png"
+        },
+        {
           "role": "delivery_manifest",
           "path": "output/delivery-manifest.json",
           "mime_type": "application/json"
@@ -599,7 +617,7 @@
       "ui": {
         "renderer": "custom:montage"
       },
-      "digest": "4d23cfd8cad5163c3b965292ca300585e005dd386fa8d63411f527ff18c69dd2"
+      "digest": "63b42a10c810d0db7e19ee7ed918fe8bcf85dd5942907663e6caced4f05d145a"
     },
     {
       "id": "seednote",

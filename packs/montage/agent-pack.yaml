@@ -7,7 +7,7 @@ agent:
   name: montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [montage]
+  skills: [montage, video-cover-design]
   max_turns: 180
 bindings:
   project_platforms: [montage]
@@ -23,13 +23,16 @@ billing_operations:
 progress:
   - {id: prepare, title: 准备 Montage 项目, active_percent: 5, complete_percent: 20}
   - {id: production, title: 视频生产, active_percent: 30, complete_percent: 85}
-  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/montage-project.json, output/delivery-manifest.json, output/final.mp4]}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/final.mp4, output/montage-project.json, output/cover.png, output/delivery-manifest.json]}
 artifacts:
-  - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
-  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
+  - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
+  - {role: cover, path: output/cover.png, mime_type: image/png, required: true}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
 delivery:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
+  - {role: project_manifest, path: output/montage-project.json, mime_type: application/json}
+  - {role: cover, path: output/cover.png, mime_type: image/png}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
 ui:
   renderer: custom:montage

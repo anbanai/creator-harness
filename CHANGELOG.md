@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [4.1.18] - 2026-09-10
+
+### Changed
+
+- Added mandatory short-video cover generation to Montage runs, using the
+  Studio-selected video ratio and system-provided portrait through Anban MCP.
+- Required video, project manifest, cover, and delivery manifest artifacts
+  before a managed Montage execution can complete.
+
 ## [4.1.17] - 2026-09-08
 
 ### Changed

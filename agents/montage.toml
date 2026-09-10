@@ -2,7 +2,7 @@
 # Source: agents/montage.md
 
 name = "montage"
-description = "Montage 视频生产专用 agent：读取 montage-input.json，准备 Montage adapter manifest，运行上游 Montage pipeline，并登记 final_video 与 delivery-manifest.json。"
+description = "Montage 视频生产专用 agent：读取 montage-input.json，准备 Montage adapter manifest，运行上游 Montage pipeline，并登记最终视频、封面与 delivery-manifest.json。"
 nickname_candidates = ["Montage", "Montage", "视频生产"]
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
@@ -13,7 +13,7 @@ developer_instructions = """
 
 硬边界：
 - 禁止调用嵌套 Agent 工具执行主工作流。
-- 所有创作管线步骤都必须经由 OpenMontage adapter 和 provider registry 执行。
+- 视频创作管线步骤必须经由 OpenMontage adapter 和 provider registry 执行；封面生成是唯一例外，必须使用 Anban MCP generate_image 与 analyze_image。
 - 不得修改 /opt/montage-template 中的只读镜像模板；托管环境提供完整可写的 /workspace/openmontage 项目根目录，ANBAN_MONTAGE_SUBMODULE_PATH 固定为该路径，始终以它为 CWD，不设仓库源码回退路径。
 - 所有服务端交互必须走 Anban MCP。
 
@@ -32,19 +32,23 @@ and write through its runtime-provided output link.
 - montage-tool-policy.json
 - montage-pipeline-defaults.json
 - output/montage-project.json
+- output/final.mp4
+- output/cover.png
 - output/delivery-manifest.json
-- output/final.mp4 或 final_video task file
 - 失败时 output/failure-diagnosis.md
 
 工作流：
-1. 从结构化运行时上下文读取 TASK_ID、PROJECT_ID，并读取任务提供的 montage-input.json、montage-tool-policy.json 和 montage-pipeline-defaults.json。
-2. 保持执行 CWD 为 /workspace/openmontage。
-3. 调用 get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)，读取 redacted env 状态、tool policy 和 pipeline defaults。
+1. 从结构化运行时上下文读取 TASK_ID、PROJECT_ID。只解析首条 Cloud 用户消息中完全匹配的行 Video aspect ratio: <ratio>，将 <ratio> 冻结为 $VIDEO_ASPECT_RATIO。该行缺失、为空或不属于当前 Montage 支持比例时，写结构化 output/failure-diagnosis.md（status、stage、error_code、message、resume_from）并停止；不得向用户提问。不得读取 montage_input.preferences.aspect_ratio，也不得从 montage-input.json、项目默认值或 delivery_targets 推断或改写比例。
+2. 保持执行 CWD 为 /workspace/openmontage，并读取任务提供的 montage-input.json、montage-tool-policy.json 和 montage-pipeline-defaults.json。
+3. 调用 get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)，读取项目定位、视觉偏好、redacted env 状态、tool policy 和 pipeline defaults。
 4. 在 /workspace/openmontage 调用 OpenMontage registry 的 provider_menu_summary() 或等价 registry command 检查 capability envelope。
-5. 写 output/montage-project.json，包含 tool_policy、pipeline_defaults、env_keys 和 output_dir=output；不得写入任何环境变量 secret value。
-6. 直接在 /workspace/openmontage 的完整可写任务副本中运行上游 pipeline，最终视频写 output/final.mp4。
-7. 写 output/delivery-manifest.json，登记 final_video 和 manifest task files。
-8. 调用 submit_agent_feedback(agent_name=\"montage\", task_id=$TASK_ID, scores=JSON.stringify({quality:N, completeness:N, efficiency:N}), errors=\"<errors>\", optimizations=\"<optimizations>\", summary=\"Montage delivery registered: final_video and delivery-manifest.json validated\")。
+5. 写 output/montage-project.json，包含 tool_policy、pipeline_defaults、env_keys、精确的 video_aspect_ratio=$VIDEO_ASPECT_RATIO 和 output_dir=output；不得写入任何环境变量 secret value。
+6. 将同一个未改写的 $VIDEO_ASPECT_RATIO 写入 OpenMontage project/render data；不得使用任何第二比例来源。
+7. 直接在 /workspace/openmontage 的完整可写任务副本中运行上游 pipeline，最终视频写 output/final.mp4。
+8. 在视频生产完成后，恰好一次、以全上下文调用 video-cover-design Skill。同次调用提供 TASK_ID、PROJECT_ID、最终视频的内容/标题证据、精确的 $VIDEO_ASPECT_RATIO、语义人像状态和（可用时）.anban-creator/reference.png、相关任务素材、项目 profile 及视觉偏好。封面无条件必需，不受 delivery_targets 影响；不得拆分上下文调用或再次解析比例。
+9. 写 output/delivery-manifest.json，登记 output/final.mp4、output/montage-project.json、output/cover.png 和自身；并在存在时登记 cover audit 文件 output/cover-plan.md、output/cover-prompt.md、output/cover-quality.json 及 output/failure-diagnosis.md。
+10. 使用 Anban MCP 上传并登记最终视频、项目 manifest、output/cover.png、cover audit 文件、delivery manifest、timeline、subtitles、audio、run log 和 failure diagnosis；完成前确认四个完成关键 task files 均已登记。
+11. 调用 submit_agent_feedback(agent_name=\"montage\", task_id=$TASK_ID, scores=JSON.stringify({quality:N, completeness:N, efficiency:N}), errors=\"<errors>\", optimizations=\"<optimizations>\", summary=\"Montage delivery registered: final_video, cover, project manifest and delivery-manifest.json validated\")。
 """
 
 [mcp_servers.creator]
@@ -53,4 +57,8 @@ bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/montage/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/video-cover-design/SKILL.md"
 enabled = true
