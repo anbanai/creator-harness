@@ -10,6 +10,9 @@
   Studio-selected video ratio and system-provided portrait through Anban MCP.
 - Required video, project manifest, cover, and delivery manifest artifacts
   before a managed Montage execution can complete.
+- Prepared the `4.1.18` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
 
 ## [4.1.17] - 2026-09-08
 
