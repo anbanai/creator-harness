@@ -1,5 +1,5 @@
 id: montage
-version: 1.0.1
+version: 1.0.2
 kind: managed
 display_name: Montage 视频
 description: 使用 OpenMontage 从素材和业务输入生产最终视频与交付清单。
@@ -31,8 +31,6 @@ artifacts:
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
 delivery:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
-  - {role: project_manifest, path: output/montage-project.json, mime_type: application/json}
-  - {role: cover, path: output/cover.png, mime_type: image/png}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
 ui:
   renderer: custom:montage

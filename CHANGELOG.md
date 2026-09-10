@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [4.1.19] - 2026-09-10
+
+### Fixed
+
+- Kept Montage project and cover assets in completion validation while limiting
+  user downloads to the final video and delivery manifest.
+- Prepared the `4.1.19` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.18] - 2026-09-10
 
 ### Changed
