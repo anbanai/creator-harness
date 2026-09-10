@@ -479,7 +479,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.16',
+      version: '4.1.17',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',

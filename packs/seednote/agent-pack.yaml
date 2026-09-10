@@ -1,5 +1,5 @@
 id: seednote
-version: 1.0.0
+version: 1.0.1
 kind: managed
 display_name: 种草笔记
 description: 支持原创、复刻和爆款分析的种草笔记图文创作流程。
@@ -34,5 +34,14 @@ artifacts:
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
   - {role: image_plan, path: output/image-plan.md, mime_type: text/markdown, required: true}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+delivery:
+  - {role: final_markdown, path: output/content.md, mime_type: text/markdown}
+  - {role: cover, path: output/cover.png, mime_type: image/png}
+  - {role: image, path: output/image_*.png, mime_type: image/png}
+  - {role: tail, path: output/tail.png, mime_type: image/png}
+delivery_by_task_type:
+  viral_analysis:
+    - {role: analysis, path: output/source-analysis.md, mime_type: text/markdown}
+    - {role: template, path: output/viral-template.json, mime_type: application/json}
 ui:
   renderer: custom:seednote

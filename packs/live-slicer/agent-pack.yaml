@@ -1,5 +1,5 @@
 id: live-slicer
-version: 1.0.0
+version: 1.0.1
 kind: managed
 display_name: 直播切片
 description: 从直播视频转写、规划并批量导出短视频切片。
@@ -25,3 +25,8 @@ artifacts:
   - {role: summary, path: output/summary.md, mime_type: text/markdown, required: true}
   - {role: manifest, path: output/clip-manifest.json, mime_type: application/json, required: true}
   - {role: plan, path: output/clip-plan.json, mime_type: application/json, required: true}
+delivery:
+  - {role: summary, path: output/summary.md, mime_type: text/markdown}
+  - {role: manifest, path: output/clip-manifest.json, mime_type: application/json}
+  - {role: clip_video, path: output/exports/*.mp4, mime_type: video/mp4}
+  - {role: clip_metadata, path: output/exports/*.md, mime_type: text/markdown}

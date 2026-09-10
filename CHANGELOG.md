@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [4.1.17] - 2026-09-08
+
+### Changed
+
+- Added the unified Agent Pack delivery-file contract and regenerated the
+  bundled Pack catalog and native manifests.
+- Studio and Server now distinguish deliverable files from process artifacts;
+  process artifacts remain previewable but are excluded from downloads.
+- Prepared the `4.1.17` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.16] - 2026-09-08
 
 ### Changed

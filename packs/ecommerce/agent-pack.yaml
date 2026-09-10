@@ -1,5 +1,5 @@
 id: ecommerce
-version: 1.0.0
+version: 1.0.1
 kind: managed
 display_name: 电商素材
 description: 基于产品图片生成完整电商文案和视觉素材包。
@@ -28,5 +28,13 @@ artifacts:
   - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
   - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown, required: true}
   - {role: manifest, path: output/manifest.json, mime_type: application/json, required: true}
+delivery:
+  - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown}
+  - {role: manifest, path: output/manifest.json, mime_type: application/json}
+  - {role: main_image, path: output/main_*.png, mime_type: image/png}
+  - {role: detail_image, path: output/detail_*.png, mime_type: image/png}
+  - {role: cover_image, path: output/cover_*.png, mime_type: image/png}
+  - {role: share_image, path: output/share_*.png, mime_type: image/png}
+  - {role: sku_image, path: output/sku_*.png, mime_type: image/png}
 ui:
   renderer: custom:ecommerce
