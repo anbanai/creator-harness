@@ -21,11 +21,11 @@ description: Use when generating multiple pose/expression variants from a single
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。**Read 工具不用于图像视觉分析**，只用来获取 CDN URL。一次只分析一张图；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path` |
-| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, aspect_ratio, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，**不是专用 ID-lock 工具** |
-| `download_image` (project_id, url) | 下载在线图片到 MCP 服务器临时路径，返回 `file_path`。用于把 Read 得到的 CDN URL 注册成 `ref_image_path` 可用的服务器端路径 |
-| `compress_image` (file_path) | 压缩图片——`analyze_image` 的 `file_path` 方式有 10MB 限制，超出时先压缩 |
-| `upload_image` (project_id, file_path) | 上传图片，用于 `compress_image` 仍超 10MB 的兜底场景 |
+| `analyze_image` (project_id, task_id, image_url, file_path, prompt) | 图像视觉分析。优先传当前任务登记的相对 `file_path`；一次只分析一张图 |
+| `generate_image` (project_id, task_id, prompt, image_type, output_path, ref_image_path, aspect_ratio) | 生成并登记单张图片；`ref_image_path` 必须是当前任务登记的相对路径。当前是参考图生成，**不是专用 ID-lock 工具** |
+| `download_image` (project_id, task_id, url, output_path) | 下载公共 HTTPS 图片并登记为当前任务的持久文件，返回任务相对 `file_path` |
+| `compress_image` (task_id, input_path, output_path, max_width?) | 压缩当前任务授权图片并登记新的持久任务文件 |
+| `upload_image` (project_id, task_id, file_path) | 上传当前任务相对路径中的文件 |
 
 ---
 
@@ -71,7 +71,7 @@ description: Use when generating multiple pose/expression variants from a single
 
 ### 原则 2：参考图链必须指向原始人像
 
-每张变体的 `ref_image_path` 都传入**原始参考人像**的服务器路径（`portrait_server_path`）。**不用前一张变体作下一张的参考**——这会放大错误，导致身份越生成越偏。
+每张变体的 `ref_image_path` 都传入**原始参考人像**的任务相对路径（`$PORTRAIT_TASK_PATH`）。**不用前一张变体作下一张的参考**——这会放大错误，导致身份越生成越偏。
 
 ### 原则 3：有效比例 + 商业封面质感
 
@@ -110,7 +110,7 @@ description: Use when generating multiple pose/expression variants from a single
 
 | 字段 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
-| 参考人像本地路径 | ✅ | — | 必须是本地可读的图片文件，最好是清晰的正面或半侧面人像 |
+| 参考人像任务路径 | ✅ | — | 从 `.anban-creator/input-attachments/index.json` 读取用户上传图片的任务相对 `path`；最好是清晰的正面或半侧面人像 |
 | 目标姿态列表 | ❌ | 全部 6 种 | 可选 6 模板子集（如 `[1, 3, 5]`），或自定义姿态描述 |
 | 生成张数 N | ❌ | 6 | 1 ≤ N ≤ 6；超出按 6 处理并提示 |
 | 是否逐张确认 | ❌ | false | true 时每张生成后停止等待用户确认；false 时全部生成后统一交付 |
@@ -122,7 +122,7 @@ description: Use when generating multiple pose/expression variants from a single
 
 ## User Inputs
 
-- reference_portrait: /Users/.../portrait.png
+- reference_portrait: .anban-creator/input-attachments/attachment_01_portrait.png
 - target_poses: [1, 2, 3, 4, 5, 6]  # 或 "all" 或自定义列表
 - variant_count: 6
 - confirm_per_image: false
@@ -138,16 +138,16 @@ description: Use when generating multiple pose/expression variants from a single
 
 ### Phase 1 — 锁定身份
 
-#### 步骤 3：注册参考人像 + 提取身份锁
+#### 步骤 3：解析参考人像 + 提取身份锁
 
-**3a. 注册参考人像到 MCP 服务器**：
+**3a. 解析当前任务中的参考人像**：
 
 ```
-1. Read 参考人像本地路径 → 得到 CDN_URL（约 30 分钟过期，立即使用）
-2. download_image(project_id="$PROJECT_ID", url=CDN_URL) → 返回 PORTRAIT_SERVER_PATH
+1. 用户上传图：读取 `.anban-creator/input-attachments/index.json`，选择与用户要求对应的 `type="image"` 条目，将其 `path` 冻结为 `PORTRAIT_TASK_PATH`。
+2. 公共在线图：调用 `download_image(project_id="$PROJECT_ID", task_id="$TASK_ID", url=CDN_URL, output_path="output/reference-portrait.png")`，将返回的任务相对 `file_path` 冻结为 `PORTRAIT_TASK_PATH`。
 ```
 
-把 `PORTRAIT_SERVER_PATH` 记录到 `output/server-paths.md`。
+把 `$PORTRAIT_TASK_PATH` 记录到 `output/input-manifest.md`。禁止记录或传递宿主机路径、服务端临时路径。
 
 **3b. 提取身份锁**：
 
@@ -156,12 +156,13 @@ description: Use when generating multiple pose/expression variants from a single
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$PORTRAIT_SERVER_PATH",
+  task_id="$TASK_ID",
+  file_path="$PORTRAIT_TASK_PATH",
   prompt=<参考 references/identity-lock-template.md 的 12 维度提取模板>
 )
 ```
 
-如果因 10MB 限制失败：先 `compress_image(file_path=PORTRAIT_SERVER_PATH)`；仍失败则 `upload_image` 后用 `image_url` 重试。
+如果因 10MB 限制失败：调用 `compress_image(task_id="$TASK_ID", input_path="$PORTRAIT_TASK_PATH", output_path="output/reference-portrait-compressed.png")`，并把返回的任务相对路径用于分析；压缩后仍超限则写结构化失败诊断并停止。
 
 **3c. 写入身份锁**：
 
@@ -219,7 +220,7 @@ result_i = generate_image(
   image_type="cover",
   output_path="output/variant_0i.png",
   aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
-  ref_image_path="$PORTRAIT_SERVER_PATH"  # 始终用原始人像，不用前一张变体
+  ref_image_path="$PORTRAIT_TASK_PATH"  # 始终用原始人像，不用前一张变体
 )
 VARIANT_ANALYSIS_URL_i = result_i.download_url
 ```
@@ -279,7 +280,7 @@ analyze_image(
 
 - file: output/input-manifest.md 中的 reference_portrait
 - analyzed_at: <时间戳>
-- portrait_server_path: $PORTRAIT_SERVER_PATH
+- portrait_task_path: $PORTRAIT_TASK_PATH
 - 12 维度身份锁: output/identity-lock.md
 
 ## Per-Variant Audit
@@ -423,11 +424,11 @@ Background and clothing may vary slightly but the person MUST be identical.
 | 肤色变化 | 模型对肤色一致性处理弱 | 身份锁中肤色维度加实物类比"fair skin with peach warmth, NOT pale white, NOT tanned" |
 | 画风偏卡通 | 参考 prompt 中"商业摄影"描述不够强 | 加强风格描述"photorealistic commercial photography, hyper-detailed skin texture, NOT illustration, NOT cartoon" |
 | 多张变体之间身份不一致 | 每张变体身份漂移方向不同 | 确保所有变体 ref_image_path 都指向同一原始人像；不要用变体作下一张参考 |
-| CDN URL 过期 | Read 返回的 CDN URL 约 30 分钟后过期 | 获取后立即使用；需要重新分析时重新 Read 获取新 URL |
-| analyze_image 文件过大 | `file_path` 方式分析有 10MB 限制 | 先 `compress_image`，再失败则 `upload_image` 后用 `image_url` |
+| 公共 URL 下载失败 | URL 非 HTTPS、重定向到私网或内容不是图片 | 写失败诊断；不得绕过 `download_image` 的网络与类型校验 |
+| analyze_image 文件过大 | `file_path` 方式分析有 10MB 限制 | 调用带 `task_id` 与任务相对输入/输出路径的 `compress_image`；仍超限则停止 |
 | output_path 权限错误 | 路径不属于任务工作区 | 使用任务相对路径 `output/...` |
 | 长 prompt 504 Gateway Timeout | prompt 过长（12 维度身份锁 + 6 姿态模板容易超长） | Prompt 控制在 500 词以内；身份锁可压缩到 8-10 行核心维度；姿态段落保留核心动作和情绪 |
-| ref_image_path 无法访问 | 远程 MCP Server 无法访问本地文件路径 | 通过 Read + download_image 注册到服务器端 |
+| ref_image_path 无法访问 | 路径未登记在当前任务或不属于当前 execution | 重新读取附件索引，或用完整参数调用 `download_image` 登记公共 HTTPS 图片 |
 
 ---
 

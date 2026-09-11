@@ -22,7 +22,8 @@
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$PORTRAIT_SERVER_PATH",
+  task_id="$TASK_ID",
+  file_path="$PORTRAIT_TASK_PATH",
   prompt=<下方完整模板>
 )
 ```
@@ -119,7 +120,7 @@ analyze_image(
 
 - file: output/input-manifest.md 中的 reference_portrait
 - analyzed_at: <时间戳>
-- portrait_server_path: $PORTRAIT_SERVER_PATH
+- portrait_task_path: $PORTRAIT_TASK_PATH
 
 ## Purpose
 

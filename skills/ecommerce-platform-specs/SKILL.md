@@ -24,7 +24,7 @@ description: 'Use when 电商平台规范与合规知识库——各平台尺寸
 
 **先归一化**：收到的 `target_platform`（`taobao`/`jd`/`douyin`/`xhs`/`wechat_store`/`general`）按 platforms.md 顶部「标识符契约表」映射到对应中文章节取规范；未知值 → 走「通用」。类目内差异（服饰/3C/食品/美妆/家居）详见 [references/category-specs.md](references/category-specs.md)。
 
-agent 在 `ecommerce-visual-design` 生成时按 `target_platform` 取**投放像素/比例/数量/白底规则**注入；本 skill 在合规检查时取该平台的额外违禁规则。任务生成只把业务允许的纯比例传给 `generate_image.aspect_ratio`，清晰度目标写入 prompt 与资产规划，**实际投放以 platforms.md 的像素/文件大小/数量上限为准**，必要时显式调用 `compress_image` 或 `crop_image`。
+agent 在 `ecommerce-visual-design` 生成时按 `target_platform` 取**投放像素/比例/数量/白底规则**注入；本 skill 在合规检查时取该平台的额外违禁规则。任务生成只把业务允许的纯比例传给 `generate_image.aspect_ratio`，清晰度目标写入 prompt 与资产规划，**实际投放以 platforms.md 的像素/文件大小/数量上限为准**，必要时显式调用 `compress_image(task_id, input_path, output_path, max_width?)` 或 `crop_image(task_id, input_path, output_path, target_width, target_height, anchor)`。
 
 ---
 

@@ -63,6 +63,9 @@ const CHILD_TIMEOUT_MS = 30_000
 const COMMAND_TIMEOUT_MS = 120_000
 const CHILD_TERMINATION_GRACE_MS = 100
 const CHILD_CLOSE_WATCHDOG_MS = 1_000
+const VERIFIED_RUNTIME_OVERRIDES = Object.freeze({
+  zod: '4.4.3',
+})
 const NODE_SHEBANGS = [
   Buffer.from('#!/usr/bin/env node\n'),
   Buffer.from('#!/usr/bin/env node\r\n'),
@@ -1104,6 +1107,25 @@ JSON.parse(await readFile(manifestPath, 'utf8'))
   }
 }
 
+export function buildRuntimeInstallManifest(manifest, tarballReference) {
+  return {
+    private: true,
+    type: 'module',
+    dependencies: {
+      [manifest.name]: `file:${tarballReference}`,
+      ...manifest.peerDependencies,
+    },
+    pnpm: {
+      overrides: VERIFIED_RUNTIME_OVERRIDES,
+    },
+  }
+}
+
+export function commandFailureDiagnostic(stderr) {
+  const match = stderr.match(/\[(ERR_PNPM_[A-Z0-9_]+)\]/)
+  return match === null ? '' : ` (${match[1]})`
+}
+
 async function installPackedRuntime(sandboxRoot, tarball, manifest) {
   const runtimeRoot = join(sandboxRoot, 'runtime')
   await mkdir(runtimeRoot)
@@ -1113,18 +1135,7 @@ async function installPackedRuntime(sandboxRoot, tarball, manifest) {
   const tarballReference = relative(runtimeRoot, tarball).split(sep).join('/')
   await writeFile(
     join(runtimeRoot, 'package.json'),
-    `${JSON.stringify(
-      {
-        private: true,
-        type: 'module',
-        dependencies: {
-          [manifest.name]: `file:${tarballReference}`,
-          ...manifest.peerDependencies,
-        },
-      },
-      null,
-      2,
-    )}\n`,
+    `${JSON.stringify(buildRuntimeInstallManifest(manifest, tarballReference), null, 2)}\n`,
   )
   const invocation = pnpmInvocation([
     'install',
@@ -1139,7 +1150,9 @@ async function installPackedRuntime(sandboxRoot, tarball, manifest) {
     timeoutMs: COMMAND_TIMEOUT_MS,
   })
   if (installed.status !== 0) {
-    fail(`offline runtime install exited ${installed.status ?? 1}`)
+    fail(
+      `offline runtime install exited ${installed.status ?? 1}${commandFailureDiagnostic(installed.stderr)}`,
+    )
   }
   return runtimeRoot
 }

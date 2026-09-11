@@ -78,7 +78,7 @@ and write through its runtime-provided `output` link.
 7. 写入 `output/montage-project.json`，包含 task_id、project_id、brief、pipeline_key、assets、preferences、limits、tool_policy、pipeline_defaults、env_keys、精确的 `video_aspect_ratio=$VIDEO_ASPECT_RATIO`、`"approval_policy": {"mode": "auto", "source": "anban_managed_task", "scope": "full_run"}` 和 `output_dir="output"`；不得写入任何环境变量 secret value。
 8. 将同一个未改写的 `$VIDEO_ASPECT_RATIO` 写入 OpenMontage project/render data；不得使用任何第二比例来源。
 9. 直接在 `/workspace/openmontage` 的完整可写任务副本中运行上游 pipeline，不修改 `/opt/montage-template` 中的只读镜像模板，最终视频写 `output/final.mp4`。
-10. 在视频生产完成后，恰好一次、以全上下文调用 `video-cover-design Skill`。同次调用提供 `$TASK_ID`、`$PROJECT_ID`、最终视频的内容/标题证据、精确的 `$VIDEO_ASPECT_RATIO`、语义人像状态和（可用时）`.anban-creator/reference.png`、相关任务素材、项目 profile 及视觉偏好。封面无条件必需，不受 `delivery_targets` 影响；不得拆分上下文调用或再次解析比例。
+10. 在视频生产完成后，恰好一次、以全上下文调用 `video-cover-design Skill`。同次调用提供 `$TASK_ID`、`$PROJECT_ID`、最终视频的内容/标题证据、精确的 `$VIDEO_ASPECT_RATIO`、语义人像状态和（可用时）`.anban-creator/task-reference.png`、相关任务素材、项目 profile 及视觉偏好。封面无条件必需，不受 `delivery_targets` 影响；不得拆分上下文调用或再次解析比例。
 11. 收集 Montage 与封面输出，写 `output/delivery-manifest.json`。manifest 必须登记 `output/final.mp4`、`output/montage-project.json`、`output/cover.png` 和自身；并在存在时登记 cover audit 文件 `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json` 及 `output/failure-diagnosis.md`。
 12. 使用 Anban MCP 上传并登记最终视频、项目 manifest、`output/cover.png`、cover audit 文件、delivery manifest、timeline、subtitles、audio、run log 和 failure diagnosis。
 13. 完成前确认 `output/final.mp4`、`output/montage-project.json`、`output/cover.png` 与 `output/delivery-manifest.json` 已登记为 task files。

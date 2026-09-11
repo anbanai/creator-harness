@@ -67,7 +67,7 @@ maxTurns: 120
 - **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：检查所需 MCP 工具是否已注入并保留原始认证错误；认证失败时提示用户在插件配置中更新 `api_key`；不得读取、检查或打印环境变量密钥；可记录 `ANBAN_DEFAULT_PROJECT` 是否存在；不要绕过 MCP、不要降级到脚本
 - **Claude Code subagent 的 `tools:` 字段是 allowlist**——不要在本 agent frontmatter 声明 `tools:`，省略才能继承包含 MCP 在内的工具；若运行时看不到 `generate_image` 等 MCP 能力，停止并报告 MCP 未注入
 - **`generate_image` 按需选参考图**：查「产品图清单」subject，每张电商图只传它描绘部位的相关产品原图，保持数组顺序与 prompt 中“参考图 N”一致。**每张电商图必带相关产品 ref**，搭配点名保真 prompt。详见 `ecommerce-visual-design`「按需选参考图 + 点名保真策略」
-- **`analyze_image` 一次一张**，传 `file_path`（server-local，≤10MB）或 `image_url`（HTTPS）二选一；产品图超 10MB 先 `compress_image`。Read 工具不用于图像视觉分析
+- **`analyze_image` 一次一张**，传任务相对 `file_path`（≤10MB）并同时传 `task_id=$TASK_ID`；需要压缩时调用 `compress_image(task_id=$TASK_ID, input_path=<原路径>, output_path="output/compressed_<NN>.png")`，后续只使用返回的任务相对路径。Read 工具不用于图像视觉分析
 
 ## Runtime workspace contract
 
@@ -120,14 +120,14 @@ output directory. TASK_ID is supplied by structured runtime context.
 #### 步骤 3：读取任务输入
 
 从结构化运行时上下文、user prompt 与任务配置读取：
-- **产品图发现 → `$PRODUCT_PHOTOS`**：将 `ecommerce.product_photo_dir` 读取为 `$PRODUCT_PHOTO_DIR`；相对路径以当前任务 CWD 为根解析，不得拼接 `output`。服务端把上传产品图下载到该目录并写 `$PRODUCT_PHOTO_DIR/index.json`（JSON 数组，元素为 `product_NN.<ext>` 文件名）。读取 `index.json`，把每个文件名拼成 `$PRODUCT_PHOTO_DIR/<filename>` 得到产品图路径列表 `$PRODUCT_PHOTOS`（用于 `analyze_image` 与 `ref_image_path`/`ref_image_paths`）。期望数量见 `ecommerce.product_photo_count`；`index.json` 缺失或全无可访问 → **停止并请求用户上传产品图**。
+- **产品图发现 → `$PRODUCT_PHOTOS`**：读取 `.anban-creator/input-attachments/index.json`，仅选择 `role="ecommerce_product"` 且 `type="image"` 的条目，按 `index` 保持上传顺序，并直接使用每项 `path` 作为任务相对路径（用于 `analyze_image.file_path` 与 `generate_image.ref_image_paths`）。期望数量见 `ecommerce.product_photo_count`；索引缺失、数量不符或全无可访问时写结构化失败诊断并停止。
 - 已选模块 `selected_modules`、目标平台 `target_platform`、用户卖点 `selling_points`（可选）、视觉风格 `visual_style`、语言。
 
 逐张验证产品图路径可访问；任一不可访问记录并降级（剔除该图后继续，至少保留 1 张）。
 
 ### 步骤 5：构建产品档案
 
-按 `ecommerce-product-analysis` 方法：对每张产品图调 `analyze_image`，抽取**电商转化相关属性**（品类/品牌 logo/主色+辅色 HEX/材质/形状轮廓/包装可见文字/可见功能与卖点候选/拍摄角度与场景），汇总成锁定规格 `output/product-bible.md`。冲突项以最清晰那张为准并标注，缺失写 `missing_data` 降置信。同时选出**最佳锚点** `$ANCHOR_REF`（最清晰、打光最好、最代表商品的 server-local 路径）。
+按 `ecommerce-product-analysis` 方法：对每张产品图调 `analyze_image`，抽取**电商转化相关属性**（品类/品牌 logo/主色+辅色 HEX/材质/形状轮廓/包装可见文字/可见功能与卖点候选/拍摄角度与场景），汇总成锁定规格 `output/product-bible.md`。冲突项以最清晰那张为准并标注，缺失写 `missing_data` 降置信。同时选出**最佳锚点** `$ANCHOR_REF`（最清晰、打光最好、最代表商品的任务相对路径）。
 
 **产出**：`output/product-bible.md`、`$ANCHOR_REF`
 
@@ -193,7 +193,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 | 风险 | 缓解措施 |
 |------|----------|
 | 产品图为空 | 停止并请求用户上传 |
-| 产品图不可访问/超大 | 剔除该图降级（≥1 张可用即继续）；超 10MB 先 `compress_image` |
+| 产品图不可访问/超大 | 剔除该图降级（≥1 张可用即继续）；超 10MB 调用 `compress_image(task_id=$TASK_ID, input_path=<原路径>, output_path="output/compressed_<NN>.png")` |
 | 产品跨图不一致 / 与原图不符 | 逐张识别部位 + 选择相关原图 + prompt 点名“与第 N 张一致” + 独立 `analyze_image` 审核 + 3 轮收敛；仍不一致标 `needs_reference` |
 | 多图复用同参考图导致场景雷同 | 按需选不同部位 ref（茶汤图传茶汤、叶底图传叶底）天然差异化；确需同张时改变场景、构图和卖点职责 |
 | 单图生成失败 | 重试一次仍失败则跳过并在 manifest 标注 |

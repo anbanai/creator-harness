@@ -7,7 +7,8 @@
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$REF_SERVER_PATH",
+  task_id="$TASK_ID",
+  file_path="$REF_TASK_PATH",
   prompt=<下方完整模板>
 )
 ```
@@ -77,7 +78,7 @@ analyze_image(
 
 - file: output/input-manifest.md 中的 reference_cover
 - analyzed_at: <时间戳>
-- ref_server_path: $REF_SERVER_PATH
+- ref_task_path: $REF_TASK_PATH
 
 ---
 

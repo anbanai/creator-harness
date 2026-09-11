@@ -56,7 +56,7 @@ The installer registers the fixed official endpoint `https://creator.anbanai.com
 
 - `list_projects`, `get_project_profile`, `list_drafts`, `list_published_articles`, `list_project_titles`
 - `render_template`, `convert_markdown`
-- `generate_image`, `upload_image`, `download_image`, `compress_image`, `analyze_image`, `analyze_video`
+- `generate_image`、`analyze_image` 与任务级文件工具：`upload_image(project_id, task_id, file_path)`、`download_image(project_id, task_id, url, output_path)`、`compress_image(task_id, input_path, output_path, max_width?)`
 - `create_draft` (WeChat draft box)
 - `get_feed_detail` (SeedNote source note fetching)
 - `upload_live_audio`, `create_live_analysis_task`, `query_live_analysis_task`, `build_live_clip_plan`, `build_live_subject_clip_plan`, `build_live_clip_manifest`

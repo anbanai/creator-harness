@@ -21,11 +21,10 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 | MCP 工具 | 说明 |
 |----------|------|
-| `analyze_image` (project_id, image_url, file_path, prompt) | 图像视觉分析——传入图像 URL 或服务器文件路径，返回 AI 视觉分析结果。**Read 工具不用于图像视觉分析**，只用来获取 CDN URL。一次只分析一张图；同时传 `file_path` 和 `image_url` 时服务端只用 `file_path` |
+| `analyze_image` (project_id, task_id, image_url?, file_path?, prompt) | 图像视觉分析——优先传任务相对 `file_path`，返回 AI 视觉分析结果。一次只分析一张图 |
 | `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, aspect_ratio, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，不是 ControlNet/img2img |
-| `download_image` (project_id, url) | 下载在线图片到 MCP 服务器临时路径或上传到存储，返回 `file_path`。用于把 Read 得到的 CDN URL 注册成 `ref_image_path` 可用的服务器端路径 |
-| `compress_image` (file_path) | 压缩图片——`analyze_image` 的 `file_path` 方式有 10MB 限制，超出时先压缩 |
-| `upload_image` (project_id, file_path) | 上传图片，用于 `compress_image` 仍超 10MB 的兜底场景 |
+| `download_image` (project_id, task_id, url, output_path) | 下载公共 HTTPS 图片并登记为当前执行的持久任务文件，返回任务相对 `file_path` |
+| `compress_image` (task_id, input_path, output_path, max_width?) | 压缩授权任务图并登记新的持久任务文件 |
 
 ---
 
@@ -83,7 +82,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 | 字段 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
-| 参考封面本地路径 | ✅ | — | 必须是本地可读的图片文件 |
+| 参考封面 | ✅ | — | 优先使用任务上传图；也可提供公共 HTTPS URL |
 | 新封面标题 | ✅ | — | 用户的新标题文案 |
 | 账号领域 | ✅ | — | 知识干货/娱乐/美妆/科技/教育/...，决定视觉调性 |
 | 画面比例 | ❌ | 智能适配 | 用户明确值优先，否则从当前能力支持范围选择 |
@@ -97,7 +96,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ## User Inputs
 
-- reference_cover: /Users/.../ref.png
+- reference_cover: .anban-creator/input-attachments/attachment_01_ref.png
 - new_title: 3 步学会爆款标题
 - account_domain: 知识干货
 - aspect_ratio: $EFFECTIVE_ASPECT_RATIO
@@ -115,18 +114,22 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ### Phase 1 — 拆解参考封面
 
-#### 步骤 3：注册参考图 + 视觉分析
+#### 步骤 3：定位参考图 + 视觉分析
 
-**3a. 注册参考图到 MCP 服务器**：
+**3a. 定位任务参考图**：
 
-`ref_image_path` 需要服务器可访问的路径。用户提供的本地路径不能直接传，必须先注册：
+优先读取 `.anban-creator/input-attachments/index.json`，按用户要求选择对应 `type="image"` 条目的 `path` 并记为 `$REF_TASK_PATH`。若用户只提供公共 HTTPS URL，则登记为持久任务文件：
 
 ```
-1. Read 参考封面本地路径 → 得到 CDN_URL（约 30 分钟过期，立即使用）
-2. download_image(project_id="$PROJECT_ID", url=CDN_URL) → 返回 REF_SERVER_PATH
+download_image(
+  project_id="$PROJECT_ID",
+  task_id="$TASK_ID",
+  url=<公共 HTTPS URL>,
+  output_path="output/reference-cover.png"
+) → 返回 REF_TASK_PATH
 ```
 
-把 `REF_SERVER_PATH` 记录到 `output/server-paths.md`。
+把 `$REF_TASK_PATH` 及其附件索引来源记录到 `output/input-manifest.md`。
 
 **3b. 视觉分析**：
 
@@ -135,12 +138,13 @@ description: 'Use when replicating viral short-video covers, generating a short-
 ```
 analyze_image(
   project_id="$PROJECT_ID",
-  file_path="$REF_SERVER_PATH",
+  task_id="$TASK_ID",
+  file_path="$REF_TASK_PATH",
   prompt=<参考 references/analysis-template.md 的 8 维度分析模板>
 )
 ```
 
-如果因 10MB 限制失败：先 `compress_image(file_path=REF_SERVER_PATH)`；仍失败则 `upload_image` 后用 `image_url` 重试。
+如果因 10MB 限制失败，调用 `compress_image(task_id=$TASK_ID, input_path=$REF_TASK_PATH, output_path="output/reference-cover-compressed.png")`，然后用返回的任务相对路径重试分析。
 
 **3c. 写入分析结果**：
 
@@ -219,7 +223,7 @@ result = generate_image(
   image_type="cover",
   output_path="output/cover.png",
   aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
-  ref_image_path="$REF_SERVER_PATH"
+  ref_image_path="$REF_TASK_PATH"
 )
 COVER_ANALYSIS_URL = result.download_url
 ```
@@ -347,11 +351,11 @@ DO NOT include:
 | 画面元素过多过乱 | 缺少反面约束 | prompt 末尾加"DO NOT include cluttered elements" |
 | 太像参考图（构图照搬） | reference_depth=deep 但未替换语义元素 | 把参考的"装饰元素保留、语义元素替换"原则写进 prompt |
 | 太不像参考图（视觉断裂） | reference_depth=light 但色彩和字体气质也未对齐 | 即使 light 模式，主色和字体气质也应参考；只重做构图 |
-| CDN URL 过期 | Read 返回的 CDN URL 约 30 分钟后过期 | 获取后立即使用；需要重新分析时重新 Read 获取新 URL |
-| analyze_image 文件过大 | `file_path` 方式分析有 10MB 限制 | 先 `compress_image`，再失败则 `upload_image` 后用 `image_url` |
+| 公共 URL 下载失败 | URL 非 HTTPS、重定向到私网或内容不是图片 | 写失败诊断；不得绕过 `download_image` 的网络与类型校验 |
+| analyze_image 文件过大 | `file_path` 方式分析有 10MB 限制 | 调用 `compress_image(task_id=$TASK_ID, input_path=$REF_TASK_PATH, output_path="output/reference-cover-compressed.png")` 后分析返回路径 |
 | output_path 权限错误 | 路径不属于任务工作区 | 使用任务相对路径 `output/...` |
 | 长 prompt 504 Gateway Timeout | prompt 过长或约束过多 | Prompt 控制在 500 词以内，优先 8 要素和最关键反面约束 |
-| ref_image_path 无法访问 | 远程 MCP Server 无法访问本地文件路径 | 通过 Read + download_image 注册到服务器端 |
+| ref_image_path 无法访问 | 路径未登记在当前任务 | 重新读取附件索引，或用完整参数调用 `download_image` 登记公共 HTTPS 图片 |
 
 ---
 
@@ -360,7 +364,7 @@ DO NOT include:
 ### 单张封面完成后
 
 - [ ] `output/input-manifest.md` 已生成，包含全部 6 个用户输入字段
-- [ ] `output/server-paths.md` 已记录输入参考图的 REF_SERVER_PATH
+- [ ] `output/input-manifest.md` 已记录输入参考图的 `$REF_TASK_PATH` 与附件索引来源
 - [ ] `output/reference-analysis.md` 已生成，覆盖 8 个分析维度
 - [ ] `output/cover-plan.md` 已生成，包含迁移决策和 style anchors
 - [ ] `output/cover.png` 已由托管运行时写入

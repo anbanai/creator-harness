@@ -64,8 +64,8 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 - `upload_image` 失败时保留已生成图片，只重试上传，无需重新生成。
 | `analyze_image` (project_id, image_url 或 file_path, prompt) | 分析图片可见内容，供 Agent 作质量判断或创作修订 |
 | `upload_image` (project_id, task_id, file_path) | 独立上传已接受图片到微信 CDN，返回 CDN URL 和素材 ID |
-| `download_image` (project_id, url) | 下载在线图片 |
-| `compress_image` (file_path) | 压缩图片 |
+| `download_image` (project_id, task_id, url, output_path) | 下载公共 HTTPS 图片并登记为持久任务文件 |
+| `compress_image` (task_id, input_path, output_path, max_width?) | 压缩授权任务图并登记新的持久任务文件 |
 
 ---
 

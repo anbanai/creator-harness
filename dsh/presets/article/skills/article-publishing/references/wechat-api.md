@@ -25,7 +25,7 @@
 
 ### MCP 工具
 
-调用 `upload_image` 上传本地图片，调用 `download_image` 下载在线图片。
+调用 `upload_image(project_id, task_id, file_path)` 上传当前任务图片；调用 `download_image(project_id, task_id, url, output_path)` 下载公共 HTTPS 图片并登记为持久任务文件。所有文件参数均为任务相对路径。
 
 ### 响应格式
 

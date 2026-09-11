@@ -37,6 +37,8 @@ const integrityScriptUrl = new URL(
 )
 const {
   assertSafeArchiveEntries,
+  buildRuntimeInstallManifest,
+  commandFailureDiagnostic,
   inspectAndExtractArchive,
   parsePackResult,
   runBoundedCommand,
@@ -44,6 +46,43 @@ const {
   verifyInstalledPackage,
   verifySourceIntegrity,
 } = await import(integrityScriptUrl.href)
+
+describe('packed runtime installation', () => {
+  it('pins shared transitive dependencies used by the verified runtime', () => {
+    expect(
+      buildRuntimeInstallManifest(
+        {
+          name: '@anban/dsh-plugin',
+          peerDependencies: {
+            '@deepseek-ai/cordis': '4.0.1',
+          },
+        },
+        '../anban-dsh-plugin-4.1.20.tgz',
+      ),
+    ).toEqual({
+      private: true,
+      type: 'module',
+      dependencies: {
+        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.20.tgz',
+        '@deepseek-ai/cordis': '4.0.1',
+      },
+      pnpm: {
+        overrides: {
+          zod: '4.4.3',
+        },
+      },
+    })
+  })
+
+  it('reports only a package-manager error code from failed install output', () => {
+    expect(
+      commandFailureDiagnostic(
+        'credential=https://secret.example/token\n[ERR_PNPM_NO_OFFLINE_TARBALL] missing',
+      ),
+    ).toBe(' (ERR_PNPM_NO_OFFLINE_TARBALL)')
+    expect(commandFailureDiagnostic('unstructured private diagnostic')).toBe('')
+  })
+})
 
 interface TarEntryFixture {
   content?: Buffer | string
@@ -479,7 +518,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.19',
+      version: '4.1.20',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',

@@ -138,7 +138,7 @@ The Creator MCP endpoint is fixed at `https://creator.anbanai.com/mcp`. It is
 not a profile option. Never put a key or serialized Authorization header in a
 Preset, command argument, log, screenshot, test fixture, or generated artifact.
 
-## 4.1.19 release-operator checklist
+## 4.1.20 release-operator checklist
 
 Perform this manual production check after automated code gates and before
 public announcement:
@@ -204,7 +204,7 @@ dsh plugin --profile "$ACTIVE_PROFILE" add "./anban-dsh-plugin-${PUBLISHED_VERSI
 The checksum file names the exact tarball. A tarball add must resolve to a
 versioned `anban-dsh-plugin-X.Y.Z.tgz` path or URL. A `file:` specifier is
 acceptable only when it names that exact archive, for example
-`file:/absolute/path/anban-dsh-plugin-4.1.19.tgz`; a `file:` directory and an
+`file:/absolute/path/anban-dsh-plugin-4.1.20.tgz`; a `file:` directory and an
 arbitrarily named `.tgz` are not supported. Do not install when verification
 fails or when the asset tag and package version differ.
 
@@ -237,7 +237,7 @@ structured result:
 
 ```bash
 pnpm pack --json
-PACKED_TARBALL="/absolute/path/anban-dsh-plugin-4.1.19.tgz"
+PACKED_TARBALL="/absolute/path/anban-dsh-plugin-4.1.20.tgz"
 dsh plugin --profile "$ACTIVE_PROFILE" add "$PACKED_TARBALL"
 ```
 

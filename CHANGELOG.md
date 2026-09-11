@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [4.1.20] - 2026-09-11
+
+### Changed
+
+- Separated project style analysis images from task-owned generation references
+  with distinct runtime paths and removed the legacy ambiguous reference path.
+- Made project-level Seednote style images prompt-only and limited generation
+  references to page-relevant images uploaded with the current task.
+- Declared image contents, metadata, and filenames untrusted so embedded
+  instructions cannot override the task or workflow contract.
+- Prepared the `4.1.20` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.19] - 2026-09-10
 
 ### Fixed

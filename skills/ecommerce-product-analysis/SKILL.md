@@ -26,9 +26,9 @@ description: 'Use when 电商产品图分析——从多张产品图抽取电商
 | MCP 工具 | 用途 |
 |----------|------|
 | `analyze_image(project_id, file_path\|image_url, prompt)` | 逐张抽取产品属性（一次一张） |
-| `compress_image(file_path, max_width)` | 产品图 >10MB 时先压缩再分析 |
+| `compress_image(task_id, input_path, output_path, max_width?)` | 产品图 >10MB 时压缩成当前任务的持久文件后再分析 |
 
-`file_path` 为服务端注册的产品图 server-local 路径（≤10MB）；`image_url` 为 HTTPS。二选一。
+`file_path` 必须是 `.anban-creator/input-attachments/index.json` 中登记的任务相对路径（≤10MB），并同时传 `task_id=$TASK_ID`。不得传宿主机或服务端本地路径。
 
 ---
 
@@ -36,7 +36,7 @@ description: 'Use when 电商产品图分析——从多张产品图抽取电商
 
 ### 步骤 1：准备产品图清单
 
-把 `$PRODUCT_PHOTOS`（来自 `$PRODUCT_PHOTO_DIR/index.json`，见主流程「产品图发现」）写入 `output/product-photos.md`，逐张标注序号、来源路径、可见性（是否可访问/是否需压缩）。任一不可访问剔除并记录，**至少保留 1 张**；全不可访问则报错停止。
+把 `$PRODUCT_PHOTOS`（来自 `.anban-creator/input-attachments/index.json` 中 role 为 `ecommerce_product` 的条目，见主流程「产品图发现」）写入 `output/product-photos.md`，逐张标注序号、来源任务相对路径、可见性（是否可访问/是否需压缩）。任一不可访问剔除并记录，**至少保留 1 张**；全不可访问则报错停止。
 
 ### 步骤 2：逐张抽取产品属性
 
@@ -76,17 +76,17 @@ description: 'Use when 电商产品图分析——从多张产品图抽取电商
 # 产品档案 Product Bible
 
 ## 锚点
-- 最佳锚点参考图: $ANCHOR_REF = {选定的 server-local 路径}（来源：产品图 N，理由：最清晰/打光最好/最代表商品）
+- 最佳锚点参考图: $ANCHOR_REF = {选定的任务相对路径}（来源：产品图 N，理由：最清晰/打光最好/最代表商品）
 
 ## 产品图清单（逐张识别产物 · 生成时按需选 ref 的查表依据）
 
 **序号一经确定即在任务内固定**，作为生成 prompt「与【产品图清单】第 N 张完全一致」与视觉自检的稳定锚点（"第 N 张" = 本清单序号，非 ref 数组下标）。
 
-> **握手机制（关键）**：本「产品图清单」（序号 + subject + server-local 路径）是 `ecommerce-visual-design` 的 **asset-plan 唯一查询表**——asset-plan 每张图填「所需产品图=[第 N 张(subject)]」时**必须读本清单**，按本张电商图描绘的部位匹配 subject，取对应序号的产品图作 ref。没有它，visual-design 无法知道「哪张是茶汤、哪张是叶底」，也无法点名「与第 N 张完全一致」。
+> **握手机制（关键）**：本「产品图清单」（序号 + subject + 任务相对路径）是 `ecommerce-visual-design` 的 **asset-plan 唯一查询表**——asset-plan 每张图填「所需产品图=[第 N 张(subject)]」时**必须读本清单**，按本张电商图描绘的部位匹配 subject，取对应序号的产品图作 ref。没有它，visual-design 无法知道「哪张是茶汤、哪张是叶底」，也无法点名「与第 N 张完全一致」。
 
-| 序号 | subject 部位标签 | server-local 路径 | 该图可见产品信息（色泽/形态/包装文字/材质） |
+| 序号 | subject 部位标签 | 任务相对路径 | 该图可见产品信息（色泽/形态/包装文字/材质） |
 |------|------------------|-------------------|----------------------------------------------|
-| 1    | 包装正面         | `$PRODUCT_PHOTO_DIR/product_01.png` | 品牌文字「XX」/ 主色 #XXX / 哑光金盒 |
+| 1    | 包装正面         | `.anban-creator/input-attachments/attachment_01_product.png` | 品牌文字「XX」/ 主色 #XXX / 哑光金盒 |
 | 2    | 茶汤             | `.../product_02.png` | 汤色橙黄透亮 / 玻璃公道杯 |
 | 3    | 干茶             | `.../product_03.png` | 条索紧结 / 墨绿润 |
 | 4    | 叶底             | `.../product_04.png` | 红边显露 / 柔软亮 |
@@ -132,7 +132,7 @@ description: 'Use when 电商产品图分析——从多张产品图抽取电商
 
 ### 步骤 4：选出最佳锚点
 
-从产品图中选**最佳锚点** `$ANCHOR_REF`（server-local 路径）：最清晰、打光最好、最能代表商品全貌的一张。锚点用于一致性关键模块（主图①、详情核心场景）的 `ref_image_path`。理由写入档案。
+从产品图中选**最佳锚点** `$ANCHOR_REF`（任务相对路径）：最清晰、打光最好、最能代表商品全貌的一张。锚点用于一致性关键模块（主图①、详情核心场景）的 `ref_image_paths`。理由写入档案。
 
 ---
 
@@ -140,7 +140,7 @@ description: 'Use when 电商产品图分析——从多张产品图抽取电商
 
 | 问题 | 原因 | 修复 |
 |------|------|------|
-| 产品图 >10MB 无法 analyze | 超限 | 先 `compress_image` 再分析 |
+| 产品图 >10MB 无法 analyze | 超限 | 调用 `compress_image(task_id=$TASK_ID, input_path=<原路径>, output_path="output/compressed_<NN>.png")` 后分析返回路径 |
 | 多张图品牌/logo 矛盾 | 不同角度/版本 | 以包装文字最清晰那张为准，标注重复确认 |
 | 颜色 HEX 不准 | 光线/白平衡 | 给语义色名 + 近似 HEX，标置信 medium |
 | 某属性全部缺失 | 无对应角度图 | 记入 missing_data，降置信，不臆造 |
@@ -150,8 +150,8 @@ description: 'Use when 电商产品图分析——从多张产品图抽取电商
 
 ## 产出
 
-- `output/product-bible.md`（锁定规格，含**「产品图清单」**：序号 | subject 部位标签 | server-local 路径 | 该图可见产品信息）
+- `output/product-bible.md`（锁定规格，含**「产品图清单」**：序号 | subject 部位标签 | 任务相对路径 | 该图可见产品信息）
 - `output/product-photos.md`（产品图访问性清单与可见性）
-- `$ANCHOR_REF`（最佳锚点 server-local 路径，写入档案与内部变量）
+- `$ANCHOR_REF`（最佳锚点任务相对路径，写入档案与内部变量）
 
 > 「产品图清单」的 subject 标签 + 稳定序号是 `ecommerce-visual-design`「按需选参考图 + 点名保真」的查表依据——没有它，生成时无法知道「哪张是茶汤、哪张是叶底」，也无法在 prompt 里精确点名「与第 N 张完全一致」。

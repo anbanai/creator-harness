@@ -42,7 +42,7 @@ description: 'Use when 电商视觉设计与生成——商业转化导向的视
 |----------|------|
 | `generate_image(project_id, task_id, prompt, image_type, output_path, aspect_ratio, ref_image_path, ref_image_paths)` | 从创作 prompt 和有序产品参考生成并登记单张电商素材 |
 | `analyze_image(project_id, file_path\|image_url, prompt)` | 视觉自检 / 锚点评估 |
-| `compress_image(file_path)` | 大图压缩 |
+| `compress_image(task_id, input_path, output_path, max_width?)` | 将授权任务图压缩为新的持久任务文件 |
 
 > `generate_image` 的参考图按本图所需部位选择：只传当前画面相关的原图，数组顺序与 prompt 编号一致；服务端拒绝集合时保留最关键产品证据并按语义相关性缩小子集。每张电商图必须有真实产品参考。
 

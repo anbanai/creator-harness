@@ -14,7 +14,7 @@ description: Use when a managed Montage workflow needs to design, generate, audi
 - `$PROJECT_ID`、`$TASK_ID`
 - 从 Cloud 首条用户消息冻结的 `$VIDEO_ASPECT_RATIO`
 - 视频 brief、内容摘要、最终标题或标题依据
-- 系统人像是否可用；可用时路径固定为 `.anban-creator/reference.png`
+- 系统任务人像是否可用；可用时路径固定为 `.anban-creator/task-reference.png`
 - 其他已冻结的任务素材路径、项目定位和显式视觉偏好
 
 不得向用户提问，不得要求补充配置，不得读取 `montage-input.json`、项目设置或 Skill 默认值来重新决定比例。缺少或不支持 `$VIDEO_ASPECT_RATIO` 时，写 `output/failure-diagnosis.md` 并停止。
@@ -27,11 +27,11 @@ description: Use when a managed Montage workflow needs to design, generate, audi
 
 ## 人像与参考素材
 
-- 人像只能来自系统提供的 `.anban-creator/reference.png`，不得读取 Skill 目录中的人物图片或本地配置。
+- 人像只能来自系统提供的 `.anban-creator/task-reference.png`，不得读取项目风格图、Skill 目录中的人物图片或本地配置。
 - 封面概念需要用户本人出镜但系统人像不可用时，写结构化失败诊断并停止，不得捏造身份。
 - 内容不要求人物时，可自动选择非人像构图，不传人像参考。
 - 风格参考中的人物行只在系统人像可用且概念确实需要人物时适用；非人像构图必须删去人物占位，以产品、界面、道具或具象隐喻作为主体。
-- 需要人像时，`.anban-creator/reference.png` 必须是 `ref_image_paths` 的第一项；其后才是与封面概念直接相关的任务素材，保持上游顺序。
+- 需要人像时，`.anban-creator/task-reference.png` 必须是 `ref_image_paths` 的第一项；其后才是与封面概念直接相关的任务素材，保持上游顺序。
 - 不得使用任意绝对路径、网络下载或未由任务冻结的图片。
 
 ## 自动决策
