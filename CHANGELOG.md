@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [4.1.21] - 2026-09-11
+
+### Changed
+
+- Updated the native plugin, marketplace, and DSH package metadata to the
+  release version that contains the separated task-reference and project-style
+  image workflow.
+- Prepared the `4.1.21` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.20] - 2026-09-11
 
 ### Changed

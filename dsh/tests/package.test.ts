@@ -57,13 +57,13 @@ describe('packed runtime installation', () => {
             '@deepseek-ai/cordis': '4.0.1',
           },
         },
-        '../anban-dsh-plugin-4.1.20.tgz',
+        '../anban-dsh-plugin-4.1.21.tgz',
       ),
     ).toEqual({
       private: true,
       type: 'module',
       dependencies: {
-        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.20.tgz',
+        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.21.tgz',
         '@deepseek-ai/cordis': '4.0.1',
       },
       pnpm: {
@@ -518,7 +518,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.20',
+      version: '4.1.21',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',

@@ -14,7 +14,7 @@ Use this skill to convert a local livestream video into transcript-backed short-
 
 ## Default Artifacts
 
-The managed runtime provides a task-private workspace and a pre-created `output/` directory. `TASK_ID` comes from structured runtime context. Use the explicit paths below; do not create, discover, move, or rename `output/` or its parent directories.
+The managed runtime provides a task-private workspace and a pre-created `output/` directory. `TASK_ID` and `PROJECT_ID` come from structured runtime context (`PROJECT_ID` is also exposed as `ANBAN_DEFAULT_PROJECT`). Use the explicit paths below; do not create, discover, move, or rename `output/` or its parent directories.
 
 | File | Purpose |
 | --- | --- |
@@ -50,7 +50,7 @@ The managed runtime provides a task-private workspace and a pre-created `output/
 
 3. Upload audio:
    Call `get_media_pipeline_status` first. TingWu is the required transcription backend; if `oss_direct_upload` or `tingwu_configured` is false, stop and report the missing items.
-   Call `prepare_file_upload` with `purpose="live_audio"`, `filename="audio.mp3"`, and `content_type="audio/mpeg"`. Upload `output/audio.mp3` to the returned `upload_url` with `curl --fail -X PUT -H "Content-Type: audio/mpeg" --upload-file "output/audio.mp3" "$UPLOAD_URL"`.
+   Set `AUDIO_SIZE=$(wc -c < output/audio.mp3 | tr -d ' ')`, then call `prepare_file_upload` with `project_id="$PROJECT_ID"`, `task_id="$TASK_ID"`, `purpose="live_audio"`, `filename="audio.mp3"`, `content_type="audio/mpeg"`, and `size=$AUDIO_SIZE`. Upload `output/audio.mp3` to the returned `upload_url` with `curl --fail -X PUT -H "Content-Type: audio/mpeg" -H "Content-Length: $AUDIO_SIZE" --upload-file "output/audio.mp3" "$UPLOAD_URL"`.
 
 4. Create TingWu task:
    Call `create_live_analysis_task(audio_key=..., auto_chapters_enabled=true, summarization_enabled=true, meeting_assistance_enabled=true, diarization_enabled=false, script_template_enable=true)`.

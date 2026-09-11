@@ -33,7 +33,8 @@ maxTurns: 160
 The managed runtime provides a task-private workspace and a pre-created output/
 directory. Write final and resume-critical artifacts to the explicit
 output/<filename> paths below. Do not create, discover, move, or rename the
-output directory. TASK_ID is supplied by structured runtime context.
+output directory. TASK_ID and PROJECT_ID are supplied by structured runtime
+context; PROJECT_ID is also available as ANBAN_DEFAULT_PROJECT.
 
 | 决策点 | 自动策略 |
 | --- | --- |
@@ -132,12 +133,12 @@ if [ "${SRC_W:-0}" -gt "${SRC_H:-0}" ] 2>/dev/null; then ORIENTATION="landscape"
 
 ### 步骤 3：上传音频并创建听悟任务
 
-先调用 `get_media_pipeline_status`。TingWu 是唯一转写后端；如果返回 `oss_direct_upload=false` 或 `tingwu_configured=false`，停止并报告缺失项，给用户三种恢复路径：配置 OSS/TingWu 后从本步骤继续、提供可被 TingWu 访问的 `audio_url`、或提供人工剪辑时间点。
+先调用 `get_media_pipeline_status`。TingWu 是唯一转写后端；如果返回 `oss_direct_upload=false` 或 `tingwu_configured=false`，停止并报告缺失项，给出两种恢复路径：配置 OSS/TingWu 后从本步骤继续，或提供人工剪辑时间点。执行凭证不允许提交外部 `audio_url`。
 
-调用 `prepare_file_upload(purpose="live_audio", filename="audio.mp3", content_type="audio/mpeg")`。把返回的 `key` 记为 `$AUDIO_KEY`，把 `upload_url` 记为 `$UPLOAD_URL`，然后执行：
+执行 `AUDIO_SIZE=$(wc -c < output/audio.mp3 | tr -d ' ')`，调用 `prepare_file_upload(project_id="$PROJECT_ID", task_id="$TASK_ID", purpose="live_audio", filename="audio.mp3", content_type="audio/mpeg", size=$AUDIO_SIZE)`。把返回的 `key` 记为 `$AUDIO_KEY`，把 `upload_url` 记为 `$UPLOAD_URL`，然后执行：
 
 ```bash
-curl --fail -X PUT -H "Content-Type: audio/mpeg" --upload-file "output/audio.mp3" "$UPLOAD_URL"
+curl --fail -X PUT -H "Content-Type: audio/mpeg" -H "Content-Length: $AUDIO_SIZE" --upload-file "output/audio.mp3" "$UPLOAD_URL"
 ```
 
 上传成功后使用 `$AUDIO_KEY` 创建听悟任务。
