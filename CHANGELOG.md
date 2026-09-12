@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [4.1.24] - 2026-09-12
+
+### Changed
+
+- Moved the canonical plugin repository references to `anbanai/creator-harness`
+  and aligned GitHub Release links with `anbanai/anban-creator`.
+- Prepared the `4.1.24` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.23] - 2026-09-12
 
 ### Fixed

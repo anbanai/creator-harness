@@ -29,7 +29,7 @@ git submodule update --init --recursive harness
 test -f harness/skills/humanizer/SKILL.md
 ```
 
-For a standalone `anbanai/harness` clone, run
+For a standalone `anbanai/creator-harness` clone, run
 `git submodule update --init --recursive` inside that clone instead. Then install
 from the initialized local path:
 

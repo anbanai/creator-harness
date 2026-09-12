@@ -138,7 +138,7 @@ The Creator MCP endpoint is fixed at `https://creator.anbanai.com/mcp`. It is
 not a profile option. Never put a key or serialized Authorization header in a
 Preset, command argument, log, screenshot, test fixture, or generated artifact.
 
-## 4.1.23 release-operator checklist
+## 4.1.24 release-operator checklist
 
 Perform this manual production check after automated code gates and before
 public announcement:
@@ -170,7 +170,7 @@ Install only a published, immutable artifact. In priority order:
    `anban-dsh-plugin-X.Y.Z.tgz` and matching SHA-256 file attached to the same
    version tag.
 3. **immutable Git tag or full commit**: an advanced source install from the
-   approved `anbanai/harness` repository whose prepare build is
+   approved `anbanai/creator-harness` repository whose prepare build is
    explicitly approved and allowed to complete.
 
 Use only a version that resolves anonymously from npm or has completed release
@@ -191,12 +191,12 @@ dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@${PUBLISHED_VERSIO
 For release `v<published-version>`, download both
 `anban-dsh-plugin-<published-version>.tgz` and
 `anban-dsh-plugin-<published-version>.tgz.sha256` from the matching
-`anbanai/anbancreator` GitHub Release. Verify before installation:
+`anbanai/anban-creator` GitHub Release. Verify before installation:
 
 ```bash
 PUBLISHED_VERSION="replace-with-published-version"
-curl -fLO "https://github.com/anbanai/anbancreator/releases/download/v${PUBLISHED_VERSION}/anban-dsh-plugin-${PUBLISHED_VERSION}.tgz"
-curl -fLO "https://github.com/anbanai/anbancreator/releases/download/v${PUBLISHED_VERSION}/anban-dsh-plugin-${PUBLISHED_VERSION}.tgz.sha256"
+curl -fLO "https://github.com/anbanai/anban-creator/releases/download/v${PUBLISHED_VERSION}/anban-dsh-plugin-${PUBLISHED_VERSION}.tgz"
+curl -fLO "https://github.com/anbanai/anban-creator/releases/download/v${PUBLISHED_VERSION}/anban-dsh-plugin-${PUBLISHED_VERSION}.tgz.sha256"
 shasum -a 256 -c "anban-dsh-plugin-${PUBLISHED_VERSION}.tgz.sha256"
 dsh plugin --profile "$ACTIVE_PROFILE" add "./anban-dsh-plugin-${PUBLISHED_VERSION}.tgz"
 ```
@@ -204,7 +204,7 @@ dsh plugin --profile "$ACTIVE_PROFILE" add "./anban-dsh-plugin-${PUBLISHED_VERSI
 The checksum file names the exact tarball. A tarball add must resolve to a
 versioned `anban-dsh-plugin-X.Y.Z.tgz` path or URL. A `file:` specifier is
 acceptable only when it names that exact archive, for example
-`file:/absolute/path/anban-dsh-plugin-4.1.23.tgz`; a `file:` directory and an
+`file:/absolute/path/anban-dsh-plugin-4.1.24.tgz`; a `file:` directory and an
 arbitrarily named `.tgz` are not supported. Do not install when verification
 fails or when the asset tag and package version differ.
 
@@ -221,9 +221,9 @@ command:
 
 ```bash
 SOURCE_REF="replace-with-immutable-tag-or-full-40-character-commit"
-dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/harness.git#${SOURCE_REF}"
+dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-harness.git#${SOURCE_REF}"
 dsh plugin --profile "$ACTIVE_PROFILE" approve-builds
-dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/harness.git#${SOURCE_REF}"
+dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-harness.git#${SOURCE_REF}"
 ```
 
 The first add may stop while pnpm reports the exact build approval it needs.
@@ -237,7 +237,7 @@ structured result:
 
 ```bash
 pnpm pack --json
-PACKED_TARBALL="/absolute/path/anban-dsh-plugin-4.1.23.tgz"
+PACKED_TARBALL="/absolute/path/anban-dsh-plugin-4.1.24.tgz"
 dsh plugin --profile "$ACTIVE_PROFILE" add "$PACKED_TARBALL"
 ```
 
