@@ -52,19 +52,19 @@ Skills-only 安装只分发共享 Skills，不会安装 Agent、MCP 或 Preset�
 
 ## 3. 安装插件
 
-先从 Anban Writer 根目录递归初始化 Creator Skills 及其 Humanizer
+先从 Anban Writer 根目录递归初始化 Harness 及其 Humanizer
 submodule：
 
 ```bash
-git submodule update --init --recursive plugins
+git submodule update --init --recursive harness
 ```
 
-如果单独 clone `anbanai/creator-skills`，请在该仓库中运行
+如果单独 clone `anbanai/harness`，请在该仓库中运行
 `git submodule update --init --recursive`。确认
 `skills/humanizer/SKILL.md` 存在后，再从 Anban Writer 根目录注册并安装：
 
 ```bash
-claude plugin marketplace add ./plugins
+claude plugin marketplace add ./harness
 claude plugin install --scope user anban@anbanai
 ```
 

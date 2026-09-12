@@ -57,13 +57,13 @@ describe('packed runtime installation', () => {
             '@deepseek-ai/cordis': '4.0.1',
           },
         },
-        '../anban-dsh-plugin-4.1.21.tgz',
+        '../anban-dsh-plugin-4.1.22.tgz',
       ),
     ).toEqual({
       private: true,
       type: 'module',
       dependencies: {
-        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.21.tgz',
+        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.22.tgz',
         '@deepseek-ai/cordis': '4.0.1',
       },
       pnpm: {
@@ -351,7 +351,7 @@ function documentedPluginAddFindings(source: string) {
           specifier.startsWith('file:') &&
           localTarballPattern.test(specifier.slice('file:'.length))
         const releaseTarballMatch =
-          /^https:\/\/github\.com\/royalmorty\/anbanwriter\/releases\/download\/v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\/anban-dsh-plugin-((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/.exec(
+          /^https:\/\/github\.com\/anbanai\/anbancreator\/releases\/download\/v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\/anban-dsh-plugin-((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/.exec(
             specifier,
           )
         const releaseTarball =
@@ -363,7 +363,7 @@ function documentedPluginAddFindings(source: string) {
           localTarballPattern.test(specifier)
         const tarball = fileTarball || releaseTarball || localTarball
         const gitMatch =
-          /^git\+https:\/\/github\.com\/anbanai\/creator-skills\.git#(.+)$/.exec(
+          /^git\+https:\/\/github\.com\/anbanai\/harness\.git#(.+)$/.exec(
             specifier,
           )
         const gitRef = gitMatch?.[1]
@@ -518,7 +518,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.21',
+      version: '4.1.22',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -637,7 +637,7 @@ describe('DSH package manifest', () => {
       'DSH is not a separate Anban business workflow or Skill tree.',
     )
     expect(normalized).toMatch(
-      /plugins\/skills\/\*\*.*canonical.*Agent Pack generator copies the exact declared Skills/i,
+      /harness\/skills\/\*\*.*canonical.*Agent Pack generator copies the exact declared Skills/i,
     )
     expect(normalized).toMatch(
       /DSH-only code.*host composition.*MCP.*credentials.*Preset manager.*Skill provider/i,
@@ -681,20 +681,20 @@ dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
       '"@anban/dsh-plugin@4.1.14"',
       '"/tmp/anban-dsh-plugin-4.1.14.tgz"',
       '"file:/tmp/anban-dsh-plugin-4.1.14.tgz"',
-      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.14/anban-dsh-plugin-4.1.14.tgz"',
-      '"git+https://github.com/anbanai/creator-skills.git#v4.1.14"',
-      '"git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"',
+      '"https://github.com/anbanai/anbancreator/releases/download/v4.1.14/anban-dsh-plugin-4.1.14.tgz"',
+      '"git+https://github.com/anbanai/harness.git#v4.1.14"',
+      '"git+https://github.com/anbanai/harness.git#0123456789abcdef0123456789abcdef01234567"',
     ]) {
       expect(documentedPluginAddFindings(fixture(allowed)), allowed).toEqual([])
     }
     for (const forbidden of [
       '.',
       '..',
-      '../creator-skills',
-      './plugins',
-      '/tmp/creator-skills',
-      'file:../creator-skills',
-      'file:/tmp/creator-skills',
+      '../legacy-plugin',
+      './harness',
+      '/tmp/legacy-plugin',
+      'file:../legacy-plugin',
+      'file:/tmp/legacy-plugin',
       'file:/tmp/anban-dsh-plugin.tgz',
       '"@anban/dsh-plugin"',
       '"@anban/dsh-plugin@latest"',
@@ -702,11 +702,11 @@ dsh plugin --profile "$ACTIVE_PROFILE" add ${specifier}
       '"@anban/dsh-plugin@01.2.3"',
       '"/tmp/arbitrary-plugin-4.1.12.tgz"',
       '"https://example.com/anban-dsh-plugin-4.1.12.tgz"',
-      '"https://github.com/royalmorty/anbanwriter/releases/download/v4.1.14/anban-dsh-plugin-4.1.15.tgz"',
-      '"git+https://github.com/anbanai/creator-skills.git#main"',
-      '"git+https://github.com/anbanai/creator-skills.git#HEAD"',
-      '"git+https://github.com/anbanai/creator-skills.git#v01.2.3"',
-      '"git+https://github.com/anbanai/creator-skills.git"',
+      '"https://github.com/anbanai/anbancreator/releases/download/v4.1.14/anban-dsh-plugin-4.1.15.tgz"',
+      '"git+https://github.com/anbanai/harness.git#main"',
+      '"git+https://github.com/anbanai/harness.git#HEAD"',
+      '"git+https://github.com/anbanai/harness.git#v01.2.3"',
+      '"git+https://github.com/anbanai/harness.git"',
     ]) {
       expect(
         documentedPluginAddFindings(fixture(forbidden)),
@@ -722,11 +722,11 @@ $ dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin"
 CHECK_ONLY=1 dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/arbitrary-plugin-4.1.12.tgz"
 \`\`\``,
       `\`\`\`bash
-command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#main"
+command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/harness.git#main"
 \`\`\``,
       `\`\`\`bash
 dsh plugin --profile "$ACTIVE_PROFILE" add \\
-  "file:/tmp/creator-skills"
+  "file:/tmp/legacy-plugin"
 \`\`\``,
       `\`\`\`bash
 env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin"
@@ -735,10 +735,10 @@ env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin"
 command -- dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/arbitrary-plugin-4.1.12.tgz"
 \`\`\``,
       `\`\`\`bash
-env -u DSH_HOME dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#main"
+env -u DSH_HOME dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/harness.git#main"
 \`\`\``,
       `\`\`\`bash
-ONE=1 TWO=2 wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/creator-skills"
+ONE=1 TWO=2 wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/legacy-plugin"
 \`\`\``,
       `\`\`\`bash
 LABEL="two words" dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/with spaces/arbitrary-plugin-4.1.12.tgz"
@@ -760,11 +760,11 @@ $ dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.14"
 CHECK_ONLY=1 dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.14.tgz"
 \`\`\``,
       `\`\`\`bash
-command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"
+command dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/harness.git#0123456789abcdef0123456789abcdef01234567"
 \`\`\``,
       `\`\`\`bash
 dsh plugin --profile "$ACTIVE_PROFILE" add \\
-  "https://github.com/royalmorty/anbanwriter/releases/download/v4.1.14/anban-dsh-plugin-4.1.14.tgz"
+  "https://github.com/anbanai/anbancreator/releases/download/v4.1.14/anban-dsh-plugin-4.1.14.tgz"
 \`\`\``,
       `\`\`\`bash
 env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.14"
@@ -773,7 +773,7 @@ env -- dsh plugin --profile "$ACTIVE_PROFILE" add "@anban/dsh-plugin@4.1.14"
 command -- dsh plugin --profile "$ACTIVE_PROFILE" add "file:/tmp/anban-dsh-plugin-4.1.14.tgz"
 \`\`\``,
       `\`\`\`bash
-env -u DSH_HOME dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/creator-skills.git#0123456789abcdef0123456789abcdef01234567"
+env -u DSH_HOME dsh plugin --profile "$ACTIVE_PROFILE" add "git+https://github.com/anbanai/harness.git#0123456789abcdef0123456789abcdef01234567"
 \`\`\``,
       `\`\`\`bash
 ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" add "/tmp/with spaces/anban-dsh-plugin-4.1.14.tgz"

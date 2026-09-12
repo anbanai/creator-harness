@@ -1,6 +1,6 @@
 # Anban Creator for Codex
 
-Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit for OpenAI Codex. This Codex adapter lives in the same `plugins/` source as the Claude Code plugin and uses the shared Skill tree.
+Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit for OpenAI Codex. This Codex adapter lives in the same `harness/` source as the Claude Code plugin and uses the shared Skill tree.
 
 ## What you get
 
@@ -25,16 +25,16 @@ clone and initialize Humanizer before registering the marketplace. From the
 Anban Writer repository root:
 
 ```bash
-git submodule update --init --recursive plugins
-test -f plugins/skills/humanizer/SKILL.md
+git submodule update --init --recursive harness
+test -f harness/skills/humanizer/SKILL.md
 ```
 
-For a standalone `anbanai/creator-skills` clone, run
+For a standalone `anbanai/harness` clone, run
 `git submodule update --init --recursive` inside that clone instead. Then install
 from the initialized local path:
 
 ```bash
-codex plugin marketplace add ./plugins
+codex plugin marketplace add ./harness
 codex plugin add anban@anbanai
 ```
 
@@ -43,7 +43,7 @@ codex plugin add anban@anbanai
 Codex plugins cannot bundle subagents (open limitation — see `../CODEX.md`). The six subagents live in `agents/*.toml` and must be copied to `~/.codex/agents/`:
 
 ```bash
-bash plugins/install/install-subagents.sh
+bash harness/install/install-subagents.sh
 ```
 
 The script is idempotent and does three things:
@@ -156,7 +156,7 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 The install script substitutes `__PLUGIN_ROOT__` based on `~/.codex/plugins/cache/...`. If you installed the plugin to a non-default location, set `ANBAN_PLUGIN_ROOT` and re-run:
 
 ```bash
-ANBAN_PLUGIN_ROOT=/custom/path bash plugins/install/install-subagents.sh
+ANBAN_PLUGIN_ROOT=/custom/path bash harness/install/install-subagents.sh
 ```
 
 ### Completion checks

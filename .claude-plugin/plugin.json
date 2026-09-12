@@ -2,13 +2,13 @@
   "name": "anban",
   "displayName": "Anban Creator",
   "description": "Anban Creator plugin for WeChat, Seednote, Montage, ecommerce, and agent-assisted publishing workflows",
-  "version": "4.1.21",
+  "version": "4.1.22",
   "author": {
     "name": "anbanai",
     "url": "https://github.com/anbanai"
   },
-  "homepage": "https://github.com/anbanai/creator-skills",
-  "repository": "https://github.com/anbanai/creator-skills",
+  "homepage": "https://github.com/anbanai/harness",
+  "repository": "https://github.com/anbanai/harness",
   "license": "MIT",
   "keywords": [
     "wechat",

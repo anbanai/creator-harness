@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [4.1.22] - 2026-09-12
+
+### Changed
+
+- Renamed the shared harness repository references from Creator Skills to
+  Harness and updated the Anban Creator release URLs.
+- Prepared the `4.1.22` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.21] - 2026-09-11
 
 ### Changed

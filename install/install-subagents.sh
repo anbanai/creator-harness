@@ -9,8 +9,8 @@
 #   3. Prompts the user to restart Codex and verify with /agents.
 #
 # Usage:
-#   bash plugins/install/install-subagents.sh   # from repo root
-#   bash install-subagents.sh                         # from inside plugins/install/
+#   bash harness/install/install-subagents.sh   # from repo root
+#   bash install-subagents.sh                    # from inside harness/install/
 #
 # Environment overrides:
 #   ANBAN_PLUGIN_ROOT  Override plugin install path detection (advanced).
