@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [4.1.23] - 2026-09-12
+
+### Fixed
+
+- Stopped Article image retries immediately when MCP reports a missing or
+  mismatched execution identity, preserving existing artifacts for recovery.
+- Added a stable `execution_identity_unavailable` failure state that resumes
+  from image generation without exposing credentials or environment dumps.
+- Prepared the `4.1.23` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.22] - 2026-09-12
 
 ### Changed
