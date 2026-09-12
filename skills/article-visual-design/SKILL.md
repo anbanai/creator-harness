@@ -59,6 +59,8 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 
 ## MCP 工具
 
+任何图像 MCP 返回 `execution_identity_required` 或 `execution_identity_mismatch` 时，必须按不可重试的运行时身份故障处理：不得更换 prompt、比例、`image_type` 或工具重复尝试；保留已有产物，只写一次 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"execution_identity_unavailable","message":"执行环境未建立，暂时无法生成或结算图片","resume_from":"image_generation"}`，然后结束当前托管执行。身份失败不属于下文的质量或供应商重试预算；失败产物不得包含令牌、密钥或完整环境变量。
+
 | MCP 工具 | 说明 |
 |----------|------|
 - `upload_image` 失败时保留已生成图片，只重试上传，无需重新生成。
