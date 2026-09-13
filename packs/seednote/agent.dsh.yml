@@ -1,7 +1,7 @@
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
-    text: |-
+    prefix: |-
       You are running as an Anban workflow inside DeepSeek Harness.
       Load the named Skills before following their procedures.
       Use DSH filesystem and shell tools for local work.

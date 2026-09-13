@@ -36,7 +36,7 @@ interface FakeChild extends Promise<void> {
   dispose: ReturnType<typeof vi.fn<() => Promise<void>>>
 }
 
-type UpdatedListener = Events['credentials/updated']
+type UpdatedListener = Events['credentials/reference-updated']
 type RuntimeUpdatedListener = (
   ...args: Parameters<UpdatedListener>
 ) => unknown
@@ -106,10 +106,10 @@ function createContext(options: {
   })
   const on = vi.fn(
     (
-      event: 'credentials/updated',
+      event: 'credentials/reference-updated',
       callback: UpdatedListener,
     ): (() => boolean) => {
-      expect(event).toBe('credentials/updated')
+      expect(event).toBe('credentials/reference-updated')
       listener = callback as RuntimeUpdatedListener
       return listenerDisposer
     },
@@ -168,7 +168,7 @@ describe('anban MCP registration', () => {
     expect(name).toBe('anban-mcp')
     expect(inject).toEqual(['credentials'])
     expect(fake.on).toHaveBeenCalledWith(
-      'credentials/updated',
+      'credentials/reference-updated',
       expect.any(Function),
     )
     expect(fake.listenerDisposer).not.toHaveBeenCalled()

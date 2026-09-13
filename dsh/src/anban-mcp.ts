@@ -116,7 +116,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     return scheduled
   }
 
-  const removeListener = ctx.on('credentials/updated', (ref) => {
+  const removeListener = ctx.on('credentials/reference-updated', (ref) => {
     if (!acceptingUpdates || ref !== API_KEY_REF) {
       return
     }

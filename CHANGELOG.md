@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
+
 ## [4.1.25] - 2026-09-13
 
 ### Changed

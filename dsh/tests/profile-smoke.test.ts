@@ -844,9 +844,10 @@ describe('DSH profile smoke flow', () => {
       `mkdir:${join(fixture.smokeRoot, 'tmp')}`,
       `write:${join(fixture.smokeRoot, '.npmrc')}:0`,
     ])
-    expect(fixture.discoverPresets).toHaveBeenCalledWith([
-      { path: join(fixture.dshHome, '.agent-presets'), trust: 'user' },
-    ])
+    expect(fixture.discoverPresets).toHaveBeenCalledWith(
+      [{ path: join(fixture.dshHome, '.agent-presets'), trust: 'user' }],
+      expect.stringContaining('/profiles/web'),
+    )
     expect(fixture.importInstalledExport.mock.calls).toEqual(
       publicExports.map((specifier) => [fixture.profileDir, specifier]),
     )

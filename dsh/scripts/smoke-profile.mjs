@@ -298,9 +298,9 @@ function defaultResolveDshCommand() {
   )
 }
 
-async function defaultDiscoverPresets(roots) {
+async function defaultDiscoverPresets(roots, harnessBase) {
   const { discoverPresets } = await import('@deepseek-ai/dsh-agent-presets')
-  return discoverPresets(roots)
+  return discoverPresets(roots, harnessBase)
 }
 
 async function defaultParseConfig(source) {
@@ -493,9 +493,10 @@ export async function verifyInstalledProfile(overrides = {}) {
       })
     }
     const dshCommand = await dependencies.resolveDshCommand()
-    const presets = await dependencies.discoverPresets([
-      { path: join(dshHome, '.agent-presets'), trust: 'user' },
-    ])
+    const presets = await dependencies.discoverPresets(
+      [{ path: join(dshHome, '.agent-presets'), trust: 'user' }],
+      pathToFileURL(profileDir).href,
+    )
     requireHealthyPresets(presets)
     const mountedCatalogCounts = requireMountedSkillCatalogs(
       await dependencies.inspectMountedSkillCatalogs({
@@ -798,9 +799,10 @@ export async function smokeProfile(overrides = {}) {
       { cwd: PACKAGE_ROOT, env: environment, label: 'Anban preset install' },
     )
 
-    const presets = await dependencies.discoverPresets([
-      { path: join(dshHome, '.agent-presets'), trust: 'user' },
-    ])
+    const presets = await dependencies.discoverPresets(
+      [{ path: join(dshHome, '.agent-presets'), trust: 'user' }],
+      pathToFileURL(profileDir).href,
+    )
     requireHealthyPresets(presets)
 
     const mountedCatalogCounts = requireMountedSkillCatalogs(
