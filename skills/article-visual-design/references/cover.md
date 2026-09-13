@@ -19,7 +19,7 @@
 
 ## 角色定位
 
-封面在 `visual-rhythm-plan.md` 中对应 `hero` slot（`image_size=full-bleed`，比例取 `$EFFECTIVE_ASPECT_RATIO`），是全篇的视觉锚点。封面定调后，所有内容配图通过 `ref_image_path="output/cover.png"` 继承风格。详见 [rhythm.md](rhythm.md)。
+封面在 `visual-rhythm-plan.md` 中对应 `hero` slot（`image_size=full-bleed`，比例取 `$EFFECTIVE_ASPECT_RATIO`）。未启用人物参考时，内容图可通过 `ref_image_path="output/cover.png"` 继承风格；人物参考启用时，正文只使用分析后的文本风格块，不引用含身份的封面。详见 [rhythm.md](rhythm.md)。
 
 封面运行时先调用 `generate_image` 生成文件；需要内容审核时单独调用 `analyze_image`，由 Agent 根据主体、文字、构图和合规形成可见内容质量结论；通过后再单独调用 `upload_image`。上传失败只重试上传，不重新生成。生成、分析或整体质量闸门无法完成时写入 `output/failure-state.json` 并保留已有产物，不得请求用户中途协助。
 
@@ -127,7 +127,7 @@ An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditi
 - 与最终标题、digest 前半句强化同一个钩子
 - 主体大、对比强，缩成 200px 仍可读
 - 温暖/积极的情感基调（适合大多数中文内容账号）
-- **2.35:1 横版（900×383px 标准）**：仅在智能适配或用户明确要求精确尺寸时作为发布参考；先按当前能力支持的比例显式生成，需要精确尺寸时再调用原子的 `crop_image`，不得依赖服务端按平台或产物角色隐式裁剪
+- **公众号横版**：按任务有效比例显式生成；智能适配时从能力允许比例中选择最宽横图。只有用户明确要求精确像素时才调用原子的 `crop_image`，不得依赖服务端按平台或产物角色隐式裁剪
 - **主体居中安全区**：主体落在画面中央 ≈1:1 区域，转发卡 1:1 自动裁切后仍完整；避开底部 20%（微信会在底部叠加文章标题）
 
 **禁止**：
@@ -141,7 +141,7 @@ An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditi
 
 ---
 
-## 落盘 cover-prompt.md（硬性要求）
+## 落盘封面审计产物（硬性要求）
 
 封面 prompt 构建完成后，**必须原子写入 `output/cover-prompt.md`**（先写 `.cover-prompt.md.tmp` → `fsync` → `rename` 覆盖），完整记录封面生成决策，便于复盘与风格漂移排查。内容必须包含：
 
@@ -152,7 +152,7 @@ An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditi
 - **缩略图与反同质化**：`thumbnail_strategy`、`anti_generic_constraints`
 - **`required_entities`**：封面必须出现的具体物体列表（内容审核依据）
 - **最终 prompt**：实际传给 `generate_image` 的完整 prompt
-- **封面质量评分卡**：`visual_quality_scorecard` + 内容审核 prompt + Agent 的可见内容质量结论
+- `output/cover-quality.json`：`visual_quality_scorecard`、`cover_effectiveness_scorecard`、可见内容质量结论，以及人物启用时的身份结论
 
 封面图必须通过 Agent 的内容质量判断，并由独立 `upload_image` 获得 `media_id` 后，才可作为发布草稿的 `thumb_media_id`；未通过时按创作预算重试，耗尽后写入 `output/failure-state.json`，不得使用失败封面发布。
 

@@ -38,6 +38,7 @@ const integrityScriptUrl = new URL(
 const {
   assertSafeArchiveEntries,
   buildRuntimeInstallManifest,
+  buildRuntimeWorkspaceManifest,
   commandFailureDiagnostic,
   inspectAndExtractArchive,
   parsePackResult,
@@ -57,19 +58,20 @@ describe('packed runtime installation', () => {
             '@deepseek-ai/cordis': '4.0.1',
           },
         },
-        '../anban-dsh-plugin-4.1.24.tgz',
+        '../anban-dsh-plugin-4.1.25.tgz',
       ),
     ).toEqual({
       private: true,
       type: 'module',
       dependencies: {
-        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.24.tgz',
+        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.25.tgz',
         '@deepseek-ai/cordis': '4.0.1',
       },
-      pnpm: {
-        overrides: {
-          zod: '4.4.3',
-        },
+    })
+    expect(buildRuntimeWorkspaceManifest()).toEqual({
+      overrides: {
+        yaml: '2.9.0',
+        zod: '4.4.3',
       },
     })
   })
@@ -518,7 +520,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.24',
+      version: '4.1.25',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',

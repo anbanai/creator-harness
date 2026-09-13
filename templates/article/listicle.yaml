@@ -34,8 +34,8 @@ vision_verification:
   additional_checks:
     - "图片是否传达了该清单项的核心信息（而非泛化场景）"
 slot_strategy: |
-  1. hero slot：封面图，2.35:1，建议含"清单"视觉暗示（如并列物件、序号）
-  2. section_opener slots：每个清单项一张，16:9，置于 ### 项号之后
+  1. hero slot：封面图，比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，建议含"清单"视觉暗示（如并列物件、序号）
+  2. section_opener slots：每个清单项一张，比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，置于 ### 项号之后
   3. footer slot：必选，使用 summary 或 cta 模块收束
 example_layout_plan: |
   {

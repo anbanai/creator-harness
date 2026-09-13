@@ -31,7 +31,7 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 | `content_only` | **Phase 2（封面生成）跳过**——封面已委托 `article-cover-design` skill，见其「跳过条件」；不生成 `output/cover.png`，不取 `media_id`/`$COVER_PATH` |
 | `text_only` | Phase 2/3/4 全跳过 |
 
-**封面关·配图开**时，Phase 4 正文图因无封面作 `ref_image_path` 风格锚点，改为各自独立生成（不传 `ref_image_path`，或链到首张已生成图），**严禁**指向不存在的 `output/cover.png`。Phase 0/1（模板选择、节奏规划、三维风格分析）不受开关影响，始终执行。
+**封面关·配图开**或**人物参考启用**时，Phase 4 正文图改为各自独立生成，只使用文本风格块且不传 `ref_image_path`。封面关·配图开时严禁指向不存在的 `output/cover.png`。Phase 0/1（模板选择、节奏规划、三维风格分析）不受开关影响，始终执行。
 
 下方各 Phase 顶部再次标注其跳过条件；质量验证的图片相关项在配图开关关闭时跳过。
 
@@ -149,17 +149,17 @@ Phase 4: 配图生成与独立内容审核
 
 ## Phase 2：封面生成（委托 article-cover-design skill）
 
-> **封面开关守卫**：当 `article_image_mode` 为 `content_only` 或 `text_only` 时，**Phase 2 整体跳过**——不调 `generate_image`、不生成 `output/cover.png`、不取 `media_id`/`$COVER_PATH`。`article-cover-design` skill 同步跳过（见其「跳过条件」）。封面关·配图开时，Phase 4 正文图改用无锚点独立生成。
+> **封面开关守卫**：当 `article_image_mode` 为 `content_only` 或 `text_only` 时，**Phase 2 整体跳过**——不调 `generate_image`、不生成 `output/cover.png`、不取 `media_id`/`$COVER_PATH`。`article-cover-design` skill 同步跳过。封面关闭或人物参考启用时，Phase 4 正文图改用文本风格块独立生成。
 
-封面是全篇风格锚点（产物 `output/cover.png` 供 Phase 4 内容图 `ref_image_path` 继承）。**封面设计已独立成稿**——using the `article-cover-design` skill，它遵循任务有效比例，智能适配时参考公众号展示规格与中心安全区，受控决定是否显式裁剪，并从文章核心隐喻推导视觉概念，由 Agent 用质量评分卡把关。本阶段只交代与本 skill 的衔接：
+封面在未启用人物参考时可作为正文配图风格锚点；启用人物参考时仅用于发布封面。**封面设计已独立成稿**——using the `article-cover-design` skill，它遵循任务有效比例，智能适配时参考公众号展示规格与中心安全区，受控决定是否显式裁剪，并从文章核心隐喻推导视觉概念，由 Agent 用质量评分卡把关。本阶段只交代与本 skill 的衔接：
 
 - **核心规格**：用户明确比例原样生成；智能适配时可参考公众号宽屏构图和转发卡中心安全区。只有用户明确要求精确尺寸，或智能适配时 Agent 判断发布确有需要，才显式调用 `crop_image`。
-- **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`；需要精确 900×383 时再显式 `crop_image` 到 `output/cover-exact.png` 并更新 `$COVER_PATH`，否则 `$COVER_PATH="output/cover.png"`；需要质量审核时单独调用 `analyze_image`，通过后调用 `upload_image`。
+- **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`；只有用户明确要求精确像素时再显式 `crop_image` 到 `output/cover-exact.png` 并更新 `$COVER_PATH`，否则 `$COVER_PATH="output/cover.png"`；需要质量审核时单独调用 `analyze_image`，通过后调用 `upload_image`。
 
 - **质量评分卡不过** → 根据可见问题锐化 prompt 重试，最多 3 次；耗尽后保留已有产物并写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_quality_failed","message":"封面在限定创作重试后仍未通过质量评分卡","resume_from":"image_generation"}`，结束当前托管执行；不得请求用户协助，**不得**用未通过封面发布。
-- 详细推导链、6 维评分卡模板、迭代策略、`cover-prompt.md` 审计见 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)；三维风格方向参考见 [references/cover.md](references/cover.md)。
+- 详细推导链、双评分卡、迭代策略、`cover-prompt.md` 与 `cover-quality.json` 审计见 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)；三维风格方向参考见 [references/cover.md](references/cover.md)。
 
-**产出**：`output/cover.png`, `media_id`, `$COVER_PATH`
+**产出**：`output/cover-plan.md`, `output/cover-prompt.md`, `output/cover-quality.json`, `output/cover.png`, `media_id`, `$COVER_PATH`
 
 ---
 
@@ -185,7 +185,7 @@ Phase 4: 配图生成与独立内容审核
 
 ## Phase 4：配图生成与独立内容审核
 
-> **配图开关守卫**：当 `article_image_mode` 为 `cover_only` 或 `text_only` 时，**Phase 4 整体跳过**——不生成任何正文图、不写 `images.json`、正文不内联 `<img>`。封面关·配图开时本 Phase 仍执行，但步骤 4c 的 `ref_image_path` 不得指向未生成的 `output/cover.png`（改不传或链首图）。
+> **配图开关守卫**：当 `article_image_mode` 为 `cover_only` 或 `text_only` 时，**Phase 4 整体跳过**——不生成任何正文图、不写 `images.json`、正文不内联 `<img>`。封面关闭或人物参考启用时本 Phase 仍执行，但所有正文图都不传 `ref_image_path`。
 
 按 `output/visual-rhythm-plan.md` 中 slot 的顺序生成。每个 slot 执行：
 
@@ -227,14 +227,14 @@ generate_image(
   image_type="content",
   output_path="output/img_N.png",
   task_id=$TASK_ID,
-  ref_image_path=<封面开关开启时 "output/cover.png"；封面关时省略或链到首张已生成图>,
+  ref_image_path=$CONTENT_STYLE_REFERENCE_PATH,
   aspect_ratio=$EFFECTIVE_ASPECT_RATIO
 )
 ```
 
 **关键**：
 - `aspect_ratio`：必须显式传入。用户明确比例时每张都使用同一个 `$EFFECTIVE_ASPECT_RATIO`；智能适配时每张可分别从 `resolved_profile.allowed_image_ratios` 选择。
-- `ref_image_path`：**封面开关开启时**用 `output/cover.png`（风格锚点）；**封面关·配图开时**不传（或链到首张已生成图），**严禁**指向不存在的 `output/cover.png`。
+- `ref_image_path`：仅当封面开启且人物参考未启用时令 `$CONTENT_STYLE_REFERENCE_PATH="output/cover.png"`；封面关闭或人物参考启用时不传，改用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块。
 - `ref_image_path` 只传递"风格语言"，不得复刻封面主体；正文图必须按章节 `visual_brief` / `required_entities` 独立表达。
 - `generate_image` 成功后单独调用 `analyze_image` 执行评分卡；通过后再单独调用 `upload_image` 取得 `media_id` 和 `wechat_url`。上传失败只重试上传。
 
@@ -304,14 +304,14 @@ analyze_image(
 
 ## 质量验证
 
-> **配图开关守卫**：配图开关关闭时，下方所有图片相关检查项（文件完整性/风格一致性/视觉多样性/内容审核通过率/审计完整性/CDN 持久化）跳过，不计为失败；节奏完整性、模板一致性（slot 映射）仍执行。封面关·配图开时，「风格一致性」改为"无 `ref_image_path` 或链首图"。
+> **配图开关守卫**：配图开关关闭时，下方所有图片相关检查项（文件完整性/风格一致性/视觉多样性/内容审核通过率/审计完整性/CDN 持久化）跳过，不计为失败；节奏完整性、模板一致性（slot 映射）仍执行。封面关闭或人物参考启用时，「风格一致性」改为“无 `ref_image_path`，使用文本风格块”。
 
 生成完成后执行 7 项检查：
 
 - [ ] **节奏完整性**：`visual-rhythm-plan.md` 中每个 `##` 都映射到一个 slot
 - [ ] **模板一致性**：所选模板的 rhythm 规则被遵守（如 listicle 的 section_opener 必填、inline_detail forbidden）
 - [ ] **文件完整性**：所有图片文件存在且可访问
-- [ ] **风格一致性**：封面+配图均开启时，`images.json` 中所有内容图 `ref_image_path="output/cover.png"`；封面关·配图开时无 `ref_image_path` 或链首图，且不得指向不存在的 `output/cover.png`
+- [ ] **风格一致性**：未启用人物参考且封面开启时，内容图可记录 `ref_image_path="output/cover.png"`；封面关闭或人物参考启用时无 `ref_image_path`，并通过文本风格块保持一致
 - [ ] **视觉多样性**：3 张以上配图使用 3 种以上不同 `composition_type`（清单模板可豁免，因要求统一构图）
 - [ ] **反同质化**：不得连续 3 张正文图复用同主体/同远近景/同色调重心；正文图不得复刻封面主体
 - [ ] **内容审核通过率**：至少 80% 的内容图 `quality_status=passed`
@@ -341,10 +341,10 @@ analyze_image(
 - 支持格式：JPG、PNG、GIF、WebP
 
 **公众号常用比例**：
-- 封面图（公众号封面）：2.35:1（900x383px 标准）
+- 封面图（公众号封面）：使用任务有效比例；智能适配时从能力允许比例中优先选择宽横图，并保护中心 1:1 分享卡安全区
 - 正文配图（section_opener）：显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`
 - 章节内细节图（inline_detail）：显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`
-- Hero slot：full-bleed 2.35:1
+- Hero slot：full-bleed，比例为 `$EFFECTIVE_ASPECT_RATIO`
 
 ---
 
@@ -355,7 +355,7 @@ analyze_image(
 | 内容审核持续失败 | prompt 过于抽象 | 锐化 visual_brief，明确每个 required_entity 的材质、颜色、方位 |
 | 配图与章节无关 | required_entities 与章节原文脱节 | 回到 Phase 3 重新提取，确保 must_match_excerpts 是章节原句 |
 | 所有配图构图雷同 | 未在 rhythm-plan 中分配不同 composition_type | 重新规划 rhythm-plan，强制 3+ 种构图（清单模板除外） |
-| 风格漂移 | 封面开启时未使用封面作为参考图；或封面关闭时错误引用不存在的封面 | 封面+配图均开启时确保内容图 `ref_image_path="output/cover.png"`；封面关·配图开时不传或链首图 |
+| 风格漂移 | 未根据人物参考状态选择风格传递方式 | 未启用人物参考且封面开启时可引用封面；封面关闭或人物参考启用时只使用文本风格块 |
 | 封面与文章脱节 | 封面 prompt 缺少内容隐喻 | 在封面 prompt 中加入文章核心论点的视觉隐喻 |
 | 节奏违反模板规则 | 未读模板 YAML 的 rhythm 字段 | 重新加载模板，按 rhythm 字段约束 slot 分配 |
 

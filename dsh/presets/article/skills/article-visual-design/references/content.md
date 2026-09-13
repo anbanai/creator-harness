@@ -27,14 +27,15 @@
 
 ## 参考链机制
 
-内容配图的参考链由 `article_image_mode` 决定：
+内容配图的参考链由 `article_image_mode` 与人物参考开关共同决定。先解析 `$CONTENT_STYLE_REFERENCE_PATH`：
 
 ```
-cover_and_content → 封面图先生成 → 内容配图使用 ref_image_path="output/cover.png"
-content_only → 不生成封面 → 内容配图不传 ref_image_path，或链到首张已生成图
+cover_and_content + 人物参考关闭 → $CONTENT_STYLE_REFERENCE_PATH = "output/cover.png"
+cover_and_content + 人物参考启用 → $CONTENT_STYLE_REFERENCE_PATH = ""
+content_only → $CONTENT_STYLE_REFERENCE_PATH = ""
 ```
 
-**为什么优先用封面**：封面开启时，如果每张图引用上一张，风格漂移会累积放大。封面是风格锚点，确保所有配图保持一致的视觉基准。封面关闭时，严禁把 `ref_image_path` 指向不存在的 `output/cover.png`。
+只有 `$CONTENT_STYLE_REFERENCE_PATH` 非空时才向 `generate_image` 传 `ref_image_path`。人物参考启用时，正文配图不传 `ref_image_path`，改用从封面方案提取且不含人物身份特征的文本风格块；封面关闭时同样省略该参数。这样既避免风格漂移，也不会把人物身份、姿态或面部特征泄漏到正文图。
 
 **注意**：`ref_image_path` 只传递"风格语言"。内容贴切度由 prompt 中的 `visual_brief` 和 `required_entities` 决定，并由 Agent 的独立内容审核把关。
 
@@ -251,7 +252,7 @@ MUST CONTAIN:
 - tender green shoots emerging from crack
 - soft blurred morning light in background
 
-Rule of thirds composition, shoots at the right intersection. Warm earth tones with fresh green. 16:9 horizontal, photographic quality.
+Rule of thirds composition, shoots at the right intersection. Warm earth tones with fresh green. Use $EFFECTIVE_ASPECT_RATIO and the medium selected by the art direction.
 ```
 
 ---
@@ -263,15 +264,19 @@ Rule of thirds composition, shoots at the right intersection. Warm earth tones w
 先读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`：用户明确比例必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；仅当比例等于 `"auto"`时才按智能适配从当前能力支持范围选择。每次生成都显式传 `aspect_ratio` 参数，值为 `$EFFECTIVE_ASPECT_RATIO`。
 
 ```
+当 `$CONTENT_STYLE_REFERENCE_PATH` 非空时：
+
 generate_image(
   project_id=$PROJECT_ID,
   prompt=<上面的 prompt>,
   image_type="content",
   output_path="output/img_01.png",
   task_id=$TASK_ID,
-  ref_image_path="output/cover.png",
+  ref_image_path=$CONTENT_STYLE_REFERENCE_PATH,
   aspect_ratio=$EFFECTIVE_ASPECT_RATIO
 )
+
+当 `$CONTENT_STYLE_REFERENCE_PATH` 为空时，调用参数中完全省略 `ref_image_path`，并把文本风格块写入 prompt。
 ```
 
 ### 步骤 2：构建内容审核 prompt
@@ -385,7 +390,7 @@ Agent 只读取分析中与可见主体、文字、构图和合规有关的内�
 - 每条必须有 `slot_id` + `section_index`，与 `visual-rhythm-plan.md` 对应
 - `quality_review` 必须只含可见内容质量观察
 - `quality_status=failed` 的图片，最终报告中必须列出
-- `ref_image_path` 必须等于 `output/cover.png`
+- `$CONTENT_STYLE_REFERENCE_PATH` 非空时，`ref_image_path` 必须与其相等；为空时必须省略 `ref_image_path`
 - `prompt_source_excerpt` 已升级为 `must_match_excerpts`（list，允许多条）
 
 ---

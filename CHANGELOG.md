@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [4.1.25] - 2026-09-13
+
+### Changed
+
+- Rebuilt the WeChat article cover workflow around an explicit art-direction
+  contract, medium-aware prompts, bounded retries, and structured quality gates.
+- Added an opt-in portrait reference contract that preserves identity for cover
+  generation while keeping portrait and project-style references isolated.
+- Kept packed-runtime dependency overrides effective on pnpm 11 so the offline
+  release integrity check resolves the same verified dependency set.
+- Prepared the `4.1.25` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.24] - 2026-09-12
 
 ### Changed

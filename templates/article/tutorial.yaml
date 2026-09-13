@@ -36,8 +36,8 @@ vision_verification:
     - "工具/材料是否与章节描述一致"
     - "步骤序号或顺序感能否被视觉感知"
 slot_strategy: |
-  1. hero slot：封面图，2.35:1，建议展示最终成果或核心工具
-  2. section_opener slots：每个步骤一张，16:9，紧跟 ### 步骤 N 标题
+  1. hero slot：封面图，比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，建议展示最终成果或核心工具
+  2. section_opener slots：每个步骤一张，比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，紧跟 ### 步骤 N 标题
   3. inline_detail slots（可选）：关键操作细节加特写图
   4. footer slot：必选，使用 checklist 总结要点 + cta
 example_layout_plan: |

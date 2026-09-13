@@ -38,7 +38,7 @@
 
 | slot_id | 含义 | image_size | 何时使用 |
 |---------|------|------------|----------|
-| `hero` | 文章开篇视觉 | full-bleed (2.35:1) | 每篇文章有且只有 1 张（即封面） |
+| `hero` | 文章开篇视觉 | full-bleed（任务有效比例） | 每篇文章有且只有 1 张（即封面） |
 | `section_opener` | 章节开头图 | full-width (16:9) | 每个主章节配一张，紧跟 `## 标题` |
 | `inline_detail` | 章节内细节图 | inline (4:3 或 1:1) | 关键比喻、案例、特写需要时插入 |
 | `footer` | 结尾图或装饰 | full-width 或 inline | 模板要求 footer 时使用，可为空（仅 module） |

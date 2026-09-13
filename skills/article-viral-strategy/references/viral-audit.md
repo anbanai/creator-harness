@@ -61,7 +61,7 @@
 
 - **高分**：封面主视觉与标题钩子、digest 前半句、`cover_strategy` 的目标读者/痛点/点击理由一致；由 Agent 自主完成可见内容审查，确认 `cover_effectiveness_scorecard.information_scent_alignment`、`audience_motivation`、`content_specificity` 均通过；封面里的主体/冲突/短文字能回指正文证据或摘要承诺；配图有信息量和视觉多样性，并把 `article-visual-design` / `article-cover-design` 的可见内容质量结论汇总为可见内容质量评分表。不得只凭"风格统一"给高分。
 - **低分**：封面与标题各说各话、读者动机弱、通用隐喻可替换、配图雷同/纯装饰；缺 `cover_strategy`、缺/未通过 `cover_effectiveness_scorecard`、缺少 Agent 自主完成的可见内容审查与可见内容质量评分表、或缺 `viral-audit.md` 的封面链路均不得发布。
-- **证据**：`cover-prompt.md` 的 `cover_strategy`、`visual_quality_scorecard`、`cover_effectiveness_scorecard`（特别是 `information_scent_alignment`、`audience_motivation`、`content_specificity`）+ `images.json`。
+- **证据**：`cover-prompt.md` 的 `cover_strategy` 与最终 prompt；`cover-quality.json` 的 `visual_quality_scorecard`、`cover_effectiveness_scorecard`（特别是 `information_scent_alignment`、`audience_motivation`、`content_specificity`）和人物启用时的身份结论；以及 `images.json`。
 
 ### 7. 互动诱因
 

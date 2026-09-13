@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { DEFAULT_SCHEMA, Type, load } from 'js-yaml'
+import { DEFAULT_SCHEMA, Type, dump, load } from 'js-yaml'
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const FILES_CONTRACT = [
@@ -64,6 +64,7 @@ const COMMAND_TIMEOUT_MS = 120_000
 const CHILD_TERMINATION_GRACE_MS = 100
 const CHILD_CLOSE_WATCHDOG_MS = 1_000
 const VERIFIED_RUNTIME_OVERRIDES = Object.freeze({
+  yaml: '2.9.0',
   zod: '4.4.3',
 })
 const NODE_SHEBANGS = [
@@ -1115,9 +1116,12 @@ export function buildRuntimeInstallManifest(manifest, tarballReference) {
       [manifest.name]: `file:${tarballReference}`,
       ...manifest.peerDependencies,
     },
-    pnpm: {
-      overrides: VERIFIED_RUNTIME_OVERRIDES,
-    },
+  }
+}
+
+export function buildRuntimeWorkspaceManifest() {
+  return {
+    overrides: VERIFIED_RUNTIME_OVERRIDES,
   }
 }
 
@@ -1136,6 +1140,10 @@ async function installPackedRuntime(sandboxRoot, tarball, manifest) {
   await writeFile(
     join(runtimeRoot, 'package.json'),
     `${JSON.stringify(buildRuntimeInstallManifest(manifest, tarballReference), null, 2)}\n`,
+  )
+  await writeFile(
+    join(runtimeRoot, 'pnpm-workspace.yaml'),
+    dump(buildRuntimeWorkspaceManifest(), { lineWidth: -1, noRefs: true }),
   )
   const invocation = pnpmInvocation([
     'install',

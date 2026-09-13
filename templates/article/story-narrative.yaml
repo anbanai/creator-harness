@@ -35,8 +35,8 @@ vision_verification:
     - "图片情绪是否与章节情感基调一致"
     - "场景是否与章节地点/时间/人物对应"
 slot_strategy: |
-  1. hero slot：封面图，2.35:1，建立全篇情绪基调
-  2. section_opener slots：每个场景一张，16:9，电影感
+  1. hero slot：封面图，比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，建立全篇情绪基调
+  2. section_opener slots：每个场景一张，比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，媒介与质感服从视觉方案
   3. inline_detail slots（可选）：情感高点加特写（如物件、表情）
   4. footer slot（可选）：余韵图或留白
 example_layout_plan: |

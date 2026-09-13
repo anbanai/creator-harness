@@ -18,5 +18,5 @@
 
 - Input: 任务只要公众号头图。
 - Recommended path: 跳过 image-plan.md 和正文插图，把封面审计作为唯一视觉交付。
-- Artifacts: cover.png、cover-review.md。
+- Artifacts: cover.png、cover-quality.json。
 - Quality gate: 不得因正文缺图触发失败。

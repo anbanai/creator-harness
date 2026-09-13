@@ -32,8 +32,8 @@ vision_verification:
   strictness: high
   must_match_fields: [visual_brief, required_entities]
 slot_strategy: |
-  1. hero slot：封面图（步骤 6d 生成），2.35:1，作为开篇视觉
-  2. section_opener slots：每个 ## 一张，16:9 全幅，紧跟章节标题之后
+  1. hero slot：封面图（步骤 6d 生成），比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，作为开篇视觉
+  2. section_opener slots：每个 ## 一张，比例使用任务解析后的 $EFFECTIVE_ASPECT_RATIO，全幅紧跟章节标题之后
   3. inline_detail slot（可选）：章节内 1-2 张细节图，置于关键比喻/案例段落之后
   4. footer slot（可选）：作者卡片或 CTA，不带图或带小图
 example_layout_plan: |
