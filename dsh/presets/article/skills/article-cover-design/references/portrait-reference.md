@@ -17,7 +17,7 @@
 
 先对 `.anban-creator/task-reference.png` 调用 `analyze_image`，只提取可见身份锚点：脸型、发型、眼镜、年龄区间、显著服饰、可辨识特征、可用构图和图像质量。不得猜测姓名、职业、民族、健康状态等敏感或不可见事实。
 
-若图片无清晰人脸、严重模糊、遮挡过多、损坏或多人且无法确定目标，写 `article_cover_portrait_unavailable` 失败态并停止，不得生成一个泛化陌生人替代。
+若图片无清晰人脸、严重模糊、遮挡过多、损坏或多人且无法确定目标，记录 `article_cover_portrait_unavailable` warning，跳过该封面并返回 Article Agent 继续核心交付；不得生成一个泛化陌生人替代。
 
 ## 参考路径与能力
 

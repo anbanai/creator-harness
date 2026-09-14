@@ -42,12 +42,13 @@ description: 'Use when creating or managing WeChat news article drafts. Also use
       "author": "署名（仅取自 get_project_profile 顶层 author，详见「作者字段来源」）",
       "digest": "摘要（120字符以内）",
       "thumb_media_id": "封面图的 media_id",
-      "show_cover_pic": 1,
-      "content_source_url": "原文链接（可选）"
+      "show_cover_pic": 1
     }
   ]
 }
 ```
+
+自动草稿不得传 `content_source_url` 或 `url`；这两个字段会形成公众号外链入口，服务端按确定性营销规则阻止发布。正文图片的微信 CDN `src` 不属于外链入口。
 
 ## 作者字段来源（硬性）
 
@@ -72,11 +73,11 @@ author 为空                         → 省略 author 字段（切勿用 write
 
 ## thumb_media_id 来源（按图片开关，硬性）
 
-公众号文章的封面可由用户在创建任务/计划时关闭。`thumb_media_id`（封面 media_id）的填法**严格取决于结构化运行控制 `article_image_mode`**：
+公众号文章的封面可由用户在创建任务/计划时关闭。`thumb_media_id`（封面 media_id）的填法**严格取决于结构化运行控制 `article_image_mode`**。缺少该键时写入 `output/failure-state.json`（`error_code=article_image_mode_missing`、`resume_from=project_resolution`），保留已有产物并结束当前执行，不得猜测默认值：
 
 | `article_image_mode` | 封面开关 | `thumb_media_id` 填法 |
 |----------------------|----------|------------------------|
-| `cover_and_content`（缺失时也按此处理） | 开 | 填步骤 6 封面的 `media_id` |
+| `cover_and_content` | 开 | 填步骤 6 封面的 `media_id` |
 | `cover_only` | 开 | 填步骤 6 封面的 `media_id` |
 | `content_only` | 关 | **省略 `thumb_media_id` 字段**（即使有正文配图也**不复用**作封面） |
 | `text_only` | 关 | **省略 `thumb_media_id` 字段**；在 `final-review.md` 记录「未生成封面，公众号后台可能不显示封面/需手动设置」 |

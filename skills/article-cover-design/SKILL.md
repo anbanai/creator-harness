@@ -82,8 +82,8 @@ description: 'Use when a user requests a WeChat Official Account article cover, 
 - 人物参数关闭：保持空数组。
 - 人物参数开启：先验证 `.anban-creator/task-reference.png` 可访问，再按 `references/portrait-reference.md` 分析身份锚点并加入 `$COVER_REFERENCE_PATHS`。
 - 项目风格图只进入分析，不进入 `$COVER_REFERENCE_PATHS`。
-- 若能力元数据可用，生成前检查 `supports_reference` 与 `max_reference_images`；不支持或超限立即写失败态，不得静默改为无参考图生成。
-- 若能力元数据未提前暴露，仍必须把人物图传给 `generate_image`；工具返回“不支持参考图/超限”时按同一硬失败处理，不得移除人物图重试。
+- 若能力元数据可用，生成前检查 `supports_reference` 与 `max_reference_images`；不支持或超限时记录 `article_cover_reference_unsupported` warning，跳过该封面并返回 Article Agent，不得静默改为无参考图生成。
+- 若能力元数据未提前暴露，仍必须把人物图传给 `generate_image`；工具返回“不支持参考图/超限”时按同一 warning 处理，不得移除人物图重试。
 
 ### 4. 写 prompt 与审核合同
 
@@ -152,13 +152,7 @@ upload_image(
 
 单张封面最多 3 次生成尝试。失败时先修复概念、主体、构图或媒介选择，再重写 prompt；不得只堆风格形容词。人物参考启用时，身份一致性是硬闸门，不能用“构图好看”抵消。
 
-3 次仍未通过，写 `output/failure-state.json`：
-
-```json
-{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_quality_failed","message":"封面在限定创作重试后仍未通过质量审核","resume_from":"image_generation"}
-```
-
-参考图能力不支持时使用 `article_cover_reference_unsupported`；人物文件缺失或损坏时使用 `article_cover_portrait_unavailable`。保留已有产物，结束当前托管执行，不得请求用户协助，不得上传未通过封面。
+3 次仍未通过时，在 `output/final-review.md` 记录结构化 warning：`stage=image_generation`、`error_code=article_cover_quality_failed`、安全摘要和可继续的 `resume_from=image_generation`。参考图能力不支持时使用 `article_cover_reference_unsupported`；人物文件缺失或损坏时使用 `article_cover_portrait_unavailable`。保留已有产物，跳过草稿创建并返回 Article Agent 继续核心交付；不得请求用户协助，不得上传未通过封面。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 
 ## 完成条件
 

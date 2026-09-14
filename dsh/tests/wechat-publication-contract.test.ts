@@ -16,7 +16,14 @@ async function trackedTextFiles(): Promise<Array<[string, string]>> {
   const files: Array<[string, string]> = []
   for (const path of paths) {
     const absolute = join(root, path)
-    if (!(await stat(absolute)).isFile()) continue
+    let info
+    try {
+      info = await stat(absolute)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
+      throw error
+    }
+    if (!info.isFile()) continue
     files.push([path, await readFile(absolute, 'utf8')])
   }
   return files
@@ -64,7 +71,7 @@ describe('WeChat draft lifecycle contract', () => {
     }
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.1.26', async () => {
+  it('keeps both native manifests and the Claude marketplace at 4.1.27', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -75,7 +82,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.1.26')
+      expect(version, path).toBe('4.1.27')
     }
   })
 })

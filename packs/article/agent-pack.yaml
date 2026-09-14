@@ -1,5 +1,5 @@
 id: article
-version: 1.0.3
+version: 1.0.4
 kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到微信公众号草稿的完整创作流程。
@@ -24,11 +24,13 @@ billing_operations:
 progress:
   - {id: research, title: 选题研究, active_percent: 5, complete_percent: 25}
   - {id: writing, title: 内容创作, active_percent: 35, complete_percent: 80}
-  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/04-article-final.md, output/05-article.html, output/final-review.md]}
+  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/04-article-final.md, output/05-article.html]}
 artifacts:
   - {role: final_markdown, path: output/04-article-final.md, mime_type: text/markdown, required: true}
   - {role: html, path: output/05-article.html, mime_type: text/html, required: true}
-  - {role: review, path: output/final-review.md, mime_type: text/markdown, required: true}
+  - {role: review, path: output/final-review.md, mime_type: text/markdown, required: false}
+  - {role: review, path: output/marketing-scan.json, mime_type: application/json, required: false}
+  - {role: other, path: output/draft-result.json, mime_type: application/json, required: false}
 delivery:
   - {role: final_markdown, path: output/04-article-final.md, mime_type: text/markdown}
   - {role: html, path: output/05-article.html, mime_type: text/html}

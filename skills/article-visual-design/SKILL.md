@@ -22,7 +22,7 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 
 ## 图片模式与跳过条件（运行控制驱动）
 
-公众号文章的**封面**与**正文配图**由 user message 的结构化运行控制 `article_image_mode` 决定。缺失时按 `cover_and_content`。本 skill 不解析自然语言禁令：
+公众号文章的**封面**与**正文配图**由 user message 的结构化运行控制 `article_image_mode` 决定。缺少该键时写入 `output/failure-state.json`（`error_code=article_image_mode_missing`、`resume_from=project_resolution`），保留已有产物并结束当前执行，不得猜测默认值。本 skill 不解析自然语言禁令：
 
 | `article_image_mode` | 受影响阶段 |
 |----------------------|-----------|
@@ -59,7 +59,7 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 
 ## MCP 工具
 
-任何图像 MCP 返回 `execution_identity_required` 或 `execution_identity_mismatch` 时，必须按不可重试的运行时身份故障处理：不得更换 prompt、比例、`image_type` 或工具重复尝试；保留已有产物，只写一次 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"execution_identity_unavailable","message":"执行环境未建立，暂时无法生成或结算图片","resume_from":"image_generation"}`，然后结束当前托管执行。身份失败不属于下文的质量或供应商重试预算；失败产物不得包含令牌、密钥或完整环境变量。
+任何图像 MCP 返回 `execution_identity_required` 或 `execution_identity_mismatch` 时，必须按不可重试的运行时身份故障处理：不得更换 prompt、比例、`image_type` 或工具重复尝试；保留已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉和草稿步骤并返回 Article Agent 继续生成核心 HTML。身份失败不属于下文的质量或供应商重试预算；诊断不得包含令牌、密钥或完整环境变量。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 
 | MCP 工具 | 说明 |
 |----------|------|
@@ -156,7 +156,7 @@ Phase 4: 配图生成与独立内容审核
 - **核心规格**：用户明确比例原样生成；智能适配时可参考公众号宽屏构图和转发卡中心安全区。只有用户明确要求精确尺寸，或智能适配时 Agent 判断发布确有需要，才显式调用 `crop_image`。
 - **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`；只有用户明确要求精确像素时再显式 `crop_image` 到 `output/cover-exact.png` 并更新 `$COVER_PATH`，否则 `$COVER_PATH="output/cover.png"`；需要质量审核时单独调用 `analyze_image`，通过后调用 `upload_image`。
 
-- **质量评分卡不过** → 根据可见问题锐化 prompt 重试，最多 3 次；耗尽后保留已有产物并写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_quality_failed","message":"封面在限定创作重试后仍未通过质量评分卡","resume_from":"image_generation"}`，结束当前托管执行；不得请求用户协助，**不得**用未通过封面发布。
+- **质量评分卡不过** → 根据可见问题锐化 prompt 重试，最多 3 次；耗尽后保留已有产物，在 `output/final-review.md` 记录 `article_cover_quality_failed` warning，跳过草稿创建并返回 Article Agent 继续核心交付；不得请求用户协助，**不得**用未通过封面发布。
 - 详细推导链、双评分卡、迭代策略、`cover-prompt.md` 与 `cover-quality.json` 审计见 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)；三维风格方向参考见 [references/cover.md](references/cover.md)。
 
 **产出**：`output/cover-plan.md`, `output/cover-prompt.md`, `output/cover-quality.json`, `output/cover.png`, `media_id`, `$COVER_PATH`
@@ -322,7 +322,7 @@ analyze_image(
 - 单图失败 → 重试或降级标记
 - 节奏/模板违规 → 回到 Phase 0 重新规划
 - 内容审核通过率 < 80% → 检查 prompt 构建逻辑，必要时回退到 Phase 3 重新规划
-- 超过一半章节配图在各自限定重试后仍失败 → 保留已有产物并写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_content_images_failed","message":"超过一半章节配图在限定重试后仍失败","resume_from":"image_generation"}`，结束当前托管执行，不得请求用户协助
+- 超过一半章节配图在各自限定重试后仍失败 → 保留已有产物，在 `output/final-review.md` 记录 `article_content_images_failed` warning 和缺失章节，跳过草稿创建并返回 Article Agent 继续核心交付，不得请求用户协助
 
 ---
 

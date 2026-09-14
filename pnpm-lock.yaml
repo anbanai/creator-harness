@@ -7,6 +7,7 @@ settings:
 importers:
 
   .:
+    version: 4.1.27
     dependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.2

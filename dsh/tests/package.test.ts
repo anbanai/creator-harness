@@ -58,13 +58,13 @@ describe('packed runtime installation', () => {
             '@deepseek-ai/cordis': '4.0.2',
           },
         },
-        '../anban-dsh-plugin-4.1.26.tgz',
+        '../anban-dsh-plugin-4.1.27.tgz',
       ),
     ).toEqual({
       private: true,
       type: 'module',
       dependencies: {
-        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.26.tgz',
+        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.1.27.tgz',
         '@deepseek-ai/cordis': '4.0.2',
       },
     })
@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.1.26',
+      version: '4.1.27',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -615,6 +615,36 @@ describe('DSH package manifest', () => {
         vitest: '4.1.8',
       },
     })
+  })
+
+  it('packages the article marketing scanner at the DSH adapter path', async () => {
+    const manifest = JSON.parse(await readFile(packageUrl, 'utf8'))
+    const skill = await readFile(
+      new URL(
+        '../presets/article/skills/content-writing/SKILL.md',
+        import.meta.url,
+      ),
+      'utf8',
+    )
+    const agent = await readFile(
+      new URL('../presets/article/agent.cordis.yml', import.meta.url),
+      'utf8',
+    )
+    const scanner = await readFile(
+      new URL(
+        '../presets/article/skills/content-writing/scripts/scan-article-marketing.mjs',
+        import.meta.url,
+      ),
+      'utf8',
+    )
+
+    expect(manifest.files).not.toContain('scripts/scan-article-marketing.mjs')
+    expect(scanner).toContain('createHash("sha256")')
+    expect(agent).toContain(
+      '"$DSH_HOME/.agent-presets/article/skills/content-writing/scripts/scan-article-marketing.mjs"',
+    )
+    expect(agent).not.toContain('$CLAUDE_PLUGIN_ROOT')
+    expect(skill).not.toContain('$CLAUDE_PLUGIN_ROOT')
   })
 
   it('approves the exact dependency build scripts required by the DSH runtime', async () => {

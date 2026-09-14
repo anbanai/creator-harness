@@ -63,7 +63,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 - article_image_mode=cover_and_content
 ```
 
-若未看到该键，按 `cover_and_content` 处理以兼容旧任务。不要从自然语言里猜测图片开关，也不要要求用户确认。
+若未看到该键，写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"project_resolution","error_code":"article_image_mode_missing","message":"结构化运行控制缺少 article_image_mode","resume_from":"project_resolution"}`，保留已有产物并结束当前执行。不要猜测默认值，不要从自然语言里推断图片开关，也不要要求用户确认。
 
 | `article_image_mode` | 含义 | 受影响步骤/skill |
 |----------------------|------|------------------|
@@ -79,10 +79,11 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 - **必须使用 Claude Code 内置的 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image` 等）
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 `topic-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`render_template` 或 `create_draft` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
-- **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败写入 `{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_image_upload_failed","message":"图片上传在限定重试后仍失败","resume_from":"image_generation"}` 并结束当前托管执行。
+- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
+- **草稿发布独立**：`create_draft` 只调用一次且失败时不在 Agent 侧重试。无论成功、跳过、失败或结果不明确，都原子写入 `output/draft-result.json`；草稿创建失败不影响 Markdown/HTML 交付，也不得写成核心交付失败。
+- **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受发布前质量闸门约束。
-- **执行身份错误不可重试**：`generate_image`、`analyze_image`、`upload_image` 或 `submit_completion_metadata` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；立即保留全部已有产物，只写一次 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"execution_identity_unavailable","message":"执行环境未建立，暂时无法生成或结算图片","resume_from":"image_generation"}`，然后结束当前托管执行。失败产物不得包含令牌、密钥或完整环境变量。
+- **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉与草稿步骤并继续生成核心 HTML。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定。
 - **唯一配置兜底**：仅当 `get_project_profile` 调用成功但缺少可选语义配置（如 `visual_style`、`writer` 或 `theme`）时，才可采用 Agent 默认值并记录来源；只有这种成功响应中的可选字段缺失允许继续，调用失败不属于配置缺失。
 - **Runtime 工作区边界**：托管 runtime 已预创建任务私有的 `output/`；Agent 只写显式 `output/<filename>`，不得创建、发现、移动或重命名该目录。
 
@@ -90,7 +91,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 
 ## 托管进度阶段
 
-开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；十步业务任务可以另建细粒度 Task 并保持原依赖顺序，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+开始执行时，只创建 research、writing、delivery 三个正式 Task，并保存每次返回的 Task id。禁止创建任何细粒度业务 Task。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。
 
 | 阶段 | TaskCreate metadata |
 |------|---------------------|
@@ -100,7 +101,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 
 进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
 
-阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，正文、合规、SEO、视觉、图片与 HTML 全部完成后才完成；`delivery` 覆盖步骤 9、步骤 10、最终报告与 feedback，发布前总验收、`create_draft` 成功、最终 feedback 全部结束后才完成。
+阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，核心 Markdown 与安全 HTML 完整后即可完成，视觉、审核异常记录为 warning；`delivery` 覆盖步骤 9、独立的步骤 10、最终报告与 feedback。`delivery` 的完成只依赖服务端可验证的 `output/04-article-final.md` 和 `output/05-article.html`，不依赖视觉完整、审核通过或 `create_draft` 成功。
 
 ## 创作流程（10 步）
 
@@ -182,6 +183,8 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 #### 步骤 4：去 AI 味与合规检查
 
 先按 `humanizer` 方法对 `output/03-article.md` 全文执行去 AI 改写：扫描其定义的 AI 写作模式（意义拔高、AI 高频词、三段式、否定排比、破折号滥用、空洞结尾等），按 draft → audit → final 流程改写。**改写而非删除**——覆盖原文全部信息点，保持段落数与字数量级，保留人称代入、情绪节奏与具体细节等人味。这是自动流水线步骤，不得调用 `AskUserQuestion`；没有写作样本时按账号定位、上下文锚点和当前稿件语气直接改写。本步骤不调用任何 MCP 工具、不计费、无强度档位，且不得引入新的违禁词或导流风险。改写产物保存为 `output/04-article-final.md`。
+
+首次营销预检允许一次低歧义自动修订：`node "$CLAUDE_PLUGIN_ROOT/skills/content-writing/scripts/scan-article-marketing.mjs" output/04-article-final.md output/marketing-scan.json --fix`。本次之后所有扫描都不得再传 `--fix`。
 
 再按 `content-writing` 方法对 `output/04-article-final.md` 执行违禁词合规检查，输出检查报告，并创建 `output/content-quality-report.md`，逐项检查：
   - 用户需求覆盖：文章是否回应用户原始主题、角度和限制
@@ -277,7 +280,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 3. 三选一概念评审：每个候选必须说明标题钩子、摘要承诺、正文证据、目标读者点击理由、可视化实体和误导风险；`generic_swap_test`、`promise_proof_test`、`audience_motivation_test` 必须全过后才可进入图像生成
 4. 提炼 `cover_hook`、`visual_metaphor`、`thumbnail_strategy`、`anti_generic_constraints`：封面钩子必须与最终标题/digest 前半句协同，缩略图策略必须说明 200px 列表里靠什么被看见，反同质化约束必须禁止通用养生水墨背景/无主体山水/与标题无关的人像等泛化画面
 5. 按 Skill 写 `output/cover-plan.md`，完整记录比例与发布派生、标题策略、人物或主体、背景与场景、色彩与光线、媒介与质感、视觉层级与动线、禁止事项；不能只写抽象风格词
-6. 解析参考角色：项目 `project_style_reference_path` 只调用 `analyze_image` 形成文本风格块；人物参考默认关闭，任务明确启用且 `task_reference_path` 可用时令 `$COVER_REFERENCE_PATHS=[".anban-creator/task-reference.png"]`，将人物列入 `required_entities`。能力不支持参考图或超出上限时按 Skill 写失败态，不得静默移除参考图
+6. 解析参考角色：项目 `project_style_reference_path` 只调用 `analyze_image` 形成文本风格块；人物参考默认关闭，任务明确启用且 `task_reference_path` 可用时令 `$COVER_REFERENCE_PATHS=[".anban-creator/task-reference.png"]`，将人物列入 `required_entities`。能力不支持参考图或超出上限时记录结构化视觉 warning，跳过该视觉产物并继续核心交付，不得静默移除参考图
 7. 按 `article-cover-design` skill 构建 prompt 和生成前审核合同，写 `output/cover-prompt.md`；媒介语言必须匹配摄影、编辑设计、插画或水墨的实际选择，不固定追加摄影化措辞。两张评分卡只在生成后根据可见画面写入 `output/cover-quality.json`
 8. 调用 `generate_image` 生成并登记封面：
    ```
@@ -293,7 +296,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
    ```
 9. 单独调用 `analyze_image`，按 Skill 审核可见内容并将结构化结果写 `output/cover-quality.json`；人物启用时身份一致性是硬闸门。单张最多 3 次生成尝试，未通过不得上传
 10. 先令 `$COVER_PATH="output/cover.png"`。仅在用户明确要求精确像素时，按 Skill 显式调用 `crop_image` 并更新 `$COVER_PATH`；裁后重新审核中心安全区
-11. 单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)`，取得 `$COVER_MEDIA_ID` 和 `$COVER_CDN_URL`。上传失败只重试上传；按「上传调用」规则耗尽后写 `article_image_upload_failed` 并停止
+11. 单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)`，取得 `$COVER_MEDIA_ID` 和 `$COVER_CDN_URL`。上传失败只重试上传；按「上传调用」规则耗尽后记录 `article_image_upload_failed` warning，保留本地封面并继续
 
 ##### 6e：创建配图内容规划（升级 schema）
 
@@ -344,7 +347,7 @@ generate_image(
 
 ##### 7c：独立上传并立即原子落盘
 
-图片通过 Agent 的质量判断后，单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path="output/img_N.png")`。上传失败只重试上传，不重新生成；按「上传调用」规则耗尽后写 `article_image_upload_failed` 并停止。
+图片通过 Agent 的质量判断后，单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path="output/img_N.png")`。上传失败只重试上传，不重新生成；按「上传调用」规则耗尽后记录 `article_image_upload_failed` warning，保留本地图片并继续。
 
 - 从 `upload_image` 返回值取 `wechat_url` 和 `media_id`，立即写入 `output/images.json`
 - **原子写** `output/images.json`：先写临时文件、`fsync`，再 `rename` 覆盖；每张上传成功即落盘
@@ -374,13 +377,15 @@ generate_image(
 - [ ] **CDN 持久化**：`images.json` 每条都有非空 `wechat_url`（即每张图已独立上传到微信 CDN）；缺 `wechat_url` 的 slot 只重试 `upload_image`，不得重新生成
 - [ ] **正文图片互不相同**：`images.json` 中所有内容图的 `wechat_url` 两两不同，且没有任何一张等于封面 `$COVER_CDN_URL`（封面只能用于 `thumb_media_id`，**不得复用为正文图**）；服务端 `create_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿，配图失败时宁可缺图降级也不得用封面/他图顶替
 
-未通过检查时按问题类型处理：单图可见内容质量未通过则降级、节奏/模板违规回 Phase 0、内容审核通过率不足回 Phase 3。超过一半章节配图在各自限定重试后仍失败时，保留已生成产物，写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_content_images_failed","message":"超过一半章节配图在限定重试后仍失败","resume_from":"image_generation"}`，结束当前托管执行并等待从 `image_generation` 恢复，不得请求用户协助。
+未通过检查时按问题类型处理：单图可见内容质量未通过则降级、节奏/模板违规回 Phase 0、内容审核通过率不足回 Phase 3。超过一半章节配图在各自限定重试后仍失败时，保留已生成产物，在 `output/final-review.md` 记录 `article_content_images_failed` warning 和缺失章节，跳过草稿创建并继续生成核心 HTML；不得用封面或其他图片顶替。
 
 **产出**：更新后的 `output/04-article-final.md`（含 CDN 图片链接）、`output/images.json`、回填后的 `output/visual-rhythm-plan.md`
 
 ### Phase 4: 组装发布
 
 #### 步骤 8：HTML 渲染（render_template）
+
+先执行权威最终扫描：`node "$CLAUDE_PLUGIN_ROOT/skills/content-writing/scripts/scan-article-marketing.mjs" output/04-article-final.md output/marketing-scan.json`。确认报告 `content_hash` 与当前 Markdown 一致后才可渲染；最终 Markdown 每次修改后都必须覆盖旧报告重新扫描。扫描失败或哈希不一致时审核状态为 unavailable，但核心 Markdown/HTML 仍按当前内容继续交付，且不得创建草稿。
 
 按 `content-writing` 方法渲染 HTML。**不再使用 `convert_markdown` 自由发挥**，改用新的 `render_template` MCP 工具：
 
@@ -426,7 +431,7 @@ render_template(
 
 审计 rubric、阈值、输出格式详见 `article-viral-strategy` skill 的 `references/viral-audit.md`。
 
-**审阅闭环**：任一项审阅未通过时标记待调整，自动回到对应步骤（正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染）修订并重新审阅；不得调用 `create_draft`。缺 `viral-audit.md` 不得发布；`viral-audit.md` 未通过（整体 <7.0 或任一硬性必过项不通过）同样先调整再复审。
+**审阅闭环**：任一项审阅未通过时标记待调整，自动回到对应步骤（正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染）修订。若 `output/04-article-final.md` 发生任何变化，必须回到步骤 8 重新扫描并重新渲染，再重新审阅；不得调用 `create_draft`。缺 `viral-audit.md` 不得发布；`viral-audit.md` 未通过（整体 <7.0 或任一硬性必过项不通过）同样先调整再复审。
 
 **产出**：`output/final-review.md`
 
@@ -439,9 +444,16 @@ render_template(
 - `thumb_media_id`：**仅当封面开关开启时**填步骤 6 的封面 `$COVER_MEDIA_ID`；**封面开关关闭时（含"仅配图"和"纯文字"）一律不带 `thumb_media_id`**（即使有正文配图也**不复用**作封面——公众号后台将不显示封面/需手动设置，此为用户选择），并在 `final-review.md` 记录提示
 - `author`：**仅**取自步骤 1 `get_project_profile` 的顶层 `author`（公众号署名），原样填入；为空则省略该字段。**严禁**用 `writer`（写作风格 key）或任何 Studio 展示元数据顶替——详见 `article-publishing` skill「作者字段来源」
 
-仅当 `output/final-review.md` 所有硬性项通过时，调用 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)` 发布到草稿箱。
+读取 `output/marketing-scan.json` 后独立决定草稿创建：
 
-**产出**：`output/draft.json`
+- `marketing-scan.json.status=block_publish`：不调用 `create_draft`，原子写入 `output/draft-result.json`，状态为 `skipped`，记录命中的规则 ID 和脱敏证据。
+- 其他有效状态且发布前验收允许发布：调用一次 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)`。成功时先依赖服务端持久化记录，再在 `draft-result.json` 写 `succeeded`、`draft_media_id` 和生命周期状态。
+- 调用失败：不重试、不终止交付，在 `draft-result.json` 写 `failed` 和安全的结构化原因。
+- 结果无法确认：在 `draft-result.json` 写 `ambiguous`，交由服务端基于持久化发布记录对账。
+
+草稿创建失败不影响 Markdown/HTML 交付。无论上述哪条分支，`output/draft-result.json` 都必须写入当前 `marketing-scan.json.content_hash` 作为 `content_hash`，且不包含密钥、令牌、完整请求正文或未脱敏供应商响应。
+
+**产出**：`output/draft.json`、`output/draft-result.json`
 
 草稿发布结果与步骤 9 的最终验收都已写入报告后，调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="article", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<所选模板、草稿状态、内容审核通过率与成果路径摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数；无错误时 `errors` 传空字符串。
 
@@ -495,14 +507,14 @@ render_template(
 | **内容脱离用户需求或账号定位** | 使用 `context-brief.md` 锚定用户需求、项目定位、历史避重和章节锚点 |
 | **文章空泛无具体素材** | `content-quality-report.md` 检查每章具体素材，不通过则回到步骤 3/4 重写 |
 | **文章结构不清晰** | 自动匹配结构模板，确保至少 3 个二级标题 |
-| **封面生成失败** | 重试两次（不同 prompt 措辞）；仍失败则保留产物并写结构化 `output/failure-state.json`（`error_code=article_cover_generation_failed`、`resume_from=image_generation`），结束当前托管执行 |
+| **封面生成失败** | 重试两次（不同 prompt 措辞）；仍失败则保留产物，在 `final-review.md` 记录 `article_cover_generation_failed` warning，跳过草稿创建并继续生成核心 HTML |
 | **配图提示词设计质量差** | 提示词必须引用章节具体内容，使用 ref_image_path 保持风格一致 |
 | **单张配图生成失败** | 重试一次（更换提示词），仍失败则标记该章节缺图，继续后续章节 |
-| **超过一半章节配图失败** | 保留已生成产物并写结构化 `output/failure-state.json`（`error_code=article_content_images_failed`、`resume_from=image_generation`），结束当前托管执行，不得请求用户协助 |
+| **超过一半章节配图失败** | 保留已生成产物，在 `final-review.md` 记录 `article_content_images_failed` warning，跳过草稿创建并继续生成核心 HTML，不得请求用户协助 |
 | **去 AI 过度改写丢信息** | `humanizer` skill 改写而非删除，保留人称代入/情绪节奏/具体细节，覆盖全部信息点 |
 | **违禁词检测误报** | 记录疑似词，人工复核标记，不自动删除 |
 | **HTML 输入预检失败** | 在调用前检查并修复 Markdown 与 `layout_plan`；`render_template` 实际调用失败按 `article_mcp_call_failed` 终止 |
-| **草稿创建失败** | `create_draft` 实际调用失败立即写 `article_draft_creation_failed` 失败态并终止 |
+| **草稿创建失败** | 写入 `draft-result.json` 的 `failed` 状态并继续完成核心交付；不在 Agent 侧重试 |
 
 ---
 
@@ -542,7 +554,7 @@ render_template(
 - [ ] **转发/收藏/评论诱因各 ≥1 处**且合规
 - [ ] **`seo-result.md` 含 3 标题变体 + 打分记录**，最终标题为最高分变体且合规（无极限词）
 - [ ] **`viral-audit.md` 存在**，7 维齐全，整体 ≥7.0，硬性必过项（标题合规/开头钩子/全文合规/互动诱因合规）全过
-- [ ] 草稿创建成功，可通过公众号后台查看
+- [ ] 草稿结果已写入 `draft-result.json`，并与核心 Markdown/HTML 交付状态独立
 
 ---
 
@@ -608,13 +620,12 @@ render_template(
 - 重试一次（更换提示词措辞后重试）
 - 仍失败则记录该章节缺少配图，继续后续章节
 - 在最终报告中标注哪些章节缺少配图
-- 如果超过一半章节配图在限定重试后仍失败，保留已生成产物并写入 `output/failure-state.json`（`error_code=article_content_images_failed`、`resume_from=image_generation`），结束当前托管执行
+- 如果超过一半章节配图在限定重试后仍失败，保留已生成产物，在 `output/final-review.md` 记录 `article_content_images_failed` warning，跳过草稿创建并继续生成核心 HTML
 
-**关键步骤失败**（封面生成、草稿创建）：
+**关键步骤失败**（核心文件生成）：
 
-- 封面生成沿用步骤 6 的两次自动重试；耗尽后写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"image_generation","error_code":"article_cover_generation_failed","message":"封面生成在限定重试后仍失败","resume_from":"image_generation"}`
-- `create_draft` 调用失败立即写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"publishing","error_code":"article_draft_creation_failed","message":"create_draft MCP 调用失败","resume_from":"publishing"}`，不得重试发布或继续后续阶段
-- 两类失败都保留已有产物并结束当前托管执行，等待从 `resume_from` 恢复；不得请求用户协助，也不得伪造成功
+- `output/04-article-final.md` 或 `output/05-article.html` 无法生成、损坏或 HTML 不安全时，写结构化失败诊断并保留全部已有产物。
+- 视觉失败、审核 warning、`block_publish`、草稿失败或草稿结果不明确均不得伪造成核心文件失败；记录到对应报告和 `draft-result.json` 后继续完成 delivery。
 
 **质量审阅未通过**（内容质量、视觉审计、发布前总验收）：
 
@@ -639,8 +650,8 @@ render_template(
 
 ### 任务追踪
 
-- 除三个可追踪阶段 Task 外，用 TaskCreate 创建十步细粒度业务任务列表
-- 每个业务 Task 对应一个流程步骤，不携带 `anban_progress_stage`
+- 只创建 research、writing、delivery 三个正式 Task，不创建其他业务 Task
+- 每次 `TaskCreate` 和 `TaskUpdate` 都携带对应的 `anban_progress_stage`
 - 开始前：`TaskUpdate status → in_progress`
 - 完成后：`TaskUpdate status → completed`
 - 设置依赖：每个任务 blockedBy 前一个任务

@@ -30,7 +30,7 @@ Before writing, read only the minimum necessary context:
 - visual_style controls image language; theme controls WeChat HTML styling; article_templates and layouts control slot rhythm and modules.
 - Do not infer writer from visual style, theme, image model, or supplier defaults.
 - Do not insert image placeholders during body writing; visual planning owns image slots.
-- `render_template` is the 主路径 for HTML. `convert_markdown` 只用于旧版 server 兼容降级, and the fallback reason must be recorded in `output/final-review.md`.
+- `render_template` is the only HTML rendering path and the唯一主路径；不得使用 `convert_markdown` 作为兼容或降级方案。
 
 ## Output Contract
 
@@ -39,6 +39,7 @@ Write these file-backed artifacts:
 1. `output/03-article.md`: complete Markdown article body generated directly from writer resource, `context-brief.md`, and `02-outline.md`.
 2. `output/04-article-final.md`: de-AI and compliance-adjusted final Markdown after the humanizer draft -> audit -> final loop.
 3. `output/content-quality-report.md`: article preflight report with every item passed or adjusted.
+4. `output/marketing-scan.json`: deterministic marketing-risk findings.
 
 The article must satisfy:
 
@@ -50,7 +51,7 @@ The article must satisfy:
 
 ## 公众号文章预检
 
-文章预检 is owned by this Skill and does not depend on MCP validation. 审阅未通过 means the draft needs adjustment, not task failure. Automatically revise and rerun until no item is marked 待调整.
+文章预检 is owned by this Skill and does not depend on MCP validation. Use the `scan-article-marketing.mjs` command declared by the active Agent adapter. The first preflight may pass `--fix` exactly once; every later scan omits `--fix`. Read the generated report, never the scanner source or a general prohibited-word list. The report's `content_hash` must match the current `output/04-article-final.md`. `warning` does not block delivery or draft creation；`block_publish` does not block Markdown/HTML delivery but skips `create_draft` until the user edits the article and continues the task.
 
 Required checks:
 
@@ -59,7 +60,8 @@ Required checks:
 - 标题摘要一致性: title, digest, opening, and body promises align; do not hide key information with ellipsis or vague suspense.
 - 互动合规: natural questions and collection/share suggestions are allowed only when tied to article value; no benefits, materials, contact, or off-platform action can be bound to interaction.
 - AI 套话风险: remove generic elevation, rigid three-part summaries, empty conclusions, overused transition words, and unsupported judgment sentences.
-- 自动调整: revise the affected paragraph, title, digest, or ending, then rerun the preflight.
+- 自动调整: the scanner performs at most one low-ambiguity CTA revision pass. Do not mechanically alter facts, quotations, numbers, or author opinions.
+- 最终一致性: after images or review edits change `output/04-article-final.md`, run the adapter-declared scanner again without `--fix`, then render `output/05-article.html`. If review changes Markdown again, repeat scan -> render -> review before publication.
 
 Report format:
 
@@ -77,14 +79,13 @@ Report format:
 
 - Missing writer resource: use project default only if `get_project_profile` provides one; otherwise stop with a clear missing-resource note.
 - Missing outline or context brief: create the smallest safe placeholder from available project profile and user prompt, then record the gap in `content-quality-report.md`.
-- Preflight failure: revise content in place and rerun. Do not pass downstream while any item remains 待调整.
+- Preflight `warning`: record it and continue. Preflight `block_publish`: continue producing Markdown and HTML, but skip draft creation and report the exact rule IDs and redacted evidence.
 - Render handoff failure: keep Markdown artifacts, record the reason, and let the article agent decide whether to retry `render_template` or use the documented fallback.
 
 ## 深入参考
 
 - 写作方法与示例：[writing-guide.md](references/writing-guide.md)
 - 内容合规规则：[content-compliance.md](references/content-compliance.md)
-- 违禁词：[prohibited-words.md](references/prohibited-words.md)
 
 ## Reference Map
 

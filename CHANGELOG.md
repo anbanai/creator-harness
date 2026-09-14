@@ -6,6 +6,21 @@
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
 
+## [4.1.27] - 2026-09-14
+
+### Changed
+
+- Made Article delivery authoritative from the validated Markdown and HTML file
+  contract while retaining visual, review, and draft outcomes independently.
+- Added deterministic marketing-risk scanning, one clean-context recovery for
+  provider policy rejection, and explicit retained artifact delivery.
+- Removed the model-facing general prohibited-word list and completion-stage
+  evaluator so finalization is deterministic and does not add a second policy
+  review request.
+- Prepared the `4.1.27` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.25] - 2026-09-13
 
 ### Changed

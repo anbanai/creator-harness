@@ -119,7 +119,7 @@ Official references: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 - **File naming**: Subagents use numbered prefixes (`01-research.md`, `02-outline.md`...) or semantic names (`cover.png`, `content.md`, `image-plan.md`).
 - **Image reference chain**: First image establishes visual style; subsequent images use the first as reference to maintain consistency.
 - **Skill dependencies**: Agent Pack `agent.skills` is the canonical list. Generated Codex subagents preload the same dependencies through `[[skills.config]]`; their instructions refer to the loaded method with `using the <skill-name> skill` phrasing.
-- **Content is Chinese**: All generated content targets Chinese social media platforms. Prohibited words lists (违禁词) are in `references/prohibited-words.md`.
+- **Content is Chinese**: All generated content targets Chinese social media platforms. Marketing-risk checks use workflow-owned deterministic scanners; models do not load full prohibited-word lists.
 - **Live media dependency**: `live-slicer` and `live-slice` require local `ffmpeg` and `ffprobe`; TingWu provides transcription.
 - **Subagent invocation**: Codex subagents do NOT auto-spawn. To run a full pipeline, the user must explicitly invoke: "use the article subagent to write an article about X".
 
