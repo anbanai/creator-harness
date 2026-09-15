@@ -6,6 +6,19 @@
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
 
+## [4.1.28] - 2026-09-15
+
+### Fixed
+
+- Preserved structured WeChat draft-delivery failures and made Article agents
+  retry exactly once only when `create_draft` explicitly reports a retryable
+  failure, while ambiguous reconciliation remains non-retryable.
+- Replaced the generic missing-draft state with an actionable explanation of
+  whether draft creation failed, was skipped, or could not be confirmed.
+- Prepared the `4.1.28` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before publishing any package or release artifact.
+
 ## [4.1.27] - 2026-09-14
 
 ### Changed

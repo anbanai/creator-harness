@@ -58,7 +58,7 @@ developer_instructions = """
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 topic-research / content-writing / seo-optimization Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **必需 MCP 能力调用不可用或失败**：list_projects、get_project_profile、list_drafts、list_published_articles 或 render_template 任一调用不可用或失败时，在 output/failure-state.json 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
-- **草稿发布独立**：create_draft 只调用一次且失败时不重试。无论成功、跳过、失败或结果不明确，都写入 output/draft-result.json；草稿创建失败不影响 Markdown/HTML 交付。
+- **草稿发布独立**：正常只调用一次 create_draft。仅当结构化错误明确返回 `retryable=true` 时，才使用完全相同的 project_id、task_id 和 articles 原样重试，最多重试一次；若 `retryable=false`、缺失 retryable、返回 create_draft_pending_reconciliation，或结果不明确，不得重试。无论成功、跳过、失败或结果不明确，都写入 output/draft-result.json；草稿创建失败不影响 Markdown/HTML 交付。
 - **上传调用**：upload_image 调用失败时只重试上传一次；仍失败在 output/final-review.md 记录 article_image_upload_failed warning 和 resume_from=image_generation，保留本地图片并继续。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受发布前质量闸门约束。
 - **执行身份错误不可重试**：generate_image、analyze_image 或 upload_image 返回 execution_identity_required / execution_identity_mismatch 时，不得更换 prompt、比例、image_type 或工具重试；保留已有产物，在 final-review.md 记录 execution_identity_unavailable warning 和 resume_from=image_generation，跳过剩余视觉和草稿步骤并继续生成核心 HTML。诊断不得包含令牌、密钥或完整环境变量。
@@ -401,7 +401,7 @@ using the article-publishing skill 创建 draft.json 并发布：
 - thumb_media_id：**仅当封面开关开启时**填步骤 6 的封面 $COVER_MEDIA_ID；**封面开关关闭时（含"仅配图"和"纯文字"）一律不带 thumb_media_id**（即使有正文配图也**不复用**作封面——公众号后台将不显示封面/需手动设置，此为用户选择），并在 final-review.md 记录提示
 - author：**仅**取自步骤 1 get_project_profile 顶层 byline（公众号署名，原样填入；空则省略，**禁用** writing_voice 顶替——见 article-publishing skill「作者字段来源」）
 
-当 output/marketing-scan.json 的 status=block_publish 时跳过 create_draft，并在 output/draft-result.json 写 skipped、规则 ID 和脱敏证据；否则只调用一次 create_draft。成功写 succeeded，调用失败写 failed，无法确认写 ambiguous。所有分支都把当前 marketing-scan.json.content_hash 写为 draft-result.json.content_hash。草稿创建失败不影响 Markdown/HTML 交付。
+当 output/marketing-scan.json 的 status=block_publish 时跳过 create_draft，并在 output/draft-result.json 写 skipped、规则 ID 和脱敏证据；否则正常调用一次 create_draft。仅当结构化错误明确返回 `retryable=true` 时，使用完全相同的 project_id、task_id 和 articles 原样重试，最多重试一次；`retryable=false`、缺失 retryable、create_draft_pending_reconciliation 或结果不明确均不得重试。成功写 succeeded，调用失败写 failed，无法确认写 ambiguous；失败或结果不明确时同时保存 code。所有分支都把当前 marketing-scan.json.content_hash 写为 draft-result.json.content_hash。草稿创建失败不影响 Markdown/HTML 交付。
 
 **产出**：output/draft.json、output/draft-result.json
 

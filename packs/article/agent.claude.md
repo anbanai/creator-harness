@@ -80,7 +80,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 `topic-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
-- **草稿发布独立**：`create_draft` 只调用一次且失败时不在 Agent 侧重试。无论成功、跳过、失败或结果不明确，都原子写入 `output/draft-result.json`；草稿创建失败不影响 Markdown/HTML 交付，也不得写成核心交付失败。
+- **草稿发布独立**：正常只调用一次 `create_draft`。仅当结构化错误明确返回 `retryable=true` 时，才使用完全相同的 `project_id`、`task_id` 和 `articles` 原样重试，最多重试一次；若 `retryable=false`、缺失 `retryable`、返回 `create_draft_pending_reconciliation`，或结果不明确，不得重试。无论成功、跳过、失败或结果不明确，都原子写入 `output/draft-result.json`；草稿创建失败不影响 Markdown/HTML 交付，也不得写成核心交付失败。
 - **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受发布前质量闸门约束。
 - **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉与草稿步骤并继续生成核心 HTML。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定。
@@ -447,9 +447,9 @@ render_template(
 读取 `output/marketing-scan.json` 后独立决定草稿创建：
 
 - `marketing-scan.json.status=block_publish`：不调用 `create_draft`，原子写入 `output/draft-result.json`，状态为 `skipped`，记录命中的规则 ID 和脱敏证据。
-- 其他有效状态且发布前验收允许发布：调用一次 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)`。成功时先依赖服务端持久化记录，再在 `draft-result.json` 写 `succeeded`、`draft_media_id` 和生命周期状态。
-- 调用失败：不重试、不终止交付，在 `draft-result.json` 写 `failed` 和安全的结构化原因。
-- 结果无法确认：在 `draft-result.json` 写 `ambiguous`，交由服务端基于持久化发布记录对账。
+- 其他有效状态且发布前验收允许发布：正常调用一次 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)`。仅当结构化错误明确返回 `retryable=true` 时，用完全相同的参数原样重试，最多重试一次。成功时先依赖服务端持久化记录，再在 `draft-result.json` 写 `succeeded`、`draft_media_id` 和生命周期状态。
+- 调用失败：若 `retryable=false`、缺失 `retryable` 或已经耗尽一次重试，不再重试且不终止交付，在 `draft-result.json` 写 `failed`、`code` 和安全的结构化原因。
+- 结果无法确认或返回 `create_draft_pending_reconciliation`：不得重试，在 `draft-result.json` 写 `ambiguous` 和 `code`，交由服务端基于持久化发布记录对账。
 
 草稿创建失败不影响 Markdown/HTML 交付。无论上述哪条分支，`output/draft-result.json` 都必须写入当前 `marketing-scan.json.content_hash` 作为 `content_hash`，且不包含密钥、令牌、完整请求正文或未脱敏供应商响应。
 
@@ -514,7 +514,7 @@ render_template(
 | **去 AI 过度改写丢信息** | `humanizer` skill 改写而非删除，保留人称代入/情绪节奏/具体细节，覆盖全部信息点 |
 | **违禁词检测误报** | 记录疑似词，人工复核标记，不自动删除 |
 | **HTML 输入预检失败** | 在调用前检查并修复 Markdown 与 `layout_plan`；`render_template` 实际调用失败按 `article_mcp_call_failed` 终止 |
-| **草稿创建失败** | 写入 `draft-result.json` 的 `failed` 状态并继续完成核心交付；不在 Agent 侧重试 |
+| **草稿创建失败** | 写入 `draft-result.json` 的 `failed` 状态并继续完成核心交付；仅在 `retryable=true` 时用完全相同参数最多重试一次 |
 
 ---
 

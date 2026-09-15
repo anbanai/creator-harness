@@ -98,7 +98,7 @@ author 为空                         → 省略 author 字段（切勿用 write
 1. 调用 `render_template`（带 `layout_plan`）将 Markdown + 节奏计划确定性渲染为 WeChat HTML（替代旧的 `convert_markdown`）
 2. 调用 `generate_image` 生成封面；如需质量审核则单独调用 `analyze_image`。**流水线场景**：已有封面 `media_id` 时直接复用，跳过本步
 3. 质量通过后调用 `upload_image` 取得 `media_id` + `wechat_url`。上传失败只重试上传，不重新生成
-4. 调用 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)` 创建草稿；调用失败时不得在 Agent 侧重试创建
+4. 调用 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)` 创建草稿。正常只调用一次；仅当结构化错误明确返回 `retryable=true` 时，使用完全相同的 `project_id`、`task_id` 和 `articles` 原样重试，最多重试一次。若 `retryable=false`、缺失 `retryable`、返回 `create_draft_pending_reconciliation`，或结果不明确，不得重试
 
 ## 流水线集成
 
