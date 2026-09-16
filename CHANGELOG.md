@@ -15,6 +15,9 @@
   review artifacts.
 - Tightened the managed publication package contract so ready packages use an
   empty code and the exact unique evidence path set expected by the Server.
+- Prepared the `4.1.30` DSH package metadata for the release workflow. This
+  changelog does not claim npm publication; the release operator must complete
+  the release workflow before announcing package availability.
 
 ## [4.1.29] - 2026-09-16
 
