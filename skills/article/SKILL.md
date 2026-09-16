@@ -265,9 +265,9 @@ using the article-publishing skill 只创建版本化 `output/draft.json` 发布
 - `article.digest`：步骤 5 优化后的摘要
 - `article.content_path`：固定为 `output/05-article.html`
 - `article.content_sha256`：步骤 8 HTML 原始字节的小写 SHA-256
-- `readiness.evidence_paths`：固定包含 `output/marketing-scan.json`、`output/final-review.md`、`output/viral-audit.md`
+- `readiness.evidence_paths`：必须恰好且各出现一次地包含 `output/marketing-scan.json`、`output/final-review.md`、`output/viral-audit.md`，不得重复或追加其他路径
 
-全部语义闸门通过时写 `readiness.status="ready"`、`readiness.code=""`。营销扫描或审阅仍阻塞时写 `readiness.status="blocked"` 和稳定 code；内容与 HTML 仍正常交付。Server 重新执行客观校验，并独占微信调用、幂等、重试、对账与最终状态。Agent 不提供 `author` 或 `thumb_media_id`，也不写任何发布结果文件。
+全部语义闸门通过时写 `readiness.status="ready"`、`readiness.code=""`，ready 状态严禁携带任何非空 code。营销扫描或审阅仍阻塞时写 `readiness.status="blocked"` 和稳定、非空的 code；内容与 HTML 仍正常交付。Server 重新执行客观校验，并独占微信调用、幂等、重试、对账与最终状态。Agent 不提供 `author` 或 `thumb_media_id`，也不写任何发布结果文件。
 
 ---
 

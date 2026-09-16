@@ -83,6 +83,8 @@ describe('WeChat draft lifecycle contract', () => {
     expect(managedArticleSkill).not.toContain('create_draft')
     expect(managedArticleSkill).not.toContain('draft-result.json')
     expect(managedArticleSkill).toContain('readiness.status="blocked"')
+    expect(managedArticleSkill).toContain('ready 状态严禁携带任何非空 code')
+    expect(managedArticleSkill).toContain('不得重复或追加其他路径')
 
     const contentWritingSkill = await readFile(join(root, 'skills/content-writing/SKILL.md'), 'utf8')
     expect(contentWritingSkill).toContain('readiness 写为 `blocked`')
@@ -96,7 +98,24 @@ describe('WeChat draft lifecycle contract', () => {
     expect(interactiveSkill).not.toContain('retryable=true')
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.1.29', async () => {
+  it('routes publication recovery directly to image generation in every managed article agent', async () => {
+    const managedAgentPaths = [
+      'agents/article.md',
+      'agents/article.toml',
+      'packs/article/agent.claude.md',
+      'packs/article/agent.codex.toml',
+      'packs/article/agent.dsh.yml',
+      'dsh/presets/article/agent.cordis.yml',
+    ]
+    for (const path of managedAgentPaths) {
+      const text = await readFile(join(root, path), 'utf8')
+      expect(text, path).toContain('发布恢复模式')
+      expect(text, path).toContain('image_generation')
+      expect(text, path).toContain('不得重新执行选题、正文创作、SEO 或语义审核')
+    }
+  })
+
+  it('keeps both native manifests and the Claude marketplace at 4.1.30', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -107,7 +126,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.1.29')
+      expect(version, path).toBe('4.1.30')
     }
   })
 })

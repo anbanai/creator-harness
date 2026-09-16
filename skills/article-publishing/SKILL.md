@@ -63,7 +63,7 @@ There are two deliberately separate modes:
  }
  ```
 
- `readiness` 只记录 Agent 的语义审核事实；Server 会重新读取固定产物、校验哈希和安全规则，并从冻结任务快照读取作者、从当前执行封面文件读取 `thumb_media_id`。
+ `readiness` 只记录 Agent 的语义审核事实；Server 会重新读取固定产物、校验哈希和安全规则，并从冻结任务快照读取作者、从当前执行封面文件读取 `thumb_media_id`。`status="ready"` 时 `code` 必须严格为空，`evidence_paths` 必须恰好且各出现一次地包含上面三条固定路径，不能重复或追加其他路径；`status="blocked"` 时必须填写稳定、非空的 `code`。
 
  ## 显式交互式请求格式
 

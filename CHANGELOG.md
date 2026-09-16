@@ -6,6 +6,16 @@
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
 
+## [4.1.30] - 2026-09-16
+
+### Fixed
+
+- Routed Server-requested Article publication recovery directly to the image
+  generation stage without regenerating approved topic, copy, SEO, or semantic
+  review artifacts.
+- Tightened the managed publication package contract so ready packages use an
+  empty code and the exact unique evidence path set expected by the Server.
+
 ## [4.1.29] - 2026-09-16
 
 ### Changed
