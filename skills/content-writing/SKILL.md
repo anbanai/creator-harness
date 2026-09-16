@@ -51,7 +51,7 @@ The article must satisfy:
 
 ## 公众号文章预检
 
-文章预检 is owned by this Skill and does not depend on MCP validation. Use the `scan-article-marketing.mjs` command declared by the active Agent adapter. The first preflight may pass `--fix` exactly once; every later scan omits `--fix`. Read the generated report, never the scanner source or a general prohibited-word list. The report's `content_hash` must match the current `output/04-article-final.md`. `warning` does not block delivery or draft creation；`block_publish` does not block Markdown/HTML delivery but skips `create_draft` until the user edits the article and continues the task.
+文章预检 is owned by this Skill and does not depend on MCP validation. Use the `scan-article-marketing.mjs` command declared by the active Agent adapter. The first preflight may pass `--fix` exactly once; every later scan omits `--fix`. Read the generated report, never the scanner source or a general prohibited-word list. The report's `content_hash` must match the current `output/04-article-final.md`. `warning` does not block delivery；`block_publish` does not block Markdown/HTML delivery，但托管 Article 必须把发布包 readiness 写为 `blocked` 并记录稳定 code，由 Server 提供后续恢复动作。
 
 Required checks:
 
@@ -79,7 +79,7 @@ Report format:
 
 - Missing writer resource: use project default only if `get_project_profile` provides one; otherwise stop with a clear missing-resource note.
 - Missing outline or context brief: create the smallest safe placeholder from available project profile and user prompt, then record the gap in `content-quality-report.md`.
-- Preflight `warning`: record it and continue. Preflight `block_publish`: continue producing Markdown and HTML, but skip draft creation and report the exact rule IDs and redacted evidence.
+- Preflight `warning`: record it and continue. Preflight `block_publish`: continue producing Markdown and HTML, write blocked readiness with a stable code, and report the exact rule IDs and redacted evidence. Managed Agents never create the draft.
 - Render handoff failure: keep Markdown artifacts, record the reason, and let the article agent decide whether to retry `render_template` or use the documented fallback.
 
 ## 深入参考

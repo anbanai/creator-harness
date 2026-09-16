@@ -1,9 +1,16 @@
 ---
 name: article-publishing
-description: 'Use when creating or managing WeChat news article drafts. Also use when user mentions ''发草稿'', ''发布文章'', ''创建草稿'', ''publish draft'', ''草稿箱'', or when the article pipeline reaches the draft publishing step. Creates and manages WeChat news article drafts (图文草稿) with HTML formatting.'
+description: 'Use when explicitly creating or managing WeChat news article drafts, or when a user asks to inspect the 草稿箱. Managed Article executions use this skill only for the handoff package; automatic publication is Server-owned.'
 ---
 
 # 微信公众号图文文章发布
+
+## Ownership Boundary
+
+There are two deliberately separate modes:
+
+- **Managed Article execution**: do not call `create_draft`, do not decide publication state, and do not write a result file. Produce only `output/draft.json` with `schema_version="1.0"`, final title/digest, fixed `output/05-article.html` path, its lowercase SHA-256, and readiness evidence. Server supplies the frozen author and current cover `media_id`, then owns every WeChat side effect and terminal outcome.
+- **Explicit interactive request**: an authenticated user may call the atomic `create_draft` MCP capability with a validated `articles` item. Its lifecycle and reconciliation remain Server-owned; never infer success from logs or local files.
 
 ## 案例库
 
@@ -29,9 +36,38 @@ description: 'Use when creating or managing WeChat news article drafts. Also use
 
 ## 使用方式
 
-通过 MCP 工具调用 `create_draft`，传入当前运行上下文中的 `project_id`、`task_id` 和 `draft.json` 的 `articles` 数组创建草稿。项目与任务必须属于当前认证用户，且任务必须属于该项目。
+只有显式交互式请求才通过 MCP 工具调用 `create_draft`，传入当前运行上下文中的 `project_id`、`task_id`，并根据本节格式现场组装 `articles` 数组。托管 `output/draft.json` 是 Server 发布包，不含 `articles`，托管 Article 执行禁止调用该能力。
 
-## draft.json 格式
+ ## 托管执行发布包格式
+
+ 托管 Article 只写入下面的版本化发布包，不把 `articles` 请求直接交给微信，也不写发布结果：
+
+ ```json
+ {
+   "schema_version": "1.0",
+   "article": {
+     "title": "最终标题",
+     "digest": "最终摘要",
+     "content_path": "output/05-article.html",
+     "content_sha256": "小写 SHA-256"
+   },
+   "readiness": {
+     "status": "ready",
+     "code": "",
+     "evidence_paths": [
+       "output/marketing-scan.json",
+       "output/final-review.md",
+       "output/viral-audit.md"
+     ]
+   }
+ }
+ ```
+
+ `readiness` 只记录 Agent 的语义审核事实；Server 会重新读取固定产物、校验哈希和安全规则，并从冻结任务快照读取作者、从当前执行封面文件读取 `thumb_media_id`。
+
+ ## 显式交互式请求格式
+
+ 只有用户明确要求创建草稿时，才用 `create_draft` 的 `articles` 请求格式：
 
 ```json
 {
@@ -52,7 +88,7 @@ description: 'Use when creating or managing WeChat news article drafts. Also use
 
 ## 作者字段来源（硬性）
 
-`draft.json` 的 `author`（公众号署名）**必须且仅能**取自 `get_project_profile` 返回的**顶层 `author`** 字段（已按 task > project 两层解析；可看返回的 `author_source` 追溯来源）。
+显式交互式请求的 `articles[0].author`（公众号署名）**必须且仅能**取自 `get_project_profile` 返回的**顶层 `author`** 字段（已按 task > project 两层解析；可看返回的 `author_source` 追溯来源）。托管执行不把作者写入 `output/draft.json`，由 Server 从冻结任务快照读取。
 
 - 顶层 `author` 非空 → `articles[0].author = <顶层 author>`，**原样填入，不改写**。
 - 顶层 `author` 为空 → **省略 `author` 字段**（或留空），由公众号后台用默认署名。
@@ -65,7 +101,7 @@ description: 'Use when creating or managing WeChat news article drafts. Also use
 映射示例：
 
 ```
-get_project_profile 返回            → draft.articles[0].author
+get_project_profile 返回            → 交互式 articles[0].author
 author = "张三"                      → "张三"
 writer = "dan-koe"                  → 不入 author（仅用于正文口吻）
 author 为空                         → 省略 author 字段（切勿用 writer 顶替）
@@ -93,16 +129,18 @@ author 为空                         → 省略 author 字段（切勿用 write
 }
 ```
 
-## 完整发布工作流
+## 显式交互式发布工作流
+
+本节只适用于用户在交互会话中明确要求立即创建草稿；托管 Article 执行只使用前述发布包格式，不执行本节。
 
 1. 调用 `render_template`（带 `layout_plan`）将 Markdown + 节奏计划确定性渲染为 WeChat HTML（替代旧的 `convert_markdown`）
 2. 调用 `generate_image` 生成封面；如需质量审核则单独调用 `analyze_image`。**流水线场景**：已有封面 `media_id` 时直接复用，跳过本步
 3. 质量通过后调用 `upload_image` 取得 `media_id` + `wechat_url`。上传失败只重试上传，不重新生成
-4. 调用 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)` 创建草稿。正常只调用一次；仅当结构化错误明确返回 `retryable=true` 时，使用完全相同的 `project_id`、`task_id` 和 `articles` 原样重试，最多重试一次。若 `retryable=false`、缺失 `retryable`、返回 `create_draft_pending_reconciliation`，或结果不明确，不得重试
+4. 按「显式交互式请求格式」现场组装 `articles`，调用一次 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=<组装后的数组>)` 创建草稿。不要从托管 `output/draft.json` 读取 `articles`。调用后不在 Agent 侧重试；幂等、安全重试、对账和终态均由 Server 负责。结果不明确时只展示 Server 返回的状态
 
 ## 流水线集成
 
-本 skill 是 article 流水线的最后一步。前置条件：
+托管 article 流水线只使用本 skill 的发布包格式；显式交互式发布使用本节。前置条件：
 
 | 前置产出 | 来源 | 用途 |
 |----------|------|------|

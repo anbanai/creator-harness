@@ -6,6 +6,15 @@
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
 
+## [4.1.29] - 2026-09-16
+
+### Changed
+
+- Handed managed Article publication to the Server through a versioned
+  `output/draft.json` package; automatic Agents no longer call `create_draft`.
+- Synchronized Claude, Codex, and DSH manifests for the new publication
+  boundary.
+
 ## [4.1.28] - 2026-09-15
 
 ### Fixed

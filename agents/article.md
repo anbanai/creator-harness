@@ -80,7 +80,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 `topic-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
-- **草稿发布独立**：正常只调用一次 `create_draft`。仅当结构化错误明确返回 `retryable=true` 时，才使用完全相同的 `project_id`、`task_id` 和 `articles` 原样重试，最多重试一次；若 `retryable=false`、缺失 `retryable`、返回 `create_draft_pending_reconciliation`，或结果不明确，不得重试。无论成功、跳过、失败或结果不明确，都原子写入 `output/draft-result.json`；草稿创建失败不影响 Markdown/HTML 交付，也不得写成核心交付失败。
+- **Server 发布边界**：托管 Article Agent 不执行任何草稿发布 MCP，也不生成发布结果文件。Agent 只生成版本化 `output/draft.json` 发布包；Server 在任务终态独立校验产物、图片与审核事实后创建公众号草稿，并拥有幂等、重试、对账和最终状态。
 - **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受发布前质量闸门约束。
 - **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉与草稿步骤并继续生成核心 HTML。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定。
@@ -101,7 +101,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML + 草稿，实测需 120-175 tur
 
 进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
 
-阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，核心 Markdown 与安全 HTML 完整后即可完成，视觉、审核异常记录为 warning；`delivery` 覆盖步骤 9、独立的步骤 10、最终报告与 feedback。`delivery` 的完成只依赖服务端可验证的 `output/04-article-final.md` 和 `output/05-article.html`，不依赖视觉完整、审核通过或 `create_draft` 成功。
+阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，核心 Markdown 与安全 HTML 完整后即可完成，视觉、审核异常记录为 warning；`delivery` 覆盖步骤 9、步骤 10 的发布包生成、最终报告与 feedback。`delivery` 的完成依赖服务端可验证的 `output/04-article-final.md`、`output/05-article.html` 和 `output/draft.json`，不依赖外部发布副作用。
 
 ## 创作流程（10 步）
 
@@ -375,7 +375,7 @@ generate_image(
 - [ ] **内容审核通过率**：至少 80% 的内容图 `quality_status=passed`
 - [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / 内容质量结论 / `slot_id` / `section_index` / `wechat_url` / `media_id`
 - [ ] **CDN 持久化**：`images.json` 每条都有非空 `wechat_url`（即每张图已独立上传到微信 CDN）；缺 `wechat_url` 的 slot 只重试 `upload_image`，不得重新生成
-- [ ] **正文图片互不相同**：`images.json` 中所有内容图的 `wechat_url` 两两不同，且没有任何一张等于封面 `$COVER_CDN_URL`（封面只能用于 `thumb_media_id`，**不得复用为正文图**）；服务端 `create_draft` 会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿，配图失败时宁可缺图降级也不得用封面/他图顶替
+- [ ] **正文图片互不相同**：`images.json` 中所有内容图的 `wechat_url` 两两不同，且没有任何一张等于封面 `$COVER_CDN_URL`（封面只能用于草稿封面，**不得复用为正文图**）；服务端发布校验会硬拦截"正文 ≥2 图但唯一 URL==1"的草稿，配图失败时宁可记录阻塞也不得用封面/他图顶替
 
 未通过检查时按问题类型处理：单图可见内容质量未通过则降级、节奏/模板违规回 Phase 0、内容审核通过率不足回 Phase 3。超过一半章节配图在各自限定重试后仍失败时，保留已生成产物，在 `output/final-review.md` 记录 `article_content_images_failed` warning 和缺失章节，跳过草稿创建并继续生成核心 HTML；不得用封面或其他图片顶替。
 
@@ -431,29 +431,41 @@ render_template(
 
 审计 rubric、阈值、输出格式详见 `article-viral-strategy` skill 的 `references/viral-audit.md`。
 
-**审阅闭环**：任一项审阅未通过时标记待调整，自动回到对应步骤（正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染）修订。若 `output/04-article-final.md` 发生任何变化，必须回到步骤 8 重新扫描并重新渲染，再重新审阅；不得调用 `create_draft`。缺 `viral-audit.md` 不得发布；`viral-audit.md` 未通过（整体 <7.0 或任一硬性必过项不通过）同样先调整再复审。
+**审阅闭环**：任一项审阅未通过时标记待调整，自动回到对应步骤（正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染）修订。若 `output/04-article-final.md` 发生任何变化，必须回到步骤 8 重新扫描并重新渲染，再重新审阅；不得把 readiness 写成 `ready`。缺 `viral-audit.md` 或审计未通过时，发布包必须记录明确阻塞状态。
 
 **产出**：`output/final-review.md`
 
-#### 步骤 10：草稿发布
+#### 步骤 10：生成 Server 发布包
 
-按 `article-publishing` 方法创建 `draft.json` 并发布：
-- `title`：步骤 5 优化后的标题（从 `output/seo-result.md` 读取）
-- `content`：步骤 8 的 HTML
-- `digest`：步骤 5 优化后的摘要
-- `thumb_media_id`：**仅当封面开关开启时**填步骤 6 的封面 `$COVER_MEDIA_ID`；**封面开关关闭时（含"仅配图"和"纯文字"）一律不带 `thumb_media_id`**（即使有正文配图也**不复用**作封面——公众号后台将不显示封面/需手动设置，此为用户选择），并在 `final-review.md` 记录提示
-- `author`：**仅**取自步骤 1 `get_project_profile` 的顶层 `author`（公众号署名），原样填入；为空则省略该字段。**严禁**用 `writer`（写作风格 key）或任何 Studio 展示元数据顶替——详见 `article-publishing` skill「作者字段来源」
+不执行任何外部发布副作用。原子写入 `output/draft.json`，且只能包含以下版本化结构：
 
-读取 `output/marketing-scan.json` 后独立决定草稿创建：
+```json
+{
+  "schema_version": "1.0",
+  "article": {
+    "title": "最终标题",
+    "digest": "最终摘要",
+    "content_path": "output/05-article.html",
+    "content_sha256": "05-article.html 原始字节的小写 SHA-256"
+  },
+  "readiness": {
+    "status": "ready",
+    "code": "",
+    "evidence_paths": [
+      "output/marketing-scan.json",
+      "output/final-review.md",
+      "output/viral-audit.md"
+    ]
+  }
+}
+```
 
-- `marketing-scan.json.status=block_publish`：不调用 `create_draft`，原子写入 `output/draft-result.json`，状态为 `skipped`，记录命中的规则 ID 和脱敏证据。
-- 其他有效状态且发布前验收允许发布：正常调用一次 `create_draft(project_id=$PROJECT_ID, task_id=$TASK_ID, articles=draft.json.articles)`。仅当结构化错误明确返回 `retryable=true` 时，用完全相同的参数原样重试，最多重试一次。成功时先依赖服务端持久化记录，再在 `draft-result.json` 写 `succeeded`、`draft_media_id` 和生命周期状态。
-- 调用失败：若 `retryable=false`、缺失 `retryable` 或已经耗尽一次重试，不再重试且不终止交付，在 `draft-result.json` 写 `failed`、`code` 和安全的结构化原因。
-- 结果无法确认或返回 `create_draft_pending_reconciliation`：不得重试，在 `draft-result.json` 写 `ambiguous` 和 `code`，交由服务端基于持久化发布记录对账。
+- `title` 与 `digest` 取自最终 SEO 结果；`content_path` 必须是固定路径，不能内联 HTML。
+- Agent 不得写入 `author`、`thumb_media_id`、微信凭据或任何发布结果。Server 从冻结项目快照和当前执行图片元数据读取权威值。
+- 视觉、营销扫描或最终审核未通过时仍生成同一结构，但 `readiness.status="blocked"`，`code` 使用明确的稳定原因；不得伪造 `ready`。
+- 不生成任何发布结果文件；发布状态只由 Server 持久化。
 
-草稿创建失败不影响 Markdown/HTML 交付。无论上述哪条分支，`output/draft-result.json` 都必须写入当前 `marketing-scan.json.content_hash` 作为 `content_hash`，且不包含密钥、令牌、完整请求正文或未脱敏供应商响应。
-
-**产出**：`output/draft.json`、`output/draft-result.json`
+**产出**：`output/draft.json`
 
 草稿发布结果与步骤 9 的最终验收都已写入报告后，调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="article", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<所选模板、草稿状态、内容审核通过率与成果路径摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数；无错误时 `errors` 传空字符串。
 
@@ -514,7 +526,7 @@ render_template(
 | **去 AI 过度改写丢信息** | `humanizer` skill 改写而非删除，保留人称代入/情绪节奏/具体细节，覆盖全部信息点 |
 | **违禁词检测误报** | 记录疑似词，人工复核标记，不自动删除 |
 | **HTML 输入预检失败** | 在调用前检查并修复 Markdown 与 `layout_plan`；`render_template` 实际调用失败按 `article_mcp_call_failed` 终止 |
-| **草稿创建失败** | 写入 `draft-result.json` 的 `failed` 状态并继续完成核心交付；仅在 `retryable=true` 时用完全相同参数最多重试一次 |
+| **发布条件不足** | 将 `draft.json.readiness` 写为 `blocked` 并继续核心交付；Server 决定恢复动作 |
 
 ---
 
@@ -554,7 +566,7 @@ render_template(
 - [ ] **转发/收藏/评论诱因各 ≥1 处**且合规
 - [ ] **`seo-result.md` 含 3 标题变体 + 打分记录**，最终标题为最高分变体且合规（无极限词）
 - [ ] **`viral-audit.md` 存在**，7 维齐全，整体 ≥7.0，硬性必过项（标题合规/开头钩子/全文合规/互动诱因合规）全过
-- [ ] 草稿结果已写入 `draft-result.json`，并与核心 Markdown/HTML 交付状态独立
+- [ ] `draft.json` 符合 1.0 schema，HTML SHA-256 正确，readiness 与审核事实一致
 
 ---
 
@@ -581,7 +593,7 @@ render_template(
 - [ ] **`required_entities` 是抽象词**（"美感"、"氛围"）→ 重写为可识别的物体
 - [ ] **`must_match_excerpts` 是论点而非原句** → 从章节中摘真实段落
 - [ ] 未启用人物参考且封面+配图均开启时，正文图使用封面却复刻其主体/构图/核心物件 → 必须重写章节 `visual_brief` / `required_entities`；封面关闭或人物参考启用时，内容配图仍传 `ref_image_path` → 必须移除
-- [ ] **正文 `<img src>` 出现封面 `$COVER_CDN_URL`，或多张正文图共用同一 `wechat_url`** → 服务端 `create_draft` 会拒绝发布；回步骤 7 为缺失 slot 独立生成，不得用封面/他图顶替
+- [ ] **正文 `<img src>` 出现封面 `$COVER_CDN_URL`，或多张正文图共用同一 `wechat_url`** → 服务端发布校验会拒绝发布；回步骤 7 为缺失 slot 独立生成，不得用封面/他图顶替
 - [ ] **`output/cover-prompt.md` 缺失 `cover_strategy`，或 `output/cover-quality.json` 缺失两张评分卡/人物身份结论** → 回到步骤 6d 补齐并重审；仅有旧的 6 维视觉评分全为 high 不得通过
 - [ ] `images.json` 缺少可见内容质量结论 → 独立审核未完成，回步骤 7b
 - [ ] **内容审核通过率 < 80%** → 回到步骤 6e 检查 prompt 构建逻辑
@@ -625,7 +637,7 @@ render_template(
 **关键步骤失败**（核心文件生成）：
 
 - `output/04-article-final.md` 或 `output/05-article.html` 无法生成、损坏或 HTML 不安全时，写结构化失败诊断并保留全部已有产物。
-- 视觉失败、审核 warning、`block_publish`、草稿失败或草稿结果不明确均不得伪造成核心文件失败；记录到对应报告和 `draft-result.json` 后继续完成 delivery。
+- 视觉失败、审核 warning 或 `block_publish` 均不得伪造成核心文件失败；记录到对应报告，并把 `draft.json.readiness` 设为 `blocked` 后继续完成 delivery。
 
 **质量审阅未通过**（内容质量、视觉审计、发布前总验收）：
 
@@ -699,4 +711,4 @@ render_template(
 
 每个阶段完成后可独立验证，配图生成可分批进行。
 
-草稿契约：调用 `create_draft` 时必须传入当前 `project_id`、`task_id` 和单个 `articles` 数组项；成功后记录返回的 `draft_media_id` 与生命周期 `status`，并在最终报告中原样呈现。
+草稿契约：托管 Agent 只生成 1.0 版本发布包，不提供作者、封面媒体 ID 或生命周期状态；这些权威字段和外部副作用由 Server 负责。

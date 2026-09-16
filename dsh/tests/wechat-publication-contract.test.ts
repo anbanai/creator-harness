@@ -49,29 +49,54 @@ describe('WeChat draft lifecycle contract', () => {
     expect(skill).toContain('"status": "drafted"')
   })
 
-  it('keeps the single-article request and lifecycle result contract across active article assets', async () => {
-    const paths = [
-      'skills/article-publishing/SKILL.md',
+  it('keeps the server publication package contract across managed article assets', async () => {
+    const managedAgentPaths = [
       'agents/article.md',
       'agents/article.toml',
       'packs/article/agent.claude.md',
       'packs/article/agent.codex.toml',
       'packs/article/agent.dsh.yml',
       'dsh/presets/article/agent.cordis.yml',
+    ]
+    const packagePaths = [
+      ...managedAgentPaths,
+      'skills/article/SKILL.md',
       'dsh/presets/article/skills/article-publishing/SKILL.md',
     ]
-    for (const path of paths) {
+    const interactiveSkill = await readFile(join(root, 'skills/article-publishing/SKILL.md'), 'utf8')
+    expect(interactiveSkill).toContain('`create_draft`')
+    for (const path of packagePaths) {
       const text = await readFile(join(root, path), 'utf8')
-      expect(text, path).toContain('create_draft')
-      expect(text, path).toContain('project_id')
-      expect(text, path).toContain('task_id')
-      expect(text, path).toContain('articles')
-      expect(text, path).toContain('draft_media_id')
-      expect(text, path).toContain('status')
+      expect(text, path).toContain('output/draft.json')
+      expect(text, path).toContain('schema_version')
+      expect(text, path).toContain('content_sha256')
+      expect(text, path).toContain('readiness')
     }
+    for (const path of managedAgentPaths) {
+      const text = await readFile(join(root, path), 'utf8')
+      expect(text, path).not.toContain('`create_draft`')
+      expect(text, path).not.toContain('draft-result.json')
+      expect(text, path).not.toContain('Server publication')
+      expect(text, path).not.toContain('publication-state (Server-owned)')
+    }
+    const managedArticleSkill = await readFile(join(root, 'skills/article/SKILL.md'), 'utf8')
+    expect(managedArticleSkill).not.toContain('create_draft')
+    expect(managedArticleSkill).not.toContain('draft-result.json')
+    expect(managedArticleSkill).toContain('readiness.status="blocked"')
+
+    const contentWritingSkill = await readFile(join(root, 'skills/content-writing/SKILL.md'), 'utf8')
+    expect(contentWritingSkill).toContain('readiness 写为 `blocked`')
+    expect(contentWritingSkill).not.toContain('skip draft creation')
+    expect(contentWritingSkill).not.toContain('skips `create_draft`')
+
+    expect(interactiveSkill).toContain('本节只适用于用户在交互会话中明确要求立即创建草稿')
+    expect(interactiveSkill).toContain('调用后不在 Agent 侧重试')
+    expect(interactiveSkill).not.toContain('draft.json` 的 `articles`')
+    expect(interactiveSkill).not.toContain('articles=draft.json.articles')
+    expect(interactiveSkill).not.toContain('retryable=true')
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.1.28', async () => {
+  it('keeps both native manifests and the Claude marketplace at 4.1.29', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -82,7 +107,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.1.28')
+      expect(version, path).toBe('4.1.29')
     }
   })
 })
