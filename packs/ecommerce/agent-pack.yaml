@@ -1,5 +1,5 @@
 id: ecommerce
-version: 1.0.1
+version: 2.0.0
 kind: managed
 display_name: 电商素材
 description: 基于产品图片生成完整电商文案和视觉素材包。
@@ -20,10 +20,6 @@ surfaces: [plugin, project, task]
 features: [image-generation, product-assets]
 billing_operations:
   ecommerce: task.ecommerce
-progress:
-  - {id: analysis, title: 产品分析, active_percent: 5, complete_percent: 20}
-  - {id: production, title: 素材生产, active_percent: 30, complete_percent: 85}
-  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/product-bible.md, output/copywriting.md, output/manifest.json]}
 artifacts:
   - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
   - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown, required: true}

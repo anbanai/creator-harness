@@ -138,7 +138,7 @@ The Creator MCP endpoint is fixed at `https://creator.anbanai.com/mcp`. It is
 not a profile option. Never put a key or serialized Authorization header in a
 Preset, command argument, log, screenshot, test fixture, or generated artifact.
 
-## 4.1.31 release-operator checklist
+## 4.2.0 release-operator checklist
 
 Perform this manual production check after automated code gates and before
 public announcement:

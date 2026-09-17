@@ -1,5 +1,5 @@
 id: live-slicer
-version: 1.0.1
+version: 2.0.0
 kind: managed
 display_name: 直播切片
 description: 从直播视频转写、规划并批量导出短视频切片。
@@ -17,10 +17,6 @@ runtime:
   max_turns: 40
 surfaces: [plugin]
 features: [video-processing, transcription]
-progress:
-  - {id: transcription, title: 视频转写, active_percent: 5, complete_percent: 20}
-  - {id: slicing, title: 切片导出, active_percent: 30, complete_percent: 85}
-  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/summary.md, output/clip-manifest.json, output/clip-plan.json]}
 artifacts:
   - {role: summary, path: output/summary.md, mime_type: text/markdown, required: true}
   - {role: manifest, path: output/clip-manifest.json, mime_type: application/json, required: true}

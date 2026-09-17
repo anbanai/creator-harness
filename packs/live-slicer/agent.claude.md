@@ -66,29 +66,24 @@ context; PROJECT_ID is also available as ANBAN_DEFAULT_PROJECT.
 - Write
 - Bash
 
-其中 `TaskCreate`/`TaskUpdate` 同时维护三个可追踪阶段 Task 和原有 8 个细粒度业务 Task，`Read`/`Write` 落盘并核对 JSON/Markdown 产物，`Bash` 仅运行 `ffmpeg`/`ffprobe` 及目录/文件检查命令。
+其中 `TaskCreate`/`TaskUpdate` 分别维护按本次计划动态创建的生命周期阶段 Task 和原有 8 个细粒度业务 Task，`Read`/`Write` 落盘并核对 JSON/Markdown 产物，`Bash` 仅运行 `ffmpeg`/`ffprobe` 及目录/文件检查命令。
 
 ---
 
-## 托管进度阶段
+## 动态任务生命周期
 
-开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；原有 8 个细粒度业务 Task 继续保持顺序依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+只有当前顶层 Agent 可以维护任务生命周期；子任务、并行 worker 和 Skill 均不得声明、重排或更新平台阶段。
 
-| 阶段 | TaskCreate metadata |
-|------|---------------------|
-| transcription | `{"anban_progress_stage":"transcription"}` |
-| slicing | `{"anban_progress_stage":"slicing"}` |
-| delivery | `{"anban_progress_stage":"delivery"}` |
+开始业务执行前，根据本次任务的真实工作内容调用 `set_task_progress_plan`，一次声明 2-7 个工作阶段，优先保持 3-5 个。阶段 ID 使用稳定的 `snake_case`，不得使用 `system_` 前缀；每个阶段提供简洁标题和可选目标。恢复执行时保留已完成前缀，只重排尚未开始的尾部阶段。
 
-进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+计划提交成功后，为每个阶段使用官方 `TaskCreate` 创建一个阶段 Task，并在 metadata 中写入 `{"anban_stage_id":"<stage_id>"}`。保存返回的 Task id。进入阶段时执行 `TaskUpdate status=in_progress`，完成该阶段的全部业务工作后执行 `TaskUpdate status=completed`；两次更新都携带相同的 `anban_stage_id`，并可在 description 中写一条面向用户的最新进展。Runner Hook 只依据 metadata 上报 `active` / `complete`，不得按标题推断阶段。
 
-阶段边界必须按现有执行流程处理：`transcription` 覆盖步骤 1 至步骤 4，输入确认、媒体准备和完整听悟结果落盘后才完成；`slicing` 覆盖步骤 5 至步骤 8，无效句、切片规划、全部裁剪与可选剪映草稿处理结束后才完成；`delivery` 覆盖步骤 9、质量闸门与最终报告，manifest、plan、summary 和逐片结果完成校验后才完成。
-
+阶段完成不执行阶段级产物阻断；最终必需产物统一由 Runner Stop Hook 验收。不得上报百分比，不得把公众号草稿或正式发布声明为 Agent 阶段，这两个后续阶段由 Server 管理。
 ## 执行流程
 
 ### 步骤 1：创建任务和确认输入
 
-使用 `TaskCreate` 创建 8 个细粒度业务任务：输入确认、媒体准备、听悟分析、无效句过滤、切片规划、批量裁剪、剪映草稿导出、验收与报告。每个任务按顺序依赖前一个任务，且都不携带 `anban_progress_stage`。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`；这些更新不替代三个阶段 Task 的独立生命周期。
+使用 `TaskCreate` 创建 8 个细粒度业务任务：输入确认、媒体准备、听悟分析、无效句过滤、切片规划、批量裁剪、剪映草稿导出、验收与报告。每个任务按顺序依赖前一个任务，且都不携带 `anban_stage_id`。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`；这些细粒度任务不属于平台生命周期，只有前述按本次计划动态创建、携带 `anban_stage_id` 的阶段 Task 驱动生命周期。
 
 确认 `$VIDEO`：
 

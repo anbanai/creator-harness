@@ -154,20 +154,15 @@ reference-usage-summary.json
 
 ---
 
-## 托管进度阶段
+## 动态任务生命周期
 
-开始执行时先按结构化运行时上下文中的任务类型选择阶段合同，并使用官方 `TaskCreate` 分别创建下列与任务类型匹配的阶段 Task。普通 `seednote` 创建 `research`、`writing`、`delivery` 三个阶段任务；`viral_analysis` 只创建 `research`、`delivery`，不得创建 `writing`，也不得对 `writing` 执行任何 `TaskUpdate`。保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；原创或复刻模式的细粒度业务任务继续保持原有数量、排序与依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+只有当前顶层 Agent 可以维护任务生命周期；子任务、并行 worker 和 Skill 均不得声明、重排或更新平台阶段。
 
-| 阶段 | TaskCreate metadata |
-|------|---------------------|
-| research | `{"anban_progress_stage":"research"}` |
-| writing | `{"anban_progress_stage":"writing"}` |
-| delivery | `{"anban_progress_stage":"delivery"}` |
+开始业务执行前，根据本次任务的真实工作内容调用 `set_task_progress_plan`，一次声明 2-7 个工作阶段，优先保持 3-5 个。阶段 ID 使用稳定的 `snake_case`，不得使用 `system_` 前缀；每个阶段提供简洁标题和可选目标。恢复执行时保留已完成前缀，只重排尚未开始的尾部阶段。
 
-进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+计划提交成功后，为每个阶段使用官方 `TaskCreate` 创建一个阶段 Task，并在 metadata 中写入 `{"anban_stage_id":"<stage_id>"}`。保存返回的 Task id。进入阶段时执行 `TaskUpdate status=in_progress`，完成该阶段的全部业务工作后执行 `TaskUpdate status=completed`；两次更新都携带相同的 `anban_stage_id`，并可在 description 中写一条面向用户的最新进展。Runner Hook 只依据 metadata 上报 `active` / `complete`，不得按标题推断阶段。
 
-阶段边界必须按现有模式流程执行：`research` 覆盖公共前置流程以及原创选题研究，或复刻源笔记获取与证据驱动拆解，全部研究产物落盘后才完成；普通 `seednote` 的 `writing` 覆盖内容创作或改写、标题终稿锁定、图片生成与合规检查，全部计划图片和质量闸门完成后才完成；`viral_analysis` 没有 `writing` 阶段；`delivery` 覆盖交付校验、最终报告与 feedback，所有必需产物通过校验且失败态按既有恢复规则处理后才完成。
-
+阶段完成不执行阶段级产物阻断；最终必需产物统一由 Runner Stop Hook 验收。不得上报百分比，不得把公众号草稿或正式发布声明为 Agent 阶段，这两个后续阶段由 Server 管理。
 ## 创作流程
 
 > **图片构成以结构化运行控制 `seednote_image_mode` 为准（覆盖本 agent 与 seednote-visual-design skill 的默认数量规则）**。缺失时按 `cover_content`。四种模式：`cover_only`（仅封面）、`cover_content`（封面 + 1~3 张内容图）、`cover_tail`（封面 + 尾图）、`full`（封面 + 1~3 张内容图 + 尾图）。未包含尾图的模式禁止生成 `tail.png`，`image-plan.md` 不得含 `## tail` 节；未包含内容图的模式禁止生成 `image_0N.png`。内容图张数由信息点分组决定（1~3 张）。
@@ -180,7 +175,7 @@ reference-usage-summary.json
 
 如果用户提供种草笔记 ID、链接、xsec_token 线索，或明确说复刻、仿写、改写、克隆，则选择复刻模式（8 个任务：公共前置、源笔记获取、爆款拆解、内容改写、标题终稿锁定、图片生成、合规检查、交付校验与最终报告）；否则选择原创模式（7 个任务：公共前置、选题研究、内容写作、标题终稿锁定、图片生成、交付校验、最终报告）。
 
-使用 `TaskCreate` 创建上述细粒度业务任务列表，设置依赖：每个任务 `blockedBy` 前一个任务，且都不携带 `anban_progress_stage`。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`；这些更新不替代三个阶段 Task 的独立生命周期。
+使用 `TaskCreate` 创建上述细粒度业务任务列表，设置依赖：每个任务 `blockedBy` 前一个任务，且都不携带 `anban_stage_id`。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`；这些细粒度任务不属于平台生命周期，只有前述按本次计划动态创建、携带 `anban_stage_id` 的阶段 Task 驱动生命周期。
 
 #### 步骤 2：获取项目 ID
 
@@ -191,7 +186,6 @@ reference-usage-summary.json
 调用 `get_project_profile`（`project_id=$PROJECT_ID`, `scope="seednote"`, `task_id=$TASK_ID`）获取账号定位、关键词、受众、参考图或风格配置。**`task_id` 必传**：当任务设置了 `visual_style` 覆盖时，服务端用 `task.Overrides.visual_style` 覆盖 `project.visual_style` 返回（`visual_style_source="task"`）；不传 `task_id` 只能拿到 project 级风格。调用 `list_project_titles`（`project_id=$PROJECT_ID`）获取已有标题列表，原创模式后续必须避开重复或近似标题；复刻模式用于判断改写角度是否过近。已有标题为空时也要记录为空列表。
 
 **产出**：账号画像（含模板派生风格）、已有标题列表
-
 
 **图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 

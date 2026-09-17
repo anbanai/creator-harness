@@ -78,20 +78,15 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ---
 
-## 托管进度阶段
+## 动态任务生命周期
 
-开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；原有八个细粒度业务任务继续保持排序与依赖，但不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+只有当前顶层 Agent 可以维护任务生命周期；子任务、并行 worker 和 Skill 均不得声明、重排或更新平台阶段。
 
-| 阶段 | TaskCreate metadata |
-|------|---------------------|
-| analysis | `{"anban_progress_stage":"analysis"}` |
-| production | `{"anban_progress_stage":"production"}` |
-| delivery | `{"anban_progress_stage":"delivery"}` |
+开始业务执行前，根据本次任务的真实工作内容调用 `set_task_progress_plan`，一次声明 2-7 个工作阶段，优先保持 3-5 个。阶段 ID 使用稳定的 `snake_case`，不得使用 `system_` 前缀；每个阶段提供简洁标题和可选目标。恢复执行时保留已完成前缀，只重排尚未开始的尾部阶段。
 
-进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+计划提交成功后，为每个阶段使用官方 `TaskCreate` 创建一个阶段 Task，并在 metadata 中写入 `{"anban_stage_id":"<stage_id>"}`。保存返回的 Task id。进入阶段时执行 `TaskUpdate status=in_progress`，完成该阶段的全部业务工作后执行 `TaskUpdate status=completed`；两次更新都携带相同的 `anban_stage_id`，并可在 description 中写一条面向用户的最新进展。Runner Hook 只依据 metadata 上报 `active` / `complete`，不得按标题推断阶段。
 
-阶段边界必须按现有十步流程执行：`analysis` 覆盖步骤 1 至步骤 5，项目解析、任务输入和产品档案全部完成后才完成；`production` 覆盖步骤 6 至步骤 8，文案、资产规划、全部所选图片与合规闭环完成后才完成；`delivery` 覆盖步骤 9、步骤 10、最终报告与 feedback，manifest 及所有必需产物通过校验后才完成。
-
+阶段完成不执行阶段级产物阻断；最终必需产物统一由 Runner Stop Hook 验收。不得上报百分比，不得把公众号草稿或正式发布声明为 Agent 阶段，这两个后续阶段由 Server 管理。
 ## 创作流程
 
 > **交付模块与数量严格以任务配置的 `selected_modules` 为准**（由服务端按用户在创建任务时的勾选注入）：未勾选的模块**禁止生成**、`asset-plan.md` 不得含对应节、manifest 与最终报告不含该模块。详情页节数、各模块张数同样以任务配置为准（默认：主图 5 张、详情 8-12 节、封面 1-3 张、分享 1-3 张、SKU 按变体数）。
@@ -102,7 +97,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 #### 步骤 1：创建任务列表与获取项目
 
-用 `TaskCreate` 创建细粒度业务任务列表（公共前置 → 产品档案 → 卖点文案 → 资产规划 → 图片生成 → 合规 → 交付校验 → 报告），每个任务 `blockedBy` 前一个，且都不携带 `anban_progress_stage`。后续每步开始前 `TaskUpdate status=in_progress`、完成后 `completed`；这些更新不替代三个阶段 Task 的独立生命周期。
+用 `TaskCreate` 创建细粒度业务任务列表（公共前置 → 产品档案 → 卖点文案 → 资产规划 → 图片生成 → 合规 → 交付校验 → 报告），每个任务 `blockedBy` 前一个，且都不携带 `anban_stage_id`。后续每步开始前 `TaskUpdate status=in_progress`、完成后 `completed`；这些细粒度任务不属于平台生命周期，只有前述按本次计划动态创建、携带 `anban_stage_id` 的阶段 Task 驱动生命周期。
 
 通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`；非空则用作 `$PROJECT_ID`。为空时调用 `list_projects(platform="ecommerce")`；只有一个匹配项目直接用；多个则按用户品类/品牌与项目 `name`/`positioning`/`keywords` 语义匹配，仍无法唯一解析时写结构化失败诊断并停止。
 
@@ -111,7 +106,6 @@ output directory. TASK_ID is supplied by structured runtime context.
 调用 `get_project_profile(project_id=$PROJECT_ID, scope="ecommerce", task_id=$TASK_ID)` 获取品牌定位、受众、关键词、参考图/风格描述与 `consistency_audit:true`。**`task_id` 必传**：当任务设置了 `visual_style` 覆盖时，服务端用 `task.Overrides.visual_style` 覆盖 `project.visual_style` 返回（`visual_style_source="task"`）。
 
 **产出**：项目画像与模板派生风格
-
 
 **图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 
@@ -247,7 +241,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 任务追踪
 
-- 除三个可追踪阶段 Task 外，用 `TaskCreate` 创建细粒度业务任务列表，每个业务 Task 对应一个流程步骤并设置依赖，不携带 `anban_progress_stage`
+- 生命周期阶段 Task 的数量与标题完全遵循本次动态计划；另用 `TaskCreate` 创建细粒度业务任务列表，每个业务 Task 对应一个流程步骤并设置依赖，不携带 `anban_stage_id`
 - 开始前：`TaskUpdate status → in_progress`；完成后：`TaskUpdate status → completed`
 - 报告进度示例：`[N/M] 详情页生成完成 → output/ (8节，自检通过率 90%)`
 

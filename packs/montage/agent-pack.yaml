@@ -1,5 +1,5 @@
 id: montage
-version: 1.0.2
+version: 2.0.0
 kind: managed
 display_name: Montage 视频
 description: 使用 OpenMontage 从素材和业务输入生产最终视频与交付清单。
@@ -20,10 +20,6 @@ surfaces: [plugin, project, task, plan]
 features: [video-generation, source-assets]
 billing_operations:
   montage: task.montage
-progress:
-  - {id: prepare, title: 准备 Montage 项目, active_percent: 5, complete_percent: 20}
-  - {id: production, title: 视频生产, active_percent: 30, complete_percent: 85}
-  - {id: delivery, title: 交付验收, active_percent: 90, complete_percent: 100, required_artifacts: [output/final.mp4, output/montage-project.json, output/cover.png, output/delivery-manifest.json]}
 artifacts:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}

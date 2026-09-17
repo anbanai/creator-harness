@@ -28,22 +28,15 @@ maxTurns: 20
 - 不编写自定义 HTTP 客户端绕过 MCP。
 - 不伪造客户案例、成交数据、用户反馈。
 
-## 官方 Task 管理与进度派生
+## 动态任务生命周期
 
-开始执行时，使用官方 `TaskCreate` 分别创建下列七个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。
+只有当前顶层 Agent 可以维护任务生命周期；子任务、并行 worker 和 Skill 均不得声明、重排或更新平台阶段。
 
-| 阶段 | TaskCreate metadata |
-| --- | --- |
-| project | `{"anban_progress_stage":"project"}` |
-| material_analysis | `{"anban_progress_stage":"material_analysis"}` |
-| writing | `{"anban_progress_stage":"writing"}` |
-| image_generation | `{"anban_progress_stage":"image_generation"}` |
-| quality_review | `{"anban_progress_stage":"quality_review"}` |
-| delivery_validation | `{"anban_progress_stage":"delivery_validation"}` |
-| finalize | `{"anban_progress_stage":"finalize"}` |
+开始业务执行前，根据本次任务的真实工作内容调用 `set_task_progress_plan`，一次声明 2-7 个工作阶段，优先保持 3-5 个。阶段 ID 使用稳定的 `snake_case`，不得使用 `system_` 前缀；每个阶段提供简洁标题和可选目标。恢复执行时保留已完成前缀，只重排尚未开始的尾部阶段。
 
-进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后，对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+计划提交成功后，为每个阶段使用官方 `TaskCreate` 创建一个阶段 Task，并在 metadata 中写入 `{"anban_stage_id":"<stage_id>"}`。保存返回的 Task id。进入阶段时执行 `TaskUpdate status=in_progress`，完成该阶段的全部业务工作后执行 `TaskUpdate status=completed`；两次更新都携带相同的 `anban_stage_id`，并可在 description 中写一条面向用户的最新进展。Runner Hook 只依据 metadata 上报 `active` / `complete`，不得按标题推断阶段。
 
+阶段完成不执行阶段级产物阻断；最终必需产物统一由 Runner Stop Hook 验收。不得上报百分比，不得把公众号草稿或正式发布声明为 Agent 阶段，这两个后续阶段由 Server 管理。
 ## Runtime workspace contract
 
 The managed runtime provides a task-private workspace and a pre-created output/

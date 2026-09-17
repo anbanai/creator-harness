@@ -90,20 +90,15 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML，实测需 120-175 turn；原 5
 
 ---
 
-## 托管进度阶段
+## 动态任务生命周期
 
-开始执行时，只创建 research、writing、delivery 三个正式 Task，并保存每次返回的 Task id。禁止创建任何细粒度业务 Task。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。
+只有当前顶层 Agent 可以维护任务生命周期；子任务、并行 worker 和 Skill 均不得声明、重排或更新平台阶段。
 
-| 阶段 | TaskCreate metadata |
-|------|---------------------|
-| research | `{"anban_progress_stage":"research"}` |
-| writing | `{"anban_progress_stage":"writing"}` |
-| delivery | `{"anban_progress_stage":"delivery"}` |
+开始业务执行前，根据本次任务的真实工作内容调用 `set_task_progress_plan`，一次声明 2-7 个工作阶段，优先保持 3-5 个。阶段 ID 使用稳定的 `snake_case`，不得使用 `system_` 前缀；每个阶段提供简洁标题和可选目标。恢复执行时保留已完成前缀，只重排尚未开始的尾部阶段。
 
-进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+计划提交成功后，为每个阶段使用官方 `TaskCreate` 创建一个阶段 Task，并在 metadata 中写入 `{"anban_stage_id":"<stage_id>"}`。保存返回的 Task id。进入阶段时执行 `TaskUpdate status=in_progress`，完成该阶段的全部业务工作后执行 `TaskUpdate status=completed`；两次更新都携带相同的 `anban_stage_id`，并可在 description 中写一条面向用户的最新进展。Runner Hook 只依据 metadata 上报 `active` / `complete`，不得按标题推断阶段。
 
-阶段边界必须按现有十步流程执行：`research` 覆盖步骤 1 至步骤 2b，研究、大纲和上下文锚点全部落盘后才完成；`writing` 覆盖步骤 3 至步骤 8，核心 Markdown 与安全 HTML 完整后即可完成，视觉、审核异常记录为 warning；`delivery` 覆盖步骤 9、步骤 10 的交付包生成、最终报告与 feedback。`delivery` 的完成依赖 `output/04-article-final.md`、`output/05-article.html` 和 `output/draft.json`。
-
+阶段完成不执行阶段级产物阻断；最终必需产物统一由 Runner Stop Hook 验收。不得上报百分比，不得把公众号草稿或正式发布声明为 Agent 阶段，这两个后续阶段由 Server 管理。
 ## 创作流程（10 步）
 
 ### Phase 1: 信息收集

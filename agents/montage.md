@@ -53,20 +53,15 @@ and write through its runtime-provided `output` link.
 - `output/delivery-manifest.json`
 - 失败时写 `output/failure-diagnosis.md`
 
-## 托管进度阶段
+## 动态任务生命周期
 
-开始执行时，使用官方 `TaskCreate` 分别创建下列三个阶段任务，并保存每次返回的 Task id。Runner Hooks 依据每个任务 metadata 中的 `anban_progress_stage` 派生平台进度；阶段标识只由该 metadata 派生，不得依赖任务标题推断阶段。每个阶段只创建一个带该 metadata 的可追踪阶段 Task；如另建细粒度业务 Task，不得携带 `anban_progress_stage`，也不得因某个细粒度任务完成而提前完成阶段 Task。
+只有当前顶层 Agent 可以维护任务生命周期；子任务、并行 worker 和 Skill 均不得声明、重排或更新平台阶段。
 
-| 阶段 | TaskCreate metadata |
-|------|---------------------|
-| prepare | `{"anban_progress_stage":"prepare"}` |
-| production | `{"anban_progress_stage":"production"}` |
-| delivery | `{"anban_progress_stage":"delivery"}` |
+开始业务执行前，根据本次任务的真实工作内容调用 `set_task_progress_plan`，一次声明 2-7 个工作阶段，优先保持 3-5 个。阶段 ID 使用稳定的 `snake_case`，不得使用 `system_` 前缀；每个阶段提供简洁标题和可选目标。恢复执行时保留已完成前缀，只重排尚未开始的尾部阶段。
 
-进入任一阶段时，对该阶段保存的 Task id 执行 `TaskUpdate status=in_progress`，并传入表中完全相同的 metadata。该阶段交付完成后（即该阶段的全部业务步骤和交付物均已完成），才对同一 Task id 执行 `TaskUpdate status=completed`，同样传入完全相同的 metadata。不得省略 TaskUpdate 的 metadata；即使只改变 status，也必须随每次更新提交对应的 `anban_progress_stage`。
+计划提交成功后，为每个阶段使用官方 `TaskCreate` 创建一个阶段 Task，并在 metadata 中写入 `{"anban_stage_id":"<stage_id>"}`。保存返回的 Task id。进入阶段时执行 `TaskUpdate status=in_progress`，完成该阶段的全部业务工作后执行 `TaskUpdate status=completed`；两次更新都携带相同的 `anban_stage_id`，并可在 description 中写一条面向用户的最新进展。Runner Hook 只依据 metadata 上报 `active` / `complete`，不得按标题推断阶段。
 
-阶段边界必须按现有工作流执行：`prepare` 覆盖步骤 1 至步骤 8，运行时输入、冻结比例、profile、pipeline 能力与 `output/montage-project.json` 全部准备完成后才完成；`production` 覆盖步骤 9，上游 pipeline 完整运行并产生可供收集的输出后才完成；`delivery` 覆盖步骤 10 至步骤 14，最终视频、封面、delivery manifest、附属产物登记、task file 校验与 feedback 全部完成后才完成。
-
+阶段完成不执行阶段级产物阻断；最终必需产物统一由 Runner Stop Hook 验收。不得上报百分比，不得把公众号草稿或正式发布声明为 Agent 阶段，这两个后续阶段由 Server 管理。
 ## 工作流
 
 1. 从结构化运行时上下文获取 `$TASK_ID` 与 `$PROJECT_ID`。

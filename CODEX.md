@@ -81,33 +81,24 @@ manifest explicitly sets `"hooks": []`. Each TOML subagent therefore continues
 to own delivery validation and its final quality summary in
 `developer_instructions`.
 
-### Progress Compatibility Boundary
+### Dynamic Lifecycle Boundary
 
-Managed Claude execution derives progress from Task metadata and Agent SDK
-Hooks. The Runner observes the stable `metadata.anban_progress_stage` declared
-by Agent Packs, validates required file-backed artifacts, and sends structured
-events through the authenticated managed progress endpoint.
+The top-level Agent declares the task's real work plan with
+`set_task_progress_plan`; Skills and worker agents never own or mutate the
+lifecycle. Plans contain 2-7 stable `snake_case` stage IDs, preferably 3-5, and
+must not use the Server-reserved `system_` prefix.
 
-Codex has official lifecycle surfaces, but the current Anban integration is a
-distributed plugin and subagent installation, not an App Server host:
+Managed Claude execution binds each declared stage to official Task metadata
+using `metadata.anban_stage_id`. The Runner observes `TaskCreate` and
+`TaskUpdate` through Agent SDK Hooks and reports only `active` or `complete`
+transitions. Codex and DSH agents call `update_task_progress` directly because
+their distributed plugin integrations do not expose the same authenticated
+Runner Hook path.
 
-- Official `PostToolUse` can observe `update_plan` and other local tools. Its
-  structured input exposes `tool_name`, `tool_input`, and `tool_response`, but
-  it provides no stable Agent Pack stage identifier equivalent to Claude Task
-  metadata.
-- An App Server host can consume `turn/*` and `item/*` notifications, including
-  `turn/plan/updated`, but plan entries contain only `step` and `status`.
-- This Codex plugin does not currently include an authenticated reporter adapter
-  that combines either official event surface with Anban's managed progress
-  endpoint.
-
-For that reason, existing Codex TOML agents that publish business-stage progress
-retain explicit `update_task_progress` calls as a temporary compatibility path.
-`/btw` and model prompts are not telemetry. Do not infer stages from plan/task
-titles, add shell polling, or introduce a custom Codex protocol. A future
-migration should build on official `PostToolUse`/`Stop` Hooks or App Server plan
-notifications once stable stage identity and authenticated transport are both
-available.
+The Server owns stage titles, ordering, timestamps, revision, validation, and
+the `system_draft` / `system_publication` stages. Never infer lifecycle state
+from task titles or logs, report percentages, or perform stage-level artifact
+validation. Required file-backed artifacts are validated once at finalization.
 
 Official references: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 [Codex App Server](https://learn.chatgpt.com/docs/app-server).
