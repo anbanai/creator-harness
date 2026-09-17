@@ -58,11 +58,7 @@ describe('WeChat draft lifecycle contract', () => {
       'packs/article/agent.dsh.yml',
       'dsh/presets/article/agent.cordis.yml',
     ]
-    const packagePaths = [
-      ...managedAgentPaths,
-      'skills/article/SKILL.md',
-      'dsh/presets/article/skills/article-publishing/SKILL.md',
-    ]
+    const packagePaths = [...managedAgentPaths, 'skills/article/SKILL.md']
     const interactiveSkill = await readFile(join(root, 'skills/article-publishing/SKILL.md'), 'utf8')
     expect(interactiveSkill).toContain('`create_draft`')
     for (const path of packagePaths) {
@@ -74,10 +70,13 @@ describe('WeChat draft lifecycle contract', () => {
     }
     for (const path of managedAgentPaths) {
       const text = await readFile(join(root, path), 'utf8')
-      expect(text, path).not.toContain('`create_draft`')
+      expect(text, path).not.toContain('create_draft')
       expect(text, path).not.toContain('draft-result.json')
+      expect(text, path).not.toContain('发布恢复模式')
       expect(text, path).not.toContain('Server publication')
       expect(text, path).not.toContain('publication-state (Server-owned)')
+      expect(text, path).not.toContain('本流程不调用外部平台能力')
+      expect(text, path).not.toContain('草稿创建由上层系统在任务终态处理')
     }
     const managedArticleSkill = await readFile(join(root, 'skills/article/SKILL.md'), 'utf8')
     expect(managedArticleSkill).not.toContain('create_draft')
@@ -93,12 +92,14 @@ describe('WeChat draft lifecycle contract', () => {
 
     expect(interactiveSkill).toContain('本节只适用于用户在交互会话中明确要求立即创建草稿')
     expect(interactiveSkill).toContain('调用后不在 Agent 侧重试')
+    expect(interactiveSkill).not.toContain('output/draft.json')
+    expect(interactiveSkill).not.toContain('托管 Article')
     expect(interactiveSkill).not.toContain('draft.json` 的 `articles`')
     expect(interactiveSkill).not.toContain('articles=draft.json.articles')
     expect(interactiveSkill).not.toContain('retryable=true')
   })
 
-  it('routes publication recovery directly to image generation in every managed article agent', async () => {
+  it('keeps runtime recovery policy out of every managed article agent', async () => {
     const managedAgentPaths = [
       'agents/article.md',
       'agents/article.toml',
@@ -109,13 +110,16 @@ describe('WeChat draft lifecycle contract', () => {
     ]
     for (const path of managedAgentPaths) {
       const text = await readFile(join(root, path), 'utf8')
-      expect(text, path).toContain('发布恢复模式')
-      expect(text, path).toContain('image_generation')
-      expect(text, path).toContain('不得重新执行选题、正文创作、SEO 或语义审核')
+      expect(text, path).not.toContain('发布恢复模式')
+      expect(text, path).not.toContain('Server finalizer')
+      expect(text, path).not.toContain('正式发布能力')
+      expect(text, path).not.toContain('create_draft')
+      expect(text, path).toContain('upload_image')
+      expect(text, path).toContain('output/draft.json')
     }
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.1.30', async () => {
+  it('keeps both native manifests and the Claude marketplace at 4.1.31', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -126,7 +130,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.1.30')
+      expect(version, path).toBe('4.1.31')
     }
   })
 })

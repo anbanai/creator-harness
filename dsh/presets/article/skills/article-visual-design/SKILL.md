@@ -59,7 +59,7 @@ description: 'Use when generating or processing images for WeChat articles. Use 
 
 ## MCP 工具
 
-任何图像 MCP 返回 `execution_identity_required` 或 `execution_identity_mismatch` 时，必须按不可重试的运行时身份故障处理：不得更换 prompt、比例、`image_type` 或工具重复尝试；保留已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉和草稿步骤并返回 Article Agent 继续生成核心 HTML。身份失败不属于下文的质量或供应商重试预算；诊断不得包含令牌、密钥或完整环境变量。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
+任何图像 MCP 返回 `execution_identity_required` 或 `execution_identity_mismatch` 时，必须按不可重试的运行时身份故障处理：不得更换 prompt、比例、`image_type` 或工具重复尝试；保留已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，停止剩余视觉工作并返回 Article Agent 继续生成核心 HTML。身份失败不属于下文的质量或供应商重试预算；诊断不得包含令牌、密钥或完整环境变量。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 
 | MCP 工具 | 说明 |
 |----------|------|
@@ -151,12 +151,12 @@ Phase 4: 配图生成与独立内容审核
 
 > **封面开关守卫**：当 `article_image_mode` 为 `content_only` 或 `text_only` 时，**Phase 2 整体跳过**——不调 `generate_image`、不生成 `output/cover.png`、不取 `media_id`/`$COVER_PATH`。`article-cover-design` skill 同步跳过。封面关闭或人物参考启用时，Phase 4 正文图改用文本风格块独立生成。
 
-封面在未启用人物参考时可作为正文配图风格锚点；启用人物参考时仅用于发布封面。**封面设计已独立成稿**——using the `article-cover-design` skill，它遵循任务有效比例，智能适配时参考公众号展示规格与中心安全区，受控决定是否显式裁剪，并从文章核心隐喻推导视觉概念，由 Agent 用质量评分卡把关。本阶段只交代与本 skill 的衔接：
+封面在未启用人物参考时可作为正文配图风格锚点；启用人物参考时只保留为封面产物。**封面设计已独立成稿**——using the `article-cover-design` skill，它遵循任务有效比例，智能适配时参考公众号展示规格与中心安全区，受控决定是否显式裁剪，并从文章核心隐喻推导视觉概念，由 Agent 用质量评分卡把关。本阶段只交代与本 skill 的衔接：
 
-- **核心规格**：用户明确比例原样生成；智能适配时可参考公众号宽屏构图和转发卡中心安全区。只有用户明确要求精确尺寸，或智能适配时 Agent 判断发布确有需要，才显式调用 `crop_image`。
+- **核心规格**：用户明确比例原样生成；智能适配时可参考公众号宽屏构图和转发卡中心安全区。只有用户明确要求精确尺寸，或目标展示规格确有需要，才显式调用 `crop_image`。
 - **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`；只有用户明确要求精确像素时再显式 `crop_image` 到 `output/cover-exact.png` 并更新 `$COVER_PATH`，否则 `$COVER_PATH="output/cover.png"`；需要质量审核时单独调用 `analyze_image`，通过后调用 `upload_image`。
 
-- **质量评分卡不过** → 根据可见问题锐化 prompt 重试，最多 3 次；耗尽后保留已有产物，在 `output/final-review.md` 记录 `article_cover_quality_failed` warning，跳过草稿创建并返回 Article Agent 继续核心交付；不得请求用户协助，**不得**用未通过封面发布。
+- **质量评分卡不过** → 根据可见问题锐化 prompt 重试，最多 3 次；耗尽后保留已有产物，在 `output/final-review.md` 记录 `article_cover_quality_failed` warning，返回 Article Agent 继续核心交付；不得请求用户协助，也不得把未通过封面标记为可用。
 - 详细推导链、双评分卡、迭代策略、`cover-prompt.md` 与 `cover-quality.json` 审计见 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)；三维风格方向参考见 [references/cover.md](references/cover.md)。
 
 **产出**：`output/cover-plan.md`, `output/cover-prompt.md`, `output/cover-quality.json`, `output/cover.png`, `media_id`, `$COVER_PATH`
@@ -322,7 +322,7 @@ analyze_image(
 - 单图失败 → 重试或降级标记
 - 节奏/模板违规 → 回到 Phase 0 重新规划
 - 内容审核通过率 < 80% → 检查 prompt 构建逻辑，必要时回退到 Phase 3 重新规划
-- 超过一半章节配图在各自限定重试后仍失败 → 保留已有产物，在 `output/final-review.md` 记录 `article_content_images_failed` warning 和缺失章节，跳过草稿创建并返回 Article Agent 继续核心交付，不得请求用户协助
+- 超过一半章节配图在各自限定重试后仍失败 → 保留已有产物，在 `output/final-review.md` 记录 `article_content_images_failed` warning 和缺失章节，返回 Article Agent 继续核心交付，不得请求用户协助
 
 ---
 

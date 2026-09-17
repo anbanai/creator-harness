@@ -1,6 +1,6 @@
 ---
 name: article-viral-strategy
-description: 'Use when 微信公众号爆款互动引擎——为文章注入完读率/转发率/收藏率/评论率四大互动驱动力。覆盖选题社交货币判定、标题CTR（好奇心缺口+情绪+数字）、黄金三秒开头钩子、情绪弧与金句密度、完读率节奏、转发/收藏/评论诱因、发布前爆款审计。当公众号文章创作流进入选题、写作、标题优化或发布验收任一环节时务必使用此 skill；凡是用户想提升公众号文章的曝光、流量、打开率、点赞、评论、转发、收藏、涨粉的，都必须用此 skill。不要因为"只是写一篇文章"就跳过——爆款不是写完才考虑的，而是从选题、标题、开头、结构每一步都要注入的。'
+description: Use when optimizing a WeChat article for opens, completion, sharing, saves, or comments during topic, writing, title, or final quality review.
 ---
 
 # 微信公众号爆款互动引擎
@@ -71,7 +71,7 @@ description: 'Use when 微信公众号爆款互动引擎——为文章注入完
 - **核心情绪**：本文击中的主情绪（焦虑/好奇/共鸣/愤怒/感动/认同/释然/紧迫…）——贯穿标题、开头、结尾
 - **转发潜力**：高/中/低 + 理由（是否给了读者"转发 = 表达我自己"的素材）
 - **收藏潜力**：高/中/低 + 理由（是否有清单/步骤/对比/避坑等可保存信息）
-- **时效借势**：是否搭季节/节日/热点窗口；若是，标注最佳发布时机
+- **时效借势**：是否搭季节/节日/热点窗口；若是，标注最佳内容时机
 
 判定方法与货币类型详解见 [viral-elements.md](references/viral-elements.md)。
 
@@ -98,7 +98,7 @@ description: 'Use when 微信公众号爆款互动引擎——为文章注入完
 
 标题公式库、6 种好奇心缺口、合规边界见 [title-psychology.md](references/title-psychology.md)。
 
-### 环节 4：发布前爆款审计（步骤 9，硬闸门）
+### 环节 4：成品互动质量审计（步骤 9，硬闸门）
 
 对成品（`04-article-final.md` + `seo-result.md` + 封面）按 **7 维** 打分，产出 `output/viral-audit.md`：
 
@@ -110,9 +110,7 @@ description: 'Use when 微信公众号爆款互动引擎——为文章注入完
 6. 视觉停留（封面 + 配图协同，必须由 Agent 自主完成可见内容审查，读取 `cover_strategy`、`visual_quality_scorecard` 与 `cover_effectiveness_scorecard`，形成可见内容质量评分表，不得只凭"风格统一"或单一自动评分通过）
 7. 互动诱因（转发/收藏/评论）
 
-**不做服务端分复核**：草稿尚未发布、零互动数据，`score_article` 这类基于真实阅读/互动数的工具无法给草稿打分（强行调用会因缺 `read_count` 报错）。因此发布前审计以 **7 维人工评分** 为唯一闸门；`score_article` 留待发布后、积累真实数据时做效果复盘。
-
-**闸门规则**：整体分 < 阈值 → 回步骤 3 重写并重新审计，**不得发布**。允许缺 1–2 个非关键维度（降级说明），但 **标题CTR / 开头钩子 / 合规** 三项为**硬性必过**。封面开启时，缺 `viral-audit.md`、缺 `cover_effectiveness_scorecard`、或缺少 Agent 自主完成的可见内容审查与可见内容质量评分表，均不得发布。
+**闸门规则**：整体分 < 阈值 → 回步骤 3 重写并重新审计，不得标记质量验收通过。允许缺 1–2 个非关键维度（降级说明），但 **标题 CTR / 开头钩子 / 合规** 三项必须通过。封面开启时，缺 `viral-audit.md`、缺 `cover_effectiveness_scorecard`、或缺少 Agent 自主完成的可见内容审查与可见内容质量评分表，质量验收不通过。
 
 审计 rubric、阈值、回退规则见 [viral-audit.md](references/viral-audit.md)。
 
@@ -133,4 +131,4 @@ description: 'Use when 微信公众号爆款互动引擎——为文章注入完
 - [viral-elements.md](references/viral-elements.md) — 五维爆款要素详解 + 社交货币类型 + 爆款公式速查 + 爆款vs普通对比
 - [title-psychology.md](references/title-psychology.md) — CTR 标题公式库 + 6 种好奇心缺口 + 合规边界 + 3 变体打分表 + 标题-封面协同
 - [retention-design.md](references/retention-design.md) — 黄金三秒 6 种钩子 + 情绪弧曲线 + 金句密度 + 移动端完读率节奏 + 转发/收藏/评论诱因设计
-- [viral-audit.md](references/viral-audit.md) — 7 维发布前爆款审计 rubric + 阈值 + 回退规则
+- [viral-audit.md](references/viral-audit.md) — 7 维成品互动质量审计 rubric + 阈值 + 回退规则

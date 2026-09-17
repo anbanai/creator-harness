@@ -9,7 +9,7 @@ description: 'Use when a user requests a WeChat Official Account article cover, 
 
 本 Skill 是公众号文章封面的唯一设计入口。封面首先是“标题与正文承诺的缩略图”，其次才是风格锚点。必须做到：主题具体、缩略图可读、中心分享卡裁切安全、视觉媒介匹配、参考图语义明确、未通过质量闸门不得上传。
 
-当结构化运行控制 `article_image_mode` 为 `content_only` 或 `text_only` 时跳过整个 Skill：不生成 `output/cover.png`，不写封面审计文件，不上传 `thumb_media_id`。其他模式继续执行。
+当结构化运行控制 `article_image_mode` 为 `content_only` 或 `text_only` 时跳过整个 Skill：不生成、审核或上传封面。其他模式继续执行。
 
 按需完整读取以下 references，不能只凭本文件中的摘要执行：
 
@@ -31,7 +31,7 @@ description: 'Use when a user requests a WeChat Official Account article cover, 
 
 同时读取 `output/context-brief.md`、`output/seo-result.md`、digest、`output/04-article-final.md`。不得从 writer YAML 推导视觉风格。
 
-### 图像参数合同：比例与发布派生
+### 图像参数合同：比例与展示派生
 
 - 用户明确比例：当 `resolved_profile.image_ratio != "auto"` 时，原样作为 `$EFFECTIVE_ASPECT_RATIO`。
 - 智能适配：当 `resolved_profile.image_ratio == "auto"` 时，从 `resolved_profile.allowed_image_ratios` 选择具体比例；公众号封面优先选择支持的最宽横向比例，通常为 `16:9`。
@@ -64,7 +64,7 @@ description: 'Use when a user requests a WeChat Official Account article cover, 
 
 按 `references/art-direction.md` 写出 8 要素视觉导演合同：
 
-1. 比例与发布派生
+1. 比例与展示派生
 2. 标题策略
 3. 人物或主体
 4. 背景与场景
@@ -152,7 +152,7 @@ upload_image(
 
 单张封面最多 3 次生成尝试。失败时先修复概念、主体、构图或媒介选择，再重写 prompt；不得只堆风格形容词。人物参考启用时，身份一致性是硬闸门，不能用“构图好看”抵消。
 
-3 次仍未通过时，在 `output/final-review.md` 记录结构化 warning：`stage=image_generation`、`error_code=article_cover_quality_failed`、安全摘要和可继续的 `resume_from=image_generation`。参考图能力不支持时使用 `article_cover_reference_unsupported`；人物文件缺失或损坏时使用 `article_cover_portrait_unavailable`。保留已有产物，跳过草稿创建并返回 Article Agent 继续核心交付；不得请求用户协助，不得上传未通过封面。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
+3 次仍未通过时，在 `output/final-review.md` 记录结构化 warning：`stage=image_generation`、`error_code=article_cover_quality_failed`、安全摘要和可继续的 `resume_from=image_generation`。参考图能力不支持时使用 `article_cover_reference_unsupported`；人物文件缺失或损坏时使用 `article_cover_portrait_unavailable`。保留已有产物并返回 Article Agent 继续核心交付；不得请求用户协助，不得上传未通过封面。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 
 ## 完成条件
 
@@ -160,4 +160,4 @@ upload_image(
 - `output/cover-prompt.md` 已记录最终 prompt、比例来源、裁剪决定、`required_entities` 和参考路径用途。
 - `output/cover-quality.json` 中两个评分卡均通过；人物启用时身份字段也通过。
 - `cover_effectiveness_scorecard.overall_pass=true` 且 `visual_quality_scorecard.overall_pass=true`。仅有旧的 6 维视觉评分全为 high 不得通过。
-- `final-review.md` 与 `viral-audit.md` 读取本次结果；缺 `viral-audit.md` 不得发布。
+- `final-review.md` 与 `viral-audit.md` 读取本次结果；缺 `viral-audit.md` 时质量验收不通过。

@@ -1,4 +1,4 @@
-# 发布前爆款审计（硬闸门）
+# 成品互动质量审计（硬闸门）
 
 ## Contents
 
@@ -11,17 +11,16 @@
   - [5. 完读率结构](#5-完读率结构)
   - [6. 视觉停留](#6-视觉停留)
   - [7. 互动诱因](#7-互动诱因)
-- [为什么不做"服务端分复核"](#为什么不做服务端分复核)
 - [闸门规则](#闸门规则)
 - [回退路径](#回退路径)
 
-> 配合 [SKILL.md](../SKILL.md) 使用。环节 4（发布前爆款审计）的方法论详解。
+> 配合 [SKILL.md](../SKILL.md) 使用。环节 4（成品互动质量审计）的方法论详解。
 
-成品（`04-article-final.md` + `seo-result.md` + 封面 + digest）发布前，按 7 维审计，产出 `output/viral-audit.md`。这是与 `final-review.md`（既有质量/合规/视觉验收）**并列**的爆款专项闸门。
+对成品（`04-article-final.md` + `seo-result.md` + 封面 + digest）按 7 维审计，产出 `output/viral-audit.md`。它与 `final-review.md` 的内容、合规和视觉验收并列。
 
 ## 审计原则
 
-- 评分用于 **发布前自检与回退决策**，不做"必爆"承诺（爆款有运气/时机成分，审计保证的是"爆款杠杆已打满 + 无硬伤"）。
+- 评分用于 **成品自检与回退决策**，不做"必爆"承诺；它只判断可控的互动设计是否完整且无硬伤。
 - 每个维度给 **证据**（指向正文具体位置/原句），不裸打分。
 - 合规相关项（极限词/标题党/违规诱导）为 **一票否决**。
 
@@ -60,7 +59,7 @@
 ### 6. 视觉停留
 
 - **高分**：封面主视觉与标题钩子、digest 前半句、`cover_strategy` 的目标读者/痛点/点击理由一致；由 Agent 自主完成可见内容审查，确认 `cover_effectiveness_scorecard.information_scent_alignment`、`audience_motivation`、`content_specificity` 均通过；封面里的主体/冲突/短文字能回指正文证据或摘要承诺；配图有信息量和视觉多样性，并把 `article-visual-design` / `article-cover-design` 的可见内容质量结论汇总为可见内容质量评分表。不得只凭"风格统一"给高分。
-- **低分**：封面与标题各说各话、读者动机弱、通用隐喻可替换、配图雷同/纯装饰；缺 `cover_strategy`、缺/未通过 `cover_effectiveness_scorecard`、缺少 Agent 自主完成的可见内容审查与可见内容质量评分表、或缺 `viral-audit.md` 的封面链路均不得发布。
+- **低分**：封面与标题各说各话、读者动机弱、通用隐喻可替换、配图雷同/纯装饰；缺 `cover_strategy`、缺/未通过 `cover_effectiveness_scorecard`、缺少 Agent 自主完成的可见内容审查与可见内容质量评分表、或缺 `viral-audit.md` 时，质量验收不通过。
 - **证据**：`cover-prompt.md` 的 `cover_strategy` 与最终 prompt；`cover-quality.json` 的 `visual_quality_scorecard`、`cover_effectiveness_scorecard`（特别是 `information_scent_alignment`、`audience_motivation`、`content_specificity`）和人物启用时的身份结论；以及 `images.json`。
 
 ### 7. 互动诱因
@@ -69,27 +68,21 @@
 - **低分**：无诱因 / 靠违规诱导（抽奖、关注换资料、回复关键词、扫码、加微信、进群、跳小程序/其他公众号/视频号/外链交易，一票否决）。
 - **证据**：`04-article-final.md` 结尾 + 各诱因位置。
 
-## 为什么不做"服务端分复核"
-
-发布前审计以 **7 维人工评分** 为唯一闸门，**不调用 `score_article`**。原因：`score_article` 这类服务端工具基于**已发布文章的真实互动数据**（阅读/点赞/转发/评论/收藏数）算分——它要求 `read_count > 0`，对**尚未发布、零互动数据的草稿**无能为力，硬塞数据只会得到无意义分数。它属于**发布后复盘工具**：文章上线并积累真实阅读/互动数据后，再跑它做发布效果评估，与本闸门是不同生命周期阶段。
-
-这避免了"为对标而编造阅读数"的陷阱，让审计聚焦于"爆款杠杆是否打满"这一草稿阶段真正可控的事。
-
 ## 闸门规则
 
 **整体（7 维均分）阈值**：
 
-- **≥ 7.0**：通过，可发布。
+- **≥ 7.0**：质量验收通过。
 - **5.5–6.9**：边界，**至少补齐** 标题CTR/开头钩子/价值密度后重审。
 - **< 5.5**：不通过，回步骤 3 重写。
 
-**硬性必过（任一不过即不发布）**：
+**硬性必过（任一不过即验收不通过）**：
 
 - 标题合规（无极限词/无标题党误导）
 - 开头有钩子
 - 全文合规（无违禁词，复用 `content-quality-report.md` 结论）
 - 互动诱因合规（无违规诱导、无导流风险）
-- 封面开启时，`cover_quality_gate` 必须同时读取 `visual_quality_scorecard` 与 `cover_effectiveness_scorecard`；缺 `viral-audit.md` 不得发布；缺少 Agent 自主完成的可见内容审查与可见内容质量评分表不得通过
+- 封面开启时，`cover_quality_gate` 必须同时读取 `visual_quality_scorecard` 与 `cover_effectiveness_scorecard`；缺 `viral-audit.md`、Agent 自主完成的可见内容审查或可见内容质量评分表时不得通过
 
 **允许降级**：视觉停留维度可因配图部分失败而降级（复用步骤 7 的缺图降级规则），但需在 `viral-audit.md` 说明。
 

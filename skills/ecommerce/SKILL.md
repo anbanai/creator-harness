@@ -29,7 +29,7 @@ description: 'Use when 电商出图全自动创作。用户提到"电商出图"�
 ### 步骤 1：解析任务上下文与获取项目
 
 - **读取 `$TASK_ID`**：该值由结构化运行时上下文提供，全程复用。
-- Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`；非空 → `$PROJECT_ID`。为空 → `list_projects(platform="ecommerce")`，唯一匹配直接用，多个按品类/品牌语义匹配或让用户选。
+- Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`；非空 → `$PROJECT_ID`。为空 → `list_projects(platform="ecommerce")`，唯一匹配直接用；多个候选按品类/品牌语义匹配，仍无法唯一解析时写结构化失败诊断并停止。
 - `get_project_profile(project_id="$PROJECT_ID", scope="ecommerce", task_id="$TASK_ID")` → 品牌定位、受众、参考资产与视觉风格。
 - 读取任务输入：**产品图发现 → `$PRODUCT_PHOTOS`**。读取 `.anban-creator/input-attachments/index.json`，只取 role 为 `ecommerce_product` 且 `type="image"` 的条目，按 `index` 保持上传顺序，直接使用每项 `path` 作为任务相对路径，供 `analyze_image.file_path` 与 `generate_image.ref_image_paths` 使用；期望数见 `product_photo_count`，索引缺失、数量不符或全无可访问时写结构化失败诊断并停止。其余输入为 `selected_modules`、`target_platform`、`selling_points`、`visual_style`、语言。
 

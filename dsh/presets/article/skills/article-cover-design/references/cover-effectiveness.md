@@ -75,10 +75,10 @@ Use high / medium / low for soft dimensions and booleans for hard tests:
 
 ## Failure Handling
 
-- Missing `cover_strategy`, `cover_concept_candidates`, or `cover_effectiveness_scorecard` blocks publishing.
-- `cover_effectiveness_scorecard.overall_pass=false` blocks publishing even if `visual_quality_scorecard.overall_pass=true`.
-- 分析能力不可用或有效性字段缺失时，图片不得通过。不要直接调用 `upload_image` 继续发布；应重新审核或重构概念。
-- 缺 `viral-audit.md` 不得发布. `viral-audit.md` must read `cover-prompt.md` and judge visual stay by relevance and click promise, not by style consistency alone.
+- Missing `cover_strategy`, `cover_concept_candidates`, or `cover_effectiveness_scorecard` fails the cover quality gate.
+- `cover_effectiveness_scorecard.overall_pass=false` fails the gate even if `visual_quality_scorecard.overall_pass=true`.
+- 分析能力不可用或有效性字段缺失时，图片不得通过。不要直接调用 `upload_image`；应重新审核或重构概念。
+- 缺 `viral-audit.md` 不得交付. `viral-audit.md` must read `cover-prompt.md` and judge visual stay by relevance and click promise, not by style consistency alone.
 
 ## Current Failed Example
 

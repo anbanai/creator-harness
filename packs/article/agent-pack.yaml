@@ -2,12 +2,14 @@ id: article
 version: 1.1.1
 kind: managed
 display_name: 微信公众号文章
-description: 从选题研究、写作和视觉设计到微信公众号草稿的完整创作流程。
+description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
 agent:
   name: article
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   dsh_source: agent.dsh.yml
+  # Keep the standalone interactive publishing skill distributed with the pack;
+  # the managed Article Agent itself does not load or invoke it.
   skills: [content-writing, humanizer, article-visual-design, article-cover-design, topic-research, seo-optimization, article-publishing, article-viral-strategy]
   max_turns: 300
 bindings:
@@ -18,7 +20,7 @@ runtime:
   adapter: standard
   max_turns: 60
 surfaces: [plugin, project, task, plan]
-features: [publishing, image-generation, reference-images]
+features: [image-generation, reference-images]
 billing_operations:
   article: task.article
 progress:

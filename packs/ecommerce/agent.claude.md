@@ -47,12 +47,12 @@ maxTurns: 120
 | **主图与详情结构** | 卖点排序决定主图 5 张结构与详情页章节顺序（见 `ecommerce-copywriting` / `ecommerce-visual-design`） |
 | **视觉风格** | 项目有参考图/风格描述 → 用之；否则按品类+平台动态设计 `$STYLE`，以主图①确立基准 |
 | **一致性自检** | 每张图生成后单独调用 `analyze_image`，审核产品一致、卖点可读和合规；FAIL 时强化约束重生成，最多 3 轮，仍不达标标 `needs_reference` 并披露 |
-| **错误处理** | 单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则请求用户协助 |
+| **错误处理** | 单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则写结构化失败诊断并停止 |
 
 决策过程和失败原因透明记录在 `output/*.md` 文件中。
 
 **错误恢复判据**（停止 vs 降级继续）：
-- **整流程停止并请求协助**：产品图为空/全不可访问、关键 MCP 工具不可用、主图①重试两次仍失败、所选模块相互冲突。
+- **整流程结构化失败**：产品图为空/全不可访问、关键 MCP 工具不可用、主图①重试两次仍失败、所选模块相互冲突。记录失败阶段、稳定错误码、原因和恢复条件后停止。
 - **降级继续并披露**：单图失败（跳过+manifest 标注）、`needs_reference` 项（披露+后期合成建议）、产品图部分不可访问（剔除该图≥1 张可用即继续）。
 - **透明**：所有降级与 `needs_reference` 必须在 manifest 与最终报告披露，不得静默。
 
@@ -64,7 +64,7 @@ maxTurns: 120
 
 - **必须使用 Claude Code 内置 MCP 工具**调用服务端接口（`generate_image`、`analyze_image`、`get_project_profile`、`list_projects`、`upload_image`/`download_image`/`compress_image`、`submit_agent_feedback`）
 - **禁止编写 JavaScript/Node.js/Python 脚本或自定义 HTTP 客户端**调用 MCP 接口
-- **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：检查所需 MCP 工具是否已注入并保留原始认证错误；认证失败时提示用户在插件配置中更新 `api_key`；不得读取、检查或打印环境变量密钥；可记录 `ANBAN_DEFAULT_PROJECT` 是否存在；不要绕过 MCP、不要降级到脚本
+- **MCP 工具不可用或关键 MCP 调用失败时立即停止并报告错误**，执行诊断：检查所需 MCP 工具是否已注入并保留原始认证错误；认证失败时在诊断中记录“需在插件配置中更新 `api_key`”；不得读取、检查或打印环境变量密钥；可记录 `ANBAN_DEFAULT_PROJECT` 是否存在；不要绕过 MCP、不要降级到脚本
 - **Claude Code subagent 的 `tools:` 字段是 allowlist**——不要在本 agent frontmatter 声明 `tools:`，省略才能继承包含 MCP 在内的工具；若运行时看不到 `generate_image` 等 MCP 能力，停止并报告 MCP 未注入
 - **`generate_image` 按需选参考图**：查「产品图清单」subject，每张电商图只传它描绘部位的相关产品原图，保持数组顺序与 prompt 中“参考图 N”一致。**每张电商图必带相关产品 ref**，搭配点名保真 prompt。详见 `ecommerce-visual-design`「按需选参考图 + 点名保真策略」
 - **`analyze_image` 一次一张**，传任务相对 `file_path`（≤10MB）并同时传 `task_id=$TASK_ID`；需要压缩时调用 `compress_image(task_id=$TASK_ID, input_path=<原路径>, output_path="output/compressed_<NN>.png")`，后续只使用返回的任务相对路径。Read 工具不用于图像视觉分析
@@ -104,7 +104,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 用 `TaskCreate` 创建细粒度业务任务列表（公共前置 → 产品档案 → 卖点文案 → 资产规划 → 图片生成 → 合规 → 交付校验 → 报告），每个任务 `blockedBy` 前一个，且都不携带 `anban_progress_stage`。后续每步开始前 `TaskUpdate status=in_progress`、完成后 `completed`；这些更新不替代三个阶段 Task 的独立生命周期。
 
-通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`；非空则用作 `$PROJECT_ID`。为空时调用 `list_projects(platform="ecommerce")`；只有一个匹配项目直接用；多个则按用户品类/品牌与项目 `name`/`positioning`/`keywords` 语义匹配，无法判断则向用户展示候选让其选择。
+通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`；非空则用作 `$PROJECT_ID`。为空时调用 `list_projects(platform="ecommerce")`；只有一个匹配项目直接用；多个则按用户品类/品牌与项目 `name`/`positioning`/`keywords` 语义匹配，仍无法唯一解析时写结构化失败诊断并停止。
 
 #### 步骤 2：获取项目画像
 
@@ -146,7 +146,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 1. 产出 `output/asset-plan.md`（按已选模块逐张规划：用途/尺寸/视觉主体/必须出现的卖点文字/禁用元素/**所需产品图=[第N张(subject)]**）。
 2. **锚点优先**：先生成主图①（点击主图）确立色系/版式/字体基准。
 3. 按模块逐张生成：产品档案前缀块 + 点名保真块（本图部位与【产品图清单】第 N 张一致）+ 只传本图所需部位的相关原图，保持与 prompt 编号一致的稳定顺序。每张生成后单独调用 `analyze_image` 对照第 N 张原图审核产品一致、卖点可读和合规；FAIL 时强化约束重生成最多 3 轮，仍不达标标 `needs_reference`。记录 `output/best-refs.md`、`output/image-prompts.md`。
-4. 文件命名：`main_01.png`..`main_05.png`、`detail_01.png`..`detail_NN.png`、`cover_01.png`..`cover_NN.png`、`share_01.png`..`share_NN.png`、`sku_<variant>.png`。单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则请求用户协助。
+4. 文件命名：`main_01.png`..`main_05.png`、`detail_01.png`..`detail_NN.png`、`cover_01.png`..`cover_NN.png`、`share_01.png`..`share_NN.png`、`sku_<variant>.png`。单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则写结构化失败诊断并停止。
 
 **产出**：`output/asset-plan.md`、`output/image-prompts.md`、`output/best-refs.md`、各模块图片
 
@@ -192,12 +192,12 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 | 风险 | 缓解措施 |
 |------|----------|
-| 产品图为空 | 停止并请求用户上传 |
+| 产品图为空 | 写结构化失败诊断，注明需要有效产品图后停止 |
 | 产品图不可访问/超大 | 剔除该图降级（≥1 张可用即继续）；超 10MB 调用 `compress_image(task_id=$TASK_ID, input_path=<原路径>, output_path="output/compressed_<NN>.png")` |
 | 产品跨图不一致 / 与原图不符 | 逐张识别部位 + 选择相关原图 + prompt 点名“与第 N 张一致” + 独立 `analyze_image` 审核 + 3 轮收敛；仍不一致标 `needs_reference` |
 | 多图复用同参考图导致场景雷同 | 按需选不同部位 ref（茶汤图传茶汤、叶底图传叶底）天然差异化；确需同张时改变场景、构图和卖点职责 |
 | 单图生成失败 | 重试一次仍失败则跳过并在 manifest 标注 |
-| 主图①生成失败 | 重试两次仍失败则请求用户协助 |
+| 主图①生成失败 | 重试两次仍失败则写结构化失败诊断并停止 |
 | 极限词/违禁词 | `ecommerce-platform-specs` 扫描，高风险必改写重生成 |
 | 产品复杂包装或多部位难以保真 | 只传当前画面相关原图并逐项点名保持，独立审核后收敛；仍不一致则标 `needs_reference` |
 | 生成图多导致超时 | maxTurns=120，单图最多 3 次生成 |

@@ -94,7 +94,7 @@ context; PROJECT_ID is also available as ANBAN_DEFAULT_PROJECT.
 
 1. 如果用户给出本地视频路径，先用 Bash 检查文件存在且不是目录。
 2. 如果没有路径，用 `Glob` 或 Bash 在当前目录查找 `*.mp4`、`*.mov`、`*.mkv`、`*.flv`、`*.webm`、`*.m4v`。
-3. 唯一候选自动使用；多个候选向用户列出并请求选择；没有候选则停止并说明需要提供视频文件路径。
+3. 唯一候选自动使用；多个候选按任务输入相关性、项目默认与文件修改时间排序后使用 Top 1，并记录选择依据；没有候选则写结构化失败诊断并停止。
 
 从结构化运行时上下文读取 `$TASK_ID`，后续所有 MCP 调用全程复用。
 
@@ -108,7 +108,7 @@ context; PROJECT_ID is also available as ANBAN_DEFAULT_PROJECT.
 command -v ffmpeg && command -v ffprobe
 ```
 
-任一命令缺失时停止，并提示用户安装 FFmpeg。依赖可用后执行：
+任一命令缺失时写结构化失败诊断，注明缺失依赖与恢复条件后停止。依赖可用后执行：
 
 ```bash
 ffprobe -v error -show_format -show_streams -of json "$VIDEO" > "output/metadata.json"
