@@ -86,8 +86,6 @@ describe('portable profile-smoke commands', () => {
     for (const forbidden of [
       '@anban/dsh-plugin/skills-provider',
       '../src/skills-provider',
-      'desktopRuntime',
-      'desktopPnpmBootstrap',
       'ELECTRON_RUN_AS_NODE',
     ]) {
       expect(source).not.toContain(forbidden)
@@ -124,7 +122,7 @@ describe('portable profile-smoke commands', () => {
     {
       environment: {
         npm_execpath: String.raw`C:\public\pnpm\pnpm.cjs`,
-        npm_node_execpath: String.raw`C:\Program Files\DSH Desktop\electron.exe`,
+        npm_node_execpath: String.raw`C:\Program Files\runtime\electron.exe`,
       },
     },
   ])(
@@ -139,7 +137,7 @@ describe('portable profile-smoke commands', () => {
             ...environment,
           },
           platform: 'win32',
-          processExecutable: String.raw`C:\Program Files\DSH Desktop\electron.exe`,
+          processExecutable: String.raw`C:\Program Files\runtime\electron.exe`,
         }),
       ).toEqual({
         executable: 'pnpm.cmd',
@@ -158,7 +156,7 @@ describe('portable profile-smoke commands', () => {
           npm_node_execpath: '/opt/node/bin/node',
         },
         platform: 'linux',
-        processExecutable: '/Applications/DSH Desktop.app/Electron',
+        processExecutable: '/opt/runtime/electron',
       }),
     ).toEqual({
       executable: '/opt/node/bin/node',
@@ -192,7 +190,7 @@ describe('portable profile-smoke commands', () => {
   )
 
   it.each([
-    '/Applications/DSH Desktop.app/Contents/MacOS/Electron',
+    '/opt/runtime/electron',
     '/opt/runtime/bun',
   ])('does not use a non-Node process executable: %s', async (runtime) => {
     const smokeModule = await import(smokeScriptUrl.href)
@@ -207,7 +205,7 @@ describe('portable profile-smoke commands', () => {
   })
 
   it.each([
-    '/Applications/DSH Desktop.app/Contents/MacOS/Electron',
+    '/opt/runtime/electron',
     '/opt/runtime/bun',
   ])('does not use a non-pnpm lifecycle executable: %s', async (entrypoint) => {
     const smokeModule = await import(smokeScriptUrl.href)
@@ -229,7 +227,7 @@ describe('portable profile-smoke commands', () => {
         npm_execpath: String.raw`C:\Program Files\pnpm\pnpm.cmd`,
       },
       platform: 'win32',
-      processExecutable: String.raw`C:\Program Files\DSH Desktop\electron.exe`,
+      processExecutable: String.raw`C:\Program Files\runtime\electron.exe`,
     })
 
     expect(command).toEqual({
@@ -251,59 +249,6 @@ describe('portable profile-smoke commands', () => {
     expect(smokeModule.commandInvocation(command, args)).toEqual({
       executable: command.executable,
       args,
-    })
-  })
-
-  it('honors the pinned DSH Desktop public-runtime contract', async () => {
-    const smokeModule = await import(smokeScriptUrl.href)
-    const electron =
-      '/Applications/DSH Desktop.app/Contents/MacOS/DSH Desktop'
-    const publicPnpmShim =
-      '/Applications/DSH Desktop.app/Contents/Resources/runtime/bin/pnpm'
-    const environment = {
-      ANBAN_API_KEY: 'must-not-reach-child',
-      ELECTRON_RUN_AS_NODE: '1',
-      HOME: '/Users/host',
-      NPM_CONFIG_USERCONFIG: '/Users/host/.npmrc',
-      npm_config_registry_auth_token: 'must-not-reach-child',
-      npm_config_authToken: 'must-not-reach-child',
-      npm_execpath: publicPnpmShim,
-      PATH: '/Applications/DSH Desktop.app/Contents/Resources/runtime/bin:/usr/bin',
-      USERPROFILE: String.raw`C:\Users\host`,
-      XDG_CONFIG_HOME: '/Users/host/.config',
-    }
-
-    const command = smokeModule.resolvePnpmCommand({
-      environment,
-      platform: 'darwin',
-      processExecutable: electron,
-    })
-    expect(command).toEqual({
-      executable: publicPnpmShim,
-      prefixArgs: [],
-    })
-    expect(command.executable).not.toBe(electron)
-
-    const childEnvironment = smokeModule.smokeEnvironment(
-      '/tmp/profile-smoke/home',
-      '/tmp/profile-smoke',
-      environment,
-    )
-    expect(childEnvironment).not.toHaveProperty('ELECTRON_RUN_AS_NODE')
-    expect(childEnvironment).not.toHaveProperty('ANBAN_API_KEY')
-    expect(childEnvironment).not.toHaveProperty('npm_config_authToken')
-    expect(childEnvironment).not.toHaveProperty('npm_execpath')
-    expect(childEnvironment).not.toHaveProperty('npm_config_registry_auth_token')
-    expect(childEnvironment).toEqual({
-      DSH_HOME: '/tmp/profile-smoke/home',
-      HOME: '/tmp/profile-smoke/home',
-      NPM_CONFIG_USERCONFIG: '/tmp/profile-smoke/.npmrc',
-      PATH: environment.PATH,
-      TEMP: '/tmp/profile-smoke/tmp',
-      TMP: '/tmp/profile-smoke/tmp',
-      TMPDIR: '/tmp/profile-smoke/tmp',
-      USERPROFILE: '/tmp/profile-smoke/home',
-      XDG_CONFIG_HOME: '/tmp/profile-smoke/xdg-config',
     })
   })
 
@@ -341,17 +286,6 @@ describe('portable profile-smoke commands', () => {
     )
   })
 
-  it('does not depend on Desktop-private runtime helpers', async () => {
-    const source = await readFile(smokeScriptUrl, 'utf8')
-
-    for (const forbidden of [
-      'desktopRuntime',
-      'desktopPnpmBootstrap',
-      'ELECTRON' + '_RUN_AS_NODE',
-    ]) {
-      expect(source).not.toContain(forbidden)
-    }
-  })
 })
 
 function processExists(pid: number) {
@@ -709,35 +643,6 @@ function profileFixture(version = packageVersion) {
 }
 
 describe('DSH profile smoke flow', () => {
-  it('validates an existing Desktop profile without reinstalling the plugin', async () => {
-    const smokeModule = await import(smokeScriptUrl.href)
-    const fixture = profileFixture()
-
-    await smokeModule.verifyInstalledProfile({
-      ...fixture.overrides,
-      dshHome: fixture.dshHome,
-      profile: 'desktop',
-      profileDir: fixture.profileDir.replace(/web$/, 'desktop'),
-      smokeRoot: fixture.smokeRoot,
-    })
-
-    expect(
-      fixture.commandCalls.map(({ args }) => args),
-    ).toEqual([['--profile', 'desktop', '--dump-config']])
-    expect(fixture.inspectMountedSkillCatalogs).toHaveBeenCalledWith({
-      dshCommand: fixture.dshCommand,
-      dshHome: fixture.dshHome,
-      env: expect.objectContaining({ DSH_HOME: fixture.dshHome }),
-      profile: 'desktop',
-      profileDir: fixture.profileDir.replace(/web$/, 'desktop'),
-      smokeRoot: fixture.smokeRoot,
-    })
-    expect(fixture.overrides.rm).not.toHaveBeenCalledWith(
-      fixture.dshHome,
-      expect.anything(),
-    )
-  })
-
   it('preserves the primary smoke failure when cleanup also fails', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
     const fixture = profileFixture()

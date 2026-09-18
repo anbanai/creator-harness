@@ -608,11 +608,11 @@ describe('DSH package manifest', () => {
         '@deepseek-ai/dsh-home-paths': '0.1.5-rc.2',
         '@deepseek-ai/dsh-mcp-client': '0.1.5-rc.2',
         '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.2',
-        '@types/node': '22.20.0',
+        '@types/node': '26.6.1',
         'cross-spawn': '7.0.6',
         'js-yaml': '4.3.1',
-        typescript: '6.0.3',
-        vitest: '4.1.8',
+        typescript: '7.0.2',
+        vitest: '5.0.1',
       },
     })
   })
@@ -926,7 +926,7 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
     }
     expect(normalized).toMatch(/same Preset manager/i)
     expect(normalized).toMatch(/shell.*automation.*recovery/i)
-    expect(normalized).toMatch(/interactive.*Web.*Desktop/i)
+    expect(normalized).toMatch(/interactive.*Web/i)
     expect(normalized).toMatch(
       /interactive confirmation.*differs.*explicit shell CLI removal/i,
     )
@@ -1041,7 +1041,7 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
     const guide = await readFile(installationGuideUrl, 'utf8')
 
     expect(bashBlockUnder(guide, '## Select the active profile')).toEqual([
-      'ACTIVE_PROFILE="replace-with-web-or-desktop-profile-name"',
+      'ACTIVE_PROFILE="web"',
     ])
     expect(bashBlockUnder(guide, '## Initial installation and configuration')).toEqual([
       'PUBLISHED_VERSION="replace-with-published-version"',

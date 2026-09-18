@@ -1,6 +1,6 @@
 # DeepSeek Harness installation
 
-The full Anban DSH plugin supports DeepSeek Harness Web and Desktop. It adds the
+The full Anban DSH plugin supports DeepSeek Harness Web. It adds the
 Creator MCP Bundle to a selected profile and materializes generated Article and
 Seednote Presets through an explicit second operation. It does not add or
 change Anban Server business operations.
@@ -96,14 +96,10 @@ status, back up local changes, and confirm which other profiles still use
 Choose the target profile once and use it for every command in this guide:
 
 ```bash
-ACTIVE_PROFILE="replace-with-web-or-desktop-profile-name"
+ACTIVE_PROFILE="web"
 ```
 
-For public DeepSeek Harness Web, set `ACTIVE_PROFILE` to `web`. For Desktop,
-read the exact active profile name from its profile selector or settings and
-use the corresponding directory name below `$DSH_HOME/profiles/<name>`. The DSH
-CLI does not infer Desktop's active profile. Restart Desktop after changing its
-active profile's Bundle so it reloads the Bundle and discovers global Presets.
+For public DeepSeek Harness Web, set `ACTIVE_PROFILE` to `web`.
 
 ## Credentials
 
@@ -114,7 +110,7 @@ DSH credential precedence is exactly:
 inherited process environment (read-only, highest priority) -> `$DSH_HOME/.credentials.yaml` (managed, writable) -> invocation-project `.env` -> `$DSH_HOME/.env`
 ```
 
-For persistent Web or Desktop use, edit `$DSH_HOME/.credentials.yaml` as a YAML
+For persistent Web use, edit `$DSH_HOME/.credentials.yaml` as a YAML
 mapping containing this placeholder key and replace the placeholder locally:
 
 ```yaml
@@ -249,7 +245,7 @@ without the generated runtime files.
 
 ## Initial installation and configuration
 
-Install an exact public version into the selected Web or Desktop profile,
+Install an exact public version into the selected Web profile,
 compose that profile's configuration to prepare its peer fallback, then
 materialize the global Presets:
 
@@ -285,7 +281,7 @@ dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh install-presets --force
 dsh plugin --profile "$ACTIVE_PROFILE" exec anban-dsh remove-presets
 ```
 
-Inside interactive Web and Desktop sessions, the registered commands are:
+Inside interactive Web sessions, the registered commands are:
 
 ```text
 /anban-presets-install
@@ -296,7 +292,7 @@ Inside interactive Web and Desktop sessions, the registered commands are:
 
 Both surfaces call the same Preset manager. Use the shell CLI for automation
 and recovery, and use the registered commands inside interactive Web and
-Desktop sessions. Interactive confirmation differs from the already-explicit
+Interactive sessions. Interactive confirmation differs from the already-explicit
 shell CLI removal: `/anban-presets-remove` requires `confirm`, while
 `remove-presets` is itself an explicit host command and takes no extra flag.
 
@@ -369,7 +365,7 @@ profile-explicit status command and back up any local modifications from
 Preset directories is always refused; remove-presets refuses to remove unowned
 Preset directories.
 
-First confirm no other Web or Desktop profile sharing this `DSH_HOME` still
+First confirm no other Web profile sharing this `DSH_HOME` still
 needs the global Presets. Then remove the global Presets before the profile-local
 Bundle:
 

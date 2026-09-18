@@ -234,7 +234,7 @@
 
 ### Added
 
-- Added DeepSeek Harness Web and Desktop support with generated Article and
+- Added DeepSeek Harness Web support with generated Article and
   Seednote Presets.
 - Added official DSH credential, MCP, and shared Skill adapters without changing
   Anban Server business behavior.
@@ -437,7 +437,7 @@ This project follows semantic versioning for the plugin package. Patch releases 
 ### Changed
 
 - Flattened the canonical plugin distribution from `plugins/anban/` to `plugins/`.
-- Updated Claude Code, Codex, Docker, desktop, and repository installation paths to use the new plugin root.
+- Updated Claude Code, Codex, Docker, and repository installation paths to use the new plugin root.
 - Renamed the minimal managed runtime from `creator-agent-content` to `creator-agent-article`; Seednote and Montage remain dedicated dependency images.
 
 ## [2.11.0] - 2026-07-21
@@ -446,7 +446,7 @@ This project follows semantic versioning for the plugin package. Patch releases 
 
 - Consolidated the Claude Code and Codex distributions under `plugins/` with one shared Skill tree.
 - Kept native manifests, Agent formats, MCP authentication, Hooks, and Codex subagent installation as thin host adapters.
-- Moved repository, Docker, desktop packaging, runtime discovery, tests, and maintenance scripts to the unified plugin root.
+- Moved repository, Docker packaging, runtime discovery, tests, and maintenance scripts to the unified plugin root.
 
 ### Removed
 

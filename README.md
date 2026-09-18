@@ -3,7 +3,7 @@
 > Claude Code 与 Codex 共用一份 Skill、模板、写作风格和运行资产；宿主差异只保留在原生 manifest、Agent、MCP/Hook 或安装适配层。
 
 Codex 安装说明见 [docs/codex-installation.md](docs/codex-installation.md)。DeepSeek
-Harness Web 与 Desktop 安装说明见
+Harness Web 安装说明见
 [docs/dsh-installation.md](docs/dsh-installation.md)；当前提供由 Agent Pack 生成的
 Article 与 Seednote Preset。
 

@@ -54,13 +54,13 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-agent-instructions": "0.1.5-rc.2",
     "@deepseek-ai/dsh-commands": "0.1.5-rc.2",
     "@deepseek-ai/dsh-credentials": "0.1.5-rc.2",
     "@deepseek-ai/dsh-home-paths": "0.1.5-rc.2",
     "@deepseek-ai/dsh-mcp-client": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-skill-filesystem": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-agent-instructions": "0.1.5-rc.2",
     "@deepseek-ai/dsh-persona": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-skill-filesystem": "0.1.5-rc.2",
     "@deepseek-ai/dsh-tool-bash": "0.1.5-rc.2",
     "@deepseek-ai/dsh-tool-fs": "0.1.5-rc.2",
     "@deepseek-ai/dsh-tool-fs-search": "0.1.5-rc.2",
@@ -85,10 +85,10 @@
     "@deepseek-ai/dsh-home-paths": "0.1.5-rc.2",
     "@deepseek-ai/dsh-mcp-client": "0.1.5-rc.2",
     "@deepseek-ai/dsh-skill-filesystem": "0.1.5-rc.2",
-    "@types/node": "22.20.0",
+    "@types/node": "26.6.1",
     "cross-spawn": "7.0.6",
     "js-yaml": "4.3.1",
-    "typescript": "6.0.3",
-    "vitest": "4.1.8"
+    "typescript": "7.0.2",
+    "vitest": "5.0.1"
   }
 }
