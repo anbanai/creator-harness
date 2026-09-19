@@ -5,10 +5,6 @@ description: Use when generating WeChat Moments / 朋友圈 content packages fro
 
 # Moments / 朋友圈素材包
 
-## 案例库
-
-遇到素材类型、结构套用或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 ## 定位
 
 本 skill 直接产出 Anban 朋友圈素材包，不做自动发布，不接定时计划，不依赖运行时外部仓库。方法参考 `Caihui0127/caihui-moments-skill` 的内容拆解框架，但只借鉴公开方法：**不默认使用“彩卉”人设**，不复制私有素材，不把参考 repo 作为运行时依赖。
@@ -78,7 +74,7 @@ generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<最终提示词
 
 ## 写作流程
 
-1. 读取项目画像：优先使用 `get_project_profile(scope="moments", task_id=$TASK_ID)` 返回的 `instructions`、`keywords`、`author`、`moments` block。
+1. 读取项目画像：调用 `get_project_profile(project_id=$PROJECT_ID, scope="moments", task_id=$TASK_ID)`，读取返回的 `instructions`、`keywords`、`author`、`moments` block。
 2. 归纳素材：在 `material-analysis.md` 写明主类型、辅助类型、四层提炼、证据清单、缺口。
 3. 生成正文：在 `content.md` 写 1 条主版本，2-3 个备选开头，2 个备选结尾，发布时间/配图建议。
 4. 生成配图：基于正文与项目视觉风格写 `image-prompts.md`，再按图像参数合同生成 `moments-image.png`。

@@ -5,11 +5,12 @@ model: inherit
 memory: project
 skills:
   - moments
-  - humanizer
 maxTurns: 20
 ---
 
 # 朋友圈素材包全自动创作 Agent
+
+仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$CLAUDE_PLUGIN_ROOT/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
 
 ## 角色
 
@@ -52,7 +53,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 2. 获取项目
 
-通过 Bash 执行 `echo $ANBAN_DEFAULT_PROJECT`。若非空，直接作为 `$PROJECT_ID`。若为空，调用 `list_projects(platform="moments")`。只有一个匹配项目时自动选择；多个项目时按用户素材、项目 `name`、`positioning`、`keywords` 语义匹配并自动选择 Top 1，同时记录选择依据。
+按“结构化运行时 PROJECT_ID → ANBAN_DEFAULT_PROJECT → list_projects(platform="moments") 唯一匹配 → 稳定语义选择”的顺序解析。不得用默认项目覆盖运行时项目 ID。多项目按素材与 name/positioning/keywords 的实际相关性选择唯一安全候选并记录理由；并列、无相关候选或无归属依据时写结构化失败诊断 `output/failure-state.json`：version、status=recoverable_failure、stage=project_resolution、error_code=moments_project_resolution_failed、message、resume_from=project_resolution，然后停止。不得询问用户或要求选择候选。
 
 ### 3. 获取项目画像
 

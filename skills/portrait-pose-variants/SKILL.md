@@ -5,13 +5,9 @@ description: Use when generating multiple pose/expression variants from a single
 
 # 人像姿态变体——基于一张参考人像生成多张封面
 
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 ## 任务图像参数合同
 
-- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="portrait-pose-variants", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
 - `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 - `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；短视频人像可优先参考 `9:16`，但只在能力支持时选择。
 - 每次生成都必须显式传 `aspect_ratio` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
@@ -95,46 +91,9 @@ description: Use when generating multiple pose/expression variants from a single
 
 ### Phase 0 — 初始化
 
-托管运行时提供任务私有工作区和预先创建的 `output/`。最终与恢复关键产物只写入本文列出的 `output/<filename>` 路径；不创建、发现、移动或重命名 `output/`。
+从任务身份和默认项目解析 `$PROJECT_ID` / `$TASK_ID`，读取 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="article")`。记录原始人像、所需姿态/表情、张数、风格和有效比例到 `output/input-manifest.md`；任务给定值优先，不得重问已给信息。
 
-#### 步骤 1：获取项目
-
-- `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
-- 如果为空，调用 `list_projects`；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
-- 从结构化运行时上下文读取 `$TASK_ID`
-- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_ASPECT_RATIO`；用户明确比例不支持时在生成前停止
-
-#### 步骤 2：收集用户输入
-
-需要用户提供以下信息：
-
-| 字段 | 必填 | 默认值 | 说明 |
-|------|------|--------|------|
-| 参考人像任务路径 | ✅ | — | 从 `.anban-creator/input-attachments/index.json` 读取用户上传图片的任务相对 `path`；最好是清晰的正面或半侧面人像 |
-| 目标姿态列表 | ❌ | 全部 6 种 | 可选 6 模板子集（如 `[1, 3, 5]`），或自定义姿态描述 |
-| 生成张数 N | ❌ | 6 | 1 ≤ N ≤ 6；超出按 6 处理并提示 |
-| 是否逐张确认 | ❌ | false | true 时每张生成后停止等待用户确认；false 时全部生成后统一交付 |
-
-写入 `output/input-manifest.md`：
-
-```markdown
-# Input Manifest
-
-## User Inputs
-
-- reference_portrait: .anban-creator/input-attachments/attachment_01_portrait.png
-- target_poses: [1, 2, 3, 4, 5, 6]  # 或 "all" 或自定义列表
-- variant_count: 6
-- confirm_per_image: false
-
-## Runtime Context
-
-- $PROJECT_ID: <项目 ID>
-- output_root: output/
-- $TASK_ID: <任务 ID>
-```
-
----
+详见 [references/input-template.md](references/input-template.md)；仅在上述阶段读取。
 
 ### Phase 1 — 锁定身份
 
@@ -267,170 +226,17 @@ analyze_image(
 
 ---
 
-### Phase 4 — 全量一致性审计
+### Phase 4/5 — 一致性审计与交付
 
-#### 步骤 6：生成汇总报告
+逐图核验身份、表情/手势、原图参考链和比例，把观察、重试历史与能力边界写 `output/consistency-report.md`。报告只交付通过审核的变体，明确失败/缺失项和文件路径，不声称像素级身份保证。
 
-步骤 5 的逐张审计结果汇总到 `output/consistency-report.md`：
+详见 [references/delivery-template.md](references/delivery-template.md)；仅在上述阶段读取。
 
-```markdown
-# Consistency Report
+## Prompt 修订
 
-## Identity Lock Source
+发现身份漂移先加强原始人像身份锁，保持参考链直指原图。只修订当前变体的表情、手势和视线，不改变五官比例、性别、年龄和肤色。
 
-- file: output/input-manifest.md 中的 reference_portrait
-- analyzed_at: <时间戳>
-- portrait_task_path: $PORTRAIT_TASK_PATH
-- 12 维度身份锁: output/identity-lock.md
-
-## Per-Variant Audit
-
-| # | Pose | 脸型 | 五官比例 | 眼睛 | 鼻子 | 嘴型 | 眉毛 | 发型 | 发色 | 肤色 | 年龄感 | 气质 | 神态 | Overall |
-|---|------|------|---------|------|------|------|------|------|------|------|--------|------|------|---------|
-| 1 | 震惊捂脸 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | PASS |
-| 2 | 自信指向 | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | MINOR |
-| 3 | 疑惑托下巴 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | FAIL（已重试）|
-| ... |
-
-## Summary
-
-- PASS: 4 张
-- MINOR: 1 张（关键维度 PASS，可接受）
-- FAIL: 1 张（重试后仍漂移，标记 needs_img2img）
-
-## Retry History
-
-- variant_03.png: 发型 FAIL（卷发变直发）→ 重试 prompt 加强"hair must be wavy curls, NOT straight"→ 仍 FAIL → 标记 needs_img2img
-
-## Capability Boundary
-
-当前 generate_image 是参考图生成，不是专用 ID-lock 工具。MINOR/FAIL 是能力边界，非流程缺陷。
-```
-
----
-
-### Phase 5 — 交付报告
-
-#### 步骤 7：最终交付
-
-向用户交付：
-
-```
-人像姿态变体生成完成
-
-参考人像: output/input-manifest.md 记录的路径
-生成张数: N
-姿态列表: <从 selected-poses.md 提炼>
-
-成果文件:
-- output/variant_01.png ~ variant_0N.png（主交付）
-- output/variant_0N_v2.png（若重试过，作为备选）
-
-身份一致性:
-- 12 维度审计结果: <PASS/MINOR/FAIL 汇总>
-- 关键维度（脸型/五官比例/发型发色）: <汇总>
-- 能力边界: 当前使用 generate_image best-effort 参考图生成，未使用专用 ID-lock
-
-复盘材料:
-- output/identity-lock.md （身份锁）
-- output/selected-poses.md （姿态选择）
-- output/image-prompts.md （prompt 备份）
-- output/consistency-report.md （一致性审计）
-
-人工复核:
-- variant_0X.png: <描述仍存在的问题>，建议手动指定该维度后重新生成或使用专用 ID-lock 工具
-```
-
----
-
-## 通用负面提示词
-
-每张变体的 prompt 末尾**必须**包含以下反面约束（来自参考文档原文，不要删减）：
-
-```
-DO NOT change the person's identity. DO NOT swap face. DO NOT turn into a different person.
-DO NOT change age, gender, or ethnic features. DO NOT change face shape or facial proportions.
-
-DO NOT include multiple people. DO NOT include extra fingers or deformed hands.
-DO NOT distort facial features. DO NOT make expression stiff. DO NOT use low resolution.
-DO NOT blur. DO NOT use plastic skin or over-smoothing. DO NOT make cartoon or anime style.
-DO NOT over-distort to the point of unreality.
-
-DO NOT include text, watermark, logo, border, or cluttered background.
-DO NOT obscure the face. DO NOT use heavy face shadows.
-```
-
----
-
-## Prompt 构建技巧
-
-### 身份锁段落写法
-
-从 `identity-lock.md` 抄写时，**转换成英文 prompt 友好的格式**：
-
-```
-Identity lock (MUST remain identical across all variants):
-- Face shape: <oval with defined jawline, NOT round>
-- Facial proportions: <three-tenths proportions, balanced features>
-- Eyes: <almond-shaped, double eyelids, medium eye opening>
-- Nose: <medium-height bridge, rounded tip>
-- Mouth: <medium-thick lips, slight upward corners>
-- Eyebrows: <arched, medium thickness, well-defined>
-- Hair: <shoulder-length wavy curls with side-swept bangs, NOT straight>
-- Hair color: <dark chocolate brown, NOT black or light brown>
-- Skin: <fair with subtle warmth, semi-matte finish>
-- Age vibe: <mid-20s, youthful but professional>
-- Aura: <confident, slightly playful, approachable>
-- Signature demeanor: <eyes carry a hint of smile even when mouth is neutral>
-
-CONSTRAINT: The variant MUST be recognizably the SAME person as the reference. Identity dimensions 1-12 are non-negotiable. Only expression, gesture, pose, clothing details, background, and lighting may change.
-```
-
-### 姿态段落写法（参考 pose-templates.md）
-
-每个姿态段落包含 4 部分：
-
-1. **核心动作**（一句话描述姿态）
-2. **表情细节**（眉、眼、嘴的具体状态）
-3. **手势细节**（手的位置、形状、与身体的关系）
-4. **情绪基调**（这个姿态传达什么情绪，适合什么封面类型）
-
-详见 [references/pose-templates.md](references/pose-templates.md) 的 6 个完整模板。
-
-### 跨变体一致性技巧
-
-每张变体的 prompt 中**显式声明**这是同一人物的不同姿态：
-
-```
-This is variant #3 of 6 variants of the SAME person shown in the reference image.
-All variants share the same identity (see identity lock above).
-Only this variant's expression, gesture, and pose change.
-Background and clothing may vary slightly but the person MUST be identical.
-```
-
-这段声明帮助模型理解"我要画同一个人的不同照片"，而不是"画 6 个不同的人"。
-
----
-
-## 常见失败与修复
-
-| 问题 | 原因 | 修复 |
-|------|------|------|
-| 身份漂移（脸型变化） | 模型对参考图身份锁定不严 | 加强 identity-lock 段落；增加反面约束"face shape MUST be [具体], NOT [常见错误]"；严重时标记 `needs_img2img` |
-| 发色变化 | 模型对深浅色偏好不同 | 用实物类比"dark chocolate brown, NOT milk chocolate, NOT black"；加强反面约束 |
-| 表情不够夸张 | 模型倾向中性表情 | 姿态段落用更具体的描述"eyes WIDE OPEN, eyebrows raised HIGH, mouth forming an O"；加强反面约束"DO NOT use neutral expression" |
-| 手势畸形（多指、扭曲） | AI 生图模型对手部处理能力差 | 手势描述更具体"five fingers visible, palm facing camera, thumb tucked"；加强反面约束"DO NOT add extra fingers or distort joints"；重试 1 次仍失败标记 `needs_manual_edit` |
-| 背景污染主体 | 模型无法分离前景/背景 | 加强背景简化"solid color background, NO patterns, NO textures"；加强反面约束"background must NOT compete with subject" |
-| 肤色变化 | 模型对肤色一致性处理弱 | 身份锁中肤色维度加实物类比"fair skin with peach warmth, NOT pale white, NOT tanned" |
-| 画风偏卡通 | 参考 prompt 中"商业摄影"描述不够强 | 加强风格描述"photorealistic commercial photography, hyper-detailed skin texture, NOT illustration, NOT cartoon" |
-| 多张变体之间身份不一致 | 每张变体身份漂移方向不同 | 确保所有变体 ref_image_path 都指向同一原始人像；不要用变体作下一张参考 |
-| 公共 URL 下载失败 | URL 非 HTTPS、重定向到私网或内容不是图片 | 写失败诊断；不得绕过 `download_image` 的网络与类型校验 |
-| analyze_image 文件过大 | `file_path` 方式分析有 10MB 限制 | 调用带 `task_id` 与任务相对输入/输出路径的 `compress_image`；仍超限则停止 |
-| output_path 权限错误 | 路径不属于任务工作区 | 使用任务相对路径 `output/...` |
-| 长 prompt 504 Gateway Timeout | prompt 过长（12 维度身份锁 + 6 姿态模板容易超长） | Prompt 控制在 500 词以内；身份锁可压缩到 8-10 行核心维度；姿态段落保留核心动作和情绪 |
-| ref_image_path 无法访问 | 路径未登记在当前任务或不属于当前 execution | 重新读取附件索引，或用完整参数调用 `download_image` 登记公共 HTTPS 图片 |
-
----
+详见 [references/prompt-and-repair.md](references/prompt-and-repair.md)；仅在上述阶段读取。
 
 ## 验证清单
 

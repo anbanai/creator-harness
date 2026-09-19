@@ -76,138 +76,14 @@ using the content-writing skill 先执行 AI 去痕，覆盖原文全部信息�
 
 using the seo-optimization skill 优化标题、关键词、摘要。将优化后的标题和摘要保存为 `output/seo-result.md`，供最终验收和交付包使用。
 
-### 步骤 6：模板选择、节奏规划、封面生成（带视觉校验）、配图规划
+### 步骤 6/7：视觉阶段路由
 
-using the article-visual-design skill 完成以下子步骤。详细规范见 `skills/article-visual-design/SKILL.md` 与 `skills/article-visual-design/references/{cover,content,rhythm}.md`。
+按 [article-visual-design](../article-visual-design/SKILL.md) 选择模板并写 `output/visual-rhythm-plan.md`。任务解析后的 visual_style 配置优先于三维分析，writer 不决定图片视觉。text_only 只做排版规划，所有 image_url=null。
 
-#### 6a：选择文章类型模板（配置优先风格）
-
-公众号"模板"由三个**正交**维度组成：图片视觉（`visual_style`）、写作者（`writer`）、排版样式（`theme`）。三者各自独立解析，互不推导——**写作风格绝不决定图片视觉**。
-
-读取 `output/03-article.md`（或 `04-article-final.md`），根据结构特征匹配模板（自动决策，不询问用户）：
-
-| 特征 | 模板 | YAML 路径 |
-|------|------|-----------|
-| 含"3 个/5 种/N 条" + 并列项 | `listicle` | `templates/article/listicle.yaml` |
-| 按步骤序号组织（步骤 1 / step N） | `tutorial` | `templates/article/tutorial.yaml` |
-| 情节弧、场景、人物时间线 | `story-narrative` | `templates/article/story-narrative.yaml` |
-| 其他（深度观点、评论、分析） | `long-form-essay`（默认） | `templates/article/long-form-essay.yaml` |
-
-加载模板 YAML，提取 `rhythm`（slot 规则）、`image_count`（min/max）、`modules.preferred`（可用 layout module）、`composition_guidance`（构图指南）。记录 `$TEMPLATE_NAME` / `$TEMPLATE_PATH`。特征模糊时优先选 `long-form-essay`。
-
-#### 6b：创建视觉节奏规划
-
-读取 `output/03-article.md`，对每个 `##` 章节分配 slot，创建 `output/visual-rhythm-plan.md`：按模板 `rhythm` 规则把每个 `##` 映射到 `hero` / `section_opener` / `inline_detail` / `footer`；按 `composition_guidance` 为每个图 slot 选 `composition_type`（3+ 图时用 3+ 种构图，`listicle` 模板豁免）；从 `modules.preferred` 选 module；每个 slot 写 1 句 `chapter_anchor`。模板自检：hero 有且仅有 1 个、section_opener 数量符合模板、footer 符合必选/可选规则。模板格式和完整示例见 `skills/article-visual-design/references/rhythm.md`。
-
-#### 6c：视觉风格确定（配置优先，分析兜底）
-
-视觉风格**优先**取自步骤 1 已解析的任务字段（`task > project`）：
-- 若 `$VISUAL_STYLE_CONFIGURED` 非空 → 它是**权威视觉锚点**。以它为 `$VISUAL_STYLE` 的核心，三维分析（账号定位 / 内容主题 / 受众）只做**补充细化**（配色、情绪、构图），**绝不可覆盖或偏离**配置的视觉方向。例如配置了"温暖自然的生活摄影"，就不得生成维多利亚木刻/黑白版画等冲突风格。
-- 若 `$VISUAL_STYLE_CONFIGURED` 为空（所有层级都未配置视觉）→ 执行完整三维分析兜底。
-- **不从 writer YAML 推视觉**（writer 仅决定文字风格，已不再携带任何视觉/封面字段）。
-
-产出 `$VISUAL_STYLE`（含配置锚点 + 细化方向）/ `$COLOR_PALETTE` / `$MOOD` / `$VISUAL_STYLE_SOURCE`。映射关系见 `skills/article-visual-design/references/cover.md`。
-
-#### 6d：生成封面（委托 article-cover-design skill）
-
-封面是标题-摘要-正文-用户画像的点击承诺载体；未启用人物参考时还可作为正文配图风格锚点。**封面设计已独立成稿**——using the `article-cover-design` skill：用户明确比例优先，智能适配时从能力允许比例中选择宽横图，并使用中心分享卡安全区构图、受控文字策略、`cover_strategy`、三选一概念评审、`visual_quality_scorecard` 与 `cover_effectiveness_scorecard` 双评分卡把关。本步骤只交代与本流水线的衔接：
-
-1. 从 `output/context-brief.md`、`output/seo-result.md`、digest 和 `output/04-article-final.md` 提取最终标题、目标读者、读者痛点/任务、文章承诺、正文证据和最强视觉素材。
-2. 交给 `article-cover-design` skill 先写 `cover_strategy`：`target_reader`、`reader_pain_or_job`、`article_promise`、`content_proof_points`、`click_trigger`、至少 3 个 `cover_concept_candidates`、`selected_cover_concept`。
-3. 三选一概念评审必须先过 `generic_swap_test`、`promise_proof_test`、`audience_motivation_test`；任何“换到其他方法论文章也成立”的封面概念不得进入生成。
-4. 调用 `generate_image` 生成并登记封面：
-   ```
-   generate_image(
-     project_id=$PROJECT_ID,
-     prompt=<article-cover-design skill 构建的封面提示词>,
-     image_type="cover",
-     output_path="output/cover.png",
-     task_id=$TASK_ID,
-     aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
-     ref_image_paths=$COVER_REFERENCE_PATHS
-   )
-   ```
-5. 单独调用 `analyze_image`，把实际审核结果写入 `output/cover-quality.json`。Agent 根据可见主体、文字、构图、人物身份和合规结果决定接受、重构概念或锐化 prompt，最多 3 次生成。
-6. 质量通过后先令 `$COVER_PATH="output/cover.png"`。仅在用户明确要求精确尺寸，或智能适配时 Agent 判断输出确有需要，才显式调用 `crop_image` 生成 `output/cover-exact.png` 并更新 `$COVER_PATH`；不得按平台或 `image_type` 隐式裁剪。
-7. 单独调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)`，记录 `$COVER_MEDIA_ID` 与 `$COVER_CDN_URL`（供后续排版和交付记录使用）。上传失败只重试上传，不重新生成；按「MCP 工具使用规则」耗尽后记录 `article_image_upload_failed` warning，保留本地封面并继续。
-8. **原子写封面审计产物**：`output/cover-prompt.md` 记录比例来源、可选裁剪参数、实际上传的 `$COVER_PATH`、封面创作决策和最终 prompt；`output/cover-quality.json` 记录两张评分卡、可见内容结论及人物启用时的身份结论。
-
-详细推导链、评分卡模板、迭代策略见 `skills/article-cover-design/SKILL.md` 与 `skills/article-cover-design/references/cover-effectiveness.md`；三维风格方向参考见 `skills/article-visual-design/references/cover.md`。
-
-#### 6e：创建配图内容规划（升级 schema）
-
-按 `output/visual-rhythm-plan.md` 中每个需要图的 slot，规划配图内容，写入 `output/image-plan.md`。**新 schema 强制要求**：
-- `visual_brief`：1-2 句白话"这张图必须画什么"
-- `required_entities`：必须出现的具体物体列表（内容审核依据）
-- `must_match_excerpts`：章节中支撑这些实体的原句
-- 沿用字段：`slot_id`、`section_index`、`chapter_title`、`core_point`、`composition_type`、`source_excerpt`、`prompt_strategy`
-
-详细正反例和填写规范见 `skills/article-visual-design/references/content.md`。
-
-**产出**：`output/visual-rhythm-plan.md`, `output/cover-prompt.md`, `output/cover.png`, `media_id`, `$COVER_CDN_URL`, `$VISUAL_STYLE`/`$COLOR_PALETTE`/`$MOOD`/`$VISUAL_STYLE_SOURCE`, `$TEMPLATE_NAME`, `output/image-plan.md`
-
-### 步骤 7：配图生成与独立内容审核
-
-using the article-visual-design skill 按 `output/visual-rhythm-plan.md` 中 slot 顺序生成。每个需要图的 slot 执行：
-
-#### 7a：构建 prompt 并生成
-
-- 生成成功后按本文章质量闸门单独调用 `analyze_image`；Agent 接受图片后再调用 `upload_image`，三个能力互不隐式触发。
-
-```
-generate_image(
-  project_id=$PROJECT_ID,
-  prompt=<构建的 prompt>,
-  image_type="content",
-  output_path="output/img_N.png",
-  task_id=$TASK_ID,
-  ref_image_path=$CONTENT_STYLE_REFERENCE_PATH,
-  aspect_ratio=$EFFECTIVE_ASPECT_RATIO
-)
-```
-
-**关键**：每次 `generate_image` 必须显式传 `aspect_ratio`。用户明确比例时所有图片原样使用 `$EFFECTIVE_ASPECT_RATIO`；智能适配时每张可从 `resolved_profile.allowed_image_ratios` 分别选择。仅当封面开启且人物参考未启用时，令 `$CONTENT_STYLE_REFERENCE_PATH="output/cover.png"`；封面关闭或人物参考启用时不传 `ref_image_path`，只使用文本风格块。即使使用封面，也只能传递风格语言，不得复刻封面主体、构图或核心物件。每张正文图的 `<img src>` 必须来自该图的独立 `upload_image` 调用，严禁复用封面或其他正文图 URL。
-
-#### 7b：独立内容质量审核与失败重试
-
-生成成功后，按质量要求单独调用 `analyze_image`。传输或运行时失败按「独立分析调用」记录警告；调用成功时，Agent 根据可见内容审核结果决定接受或锐化 prompt 重试：
-- 必须实体、章节相关性、文字、构图和合规均满足 → 接受，继续下一 slot
-- 存在可修订的可见问题 → 根据缺失实体或构图问题锐化 prompt 重试（最多 2 次，共 3 次生成）
-- 3 次生成的可见内容质量仍未通过 → 标记 `quality_status=failed`，继续后续 slot
-
-**锐化 prompt 策略**：在 prompt 开头加 `MUST CONTAIN: ` + 独立内容审核指出的缺失实体列表；把 `visual_brief` 改写得更具体（加入材质、颜色、方位、数量）；加强主体权重 "MAIN SUBJECT: <具体物体>"。
-
-#### 7c：独立上传并立即原子落盘
-
-- 图片通过 Agent 的质量判断后调用 `upload_image`，从返回值取得 `wechat_url` 和 `media_id`；上传失败只重试上传，不重新生成，按「MCP 工具使用规则」耗尽后记录 `article_image_upload_failed` warning，保留本地图片并继续。
-- **原子写** `output/images.json`：先写 `output/.images.json.tmp` → `fsync` → `rename` 覆盖。**绝不要"攒齐所有图再一次性写"**——每张图返回即落盘。
-- 每条记录必须含：`index`、`slot_id`、`section_index`、`image_type`、`chapter_title`、`composition_type`、`visual_brief`、`required_entities`、`must_match_excerpts`、`prompt`、可见内容质量结论、`ref_image_path`、`file_path`、`url`、`wechat_url`、`media_id`、`quality_status`。
-
-#### 7d：插入到文章并回填 rhythm-plan
-
-按 slot 的 `slot_id` + `section_index` 把 `![描述](CDN_URL)` 插入 `output/04-article-final.md`：
-- `section_opener`：紧跟 `## 章节标题` 之后
-- `inline_detail`：在 `after_paragraph_index` 指定的段落之后
-- `hero`：在文章开头（如有 hero module 文字，则在 hero module 之后）
-
-把所有 CDN URL 回填到 `output/visual-rhythm-plan.md` 的 `layout_plan` JSON 块中。
-
-#### 7e：质量验证
-
-生成完成后执行检查：
-- [ ] **节奏完整性**：`visual-rhythm-plan.md` 中每个 `##` 都映射到一个 slot
-- [ ] **模板一致性**：所选模板的 rhythm 规则被遵守（listicle 的 inline_detail 必须为空、tutorial 的 footer 必填等）
-- [ ] **文件完整性**：所有图片文件存在且可访问
-- [ ] **风格一致性**：未启用人物参考且封面开启时，内容图可记录 `ref_image_path="output/cover.png"`；封面关闭或人物参考启用时无 `ref_image_path`，并通过文本风格块保持一致
-- [ ] **视觉多样性**：3+ 配图使用 3+ 种不同 `composition_type`（`listicle` 模板豁免）
-- [ ] **内容审核通过率**：至少 80% 的内容图 `quality_status=passed`
-- [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / 可见内容质量结论 / `slot_id` / `section_index` / `wechat_url` / `media_id`
-- [ ] **CDN 持久化**：`images.json` 每条都有非空 `wechat_url`（即每张图已上微信 CDN）
-- [ ] **正文图片互不相同**：`images.json` 中所有内容图的 `wechat_url` 两两不同，且没有任何一张等于封面 `$COVER_CDN_URL`（封面 URL 仅用于封面记录，**不得复用为正文图**）；Server 最终校验会硬拦截"正文 ≥2 图但唯一 URL==1"的交付包，配图失败时宁可缺图降级也不得用封面/他图顶替
-
-未通过检查时按问题类型处理：单图可见内容质量未通过则降级、节奏/模板违规回步骤 6a/b、内容审核通过率 <80% 回步骤 6e。超过一半章节配图在各自限定重试后仍失败时，记录 `article_content_images_failed` warning 和缺失章节，将交付包 readiness 标记为 `blocked` 并继续生成核心 HTML。
-
-**产出**：更新后的 `output/04-article-final.md`（含 CDN 图片链接）、`output/images.json`、回填后的 `output/visual-rhythm-plan.md`
+- 封面开启时才调用 [article-cover-design](../article-cover-design/SKILL.md)，传最终正文、context-brief.md、SEO 标题/摘要、有效比例和参考状态。保留 cover-plan.md、cover-prompt.md、cover-quality.json，人物参考仅进封面，项目风格图只分析成文本。
+- 正文配图开启时由 article-visual-design 负责 image-plan.md、逐图生成/独立审核/上传与原子更新 images.json；封面关闭或人物参考启用时不传 ref_image_path。
+- 领域字段、模板、MCP 参数与质量评分卡见 [生成合同](../article-visual-design/references/generation-contract.md)，不在入口复制。只接受审核通过且已上传的图；正文 wechat_url 两两不同且不复用封面。
+- 每图最多 3 次生成，上传最多重试一次；耗尽保留本地图和结构化 warning。视觉失败继续生成核心 HTML 和 `output/draft.json`，readiness.status=blocked。
 
 ### Phase 4: 组装交付
 
@@ -251,7 +127,7 @@ render_template(
 
 ### 步骤 9b：成品互动质量审计
 
-按 `article-viral-strategy` 的 `references/viral-audit.md` 对最终正文、SEO 结果、摘要和启用的视觉产物做 7 维审计，写入 `output/viral-audit.md`。每维必须给出证据；视觉停留必须读取 `cover_strategy`、`cover_effectiveness_scorecard` 和人物身份结论，不得只凭“风格统一”给高分。缺 `viral-audit.md` 不得交付；整体分低于 7.0 或硬性项未通过时，按审计指向回步骤 3 或 5 修订并复审。
+按 [article-viral-strategy 审计合同](../article-viral-strategy/references/viral-audit.md) 对最终正文、SEO 结果、摘要和启用的视觉产物做 7 维审计，写入 `output/viral-audit.md`。每维必须给出证据；视觉停留必须读取 `cover_strategy`、`cover_effectiveness_scorecard` 和人物身份结论，不得只凭“风格统一”给高分。缺 `viral-audit.md` 不得标记 ready；整体分低于 7.0 或硬性项未通过时，按审计指向回步骤 3 或 5 修订并复审。
 
 ### 步骤 10：生成文章交付包
 
@@ -272,6 +148,6 @@ render_template(
 - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，写结构化失败诊断并保留已有产物
 - **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续。视觉失败不得阻止核心 Markdown 与 HTML 继续生成
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受交付前质量闸门约束
-- **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉与交付包步骤并继续生成核心 HTML。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定
+- **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉步骤并继续生成核心 HTML 和 blocked 交付包。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定
 - **唯一配置兜底**：仅当 `get_project_profile` 调用成功但缺少可选语义配置（如 `visual_style`、`writer` 或 `theme`）时，才可采用 Agent 默认值并记录来源；只有这种成功响应中的可选字段缺失允许继续，调用失败不属于配置缺失
 - **Runtime 工作区边界**：托管 runtime 已预创建任务私有的 `output/`；Agent 只写显式 `output/<filename>`，不得创建、发现、移动或重命名该目录。

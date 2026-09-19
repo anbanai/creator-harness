@@ -1,8 +1,8 @@
 {
   "canvas_config": {
-    "height": __CANVAS_HEIGHT__,
+    "height": "__CANVAS_HEIGHT__",
     "ratio": "__CANVAS_RATIO__",
-    "width": __CANVAS_WIDTH__
+    "width": "__CANVAS_WIDTH__"
   },
   "config": {
     "adjust_max_index": 1,
@@ -27,24 +27,24 @@
     "sub_type": "local",
     "type": "image"
   },
-  "duration": __TOTAL_DURATION_US__,
-  "fps": __FPS__,
+  "duration": "__TOTAL_DURATION_US__",
+  "fps": "__FPS__",
   "id": "__DRAFT_ID__",
   "materials": {
     "audios": [
-      __AUDIO_MATERIALS__
+      "__AUDIO_MATERIALS__"
     ],
     "canvases": [
-      __CANVAS_MATERIALS__
+      "__CANVAS_MATERIALS__"
     ],
     "drafts": [
       {
         "id": "__COVER_DRAFT_ID__",
         "draft": {
           "canvas_config": {
-            "height": __CANVAS_HEIGHT__,
+            "height": "__CANVAS_HEIGHT__",
             "ratio": "__CANVAS_RATIO__",
-            "width": __CANVAS_WIDTH__
+            "width": "__CANVAS_WIDTH__"
           },
           "color_space": -1,
           "materials": {
@@ -62,18 +62,18 @@
     "effects": [],
     "material_animations": [],
     "sound_project_mappings": [
-      __SOUND_PROJECT_MAPPINGS__
+      "__SOUND_PROJECT_MAPPINGS__"
     ],
     "speeds": [
-      __SPEED_MATERIALS__
+      "__SPEED_MATERIALS__"
     ],
     "texts": [
-      __TEXT_MATERIALS__
+      "__TEXT_MATERIALS__"
     ],
     "transitions": [],
     "video_effects": [],
     "videos": [
-      __VIDEO_MATERIALS__
+      "__VIDEO_MATERIALS__"
     ]
   },
   "new_version": "79.0.0",
@@ -81,30 +81,30 @@
   "tracks": [
     {
       "attribute": 0,
-      "flag": __VIDEO_SEGMENT_COUNT__,
+      "flag": "__VIDEO_SEGMENT_COUNT__",
       "id": "__VIDEO_TRACK_ID__",
-      "segments": [__VIDEO_SEGMENTS__],
+      "segments": ["__VIDEO_SEGMENTS__"],
       "type": "video"
     },
     {
       "attribute": 0,
-      "flag": __EFFECT_SEGMENT_COUNT__,
+      "flag": "__EFFECT_SEGMENT_COUNT__",
       "id": "__EFFECT_TRACK_ID__",
-      "segments": [__EFFECT_SEGMENTS__],
+      "segments": ["__EFFECT_SEGMENTS__"],
       "type": "effect"
     },
     {
       "attribute": 0,
-      "flag": __AUDIO_SEGMENT_COUNT__,
+      "flag": "__AUDIO_SEGMENT_COUNT__",
       "id": "__AUDIO_TRACK_ID__",
-      "segments": [__AUDIO_SEGMENTS__],
+      "segments": ["__AUDIO_SEGMENTS__"],
       "type": "audio"
     },
     {
       "attribute": 0,
-      "flag": __TEXT_SEGMENT_COUNT__,
+      "flag": "__TEXT_SEGMENT_COUNT__",
       "id": "__TEXT_TRACK_ID__",
-      "segments": [__TEXT_SEGMENTS__],
+      "segments": ["__TEXT_SEGMENTS__"],
       "type": "text"
     }
   ],

@@ -10,7 +10,7 @@ description: 'Use when 操控剪映/CapCut 草稿文件——创建、读取、�
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
 
-This skill enables Claude to directly manipulate CapCut/JianYing (剪映) draft files on the local filesystem using built-in tools (Read, Write, Edit, Bash). No external scripts or servers needed.
+This skill enables the agent to directly manipulate CapCut/JianYing (剪映) draft files on the local filesystem using built-in tools (Read, Write, Edit, Bash). No external scripts or servers needed. The host adapter must provide `CAPCUT_DRAFT_ROOT`; the Skill does not assume an operating-system-specific path.
 
 ## Supported Operations
 
@@ -22,30 +22,9 @@ This skill enables Claude to directly manipulate CapCut/JianYing (剪映) draft 
 
 ## Draft Root Discovery (草稿根目录)
 
-CapCut stores all drafts under a root directory. Find it by checking these paths in order:
+CapCut stores all drafts under a configured root directory:
 
-**macOS:**
-```
-~/Movies/JianyingPro/User Data/Projects/com.lveditor.draft
-```
-If not found, try:
-```
-~/Library/Containers/com.lemon.lvpro/Data/Movies/JianyingPro/User Data/Projects/com.lveditor.draft
-```
-
-**Windows:**
-```
-%LOCALAPPDATA%\JianyingPro\User Data\Projects\com.lveditor.draft
-```
-
-To discover programmatically:
-```bash
-# macOS
-ls ~/Movies/JianyingPro/User\ Data/Projects/com.lveditor.draft/root_meta_info.json 2>/dev/null && echo "FOUND"
-
-# Windows (Git Bash)
-ls "$LOCALAPPDATA/JianyingPro/User Data/Projects/com.lveditor.draft/root_meta_info.json" 2>/dev/null && echo "FOUND"
-```
+Use the runtime-provided `CAPCUT_DRAFT_ROOT` or an explicit draft root path supplied by the user. Verify that `<CAPCUT_DRAFT_ROOT>/root_meta_info.json` exists before any operation. Platform-specific discovery belongs in the host adapter/reference documentation, not in this Skill's workflow.
 
 If the user provides a custom draft root path, use that instead.
 
@@ -122,7 +101,7 @@ Read `draft_info.json` → make changes → write back. Common modifications:
 - Adjust timing: modify target_timerange on segment
 
 ### Delete a draft
-Remove entry from `root_meta_info.json` → delete draft folder with `rm -rf`
+Read and display the exact draft entry and folder, obtain explicit confirmation, remove the entry from `root_meta_info.json`, then delete the confirmed draft folder. Never run an unconditional recursive delete.
 
 ## Key Defaults
 
@@ -191,13 +170,13 @@ All templates use `__PLACEHOLDER__` format. Copy a template, replace placeholder
 **Auxiliary material templates** (one per video segment):
 - `templates/aux_canvas.json` — Canvas material (1 placeholder: CANVAS_ID)
 - `templates/aux_speed.json` — Speed material (1 placeholder: SPEED_ID)
-- `templates/aux_sound_project.json` — Sound project mapping (1 placeholder: SOUND_PROJECT_ID)
+- `templates/aux_sound_channel.json` — Sound project mapping (1 placeholder: SOUND_PROJECT_ID)
 
 ### Workflow: Create a new draft using templates
 
 1. Generate UUIDs: `for i in $(seq 1 20); do uuidgen | tr '[:lower:]' '[:upper:]'; done`
 2. Copy `full_draft_info.json` → replace top-level placeholders (CANVAS, FPS, DRAFT_ID, DURATION)
-3. For each video segment: copy `material_video.json` + `segment_video.json` + `aux_canvas.json` + `aux_speed.json` + `aux_sound_project.json`, fill IDs/timing, insert into the arrays
+3. For each video segment: copy `material_video.json` + `segment_video.json` + `aux_canvas.json` + `aux_speed.json` + `aux_sound_channel.json`, fill IDs/timing, insert into the arrays. Templates are valid JSON with `__PLACEHOLDER__` strings; replace numeric/object placeholders with correctly typed JSON values before writing the final draft.
 4. For each subtitle: copy `material_text.json` + `segment_text.json`, fill TEXT_ID/timing
 5. For audio: copy `material_audio.json` + `segment_audio.json`, fill AUDIO_ID/duration
 6. Copy `full_draft_meta_info.json` → replace placeholders

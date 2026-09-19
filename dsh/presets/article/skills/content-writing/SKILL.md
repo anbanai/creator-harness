@@ -1,14 +1,10 @@
 ---
 name: content-writing
-description: Use when writing WeChat article body content, de-AI rewriting, content quality review, compliance review, or when an article pipeline reaches article body creation.
+description: Use only for WeChat article body drafting, humanizer handoff, content compliance, or the Article writing stage. SEO metadata and viral strategy have separate Skills.
 ---
 
 # 微信公众号内容写作知识库
 
-
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
 ## Intent Routing
 

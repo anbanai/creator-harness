@@ -1,5 +1,5 @@
 id: article
-version: 2.0.0
+version: 2.0.1
 kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
@@ -10,7 +10,7 @@ agent:
   dsh_source: agent.dsh.yml
   # Keep the standalone interactive publishing skill distributed with the pack;
   # the managed Article Agent itself does not load or invoke it.
-  skills: [content-writing, humanizer, article-visual-design, article-cover-design, topic-research, seo-optimization, article-publishing, article-viral-strategy]
+  skills: [content-writing, humanizer, article-visual-design, article-cover-design, topic-research, seo-optimization, article-viral-strategy, article-publishing]
   max_turns: 300
 bindings:
   project_platforms: [article]

@@ -1,19 +1,15 @@
 ---
 name: ecommerce-visual-design
-description: 'Use when 电商视觉设计与生成——商业转化导向的视觉工艺，按已选模块规划并生成主图/详情/封面/分享/SKU，保证产品跨图一致。受众=买家，目标=点击→转化→降退货。当电商出图流程需要图片规划或生成时使用。'
+description: "Use only during the Ecommerce workflow's visual planning and generation stage for main, detail, cover, share, or SKU assets. Do not trigger as a standalone entrypoint."
 ---
 
 # 电商视觉设计与生成
-
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
 ## 图片比例固定规则
 
 ### 任务图像参数合同
 
-- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="ecommerce", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
 - `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 - `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 可按不同模块分别从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；平台常用比例只作选择参考。
 - 每次生成都必须显式传 `aspect_ratio` 参数。
@@ -41,7 +37,7 @@ description: 'Use when 电商视觉设计与生成——商业转化导向的视
 | MCP 工具 | 用途 |
 |----------|------|
 | `generate_image(project_id, task_id, prompt, image_type, output_path, aspect_ratio, ref_image_path, ref_image_paths)` | 从创作 prompt 和有序产品参考生成并登记单张电商素材 |
-| `analyze_image(project_id, file_path\|image_url, prompt)` | 视觉自检 / 锚点评估 |
+| `analyze_image(project_id, task_id, file_path\|image_url, prompt)` | 视觉自检 / 锚点评估 |
 | `compress_image(task_id, input_path, output_path, max_width?)` | 将授权任务图压缩为新的持久任务文件 |
 
 > `generate_image` 的参考图按本图所需部位选择：只传当前画面相关的原图，数组顺序与 prompt 编号一致；服务端拒绝集合时保留最关键产品证据并按语义相关性缩小子集。每张电商图必须有真实产品参考。
@@ -118,7 +114,7 @@ description: 'Use when 电商视觉设计与生成——商业转化导向的视
 
 ## 步骤 4：图片生成
 
-按 asset-plan.md 逐张生成。**主图①先行**确立基准。
+按 asset-plan.md 逐张生成。**已选模块首图先行**确立基准；仅在 selected_modules 包含主图时优先主图①，否则从已选模块选择首张关键图。
 
 每张 generate_image 调用：
 - `project_id=$PROJECT_ID`

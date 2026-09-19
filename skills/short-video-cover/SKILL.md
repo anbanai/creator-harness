@@ -5,13 +5,9 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 # 短视频爆款封面——参考封面复刻工作流
 
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 ## 任务图像参数合同
 
-- 调用 `get_project_profile(task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="short-video-cover", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
 - `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 - `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；短视频平台可优先参考 `9:16`，但只在能力支持时选择。
 - 每次生成都必须显式传 `aspect_ratio` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
@@ -67,50 +63,9 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ### Phase 0 — 初始化
 
-托管运行时提供任务私有工作区和预先创建的 `output/`。最终与恢复关键产物只写入本文列出的 `output/<filename>` 路径；不创建、发现、移动或重命名 `output/`。
+读取任务身份、项目与参考封面，写 `output/input-manifest.md`：新主题、标题、平台、参考深度、风格、比例和张数。任务输入优先；`get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="article")` 返回任务有效比例。
 
-#### 步骤 1：获取项目
-
-- `echo $ANBAN_DEFAULT_PROJECT` → `$PROJECT_ID`
-- 如果为空，调用 `list_projects` 获取项目列表；只有一个可用项目时自动使用，多个项目且无法从任务上下文判断时停止并提示配置 `ANBAN_DEFAULT_PROJECT`
-- 从结构化运行时上下文读取 `$TASK_ID`
-- 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID)`，按「任务图像参数合同」冻结 `$EFFECTIVE_ASPECT_RATIO`；用户明确比例不支持时在生成前停止
-
-#### 步骤 2：收集用户输入
-
-需要用户提供以下信息（缺失时停止并询问，不要凭空发挥）：
-
-| 字段 | 必填 | 默认值 | 说明 |
-|------|------|--------|------|
-| 参考封面 | ✅ | — | 优先使用任务上传图；也可提供公共 HTTPS URL |
-| 新封面标题 | ✅ | — | 用户的新标题文案 |
-| 账号领域 | ✅ | — | 知识干货/娱乐/美妆/科技/教育/...，决定视觉调性 |
-| 画面比例 | ❌ | 智能适配 | 用户明确值优先，否则从当前能力支持范围选择 |
-| 是否有人像 | ❌ | 自动判断 | 若参考封面有人像，新封面也建议保留人像位置逻辑 |
-| 参考深度 | ❌ | `light` | `light`（只学色彩和层级）或 `deep`（参考构图和主体位置）|
-
-写入 `output/input-manifest.md`：
-
-```markdown
-# Input Manifest
-
-## User Inputs
-
-- reference_cover: .anban-creator/input-attachments/attachment_01_ref.png
-- new_title: 3 步学会爆款标题
-- account_domain: 知识干货
-- aspect_ratio: $EFFECTIVE_ASPECT_RATIO
-- has_person: true
-- reference_depth: light
-
-## Runtime Context
-
-- $PROJECT_ID: <项目 ID>
-- output_root: output/
-- $TASK_ID: <任务 ID>
-```
-
----
+详见 [references/input-template.md](references/input-template.md)；仅在上述阶段读取。
 
 ### Phase 1 — 拆解参考封面
 
@@ -273,91 +228,15 @@ analyze_image(
 
 ### Phase 5 — 交付报告
 
-#### 步骤 7：最终报告
+逐图汇报本地文件、参考拆解、迁移方案、审核结果、重试及未解决风险；只将审核通过的图标为可用。保留 input-manifest.md、reference-analysis.md、cover-plan.md、cover-prompts.md 和 cover-review.md 以便恢复。
 
-向用户交付：
+详见 [references/delivery-template.md](references/delivery-template.md)；仅在上述阶段读取。
 
-```
-短视频封面复刻完成
+## Prompt 修订
 
-参考封面: output/input-manifest.md 记录的路径
-新标题: <用户的新标题>
-参考深度: light / deep
+用内容主体、构图、色彩、字体、层级、光影、纹理、情绪八要素描述视觉逻辑；更换可识别构图和文案，避免照抄原图。重试针对审核中实际缺失的元素。
 
-视觉迁移摘要:
-- 参考的视觉逻辑: <从 reference-analysis.md 提炼的 2-3 句话>
-- 实际迁移决策: <从 cover-plan.md 提炼的关键改动>
-
-成果文件:
-- output/cover.png （主交付）
-- output/cover_v2.png （若重试过，作为备选）
-
-审计结论:
-- 5 项审计结果: <PASS/MINOR/FAIL 汇总>
-- 能力边界: 当前 generate_image 不保证中文文字精确渲染；若封面文字不清晰建议 PS 二次加工
-
-复盘材料:
-- output/reference-analysis.md （参考封面拆解）
-- output/cover-plan.md （迁移决策）
-- output/cover-prompts.md （prompt 备份）
-- output/cover-review.md （质量审计）
-```
-
----
-
-## Prompt 构建技巧
-
-### 8 要素写法要点
-
-| 要素 | 好的写法 | 差的写法 |
-|------|---------|---------|
-| 画面比例 | "use the effective ratio $EFFECTIVE_ASPECT_RATIO and matching orientation" | "竖图" |
-| 标题排版 | "title '爆款标题' in 2 lines, line 1 small, line 2 oversized bold" | "有大标题" |
-| 人物/主体 | "young woman in red hoodie, half-body, positioned center-left, looking at camera" | "有个女生" |
-| 背景 | "deep navy gradient background with subtle geometric pattern, clean and uncluttered" | "深色背景" |
-| 色彩 | "main color deep navy like midnight sky, accent color warm yellow like honey" | "蓝黄色调" |
-| 字体气质 | "bold sans-serif Chinese title, high contrast, commercial poster vibe" | "黑体" |
-| 主体元素 | "central focus on the oversized title text, woman as supporting element behind text" | "标题为主" |
-| 禁止事项 | "no English text, no watermark, no logo, no border, no cluttered elements" | "干净" |
-
-### 参考深度对 prompt 的影响
-
-- `reference_depth=light`：prompt 不提"参考构图"，只描述新封面的目标视觉；ref_image_path 仍传入但仅作为风格参考
-- `reference_depth=deep`：prompt 开头加 "Reference cover shows the visual logic to follow: title in [position], subject in [position], color scheme [main + accent]. Recreate this composition logic with the new title and subject."
-
-### 反面约束的力量
-
-AI 生图模型容易跑偏，**显式禁止比正向描述更有效**：
-
-```
-DO NOT include:
-- English text or pinyin (Chinese only, with possible character rendering imperfections)
-- Watermarks, logos, signatures
-- Cluttered or busy elements competing with the main subject
-- Multiple unrelated subjects
-- Cartoon or anime style (must be photorealistic/commercial photography style)
-```
-
----
-
-## 常见失败与修复
-
-| 问题 | 原因 | 修复 |
-|------|------|------|
-| 标题文字渲染模糊/错字 | AI 模型对中文文字支持差 | 在 prompt 中明确"Chinese characters may have rendering imperfections, prioritize overall visual impact over text precision"；建议用户 PS 二次加工 |
-| 构图完全偏离参考 | reference_depth=deep 但 prompt 未显式声明参考逻辑 | prompt 开头加"Reference cover shows the visual logic to follow: ..." |
-| 人物位置错误 | 主体描述不够具体 | 明确位置："positioned center-left"、"right side of frame" |
-| 颜色与参考差距大 | 色彩描述过于抽象 | 用实物类比："deep navy like midnight sky, NOT pure black" |
-| 画面元素过多过乱 | 缺少反面约束 | prompt 末尾加"DO NOT include cluttered elements" |
-| 太像参考图（构图照搬） | reference_depth=deep 但未替换语义元素 | 把参考的"装饰元素保留、语义元素替换"原则写进 prompt |
-| 太不像参考图（视觉断裂） | reference_depth=light 但色彩和字体气质也未对齐 | 即使 light 模式，主色和字体气质也应参考；只重做构图 |
-| 公共 URL 下载失败 | URL 非 HTTPS、重定向到私网或内容不是图片 | 写失败诊断；不得绕过 `download_image` 的网络与类型校验 |
-| analyze_image 文件过大 | `file_path` 方式分析有 10MB 限制 | 调用 `compress_image(task_id=$TASK_ID, input_path=$REF_TASK_PATH, output_path="output/reference-cover-compressed.png")` 后分析返回路径 |
-| output_path 权限错误 | 路径不属于任务工作区 | 使用任务相对路径 `output/...` |
-| 长 prompt 504 Gateway Timeout | prompt 过长或约束过多 | Prompt 控制在 500 词以内，优先 8 要素和最关键反面约束 |
-| ref_image_path 无法访问 | 路径未登记在当前任务 | 重新读取附件索引，或用完整参数调用 `download_image` 登记公共 HTTPS 图片 |
-
----
+详见 [references/prompt-and-repair.md](references/prompt-and-repair.md)；仅在上述阶段读取。
 
 ## 验证清单
 

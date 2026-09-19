@@ -1,13 +1,9 @@
 ---
 name: seednote-research
-description: 'Use when analyzing Seednote topics, scoring engagement, researching trending seednote content, or fetching source note details for replicate mode. Also use when user mentions ''种草笔记选题'', ''热门笔记'', ''竞品分析'', ''笔记分析'', or when the seednote pipeline calls for topic discovery or source note fetching. Analyzes Seednote (种草笔记) topics, trending notes (热门笔记), and scores engagement potential (互动率评分).'
+description: 'Use only during Seednote topic discovery or source-note retrieval. Do not trigger for writing, visual generation, or generic competitor research.'
 ---
 
 # 种草笔记选题研究
-
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
 ## 已认证的小红书数据入口
 

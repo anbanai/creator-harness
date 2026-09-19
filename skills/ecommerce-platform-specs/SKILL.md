@@ -1,14 +1,9 @@
 ---
 name: ecommerce-platform-specs
-description: 'Use when 电商平台规范与合规知识库——各平台尺寸/主图规则/详情结构 + 《广告法》极限词与平台电商违禁词扫描。当电商出图流程需要注入平台尺寸规范或做合规检查时使用。'
+description: 'Use only when the Ecommerce workflow needs platform dimensions, module rules, or prohibited-word checks. Do not trigger for general product-image requests.'
 ---
 
 # 电商平台规范与合规
-
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 
 电商合规比种草更严，且与《广告法》强相关。本 skill 提供两件事：
 1. **平台规范**：按 `target_platform` 注入尺寸/主图规则/详情结构偏好。

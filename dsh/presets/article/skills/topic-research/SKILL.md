@@ -6,10 +6,6 @@ description: Use when researching WeChat topics, selecting from a topic pool, ch
 # 微信公众号选题分析
 
 
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 ## Intent Routing
 
 Use this Skill for topic source selection, duplicate checks, candidate generation, candidate scoring, Top 1 choice, and outline creation. Topic research and outline writing happen inside the Skill; MCP is used only for controlled discovery such as topic pool, history, profile, and task progress.

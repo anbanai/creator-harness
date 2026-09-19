@@ -18,7 +18,7 @@
   "render_index": 11005,
   "reverse": false,
   "speed": 1.0,
-  "target_timerange": { "duration": __EFFECT_DURATION_US__, "start": __EFFECT_START_US__ },
+  "target_timerange": { "duration": "__EFFECT_DURATION_US__", "start": "__EFFECT_START_US__" },
   "template_id": "",
   "template_scene": "default",
   "track_attribute": 0,

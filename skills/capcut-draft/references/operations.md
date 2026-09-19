@@ -1,5 +1,7 @@
 # CapCut Draft CRUD Operations Reference / 剪映草稿 CRUD 操作参考
 
+模板实例化须先 JSON 解析，再按字段类型赋值：时间/尺寸/FPS 为数值，材料和 segment 占位数组替换为真实对象数组（不得嵌套一层字符串或数组），ID/路径/文字为字符串。写出前确认无 `__PLACEHOLDER__` 残留并再次解析；不能用裸文本替换把数字保留成字符串。
+
 ## Contents
 
 - [Key Conventions / 关键约定](#key-conventions-关键约定)
@@ -31,9 +33,7 @@ Step-by-step guides for CRUD operations on CapCut/JianYing (剪映) draft files.
 
 ### Standard paths
 
-- macOS: `~/Movies/JianyingPro/User Data/Projects/com.lveditor.draft`
-- macOS sandboxed: `~/Library/Containers/com.lemon.lvpro/Data/Movies/JianyingPro/User Data/Projects/com.lveditor.draft`
-- Windows: `%LOCALAPPDATA%\JianyingPro\User Data\Projects\com.lveditor.draft`
+- Use the runtime-provided `CAPCUT_DRAFT_ROOT` or an explicit user-supplied root; platform-specific path lookup belongs to the host adapter.
 
 Look for `root_meta_info.json` in the candidate directory to confirm the correct path.
 
@@ -119,7 +119,7 @@ Generate UUIDs: `videoId`, `canvasId`, `speedId`, `soundProjectMappingId`, `segm
 3. Copy `templates/aux_speed.json` -> replace `__SPEED_ID__` with new UUID. Insert into `materials.speeds[]`.
    - Only `{ "id": "<speedId>", "speed": 1.0, "type": "speed" }` -- no `mode` or `name` fields.
 
-4. Copy `templates/aux_sound_project.json` -> replace `__SOUND_PROJECT_ID__` with new UUID. Insert into `materials.sound_project_mappings[]`.
+4. Copy `templates/aux_sound_channel.json` -> replace `__SOUND_PROJECT_ID__` with new UUID. Insert into `materials.sound_project_mappings[]`.
    - Only `{ "id": "<soundProjectMappingId>", "type": "none" }` -- no `audio_project_mapping` field.
    - Note: sound_project_mapping is NOT included in `extra_material_refs`.
 
@@ -237,7 +237,7 @@ Append a new video or image segment to the video track.
 1. **Read `draft_info.json`**.
 2. **Calculate video track end time**: max of all segments' `target_timerange.start + target_timerange.duration` (0 if empty).
 3. **Generate UUIDs**: `videoId`, `canvasId`, `speedId`, `soundProjectMappingId`, `segmentId`.
-4. Use templates: `material_video.json`, `aux_canvas.json`, `aux_speed.json`, `aux_sound_project.json`, `segment_video.json` -- replace all `__*__` placeholders with generated IDs and timing values. Set `target_timerange.start` to calculated end time. `render_index: 0`, `clip.scale: { "x": 2.0, "y": 2.0 }`. Include `audioId` in `extra_material_refs` if applicable.
+4. Use templates: `material_video.json`, `aux_canvas.json`, `aux_speed.json`, `aux_sound_channel.json`, `segment_video.json` -- replace all `__*__` placeholders with generated IDs and timing values. Set `target_timerange.start` to calculated end time. `render_index: 0`, `clip.scale: { "x": 2.0, "y": 2.0 }`. Include `audioId` in `extra_material_refs` if applicable.
 5. **Append** segment to video track's `segments[]`, increment `track.flag`.
 6. **Update duration** if segment extends beyond current: `max(currentDuration, segment end time)`.
 7. **Write back** and **update timestamps**.
@@ -307,7 +307,7 @@ Permanently remove a draft and all its files.
 
 1. **List drafts** (Operation 1), show draft name and ID, get explicit user confirmation.
 2. **Read `root_meta_info.json`**, remove entry from `all_draft_store` by `draft_id` or `draft_name`, decrement `draft_ids`, write back.
-3. Remove draft folder: `rm -rf "<draft_fold_path>"`.
+3. After explicit confirmation, remove the selected draft folder; never delete a path that was not displayed and confirmed.
 4. Verify: `test -d "<draft_fold_path>" && echo "ERROR" || echo "OK"`.
 
 ---

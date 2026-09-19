@@ -1,18 +1,13 @@
 ---
 name: ecommerce
-description: 'Use when 电商出图全自动创作。用户提到"电商出图"、"电商素材"、"商品图"、"产品图"、"主图"、"详情页"、"商详"、"SKU图"、"电商封面"、"电商设计"、"ecommerce"时使用此 skill。'
+description: 'Use as the user-facing entrypoint for a complete ecommerce asset workflow. Child Skills are stage-only and must be invoked by this workflow.'
 ---
 
 # /ecommerce 电商出图命令
 
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
-
 ## 强制执行声明
 
-**你正在执行电商出图任务。你必须使用工具（MCP 工具、Write、Bash、TaskCreate 等）完成完整的电商素材创作流水线。**
+**你正在执行电商出图任务。使用 MCP 和宿主提供的文件工具完成电商素材创作，并将产物写入任务文件。**
 
 **禁止直接用文字回答用户的产品问题。** 你不是在回答问题，你是在为一件商品产出可投放的成套电商素材（主图/详情/封面/分享/SKU）。如果你直接输出文字回答而没有使用任何工具，说明你理解错了任务。
 
@@ -52,7 +47,7 @@ description: 'Use when 电商出图全自动创作。用户提到"电商出图"�
 使用 `ecommerce-visual-design` skill：
 - 传入 `output/product-bible.md`、`output/copywriting.md`、`$ANCHOR_REF`、项目画像与任务选项
 - 产出 `output/asset-plan.md`（仅含已选模块）
-- 锚点优先（主图①先确立基准）→ 按模块逐张生成（产品档案前缀块 + **按需选参考图**：每张电商图只传它描绘部位对应的那几张产品图（查「产品图清单」序号）+ **点名保真 prompt**（「本图{部位}与【产品图清单】第N张完全一致」）+ 生成后单独 `analyze_image` 自检 + 3 轮收敛）
+- 锚点优先（仅选主图模块时以主图①确立基准，否则使用已选模块首张关键图）→ 按模块逐张生成（产品档案前缀块 + **按需选参考图**：每张电商图只传它描绘部位对应的那几张产品图（查「产品图清单」序号）+ **点名保真 prompt**（「本图{部位}与【产品图清单】第N张完全一致」）+ 生成后单独 `analyze_image` 自检 + 3 轮收敛）
 - 产物：`main_01..05.png`、`detail_01..NN.png`、`cover_01..NN.png`、`share_01..NN.png`、`sku_<variant>.png` + `output/asset-plan.md`、`output/image-prompts.md`、`output/best-refs.md`
 
 ### 步骤 5：合规检查
@@ -85,7 +80,7 @@ description: 'Use when 电商出图全自动创作。用户提到"电商出图"�
 
 ## 任务追踪要求
 
-流程启动时用 `TaskCreate` 创建任务列表，每个步骤对应一个任务。开始前 `TaskUpdate status → in_progress`，完成后 `TaskUpdate status → completed`。报告进度示例：`[N/M] 卖点文案完成 → output/copywriting.md (5个卖点)`
+平台阶段由顶层 Agent 按宿主适配合同维护；本 Skill 只返回本阶段产物与结果，不另建生命周期。报告进度示例：`[N/M] 卖点文案完成 → output/copywriting.md (5个卖点)`
 
 ---
 

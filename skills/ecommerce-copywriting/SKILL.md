@@ -1,14 +1,9 @@
 ---
 name: ecommerce-copywriting
-description: 'Use when 电商转化文案——从产品档案提炼 FABE 核心卖点，生成主图5张结构文案、详情页黄金结构文案、分享文案。受众=买家，目标=点击率→转化率→客单价、降退货。当电商出图流程需要卖点提炼或各模块文案时使用。'
+description: 'Use only when the Ecommerce workflow requests product-benefit extraction or module copy. Do not trigger as a standalone ecommerce entrypoint.'
 ---
 
 # 电商转化文案：卖点提炼 + 主图 + 详情页 + 分享
-
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 
 ## 受众与目标
 

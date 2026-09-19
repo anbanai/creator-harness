@@ -5,10 +5,6 @@ description: 'Use when creating, editing, validating, or troubleshooting Anban c
 
 # Custom Writer Styles
 
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 Use this skill as the entry point for custom writer YAML guidance. The detailed
 schema, examples, lookup order, and troubleshooting notes live in
 [references/writer-style-schema.md](references/writer-style-schema.md).
