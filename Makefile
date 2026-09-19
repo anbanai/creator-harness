@@ -1,4 +1,4 @@
-.PHONY: humanizer-check humanizer-update dsh-install dsh-check dsh-smoke
+.PHONY: humanizer-check humanizer-update dsh-install dsh-check dsh-smoke audit-workflows
 
 humanizer-check:
 	@scripts/check-humanizer.sh
@@ -14,3 +14,6 @@ dsh-check:
 
 dsh-smoke:
 	pnpm run smoke:profile
+
+audit-workflows:
+	pnpm run audit:workflows

@@ -1,14 +1,9 @@
 ---
 name: ecommerce-product-analysis
-description: 'Use when 电商产品图分析——从多张产品图抽取电商转化相关属性，构建锁定规格「产品档案 Product Bible」，作为产品跨图一致性与卖点提炼的共同数据底座。当电商出图流程需要理解产品、构建产品档案时使用。'
+description: "Use only during the Ecommerce workflow's product-analysis stage to build the locked Product Bible from supplied product images. Do not trigger as a standalone entrypoint."
 ---
 
 # 电商产品图分析 → 产品档案 Product Bible
-
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
 
 ## 目标
 
@@ -25,7 +20,7 @@ description: 'Use when 电商产品图分析——从多张产品图抽取电商
 
 | MCP 工具 | 用途 |
 |----------|------|
-| `analyze_image(project_id, file_path\|image_url, prompt)` | 逐张抽取产品属性（一次一张） |
+| `analyze_image(project_id, task_id, file_path\|image_url, prompt)` | 逐张抽取产品属性（一次一张） |
 | `compress_image(task_id, input_path, output_path, max_width?)` | 产品图 >10MB 时压缩成当前任务的持久文件后再分析 |
 
 `file_path` 必须是 `.anban-creator/input-attachments/index.json` 中登记的任务相对路径（≤10MB），并同时传 `task_id=$TASK_ID`。不得传宿主机或服务端本地路径。

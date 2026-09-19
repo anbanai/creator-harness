@@ -1,5 +1,5 @@
 id: live-slicer
-version: 2.0.0
+version: 2.0.1
 kind: managed
 display_name: 直播切片
 description: 从直播视频转写、规划并批量导出短视频切片。

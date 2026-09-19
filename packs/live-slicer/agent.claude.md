@@ -52,7 +52,7 @@ context; PROJECT_ID is also available as ANBAN_DEFAULT_PROJECT.
 - 必须通过 Claude Code 内置 MCP 工具调用 `get_media_pipeline_status`、`prepare_file_upload`、`create_live_analysis_task`、`query_live_analysis_task`、`analyze_video`、`build_live_clip_plan`、`build_live_subject_clip_plan`、`build_live_clip_manifest`。MCP server 由插件级 `.mcp.json` 注入，不要在本 agent frontmatter 中声明 `mcpServers`。
 - 主题驱动切片必须额外调用 `build_live_subject_clip_plan`；不得把非连续主题脚本手工改造成 `segments.json`。
 - 不得手写网络客户端、不得直接请求服务端接口、不得绕开 MCP。
-- 本地媒体处理只运行 `ffmpeg` 和 `ffprobe` 命令。
+- 本地媒体处理只运行 `ffmpeg` 和 `ffprobe`；预签名文件上传允许使用 `curl`，文件大小/文本和 JSON 检查允许使用 `wc`、`tr`、`awk`、`jq`、`file`、`find`、`sleep` 等必要本地命令。禁止自定义服务端 HTTP 客户端、直接调用业务 API 或用 Bash 编排 MCP 流程。
 - 不要把大段 JSON 只留在对话里；关键 MCP 返回必须写入 `output/*.json`。
 - `analysis.sentences[].index` 是切片边界的唯一来源；不得凭空编造时间戳。
 
@@ -66,7 +66,7 @@ context; PROJECT_ID is also available as ANBAN_DEFAULT_PROJECT.
 - Write
 - Bash
 
-其中 `TaskCreate`/`TaskUpdate` 分别维护按本次计划动态创建的生命周期阶段 Task 和原有 8 个细粒度业务 Task，`Read`/`Write` 落盘并核对 JSON/Markdown 产物，`Bash` 仅运行 `ffmpeg`/`ffprobe` 及目录/文件检查命令。
+其中 `TaskCreate`/`TaskUpdate` 分别维护按本次计划动态创建的生命周期阶段 Task 和原有 8 个细粒度业务 Task，`Read`/`Write` 落盘并核对 JSON/Markdown 产物；`Bash` 只允许运行 `ffmpeg`/`ffprobe`、预签名 `curl` 上传和必要的目录、文件、文本、JSON 检查命令。
 
 ---
 
@@ -134,6 +134,8 @@ if [ "${SRC_W:-0}" -gt "${SRC_H:-0}" ] 2>/dev/null; then ORIENTATION="landscape"
 
 ```bash
 curl --fail -X PUT -H "Content-Type: audio/mpeg" -H "Content-Length: $AUDIO_SIZE" --upload-file "output/audio.mp3" "$UPLOAD_URL"
+
+预签名 PUT 返回非零时不得创建听悟任务；写 `output/failure-state.json`（version、status=recoverable_failure、stage=audio_upload、error_code=audio_upload_failed、脱敏 message、resume_from=audio_upload），保留本地音频并停止。诊断不记录预签名 URL 或签名；恢复时重新经 MCP 获取有效上传授权。
 ```
 
 上传成功后使用 `$AUDIO_KEY` 创建听悟任务。
@@ -239,7 +241,7 @@ ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:no
 
 为每个成功切片创建剪映草稿，方便用户在剪映中进一步编辑。
 
-1. 检测剪映草稿根目录：检查 `~/Movies/JianyingPro/User Data/Projects/com.lveditor.draft/root_meta_info.json` 是否存在（macOS 备选：`~/Library/Containers/com.lemon.lvpro/Data/Movies/JianyingPro/User Data/Projects/com.lveditor.draft`）。未找到时跳过此步骤，在 `decision-log.md` 记录"未检测到剪映草稿目录，跳过草稿导出"。
+1. 先使用 runtime 提供或用户显式配置的 `CAPCUT_DRAFT_ROOT`；未配置时，宿主适配可探测 macOS 常见路径 `~/Movies/JianyingPro/User Data/Projects/com.lveditor.draft`。核对 root_meta_info.json 和目录可写性。缺失、无写权限或超出宿主允许路径时跳过草稿导出，在 output/decision-log.md 区分“未配置/未找到/不可写”，继续交付视频，不请求中途授权。
 
 2. 从 `$PLAN_JSON` 和 `clip_results.json` 中筛选 `status="ok"` 的切片，获取每个切片的 `title`、`output`、`start`、`end`、`duration`、`transcript`。
 

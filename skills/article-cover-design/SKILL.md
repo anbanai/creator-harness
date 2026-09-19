@@ -1,6 +1,6 @@
 ---
 name: article-cover-design
-description: 'Use when a user requests a WeChat Official Account article cover, 公众号封面、公众号头图、封面图、cover、封面设计, or when the article workflow reaches its cover step.'
+description: 'Use for a WeChat Official Account article cover when explicitly requested or when the Article workflow reaches its cover stage. Do not trigger for general article images or unrelated platform covers.'
 ---
 
 # 微信公众号封面设计

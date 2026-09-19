@@ -5,7 +5,7 @@
     {
       "category_id": "__ANIM_CATEGORY_ID__",
       "category_name": "__ANIM_CATEGORY_NAME__",
-      "duration": __ANIM_DURATION__,
+      "duration": "__ANIM_DURATION__",
       "id": "__ANIM_PRESET_ID__",
       "material_type": "video",
       "name": "__ANIM_NAME__",

@@ -30,8 +30,7 @@ CapCut/JianYing drafts consist of 3 JSON files. This document describes every fi
 
 Default draft root paths:
 
-- macOS: `~/Movies/JianyingPro/User Data/Projects/com.lveditor.draft`
-- Windows: `%LOCALAPPDATA%\JianyingPro\User Data\Projects\com.lveditor.draft`
+- Use the runtime-provided `CAPCUT_DRAFT_ROOT` or an explicit user-supplied root; do not hard-code a host path in the workflow.
 
 ## Key Constants
 

@@ -331,6 +331,8 @@ $REQUIRED_ENTITIES（逐行列出）
 ```
 analyze_image(
   project_id=$PROJECT_ID,
+  task_id=$TASK_ID,
+  project_id=$PROJECT_ID,
   file_path=output/img_01.png,
   prompt=<步骤 2 的校验 prompt>
 )

@@ -58,13 +58,13 @@ describe('packed runtime installation', () => {
             '@deepseek-ai/cordis': '4.0.2',
           },
         },
-        '../anban-dsh-plugin-4.2.0.tgz',
+        '../anban-dsh-plugin-4.2.1.tgz',
       ),
     ).toEqual({
       private: true,
       type: 'module',
       dependencies: {
-        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.2.0.tgz',
+        '@anban/dsh-plugin': 'file:../anban-dsh-plugin-4.2.1.tgz',
         '@deepseek-ai/cordis': '4.0.2',
       },
     })
@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.0',
+      version: '4.2.1',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -557,8 +557,9 @@ describe('DSH package manifest', () => {
         'verify:source': 'node dsh/scripts/package-integrity.mjs source',
         'verify:pack': 'node dsh/scripts/package-integrity.mjs pack',
         'smoke:profile': 'node dsh/scripts/smoke-profile.mjs',
+        'audit:workflows': 'node scripts/audit-workflows.mjs && node --test scripts/audit-workflows.test.mjs',
         check:
-          'pnpm run typecheck && pnpm run build && pnpm run test && pnpm run verify:pack && pnpm run smoke:profile',
+          'pnpm run audit:workflows && pnpm run typecheck && pnpm run build && pnpm run test && pnpm run verify:pack && pnpm run smoke:profile',
       },
       exports: {
         './anban-mcp': {

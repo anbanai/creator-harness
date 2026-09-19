@@ -1,6 +1,6 @@
 ---
 name: seednote-viral-analysis
-description: Use when analyzing or decomposing a Seednote (种草笔记) viral note, extracting reusable templates from a source note, or preparing evidence-backed clone guidance. Also use when the user mentions "拆解爆款", "爆款拆解", "分析爆款笔记", "提取爆款模板", "source note analysis", or when the seednote replicate pipeline needs source-note analysis.
+description: Use only for Seednote viral-note evidence decomposition and task-local template extraction, including the `viral_analysis` task branch. Do not generate copy or images.
 ---
 
 # 种草笔记爆款拆解

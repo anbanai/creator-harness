@@ -1,0 +1,219 @@
+{
+  "date": "2026-09-19",
+  "baseline_harness_commit": "853e3ad8e4f01127ac8f6959a13a6ca832699b75",
+  "before": {
+    "mode": "HEAD baseline",
+    "measurement": "UTF-16 characters; startup = Claude Agent source + eagerly preloaded SKILL.md; Codex enabled Skills are discoverable, not eagerly loaded; references and deferred Humanizer are additional stage costs.",
+    "skill_count": 27,
+    "authored_skill_chars": 171879,
+    "authored_skill_lines": 4638,
+    "authored_document_chars": 476214,
+    "authored_document_lines": 15365,
+    "authored_agent_chars": 79577,
+    "duplicate_paragraphs": 15,
+    "duplicate_chars": 6957,
+    "startup": {
+      "article": {
+        "preloaded_skills": [
+          "content-writing",
+          "humanizer",
+          "article-visual-design",
+          "article-cover-design",
+          "topic-research",
+          "seo-optimization",
+          "article-viral-strategy"
+        ],
+        "agent_chars": 25264,
+        "skill_chars": 66460,
+        "total_chars": 91724,
+        "limit_chars": 45000,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 8
+      },
+      "ecommerce": {
+        "preloaded_skills": [
+          "ecommerce-product-analysis",
+          "ecommerce-copywriting",
+          "humanizer",
+          "ecommerce-visual-design",
+          "ecommerce-platform-specs"
+        ],
+        "agent_chars": 12176,
+        "skill_chars": 49448,
+        "total_chars": 61624,
+        "limit_chars": 34000,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 5
+      },
+      "live-slicer": {
+        "preloaded_skills": [
+          "live-slice",
+          "capcut-draft"
+        ],
+        "agent_chars": 15346,
+        "skill_chars": 23945,
+        "total_chars": 39291,
+        "limit_chars": null,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 2
+      },
+      "moments": {
+        "preloaded_skills": [
+          "moments",
+          "humanizer"
+        ],
+        "agent_chars": 4266,
+        "skill_chars": 31964,
+        "total_chars": 36230,
+        "limit_chars": null,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 2
+      },
+      "montage": {
+        "preloaded_skills": [
+          "montage",
+          "video-cover-design"
+        ],
+        "agent_chars": 5157,
+        "skill_chars": 7526,
+        "total_chars": 12683,
+        "limit_chars": null,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 2
+      },
+      "seednote": {
+        "preloaded_skills": [
+          "humanizer",
+          "seednote-research",
+          "seednote-viral-analysis",
+          "seednote-writing",
+          "seednote-visual-design"
+        ],
+        "agent_chars": 17368,
+        "skill_chars": 57130,
+        "total_chars": 74498,
+        "limit_chars": 38000,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 5
+      }
+    },
+    "warnings": [],
+    "errors": [
+      "skills/article-visual-design/SKILL.md: 368 lines exceeds 280; move conditional detail to references",
+      "skills/portrait-pose-variants/SKILL.md: 452 lines exceeds 280; move conditional detail to references",
+      "skills/seednote-visual-design/SKILL.md: 359 lines exceeds 280; move conditional detail to references",
+      "skills/seednote-writing/SKILL.md: 325 lines exceeds 280; move conditional detail to references",
+      "skills/short-video-cover/SKILL.md: 378 lines exceeds 280; move conditional detail to references",
+      "skills/capcut-draft/templates/full_draft_info.json: invalid JSON: Unexpected token '_', ...\"\"height\": __CANVAS_H\"... is not valid JSON",
+      "skills/capcut-draft/templates/full_draft_meta_info.json: invalid JSON: Unexpected token '_', ...\"_create\": __TIMESTAM\"... is not valid JSON",
+      "skills/capcut-draft/templates/material_animation.json: invalid JSON: Unexpected token '_', ...\"uration\": __ANIM_DUR\"... is not valid JSON",
+      "skills/capcut-draft/templates/material_audio.json: invalid JSON: Unexpected token '_', ...\"uration\": __AUDIO_DU\"... is not valid JSON",
+      "skills/capcut-draft/templates/material_effect.json: invalid JSON: Unexpected token '_', ...\"_params\": __ADJUST_P\"... is not valid JSON",
+      "skills/capcut-draft/templates/material_transition.json: invalid JSON: Unexpected token '_', ...\"overlap\": __TRANS_IS\"... is not valid JSON",
+      "skills/capcut-draft/templates/material_video.json: invalid JSON: Unexpected token '_', ...\"uration\": __SEGMENT_\"... is not valid JSON",
+      "skills/capcut-draft/templates/root_meta_entry.json: invalid JSON: Unexpected token '_', ...\"_create\": __TIMESTAM\"... is not valid JSON",
+      "skills/capcut-draft/templates/segment_audio.json: invalid JSON: Unexpected token '_', ...\"uration\": __AUDIO_DU\"... is not valid JSON",
+      "skills/capcut-draft/templates/segment_effect.json: invalid JSON: Unexpected token '_', ...\"uration\": __EFFECT_D\"... is not valid JSON",
+      "skills/capcut-draft/templates/segment_text.json: invalid JSON: Unexpected token '_', ...\"uration\": __TEXT_DUR\"... is not valid JSON",
+      "skills/capcut-draft/templates/segment_video.json: invalid JSON: Unexpected token '_', ...\"uration\": __SEGMENT_\"... is not valid JSON",
+      "article: startup 91724 > 45000",
+      "ecommerce: startup 61624 > 34000",
+      "seednote: startup 74498 > 38000"
+    ]
+  },
+  "after": {
+    "mode": "working tree",
+    "measurement": "UTF-16 characters; startup = Claude Agent source + eagerly preloaded SKILL.md; Codex enabled Skills are discoverable, not eagerly loaded; references and deferred Humanizer are additional stage costs.",
+    "skill_count": 27,
+    "authored_skill_chars": 140541,
+    "authored_skill_lines": 3639,
+    "authored_document_chars": 456972,
+    "authored_document_lines": 14809,
+    "authored_agent_chars": 64898,
+    "duplicate_paragraphs": 11,
+    "duplicate_chars": 5381,
+    "startup": {
+      "article": {
+        "preloaded_skills": [
+          "content-writing",
+          "article-visual-design",
+          "article-cover-design",
+          "topic-research",
+          "seo-optimization",
+          "article-viral-strategy"
+        ],
+        "agent_chars": 14854,
+        "skill_chars": 29305,
+        "total_chars": 44159,
+        "limit_chars": 45000,
+        "deferred_humanizer_chars": 28698,
+        "distributed_skills": 8
+      },
+      "ecommerce": {
+        "preloaded_skills": [
+          "ecommerce-product-analysis",
+          "ecommerce-copywriting",
+          "ecommerce-visual-design",
+          "ecommerce-platform-specs"
+        ],
+        "agent_chars": 9526,
+        "skill_chars": 20748,
+        "total_chars": 30274,
+        "limit_chars": 34000,
+        "deferred_humanizer_chars": 28698,
+        "distributed_skills": 5
+      },
+      "live-slicer": {
+        "preloaded_skills": [
+          "live-slice",
+          "capcut-draft"
+        ],
+        "agent_chars": 15707,
+        "skill_chars": 24162,
+        "total_chars": 39869,
+        "limit_chars": null,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 2
+      },
+      "moments": {
+        "preloaded_skills": [
+          "moments"
+        ],
+        "agent_chars": 4557,
+        "skill_chars": 3207,
+        "total_chars": 7764,
+        "limit_chars": null,
+        "deferred_humanizer_chars": 28698,
+        "distributed_skills": 2
+      },
+      "montage": {
+        "preloaded_skills": [
+          "montage",
+          "video-cover-design"
+        ],
+        "agent_chars": 5701,
+        "skill_chars": 7825,
+        "total_chars": 13526,
+        "limit_chars": null,
+        "deferred_humanizer_chars": 0,
+        "distributed_skills": 2
+      },
+      "seednote": {
+        "preloaded_skills": [
+          "seednote-research",
+          "seednote-viral-analysis",
+          "seednote-writing",
+          "seednote-visual-design"
+        ],
+        "agent_chars": 14553,
+        "skill_chars": 22204,
+        "total_chars": 36757,
+        "limit_chars": 38000,
+        "deferred_humanizer_chars": 28698,
+        "distributed_skills": 5
+      }
+    },
+    "warnings": [],
+    "errors": []
+  }
+}

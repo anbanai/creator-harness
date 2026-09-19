@@ -6,6 +6,20 @@
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
 
+## [4.2.1] - 2026-09-19
+
+### Changed
+
+- Repaired task-scoped MCP calls, autonomous project selection, blocked Article
+  draft delivery, Seednote task-type/image failure gates, live upload commands,
+  Montage runtime collection, and CapCut JSON templates and deletion boundaries.
+- Centralized visual methods in Skills and on-demand references; defer pinned
+  Humanizer loading until rewriting without changing its upstream checkout.
+- Added workflow auditing for references, JSON, identity parameters, startup
+  budgets and duplicate prose, plus independent static forward-test cases.
+- Preserved the interactive Article publishing Skill in Pack distribution while
+  excluding it from managed Agent preloads. Native Agents and DSH remain generated.
+
 ## [4.1.30] - 2026-09-16
 
 ### Fixed

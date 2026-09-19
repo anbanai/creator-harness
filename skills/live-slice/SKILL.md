@@ -5,11 +5,6 @@ description: Use when working on live video slicing, 直播切片, 剪直播, �
 
 # 直播切片
 
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
-
-
 Use this skill to convert a local livestream video into transcript-backed short-video clip plans and exports. Local media work uses direct `ffmpeg`/`ffprobe` commands only; MCP tools handle OSS upload, TingWu analysis, and LLM JSON planning.
 
 ## Default Artifacts
@@ -51,6 +46,8 @@ The managed runtime provides a task-private workspace and a pre-created `output/
 3. Upload audio:
    Call `get_media_pipeline_status` first. TingWu is the required transcription backend; if `oss_direct_upload` or `tingwu_configured` is false, stop and report the missing items.
    Set `AUDIO_SIZE=$(wc -c < output/audio.mp3 | tr -d ' ')`, then call `prepare_file_upload` with `project_id="$PROJECT_ID"`, `task_id="$TASK_ID"`, `purpose="live_audio"`, `filename="audio.mp3"`, `content_type="audio/mpeg"`, and `size=$AUDIO_SIZE`. Upload `output/audio.mp3` to the returned `upload_url` with `curl --fail -X PUT -H "Content-Type: audio/mpeg" -H "Content-Length: $AUDIO_SIZE" --upload-file "output/audio.mp3" "$UPLOAD_URL"`.
+
+预签名 PUT 返回非零时不得创建听悟任务；写 `output/failure-state.json`（version、status=recoverable_failure、stage=audio_upload、error_code=audio_upload_failed、脱敏 message、resume_from=audio_upload），保留本地音频并停止。诊断不记录预签名 URL 或签名；恢复时重新经 MCP 获取有效上传授权。
 
 4. Create TingWu task:
    Call `create_live_analysis_task(audio_key=..., auto_chapters_enabled=true, summarization_enabled=true, meeting_assistance_enabled=true, diarization_enabled=false, script_template_enable=true)`.

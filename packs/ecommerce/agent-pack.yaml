@@ -1,5 +1,5 @@
 id: ecommerce
-version: 2.0.0
+version: 2.0.1
 kind: managed
 display_name: 电商素材
 description: 基于产品图片生成完整电商文案和视觉素材包。

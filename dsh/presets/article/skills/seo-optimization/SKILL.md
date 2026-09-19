@@ -1,14 +1,10 @@
 ---
 name: seo-optimization
-description: Use when optimizing WeChat article titles, keywords, digests, CTR variants, or search-facing metadata.
+description: "Use only for WeChat article search metadata: title, keywords, digest, and search-facing variants. Do not trigger for viral retention or body rewriting."
 ---
 
 # 微信公众号 SEO 优化
 
-
-## 案例库
-
-遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
 
 ## Intent Routing
 

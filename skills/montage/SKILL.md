@@ -1,6 +1,6 @@
 ---
 name: montage
-description: Use when handling Anban Montage tasks that convert montage-input.json into an Montage adapter manifest, run the upstream Montage pipeline, and register normalized Anban deliverables.
+description: Use when handling Anban Montage tasks that convert montage-input.json into an Montage adapter manifest, run the upstream Montage pipeline, and prepare normalized deliverables for Runtime registration.
 ---
 
 # Montage Skill
@@ -27,7 +27,7 @@ Use this skill only for Anban `montage` tasks.
 - `montage-pipeline-defaults.json`: non-secret pipeline defaults configured by the server
 - `output/delivery-manifest.json`: normalized Anban delivery manifest
 - `output/final.mp4`: final video when the pipeline succeeds
-- `output/failure-diagnosis.md`: required when the pipeline cannot complete
+- `output/failure-state.json` and `output/failure-diagnosis.md`: machine-readable failure and human-readable diagnosis when the pipeline cannot complete; use the invoking Agent’s failure/recovery contract.
 
 ## Rules
 
@@ -40,9 +40,9 @@ Use this skill only for Anban `montage` tasks.
 - Secrets only arrive through environment variables. Never write provider keys to `output/montage-project.json`, task files, logs, MCP feedback, or failure diagnosis.
 - Before production, run the OpenMontage registry capability check (`provider_menu_summary()` or the equivalent registry command) and compare the selected pipeline's required/optional tools with the configured provider envelope.
 - Let OpenMontage selectors/registry choose concrete providers from the configured policy and real availability; do not hardcode Anban-side provider routing.
-- Use Anban MCP tools for project profile, progress, uploads, task files, and feedback.
+- Use Anban MCP for project profile and feedback. Write final files to explicit output paths and verify them against delivery-manifest.json; the Runtime uploads and registers files after execution. There is no generic file-registration MCP tool.
 - 托管任务自动批准常规 creative gate，但不得跳过 checkpoint；每个 checkpoint 仍执行，并在 Montage decision log 中记录 `anban_managed_task` 预授权来源、自动选择和结果。
-- Authentication, required capability, hard budget, safety, source corruption, or impossible-delivery blockers must write `output/failure-diagnosis.md` and terminate. Full-run preauthorization never overrides these blockers.
+- Authentication, required capability, hard budget, safety, source corruption, or impossible-delivery blockers must write both failure artifacts and terminate. Full-run preauthorization never overrides these blockers.
 - Do not expose the Backlot page directly. Retain only stable delivery files and structured checkpoint, timeline, and run-log artifacts required by Anban.
 
 ## Adapter Manifest

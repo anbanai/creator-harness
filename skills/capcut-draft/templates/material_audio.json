@@ -3,7 +3,7 @@
   "category_id": "",
   "category_name": "",
   "check_flag": 1,
-  "duration": __AUDIO_DURATION_US__,
+  "duration": "__AUDIO_DURATION_US__",
   "effect_id": "",
   "formula_id": "",
   "id": "__AUDIO_ID__",

@@ -1,5 +1,5 @@
 id: montage
-version: 2.0.0
+version: 2.0.1
 kind: managed
 display_name: Montage 视频
 description: 使用 OpenMontage 从素材和业务输入生产最终视频与交付清单。
