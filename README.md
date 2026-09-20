@@ -1,4 +1,4 @@
-# Anban 智能创作助手插件
+# Anban 自媒体智能创作助手插件
 
 > Claude Code 与 Codex 共用一份 Skill、模板、写作风格和运行资产；宿主差异只保留在原生 manifest、Agent、MCP/Hook 或安装适配层。
 
@@ -213,9 +213,9 @@ claude --verbose --agent anban:live-slicer ./live.mp4
 
 ## 加入社群
 
-扫码加入 **Anban 智能创作助手讨论群**，获取使用技巧、功能更新和问题解答：
+扫码加入 **Anban 自媒体智能创作助手讨论群**，获取使用技巧、功能更新和问题解答：
 
-<img src="community-qr.jpg" alt="Anban 智能创作助手讨论群" width="200">
+<img src="community-qr.jpg" alt="Anban 自媒体智能创作助手讨论群" width="200">
 
 ## License
 

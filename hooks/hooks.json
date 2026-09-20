@@ -1,5 +1,5 @@
 {
-  "description": "Anban 智能创作助手 plugin lifecycle hooks for agent delivery summaries and quality verification",
+  "description": "Anban 自媒体智能创作助手 plugin lifecycle hooks for agent delivery summaries and quality verification",
   "hooks": {
     "Stop": [
       {
