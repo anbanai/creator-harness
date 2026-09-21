@@ -10,8 +10,8 @@
       "name": "anban",
       "source": "./",
       "displayName": "Anban Creator",
-      "version": "4.2.2",
-      "description": "Anban Creator plugin for WeChat, Seednote, Montage, ecommerce, and agent-assisted publishing workflows.",
+      "version": "4.2.4",
+      "description": "Anban Creator plugin for WeChat, Seednote, Montage, Hypit, ecommerce, and agent-assisted publishing workflows.",
       "author": {
         "name": "anbanai"
       },
@@ -30,7 +30,8 @@
         "seednote",
         "种草笔记",
         "cover-image",
-        "Montage"
+        "Montage",
+        "Hypit"
       ]
     }
   ]

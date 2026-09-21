@@ -1,10 +1,20 @@
 # Changelog
 
+## 4.2.4
+
+- 视频复刻接入托管项目、任务和计划，复用固定版本的官方源码与 Skill；统一 project.json/project.zip 交付，并保留工程复用与恢复合同。
+
 ## [Unreleased]
 
 ### Changed
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
+
+## [4.2.3] - 2026-09-21
+
+- Added the plugin-only Hypit video replication Agent Pack, shared Skill, Claude/Codex agents and Codex registration.
+- Documented reference analysis, SVML/SVRun authoring, Build recovery, budget scope and editable project delivery using the official Hypit CLI.
+- Hypit has no Studio task/project binding or managed runtime image in this release.
 
 ## [4.2.2] - 2026-09-21
 

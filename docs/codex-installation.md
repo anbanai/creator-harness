@@ -40,7 +40,7 @@ codex plugin add anban@anbanai
 
 ### 2. Install the subagents
 
-Codex plugins cannot bundle subagents (open limitation — see `../CODEX.md`). The six subagents live in `agents/*.toml` and must be copied to `~/.codex/agents/`:
+Codex plugins cannot bundle subagents (open limitation — see `../CODEX.md`). The seven subagents live in `agents/*.toml` and must be copied to `~/.codex/agents/`:
 
 ```bash
 bash harness/install/install-subagents.sh
@@ -81,7 +81,7 @@ Expected: Anban Creator skills listed (article, content-writing, seednote, ecomm
 /agents
 ```
 
-Expected: 6 subagents listed (article, seednote, moments, montage, live-slicer, ecommerce) with their nicknames.
+Expected: 7 subagents listed (article, seednote, moments, montage, live-slicer, ecommerce, hypit) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
 
 ```
 $anban-setup

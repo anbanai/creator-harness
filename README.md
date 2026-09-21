@@ -133,6 +133,8 @@ claude --verbose --agent anban:seednote 降噪耳机种草笔记
 claude --verbose --agent anban:live-slicer ./live.mp4
 ```
 
+视频复刻使用 Studio 下发的托管任务与独立运行镜像，Agent 名称为 `hypit`。需要先启用服务端能力并准备官方 Runtime Profile；仅安装插件不包含浏览器、官方引擎或 Provider 配置。本地调用缺少 `input.json` 和托管运行配置时会诊断缺项。
+
 如果你调整 Claude Code 权限模式，请只在受信任工作区中放宽权限，并确认任务输入媒体可被 agent 访问。
 
 ## 常用命令
@@ -160,6 +162,9 @@ claude --verbose --agent anban:live-slicer ./live.mp4
 | 微信公众号图文 | "帮我写一篇关于 AI Agent 的文章" | 选题研究 → AI 写作 → 去痕优化 → SEO 优化 → 封面配图 → HTML 转换 → 草稿发布 |
 | 种草笔记 | "种草笔记，主题是降噪耳机" | 选题研究 → 爆款拆解（复刻模式）→ 内容创作 → 图片规划 → 封面 + 内容配图 → 合规检查 → 交付 |
 | 直播切片 | "把 live.mp4 剪成短视频切片" | ffmpeg 准备音频/封面 → 听悟转写 → 无效句过滤 → 智能切片规划 → 批量裁剪 → 报告 |
+| Hypit 视频复刻 | "复刻 reference.mp4，把产品替换成我的咖啡杯" | 参考拆解 → 内容替换 → SVML/SVRun 编排 → 成片 + 可编辑工程 |
+
+视频复刻使用平台托管的官方 Hypit 运行镜像，通过 Studio 项目、任务和计划执行。平台配置官方 Runtime Profile 与 Provider，Agent 直接读取镜像内同版本的官方 Skill。交付 `output/final.mp4`、封面、`output/project.json`、`output/project.zip` 和检查报告；再次改编复用完整工程与 Results。功能默认关闭，先进行内部验证；对外托管前需取得上游要求的商业授权。
 
 ## 项目结构
 

@@ -1,6 +1,6 @@
 # Codex subagent registration — append (or merge) into ~/.codex/config.toml
 #
-# This file is consumed by install-subagents.sh. It registers the six anban-creator
+# This file is consumed by install-subagents.sh. It registers the Anban Creator
 # subagents and enables the multi-agent feature flag.
 #
 # WARNING: do NOT paste this verbatim if your ~/.codex/config.toml already declares
@@ -45,3 +45,8 @@ nickname_candidates = ["ShopBot", "Merchant", "电商出图师"]
 description = "Montage 视频生产引擎（业务 brief + 素材 → Montage pipeline → 成片交付）"
 config_file = "~/.codex/agents/montage.toml"
 nickname_candidates = ["Montage", "Montage", "视频生产"]
+
+[agents.hypit]
+description = "Hypit 视频复刻（参考拆解 → 内容替换 → SVML 工程与成片交付）"
+config_file = "~/.codex/agents/hypit.toml"
+nickname_candidates = ["Hypit", "视频复刻"]

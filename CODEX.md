@@ -10,6 +10,7 @@ This directory is the unified Anban plugin source for Claude Code and Codex. Cod
 - **SeedNote posts** (种草笔记)
 - **Moments posts** (朋友圈)
 - **Live video slicing** (直播切片)
+- **Hypit video replication** (视频复刻；本地插件流程)
 - **E-commerce product imagery** (电商出图：主图/详情/封面/分享/SKU，多产品图输入保一致)
 
 Both hosts connect to the same `anban-creator` MCP server. Skills, themes, writers, layouts, and content contracts exist once in this directory.
@@ -19,14 +20,15 @@ Both hosts connect to the same `anban-creator` MCP server. Skills, themes, write
 The plugin follows Codex's **Skill + Subagent + MCP** model:
 
 - **Skills** (`skills/`) — the canonical shared Skill tree auto-discovered by both hosts
-- **Subagents** (`agents/`) — six TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
-- **MCP server** (`install/agents-registration.toml`) — installed into Codex config with `ANBAN_API_KEY`; each TOML subagent also declares its MCP dependency
+- **Subagents** (`agents/`) — seven TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
+- **MCP server** (`install/agents-registration.toml`) — installed into Codex config with `ANBAN_API_KEY`; managed subagents also declare their MCP dependency. Plugin-only Hypit uses its own CLI and Runtime Profile.
 - **Completion checks** — embedded in TOML subagent instructions because Anban does not yet ship a Codex Hook-based completion or progress reporter adapter
 
 ### Subagents (`agents/`)
 
 | Subagent | Triggers | Pipeline |
 |----------|----------|----------|
+| `hypit` | "视频复刻", "复刻视频", "Hypit" | Reference analysis → Adaptation → SVML/SVRun → MP4 + editable project |
 | `article` | "写文章", "发文章", "公众号文章" | Research → Write → De-AI → SEO → Cover → Illustrations → HTML → Draft |
 | `seednote` | "种草笔记", "种草", "复刻", "仿写" | Research → Viral analysis (replicate) → Content → image-plan/runtime mode output → Compliance → Delivery validation → `output/` delivery |
 | `live-slicer` | "直播切片", "剪直播", "听悟" | ffmpeg prep → TingWu transcription → Invalid sentence filter → Segment/subject planning → Batch cuts/concat → CapCut export → Report |

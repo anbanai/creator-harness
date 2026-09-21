@@ -111,7 +111,9 @@ for (const path of (await walk(join(root, 'packs'))).filter((p) => p.endsWith('/
       for (const match of body.matchAll(/(?:__PLUGIN_ROOT__|\$CLAUDE_PLUGIN_ROOT)\/(skills\/[^`\s"')]+)/g)) {
         if (!existsSync(resolve(root, match[1]))) errors.push(`${manifest.id}/${source}: missing Skill dependency ${match[1]}`)
       }
-      for (const term of ['AskUserQuestion', 'resume_from', 'set_task_progress_plan']) if (!body.includes(term)) errors.push(`${manifest.id}/${source}: missing autonomy contract ${term}`)
+      if (manifest.kind === 'managed') {
+        for (const term of ['AskUserQuestion', 'resume_from', 'set_task_progress_plan']) if (!body.includes(term)) errors.push(`${manifest.id}/${source}: missing autonomy contract ${term}`)
+      }
       if (/无法判断时向用户列出候选|跳过剩余视觉与交付包|不得生成交付包/.test(body)) errors.push(`${manifest.id}/${source}: obsolete interaction/delivery branch`)
     }
     if (manifest.id === 'seednote') {
