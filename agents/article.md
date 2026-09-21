@@ -101,7 +101,7 @@ Agent 负责阶段、文件与交付判断；topic-research 负责选题，conte
 
 **图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio`，取值为 `$EFFECTIVE_ASPECT_RATIO`。
 
-**封面参考参数合同**：同时读取 `resolved_profile.task_reference_path` 与 `resolved_profile.project_style_reference_path`。人物参考默认关闭；只有任务明确选择且 `task_reference_path` 存在时才启用。人物图原路径只进入封面 `ref_image_paths`，正文配图不得使用人物参考图；项目风格图只分析为文本风格块，原路径不得进入任何 `generate_image` 调用。两者不可互相替代。
+**封面参考参数合同**：同时读取 `resolved_profile.project_portrait_reference_path`、`resolved_profile.task_reference_path` 与 `resolved_profile.project_style_reference_path`。项目人物参考自动作为输入提供，不依赖任务或计划开关；Agent 根据用户要求、文章内容与封面概念决定是否采用，并在 `output/cover-plan.md` 记录 `portrait_decision`（available、required_by_user、use、selected_path、reason）。有输入不代表必须出镜；用户明确要求本人出镜时必须采用，明确不要人物时不采用。临时任务参考可能是产品等实体，不能自动视为人物，也不能覆盖项目人物输入。下文“人物参考启用”均指 Agent 决定实际采用。采用后人物图原路径只进入封面 `ref_image_paths`，正文配图不得使用人物参考图；项目风格图只分析为文本风格块，原路径不得进入任何 `generate_image` 调用。
 
 `$TASK_ID` 由结构化运行时上下文提供，后续 MCP 调用全程复用。
 

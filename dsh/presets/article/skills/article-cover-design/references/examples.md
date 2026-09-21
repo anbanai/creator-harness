@@ -12,7 +12,7 @@
 ### Case 2: 强人物故事封面
 
 - Input: 文章讲一位店长从亏损到盈利的复盘。
-- Recommended path: 未启用人物参考时，用人物背影、柜台和账本构成故事张力，不生成可辨认的特定真人；启用人物参考时，按人物合同把任务人物图作为第一参考并将本人列为 `required_entity`。不把完整标题塞满画面。
+- Recommended path: 未启用人物参考时，用人物背影、柜台和账本构成故事张力，不生成可辨认的特定真人；启用人物参考时，按人物合同把选定的人物图作为第一参考并将本人列为 `required_entity`。不把完整标题塞满画面。
 - Artifacts: `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json`。
 - Quality gate: 可见主体与文章主题不相关，或中心安全区无法成立时重构概念并重新生成。
 
@@ -68,7 +68,7 @@
 
 ### Case 10: 作者人物图与项目风格图同时存在
 
-- Input: 人物参数明确开启，`.anban-creator/task-reference.png` 是作者正脸；`.anban-creator/project-style-reference.png` 是账号的编辑视觉样张。
+- Input: 项目自动提供 `.anban-creator/project-portrait-reference.png` 作者正脸，作者故事适合本人出镜，Agent 记录决定采用；`.anban-creator/project-style-reference.png` 是账号的编辑视觉样张。
 - Recommended path: 两张图先分别分析。人物图原路径进入 `ref_image_paths` 并只约束身份；项目风格图只转成文本风格块，不进入生成调用。`output/cover-plan.md` 明确人脸位置、景别、占比和中心安全区。
 - Quality gate: `identity_similarity` 不得为 low，脸部完整，项目视觉语言可辨；正文配图不得继续使用人物参考图。
 - Failure: 当前能力不支持参考图、人物文件不可用或 3 次后身份仍不合格时，写结构化失败态，不得静默改成陌生人。

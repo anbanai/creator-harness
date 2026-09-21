@@ -40,6 +40,13 @@ Agent 必须结合实际可见画面作判断，不能直接采信生成 prompt 
     "audience_motivation_test": true,
     "overall_pass": true
   },
+  "portrait_decision": {
+    "available": false,
+    "required_by_user": false,
+    "use": false,
+    "selected_path": null,
+    "reason": "根据内容与用户要求说明是否采用人物"
+  },
   "portrait_quality": {
     "enabled": false,
     "portrait_present": null,
@@ -59,7 +66,7 @@ Agent 必须结合实际可见画面作判断，不能直接采信生成 prompt 
 
 - 两个评分卡的所有软维度不低于 `medium`，全部硬布尔为 `true`。
 - `required_entities_present=true`。
-- 人物参考关闭时 `portrait_quality.enabled=false`；开启时其余字段必须全部通过，`identity_similarity` 不得为 `low`。
+- `portrait_decision` 必须与封面方案一致。`use=false` 时 `portrait_quality.enabled=false`；`use=true` 时必须 `enabled=true`，其余字段必须全部通过，`identity_similarity` 不得为 `low`。已配置但未采用人物可通过；用户要求本人出镜却 `use=false` 不通过；用户明确不要人物时，生成画面出现人物也不通过。
 - 图上有文字时必须逐字准确、无乱码；不应有字时任何可见伪文字都失败。
 - 中心 1:1 裁切后关键主体、人脸和必要短文字完整；底部 20% 没有关键元素。
 - 不含水印、logo、二维码、联系方式、外链 URL、扫码提示、加群、加微信或其他导流视觉。

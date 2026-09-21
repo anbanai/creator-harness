@@ -6,6 +6,11 @@
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
 
+## [4.2.2] - 2026-09-21
+
+- Article tasks receive the configured project portrait as a separate frozen input, including scheduled runs; no task or plan opt-in is required.
+- The cover Agent records whether it uses the portrait and why. Identity checks apply when selected; task entity references and project style references retain separate roles.
+
 ## [4.2.1] - 2026-09-19
 
 ### Changed
