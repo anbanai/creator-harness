@@ -108,6 +108,23 @@ quality evidence, and structured `output/failure-state.json` files at their
 declared `output/<filename>` paths.
 Do not place transient logs, large payloads, or secrets in project memory.
 
+Managed Claude sessions load the native `claude_code` system-prompt preset and
+use each Agent's `memory: project` declaration. The project-scoped shared volume
+is mounted at `.claude/agent-memory` under the runtime working directory
+(`/workspace`, or `/workspace/openmontage` for Montage); Claude namespaces files by Agent
+type, for example `anban-article/MEMORY.md`. Studio reads this same shared tree.
+Auto memory is configured to the same Agent directory, so there is no second
+memory store. Each runtime mounts this directory directly, without symlinks or
+additional SDK permissions. Before invoking the model, the runner verifies the mounted
+directory and tests writing; storage failures terminate with
+`project_memory_unavailable` instead of silently losing memory. Memory updates
+remain the Agent's decision, not a mandatory artifact of every task.
+
+This layout requires runtime contract version 3. Build and deploy the Server and
+all selected Agent images together; version 2 workers are rejected at bootstrap.
+Use immutable image digests for deployment. There is no legacy-directory
+migration. A completed task alone does not prove a memory file was written.
+
 ## Hook lifecycle
 
 Use Hooks according to the event they actually observe:
