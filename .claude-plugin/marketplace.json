@@ -10,7 +10,7 @@
       "name": "anban",
       "source": "./",
       "displayName": "Anban Creator",
-      "version": "4.2.5",
+      "version": "4.2.6",
       "description": "Anban Creator plugin for WeChat, Seednote, Montage, Hypit, ecommerce, and agent-assisted publishing workflows.",
       "author": {
         "name": "anbanai"

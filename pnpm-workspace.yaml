@@ -4,3 +4,5 @@ allowBuilds:
   koffi: true
   node-pty: true
   protobufjs: true
+minimumReleaseAgeExclude:
+  - '@deepseek-ai/dsh-client-ui-sidebar-documentpreview@0.1.5-rc.3'

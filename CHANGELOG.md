@@ -8,7 +8,7 @@
 
 ### Changed
 
-- Upgraded the DSH runtime packages to `0.1.5-rc.2` and Cordis to `4.0.2`.
+- Upgraded the DSH runtime packages to `0.1.5-rc.3`, Cordis to `4.0.2`, and the development tooling (`@types/node` 26.6.2, `js-yaml` 4.3.2).
 
 ## [4.2.3] - 2026-09-21
 
