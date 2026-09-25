@@ -42,7 +42,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ### 人物图与风格图
 
-项目配置的人物参考自动作为输入提供，不依赖任务或计划开关。Agent 先按 `references/portrait-reference.md` 判断用途，在 `output/cover-plan.md` 记录 `portrait_decision`（available、required_by_user、use、selected_path、reason）。用户明确要求本人出镜时必须采用；明确不要人物时不采用；其余情况结合文章内容、账号定位与封面概念判断。有参考图不等于必须出镜。下文“人物参考启用”仅表示本封面实际采用人物，不能只凭路径存在就开启身份硬闸门。
+项目配置的人物参考自动作为输入提供。Agent 先读取结构化运行控制，并在 `output/cover-plan.md` 记录 `portrait_decision`（available、required_by_user、use、selected_path、reason）。当 `article_cover_portrait=required_project_portrait` 时，用户已明确勾选必须使用项目默认人物：必须设置 `required_by_user=true`、`use=true`，把 `.anban-creator/project-portrait-reference.png` 作为封面参考传给 `generate_image.ref_image_paths`；不得因文章主题或创意偏好而跳过。此要求只用于封面，正文配图不得使用人物参考。若参考文件缺失、损坏或生成能力不支持参考图，按本 Skill 既有结构化 warning 处理并跳过封面，不得悄悄改成无人物封面。未出现该运行控制时保持 Agent 自主判断：明确要求本人出镜时采用，明确不要人物时不采用，其余情况结合文章内容、账号定位与封面概念判断。有参考图不等于默认必须出镜。下文“人物参考启用”仅表示本封面实际采用人物，不能只凭路径存在就开启身份硬闸门。
 
 项目视觉参考 `resolved_profile.project_style_reference_path` 只能先用 `analyze_image` 提取色彩、材质、光线和构图语言，原图路径不得传入 `generate_image`。人物参考只用于封面，正文配图不得使用人物参考图。
 
@@ -50,7 +50,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ### 1. 建立点击承诺
 
-先解析人物输入与用户要求，形成 `portrait_decision`，再选择匹配的主体概念。人物被采用时将其列入 `required_entities`；未采用时记录具体理由并正常设计无该人物的封面。
+先解析人物输入与运行控制，形成 `portrait_decision`，再选择匹配的主体概念。人物被采用时将其列入 `required_entities`；强制使用人物时还要将人物身份及参考图写进封面方案，任何封面概念都不得省略人物。仅在 Agent 自主判断模式下，未采用时才记录具体理由并正常设计无该人物的封面。
 
 按 `references/cover-effectiveness.md` 写出 `cover_strategy`：
 

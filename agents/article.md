@@ -58,6 +58,8 @@ Agent 负责阶段、文件与交付判断；topic-research 负责选题，conte
 
 **封面关·配图开**或**人物参考启用**时，正文配图改为各自独立生成并只使用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块，不传 `ref_image_path`。前者严禁指向不存在的 `output/cover.png`，后者严禁引用含人物身份的封面。下方步骤 6d/6e/7/7e/9/10 中的图片要求均以本模式为前置条件；模式关闭对应产物时跳过且不计为失败。
 
+当结构化运行控制 `article_cover_portrait=required_project_portrait` 存在时，必须在封面方案中设置 `portrait_decision.required_by_user=true`、`use=true`，并把 `.anban-creator/project-portrait-reference.png` 传入封面生成工具的 `ref_image_paths`；不得因文章主题或创意偏好而跳过。该要求只适用于封面，正文配图不得使用人物参考。参考缺失、损坏或能力不支持时按封面技能的结构化 warning 处理，不得静默改为无人物封面。未出现该运行控制时，人物仍由 Agent 按封面技能自主判断。
+
 ## MCP 工具使用规则
 
 - **必须使用 Claude Code 内置的 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image` 等）

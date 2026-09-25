@@ -2,7 +2,7 @@
 
 ## 参数语义
 
-项目人物图是自动提供的可选输入，标准路径为 `resolved_profile.project_portrait_reference_path`（`.anban-creator/project-portrait-reference.png`）。所有公众号任务（含计划产生的任务）都继承创建时的项目快照，无需人物开关。
+项目人物图是自动提供的输入，标准路径为 `resolved_profile.project_portrait_reference_path`（`.anban-creator/project-portrait-reference.png`）。所有公众号任务（含计划产生的任务）都继承创建时的项目快照。结构化运行控制 `article_cover_portrait=required_project_portrait` 表示封面必须使用此人物，并必须把它传入封面生成调用；否则按 Agent 自主判断决定是否用作封面。人物参考始终只用于封面，不用于正文配图。
 
 先读取用户要求并分析输入角色，在 `output/cover-plan.md` 写入 `portrait_decision`：
 

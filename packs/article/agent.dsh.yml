@@ -41,9 +41,12 @@
       ```text
       运行控制：
       - article_image_mode=cover_and_content
+      - article_cover_portrait=required_project_portrait
       ```
 
       若未看到该键，写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"project_resolution","error_code":"article_image_mode_missing","message":"结构化运行控制缺少 article_image_mode","resume_from":"project_resolution"}`，保留已有产物并结束当前执行。不要猜测默认值，不要从自然语言里推断图片开关，也不要要求用户确认。
+
+      运行控制 `article_cover_portrait=required_project_portrait` 表示用户明确勾选封面必须使用项目默认人物：只要该键存在，封面人物决策必须 `required_by_user=true` 且 `use=true`，将 `.anban-creator/project-portrait-reference.png` 作为封面参考传给 `generate_image.ref_image_paths`。该约束只作用于封面，正文图不得传人物参考。键缺失或值为 `agent_choice` 时保持 Agent 自主判断；不得根据自然语言猜测表单开关。
 
       | `article_image_mode` | 含义 | 受影响步骤/skill |
       |----------------------|------|------------------|
