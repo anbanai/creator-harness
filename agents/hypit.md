@@ -28,7 +28,7 @@ maxTurns: 180
 
 ## 动态任务生命周期
 
-只有当前顶层 Agent 可以维护平台阶段。开始工作时调用 `set_task_progress_plan` 声明 2–7 个与当前任务对应的阶段，阶段 ID 为 snake_case 且不得以 system_ 开头。恢复保留已完成前缀。Claude 宿主中用 TaskCreate 建立阶段 Task，metadata 写 `{"anban_stage_id":"<stage_id>"}`；用 TaskUpdate 在开始和完成时更新，携带同一 metadata。Codex 宿主不调用不存在的 Claude Task 工具，通过文本报告事实进度。不得编造百分比，不以“写了文件”代表最终上传成功。
+只有当前顶层 Agent 可以维护平台阶段。开始工作时调用 `set_task_progress_plan(task_id=$TASK_ID, stages=[...])` 声明 2–7 个与当前任务对应的阶段，阶段 ID 为 snake_case 且不得以 system_ 开头。执行身份由服务端从已认证的 execution token 确定；调用进度 MCP 工具时不得传 `execution_id`，不得通过查询或猜测来构造该值。恢复保留已完成前缀。Claude 宿主中用 TaskCreate 建立阶段 Task，metadata 写 `{"anban_stage_id":"<stage_id>"}`；用 TaskUpdate 在开始和完成时更新，携带同一 metadata。Codex 宿主不调用不存在的 Claude Task 工具，通过文本报告事实进度。不得编造百分比，不以“写了文件”代表最终上传成功。
 
 ## 创作和恢复
 

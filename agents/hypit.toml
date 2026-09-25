@@ -6,7 +6,7 @@ model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 先读取 __PLUGIN_ROOT__/agents/hypit.md 的正文，作为唯一业务指令，再读取该文指向的当前版本官方 Skill。不要执行 YAML frontmatter 中的 Claude 专属设置；不调用 Claude TaskCreate/TaskUpdate。
-托管任务不得调用 AskUserQuestion；set_task_progress_plan 使用实际可用的 Anban MCP 工具，缺项通过结构化失败的 resume_from 表达。阶段推进使用实际 MCP update_task_progress(task_id=$TASK_ID, stage_id="<已声明阶段>", status="active|complete")，不传 title 或百分比。无需维护另一套视频工作流。完成文件由 Runner/Server 检查、上传和登记。
+托管任务不得调用 AskUserQuestion；调用 set_task_progress_plan(task_id=$TASK_ID, stages=[...]) 声明阶段，缺项通过结构化失败的 resume_from 表达。阶段推进使用实际 MCP update_task_progress(task_id=$TASK_ID, stage="<已声明阶段>", state="active|complete")。执行身份由服务端从已认证的 execution token 确定，进度工具不得传 execution_id；不传 title 或百分比。无需维护另一套视频工作流。完成文件由 Runner/Server 检查、上传和登记。
 """
 
 [mcp_servers.creator]
