@@ -6,6 +6,10 @@
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.3`, Cordis to `4.0.2`, and the development tooling (`@types/node` 26.6.2, `js-yaml` 4.3.2).
 
+## [4.2.10] - 2026-09-25
+
+- 升级托管 Agent runtime contract 到 v4：当前执行身份仅由已验证凭证提供，Bootstrap 无请求体，旧 execution ID 字段和旧 runtime 被拒绝。
+
 ## [4.2.9] - 2026-09-25
 
 - 将用户可见的 Montage 与 Hypit 品牌统一为“视频生成”和“视频复刻”，保留内部标识、运行时配置和官方技术名。
