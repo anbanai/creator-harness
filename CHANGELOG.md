@@ -9,6 +9,7 @@
 ### Changed
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.3`, Cordis to `4.0.2`, and the development tooling (`@types/node` 26.6.2, `js-yaml` 4.3.2).
+- 升级托管 Agent runtime contract 到 v4：当前执行身份仅由已验证凭证提供，Bootstrap 无请求体，旧 execution ID 字段和旧 runtime 被拒绝。
 
 ## [4.2.3] - 2026-09-21
 
