@@ -1,6 +1,6 @@
 ---
 name: montage
-description: Use when handling Anban Montage tasks that convert montage-input.json into an Montage adapter manifest, run the upstream Montage pipeline, and prepare normalized deliverables for Runtime registration.
+description: Use when handling Anban video generation tasks that convert montage-input.json into an adapter manifest, run the managed video pipeline, and prepare normalized deliverables for Runtime registration.
 ---
 
 # Montage Skill

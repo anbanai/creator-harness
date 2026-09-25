@@ -1,5 +1,5 @@
 id: hypit
-version: 2.0.1
+version: 2.0.2
 kind: managed
 display_name: 视频复刻
 description: 根据参考视频和替换要求生成成片，保留完整工程用于再次改编。

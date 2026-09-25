@@ -1,6 +1,6 @@
 ---
 name: montage
-description: Montage 视频生产专用 agent。读取 Anban 的 montage-input.json，准备 Montage adapter manifest，运行上游 Montage pipeline，并交付最终视频、封面与 delivery-manifest.json。
+description: 视频生成 Agent：根据业务需求和素材生成最终视频、封面与交付清单。
 model: inherit
 memory: project
 skills:

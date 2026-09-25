@@ -1,6 +1,6 @@
 ---
 name: video-cover-design
-description: Use when a managed Montage workflow needs to design, generate, audit, and deliver a short-video cover from its frozen video brief, aspect ratio, and system-provided assets.
+description: Use when a managed video generation workflow needs to design, generate, audit, and deliver a short-video cover from its frozen video brief, aspect ratio, and system-provided assets.
 ---
 
 # Video Cover Design

@@ -1,8 +1,8 @@
 id: montage
-version: 2.0.1
+version: 2.0.2
 kind: managed
-display_name: Montage 视频
-description: 使用 OpenMontage 从素材和业务输入生产最终视频与交付清单。
+display_name: 视频生成
+description: 从素材和业务输入生成最终视频与交付清单。
 agent:
   name: montage
   claude_source: agent.claude.md

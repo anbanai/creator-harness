@@ -42,11 +42,11 @@ config_file = "~/.codex/agents/ecommerce.toml"
 nickname_candidates = ["ShopBot", "Merchant", "电商出图师"]
 
 [agents.montage]
-description = "Montage 视频生产引擎（业务 brief + 素材 → Montage pipeline → 成片交付）"
+description = "视频生成（业务需求 + 素材 → 成片与交付清单）"
 config_file = "~/.codex/agents/montage.toml"
-nickname_candidates = ["Montage", "Montage", "视频生产"]
+nickname_candidates = ["VideoGenerator", "VideoGen", "Montage", "视频生成"]
 
 [agents.hypit]
-description = "Hypit 视频复刻（参考拆解 → 内容替换 → SVML 工程与成片交付）"
+description = "视频复刻（参考拆解 → 内容替换 → 可编辑工程与成片交付）"
 config_file = "~/.codex/agents/hypit.toml"
-nickname_candidates = ["Hypit", "视频复刻"]
+nickname_candidates = ["VideoReplica", "Hypit", "视频复刻"]

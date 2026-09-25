@@ -2,8 +2,8 @@
 # Source: packs/montage/agent.codex.toml
 
 name = "montage"
-description = "Montage 视频生产专用 agent：读取 montage-input.json，准备 Montage adapter manifest，运行上游 Montage pipeline，并交付最终视频、封面与 delivery-manifest.json。"
-nickname_candidates = ["Montage", "视频生产"]
+description = "视频生成 Agent：根据业务需求和素材生成最终视频、封面与交付清单。"
+nickname_candidates = ["VideoGenerator", "VideoGen", "Montage", "视频生成"]
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """

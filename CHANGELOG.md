@@ -1,14 +1,23 @@
 # Changelog
 
-## 4.2.4
-
-- 视频复刻接入托管项目、任务和计划，复用固定版本的官方源码与 Skill；统一 project.json/project.zip 交付，并保留工程复用与恢复合同。
-
 ## [Unreleased]
 
 ### Changed
 
 - Upgraded the DSH runtime packages to `0.1.5-rc.3`, Cordis to `4.0.2`, and the development tooling (`@types/node` 26.6.2, `js-yaml` 4.3.2).
+
+## [4.2.9] - 2026-09-25
+
+- 将用户可见的 Montage 与 Hypit 品牌统一为“视频生成”和“视频复刻”，保留内部标识、运行时配置和官方技术名。
+- 补充两类视频平台的发现别名、Codex 展示描述、复合图标和发布文档。
+
+## [4.2.8] - 2026-09-25
+
+- 将托管 Agent 的任务进度更新绑定到已认证的执行令牌，并同步生成的 Codex Agent 与插件版本。
+
+## 4.2.4
+
+- 视频复刻接入托管项目、任务和计划，复用固定版本的官方源码与 Skill；统一 project.json/project.zip 交付，并保留工程复用与恢复合同。
 
 ## [4.2.3] - 2026-09-21
 

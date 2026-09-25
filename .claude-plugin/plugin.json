@@ -1,8 +1,8 @@
 {
   "name": "anban",
   "displayName": "Anban Creator",
-  "description": "Anban Creator plugin for WeChat, Seednote, Montage, Hypit, ecommerce, and agent-assisted publishing workflows",
-  "version": "4.2.8",
+  "description": "Anban Creator plugin for WeChat, Seednote, video generation, video replication, ecommerce, and agent-assisted publishing workflows",
+  "version": "4.2.9",
   "author": {
     "name": "anbanai",
     "url": "https://github.com/anbanai"
@@ -26,8 +26,12 @@
     "seednote",
     "种草笔记",
     "cover-image",
+    "video-generation",
+    "video-replication",
     "Montage",
-    "Hypit"
+    "Hypit",
+    "视频生成",
+    "视频复刻"
   ],
   "userConfig": {
     "api_key": {

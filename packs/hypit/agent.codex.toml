@@ -1,7 +1,7 @@
 # Native host adapter; business instructions have a single canonical Markdown source.
 name = "hypit"
 description = "视频复刻：参考分析、内容替换、成片与可编辑工程交付。"
-nickname_candidates = ["Hypit", "视频复刻"]
+nickname_candidates = ["VideoReplica", "Hypit", "视频复刻"]
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
