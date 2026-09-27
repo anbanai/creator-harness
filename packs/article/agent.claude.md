@@ -58,7 +58,7 @@ Agent 负责阶段、文件与交付判断；topic-research 负责选题，conte
 
 **封面关·配图开**或**人物参考启用**时，正文配图改为各自独立生成并只使用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块，不传 `ref_image_path`。前者严禁指向不存在的 `output/cover.png`，后者严禁引用含人物身份的封面。下方步骤 6d/6e/7/7e/9/10 中的图片要求均以本模式为前置条件；模式关闭对应产物时跳过且不计为失败。
 
-当结构化运行控制 `article_cover_portrait=required_project_portrait` 存在时，必须在封面方案中设置 `portrait_decision.required_by_user=true`、`use=true`，并把 `.anban-creator/project-portrait-reference.png` 传入封面生成工具的 `ref_image_paths`；不得因文章主题或创意偏好而跳过。该要求只适用于封面，正文配图不得使用人物参考。参考缺失、损坏或能力不支持时按封面技能的结构化 warning 处理，不得静默改为无人物封面。未出现该运行控制时，人物仍由 Agent 按封面技能自主判断。
+`cover_portrait=required_project_portrait` 时，6d 由 article-cover-design 按 portrait-cover-design 的 `references/platform-integration.md` Article 合同调用共用人物封面；必须使用 `.anban-creator/project-portrait-reference.png` 并生成精确短标题。`disabled` 或缺失时走普通封面，禁止自主采用人物参考。正文配图不得使用人物参考图。
 
 ## MCP 工具使用规则
 
@@ -103,7 +103,7 @@ Agent 负责阶段、文件与交付判断；topic-research 负责选题，conte
 
 **图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio`，取值为 `$EFFECTIVE_ASPECT_RATIO`。
 
-**封面参考参数合同**：同时读取 `resolved_profile.project_portrait_reference_path`、`resolved_profile.task_reference_path` 与 `resolved_profile.project_style_reference_path`。项目人物参考自动作为输入提供，不依赖任务或计划开关；Agent 根据用户要求、文章内容与封面概念决定是否采用，并在 `output/cover-plan.md` 记录 `portrait_decision`（available、required_by_user、use、selected_path、reason）。有输入不代表必须出镜；用户明确要求本人出镜时必须采用，明确不要人物时不采用。临时任务参考可能是产品等实体，不能自动视为人物，也不能覆盖项目人物输入。下文“人物参考启用”均指 Agent 决定实际采用。采用后人物图原路径只进入封面 `ref_image_paths`，正文配图不得使用人物参考图；项目风格图只分析为文本风格块，原路径不得进入任何 `generate_image` 调用。
+**封面参考参数合同**：区分 `project_portrait_reference_path`、`task_reference_path` 与 `project_style_reference_path`。人物是否用于封面只由 `cover_portrait` 决定，在 `output/cover-plan.md` 记录 `portrait_decision`；人物参考图不进入正文配图。任务实体参考不能替代人物，项目风格图只分析为文本，不传生成。
 
 `$TASK_ID` 由结构化运行时上下文提供，后续 MCP 调用全程复用。
 

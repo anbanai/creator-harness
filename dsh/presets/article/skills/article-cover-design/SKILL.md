@@ -15,7 +15,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 - 生成 `cover_strategy` 前读 [references/cover-effectiveness.md](references/cover-effectiveness.md)。
 - 生成 `output/cover-plan.md` 和 prompt 前读 [references/art-direction.md](references/art-direction.md)。
-- 任务存在人物参考时读 [references/portrait-reference.md](references/portrait-reference.md)。
+- 人物参考说明见 [references/portrait-reference.md](references/portrait-reference.md)；启用人物封面时以共用调用合同为准。
 - 生成前准备审核、生成后验收时读 [references/quality-gate.md](references/quality-gate.md)。
 - 需要判断场景分支和失败边界时读 [references/examples.md](references/examples.md)。
 
@@ -42,7 +42,9 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ### 人物图与风格图
 
-项目配置的人物参考自动作为输入提供。Agent 先读取结构化运行控制，并在 `output/cover-plan.md` 记录 `portrait_decision`（available、required_by_user、use、selected_path、reason）。当 `article_cover_portrait=required_project_portrait` 时，用户已明确勾选必须使用项目默认人物：必须设置 `required_by_user=true`、`use=true`，把 `.anban-creator/project-portrait-reference.png` 作为封面参考传给 `generate_image.ref_image_paths`；不得因文章主题或创意偏好而跳过。此要求只用于封面，正文配图不得使用人物参考。若参考文件缺失、损坏或生成能力不支持参考图，按本 Skill 既有结构化 warning 处理并跳过封面，不得悄悄改成无人物封面。未出现该运行控制时保持 Agent 自主判断：明确要求本人出镜时采用，明确不要人物时不采用，其余情况结合文章内容、账号定位与封面概念判断。有参考图不等于默认必须出镜。下文“人物参考启用”仅表示本封面实际采用人物，不能只凭路径存在就开启身份硬闸门。
+结构化运行控制 `cover_portrait=required_project_portrait` 时，先读 [人物封面调用合同](../portrait-cover-design/references/platform-integration.md)，按 Article 分支调用 [portrait-cover-design](../portrait-cover-design/SKILL.md)，生成人物＋精确短标题封面；本文件下方的普通封面概念、文字策略与生成步骤不再执行。保留本 Skill 的双评分卡和上传交付要求，人物分支的质量与失败规则以调用合同为准。
+
+`cover_portrait=disabled` 或未提供时，记录 `portrait_decision.use=false`，继续普通封面流程；不能因参考图存在或内容适合而自行使用人物参考。`portrait_decision` 记录 available、required_by_user、use、selected_path、reason。
 
 项目视觉参考 `resolved_profile.project_style_reference_path` 只能先用 `analyze_image` 提取色彩、材质、光线和构图语言，原图路径不得传入 `generate_image`。人物参考只用于封面，正文配图不得使用人物参考图。
 
@@ -50,7 +52,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ### 1. 建立点击承诺
 
-先解析人物输入与运行控制，形成 `portrait_decision`，再选择匹配的主体概念。人物被采用时将其列入 `required_entities`；强制使用人物时还要将人物身份及参考图写进封面方案，任何封面概念都不得省略人物。仅在 Agent 自主判断模式下，未采用时才记录具体理由并正常设计无该人物的封面。
+形成 `portrait_decision.use=false` 后，选择与正文证据匹配的普通封面主体概念；已启用人物封面的任务由上方共用 Skill 负责，不执行本分支。
 
 按 `references/cover-effectiveness.md` 写出 `cover_strategy`：
 
@@ -80,14 +82,9 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ### 3. 解析参考图
 
-令 `$COVER_REFERENCE_PATHS=[]`。
+令 `$COVER_REFERENCE_PATHS=[]`；普通封面只加入已确认角色的任务实体素材，逐张声明职责并去重，不加入人物参考或项目风格图。
 
-- `portrait_decision.use=false`：不加入人物图；可以根据内容选用已确认角色的任务实体参考。
-- `portrait_decision.use=true`：验证 `$PORTRAIT_REFERENCE_PATH` 可访问，分析身份锚点并作为第一张参考加入 `$COVER_REFERENCE_PATHS`。默认人物路径取 `resolved_profile.project_portrait_reference_path`；只有用户指定任务参考中的人物时才改用该任务路径。
-- 任务参考先分析实体角色；产品图等非人物素材不得当成人物图。多参考时逐张声明职责并去重。
-- 项目风格图只进入分析，不进入 `$COVER_REFERENCE_PATHS`。
-- 仅在 `$COVER_REFERENCE_PATHS` 非空时检查参考能力；未选用人物/实体参考的封面可正常文生图。若能力元数据可用，生成前检查 `supports_reference` 与 `max_reference_images`；不支持或超限时记录 `article_cover_reference_unsupported` warning，跳过该封面并返回 Article Agent，不得静默改为无参考图生成。
-- 当 `$COVER_REFERENCE_PATHS` 非空且能力元数据未提前暴露时，仍须完整传入已选参考路径；工具返回“不支持参考图/超限”时按同一 warning 处理，不得移除已选参考图重试。
+非空参考集合须校验 `supports_reference` 与 `max_reference_images`。能力未提前暴露时完整传入所选路径，由工具校验；不支持或超限则记录 `article_cover_reference_unsupported` warning 并跳过封面，不移除参考图重试。空集合正常文生图。
 
 ### 4. 写 prompt 与审核合同
 

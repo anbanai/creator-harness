@@ -52,6 +52,10 @@ Codex 不依赖 Claude 的 TaskCreate/TaskUpdate/Hook。阶段 metadata 使用 `
 
 决策过程和失败原因透明记录在 output/*.md 文件中。
 
+## 人物封面路由
+
+`cover_portrait=required_project_portrait` 时，seednote-visual-design 按 portrait-cover-design 的 `references/platform-integration.md` Seednote 合同生成人物＋精确标题封面。关闭或缺失时走普通封面；viral_analysis 不生成图片。封面只生成一次，回填既有图片计划与逐图记录。人物封面必须通过独立审核；本文“审核不可用只记 warning、不影响交付”的规则仅适用于普通封面和内容/尾图。人物封面审核不可用时标 failed，继续其余图片，最终写 image_quality_failed 并停止成功交付。
+
 ## 工具边界
 
 - **Anban 产品能力必须使用 Codex 内置 MCP 工具**调用服务端接口（如 list_projects、get_project_profile、list_project_titles、generate_image 等）
@@ -349,4 +353,8 @@ enabled = true
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/seednote-visual-design/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/portrait-cover-design/SKILL.md"
 enabled = true

@@ -50,11 +50,13 @@ const EXPECTED_SKILL_NAMES = {
     'article-visual-design',
     'content-writing',
     'humanizer',
+    'portrait-cover-design',
     'seo-optimization',
     'topic-research',
   ],
   seednote: [
     'humanizer',
+    'portrait-cover-design',
     'seednote-research',
     'seednote-viral-analysis',
     'seednote-visual-design',

@@ -100,7 +100,9 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 
 ## 封面设计规范
 
-见 [references/cover.md](references/cover.md)
+`cover_portrait=required_project_portrait` 时，先读 [人物封面调用合同](../portrait-cover-design/references/platform-integration.md)，按 Seednote 分支调用 [portrait-cover-design](../portrait-cover-design/SKILL.md)，使用冻结的项目人物与精确主文案；覆盖普通封面的字体/背景预设及审核不可用可放行规则。封面仍纳入本 Skill 的计划与逐图记录，不能重复生成。
+
+`disabled` 或未提供时使用 [references/cover.md](references/cover.md)，不使用项目人物参考。人物参考及含该人物的封面不传入内容图或尾图，风格以文本延续。
 
 ---
 
@@ -176,7 +178,7 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 按 image-plan.md 逐一生成：
 
 1. **逐页选参考素材**：先按 `image-plan.md` 为封面、每张内容图和尾图分别确定 0、1 或多张附件，只保留能服务当前页面职责的原始路径
-2. **封面**：使用 [references/cover.md](references/cover.md) 的 Prompt 模板生成，并传入封面计划选中的原始路径子集
+2. **封面**：按上方「封面设计规范」选择人物或普通分支；人物分支只调用共用 Skill 一次，接收 `output/cover.png` 与质量结果，并回填计划、prompt、审核和参考使用记录；不得再套普通模板生成。普通分支传入该页选中的原始路径子集。
 3. **内容图**：使用 [references/content.md](references/content.md) 的 Prompt 模板逐张生成（1~3 张），传入当前页选中的原始路径子集以及对应信息点和布局；没有相关参考时纯文生图；始终保证不同实景背景和构图角度
 4. **尾图（仅当 `seednote_image_mode` 包含尾图时）**：使用 [references/tail.md](references/tail.md) 的 Prompt 模板单独生成，并仅传尾图相关的原始路径子集；不含尾图则跳过
 5. **生成与创作记录**：每次只调用 `generate_image` 生成当前计划图片；`image-prompts.md` 使用“文件名 / 用途 / 提示词”格式记录创作内容。

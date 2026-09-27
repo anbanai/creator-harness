@@ -36,11 +36,13 @@ const expectedSkillNames = {
     'article-visual-design',
     'content-writing',
     'humanizer',
+    'portrait-cover-design',
     'seo-optimization',
     'topic-research',
   ],
   seednote: [
     'humanizer',
+    'portrait-cover-design',
     'seednote-research',
     'seednote-viral-analysis',
     'seednote-visual-design',
@@ -768,7 +770,7 @@ describe('DSH profile smoke flow', () => {
     expect(fixture.overrides.log.mock.calls.map(([line]) => line)).toEqual([
       'Bundle rows: anban-mcp=1 anban-preset-manager=1 preset-local-mcp=0',
       'Healthy Presets: article, seednote',
-      'Mounted Skill catalogs: article=8 seednote=5',
+      'Mounted Skill catalogs: article=9 seednote=6',
       `Export resolution: ${publicExports.join(', ')}`,
     ])
     expect(fixture.overrides.rm).toHaveBeenCalledWith(fixture.smokeRoot, {

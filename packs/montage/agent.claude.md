@@ -5,7 +5,6 @@ model: inherit
 memory: project
 skills:
   - montage
-  - video-cover-design
 maxTurns: 180
 ---
 
@@ -18,7 +17,7 @@ maxTurns: 180
 ## 全自动执行契约
 
 - 这是平台托管的零交互任务；不得调用 `AskUserQuestion`，不得在文本中向用户提问，也不得因等待选择而结束当前执行。
-- 除首条消息强制给出的视频比例与系统人像状态外，缺失的可选创作选择固定按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析，并把采用的默认值和回退原因写入任务产物或进度记录。
+- 除首条消息强制给出的视频比例与任务素材状态外，缺失的可选创作选择固定按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析，并把采用的默认值和回退原因写入任务产物或进度记录。
 - 只要候选路径仍在已配置的 provider、能力、预算与安全边界内，就自动选择最优可用路径继续执行。
 - 认证失败、无必需能力、硬预算冲突、素材损坏或交付约束不可满足时，写入结构化失败诊断并终止；不得询问替代方案。
 
@@ -72,6 +71,7 @@ and write through its runtime-provided `output` link.
 
 1. 从结构化运行时上下文获取 `$TASK_ID` 与 `$PROJECT_ID`。
 2. 只解析首条 Cloud 用户消息中完全匹配的行 `Video aspect ratio: <ratio>`，将 `<ratio>` 冻结为 `$VIDEO_ASPECT_RATIO`。该行缺失、为空或不属于当前 Montage 支持比例时，按失败产物合同写入诊断（stage/resume_from=`input_validation`，error_code=`invalid_video_aspect_ratio`）并停止；不得向用户提问。不得读取 `montage_input.preferences.aspect_ratio`，也不得从 `montage-input.json`、项目默认值或 `delivery_targets` 推断或改写比例。
+任务素材由 `Video material reference` 标识，仅按用户 brief 判断用途，不视为封面人物身份；人物封面只由 `cover_portrait` 与冻结的项目人物参考决定。
 3. 保持执行 CWD 为 `/workspace/openmontage`，读取任务提供的 `montage-input.json`、`montage-tool-policy.json`、`montage-pipeline-defaults.json`。
 4. 调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="montage")` 获取项目定位、视觉偏好、Montage 默认值、redacted env 状态和配置文件名。
 5. 解析 pipeline：优先任务 `pipeline_key`，其次项目默认，最后服务端默认。
@@ -79,7 +79,7 @@ and write through its runtime-provided `output` link.
 7. 写入 `output/montage-project.json`，包含 task_id、project_id、brief、pipeline_key、assets、preferences、limits、tool_policy、pipeline_defaults、env_keys、精确的 `video_aspect_ratio=$VIDEO_ASPECT_RATIO`、`"approval_policy": {"mode": "auto", "source": "anban_managed_task", "scope": "full_run"}` 和 `output_dir="output"`；不得写入任何环境变量 secret value。
 8. 将同一个未改写的 `$VIDEO_ASPECT_RATIO` 写入 OpenMontage project/render data；不得使用任何第二比例来源。
 9. 直接在 `/workspace/openmontage` 的完整可写任务副本中运行上游 pipeline，不修改 `/opt/montage-template` 中的只读镜像模板，最终视频写 `output/final.mp4`。
-10. 在视频生产完成后，恰好一次、以全上下文调用 `video-cover-design Skill`。同次调用提供 `$TASK_ID`、`$PROJECT_ID`、最终视频的内容/标题证据、精确的 `$VIDEO_ASPECT_RATIO`、语义人像状态和（可用时）`.anban-creator/task-reference.png`、相关任务素材、项目 profile 及视觉偏好。封面无条件必需，不受 `delivery_targets` 影响；不得拆分上下文调用或再次解析比例。
+10. 在视频生产完成后生成一次封面，不受 delivery_targets 影响。`cover_portrait=required_project_portrait` 时，先读取 portrait-cover-design 的 `references/platform-integration.md`，按 Montage 合同调用 portrait-cover-design Skill；传入最终内容/标题、冻结的 $VIDEO_ASPECT_RATIO、项目人物路径与视觉偏好。关闭或缺失时执行 montage/references/cover.md 的普通封面流程，不使用项目人物参考。两条分支均生成 output/cover.png 与 output/cover-quality.json，通过后继续交付。
 11. 收集 Montage 与封面输出，写 `output/delivery-manifest.json`。manifest 必须登记 `output/final.mp4`、`output/montage-project.json`、`output/cover.png` 和自身；并在存在时登记 cover audit 文件 `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json` 及 `output/failure-diagnosis.md`。
 12. 将最终视频、项目 manifest、封面、delivery manifest 与已有 audit / timeline / subtitles / audio / run log 放到 output 显式路径，由 Runtime 在执行结束后统一上传并登记。不存在通用文件登记 MCP；不得自写 HTTP 或等待 list_task_files 提前出现终态记录。
 13. 完成前确认 `output/final.mp4`、`output/montage-project.json`、`output/cover.png` 与 `output/delivery-manifest.json` 在本地可读取、非空且与 manifest 一致；登记状态由 Runtime / Server 最终确认。

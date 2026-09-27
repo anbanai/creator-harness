@@ -33,19 +33,25 @@ maxTurns: 180
 ## 创作和恢复
 
 1. 读取输入、官方 Skill 与当前工程；必要时调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="hypit")` 获取项目定位。记录默认选择和当前源版本。
-2. 依据官方指导观看参考、按时间检查帧与台词，记录有证据的 Analysis/Timeline；在 Brief/Treatment 写清保留与替换要求。
+2. 依据官方指导观看参考、按时间检查帧与台词，记录有证据的 Analysis/Timeline；在 Brief/Treatment 写清保留与替换要求。 启用人物封面时，在任何付费 Build 前读取 `get_project_profile(project_id=$PROJECT_ID, scope="hypit", task_id=$TASK_ID)` 的 `resolved_profile`，按冻结的视频比例偏好（source 时取参考真实比例）确认预期封面比例属于 `allowed_image_ratios` 且人物文件可读；不满足则记录结构化失败，不先生成视频再尝试不支持的封面。
 3. 使用官方 SVML/SVS/SVRun、已有组件或工程组件实现复刻，入口 Run 固定 `productions/main/runs/main.svrun`。托管工程使用 npm 依赖声明与 package-lock.json；本地依赖准备使用 `npm install --offline --ignore-scripts --bin-links=false --no-audit --no-fund`，CLI 已在 PATH，不能通过包管理器更改只读官方文件权限。新依赖必须已在镜像中，不能运行时联网安装。官方 Skill 内的语义锚点、复用与质量规则持续适用。
 4. 执行官方 check、plan 和必要的 pricing，明确剩余请求。向接受 --runtime 的命令传入 Profile 绝对路径；check、get、inspect、builds 不接受该选项。pricing 不是统一硬额度保证；不得伪造 Provider 报价或已发生费用。
 5. 提交 Build 后立即保存 Build id 到工程 PROGRESS，并在 `.anban-creator/active-build.json` 写 `{"build_id":"<id>"}`（相对工作区根），用于取消清理。跟进同一 Build；命令超时不等于失败，先查 activity/status/logs。丢失 id 时按 Run、时间及来源找原请求，不盲目重发。
 6. Worker 或执行上下文丢失后，原 Build 不能直接续跑。保留全部 Results 和回执，在新 Run 中通过 build-record/satisfy 显式选用已完成 Outputs，只补缺失工作。请求提交结果未知且无可用回执时停止自动重试。仅在 status 明确要求时执行 result finish。
-7. 用官方 get 导出 final.video 到工作区 `output/final.mp4`；目标存在时先验证当前文件，确需替换时使用新的临时目的地再原子替换。用成片真实帧生成 `output/cover.png`。
+7. 用官方 get 导出 final.video 到工作区 `output/final.mp4`；目标存在时先验证当前文件，确需替换时使用新的临时目的地再原子替换。封面按下一段的开关路由生成。
 8. 对比 Brief 和参考检查替换要求、音画、字幕、可读性、身份/产品一致性；保留所用 Results 的完整依赖链。输出 `output/semantic-report.json`，至少含 schema_version=1、passed=true/false、checks（逐项事实）、unmet_requirements（数组）。未满足必需项时 passed=false，不能靠文字宣称通过。
+
+## 封面路由
+
+`cover_portrait=required_project_portrait` 时，先读 portrait-cover-design 的 `references/platform-integration.md`，按 Hypit 合同调用共用 Skill：以最终成片的真实比例、内容和精确短标题为输入，使用冻结的项目人物参考，产出 `output/cover.png` 和 `output/cover-quality.json`；通过后继续既有交付。关闭或缺失时用成片真实帧生成 `output/cover.png`，不调用人物 Skill。此开关不改变视频内的人物替换或官方 Hypit 流程。参考缺失、能力不支持或封面质量耗尽按本 Agent 失败合同处理，不能静默改用截图冒充人物封面。
 
 ## 文件交付与验收
 
 Runtime 负责 ffprobe、完整解码、官方 check/plan、安全归档与上传。Agent 先准备真实成片、封面、完整工程、semantic-report 和 delivery-manifest，不伪造 Runtime 的验证结果。
 
 `output/delivery-manifest.json` 使用 version="1.0"、task_id、project_id、files 数组。每个 file 使用 role、path、mime_type；登记 output/final.mp4、output/cover.png、output/project.json、output/project.zip、output/quality-report.json、output/delivery-manifest.json。project.json、project.zip 和 quality-report.json 由 Runtime 在退出后的确定性检查中生成，不能因它们尚未生成反复运行视频生产。
+
+人物封面启用时，delivery-manifest 额外登记 `output/cover-plan.md`、`output/cover-prompt.md`（role=other，mime_type=text/markdown）和 `output/cover-quality.json`（role=review，mime_type=application/json）；这些审核文件由 Runtime 验证后随交付上传。未启用时不要求这些文件。
 
 工程保留素材、项目说明、Sources、Recipes、Runs、组件源码、package.json/锁文件、已引用的本地依赖包与完整 `.hypit/results`。runtime-profile.json、密钥、.env、缓存、node_modules 和 `.hypit/execution` 不进入交付。官方名称、版权和许可证不得删除；通用文件名不改变依赖来源。
 

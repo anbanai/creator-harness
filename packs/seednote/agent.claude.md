@@ -167,6 +167,8 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ### 图片生成
 
+`cover_portrait=required_project_portrait` 时，seednote-visual-design 依据 portrait-cover-design 的 `references/platform-integration.md` Seednote 合同生成人物封面。关闭或缺失时走普通封面；viral_analysis 不生成图片。人物分支保持原图片计划数量、锁定标题、逐图记录和最终质量闸门，不能重复生成封面。 人物封面必须通过独立审核；下文“审核不可用只记 warning、不影响交付”的规则仅适用于普通封面和内容/尾图。人物封面审核不可用时标记该图 failed，继续其余图片，最终写 image_quality_failed 并停止成功交付。
+
 #### 步骤 8a：原创模式图片生成
 
 原创模式按 `seednote-visual-design` 方法读取 `output/content.md`、图片模式和附件索引，完成逐页参考选择、图片规划、生成与核验。按计划逐张调用 `generate_image`；生成成功后继续下一张。需要内容质量审核时单独调用 `analyze_image`，把可见内容质量观察写入 `output/image-review.md`；审核结果只影响 Agent 的创作修订和交付判断。`analyze_image` 传输或运行失败只记录为“审核不可用” warning，写入 `output/image-review.md` 和 `output/reference-usage-summary.json` 的 `warnings`；不得写入 `output/failure-state.json`，不能阻止后续计划图片生成，也不能单独导致最终交付失败。只有 `generate_image` 本身失败或超时时，才写入 `output/failure-state.json` 并停止图片阶段；已成功生成的文件必须保留。可用的分析结果或可见内容质量结论只影响当前输出图的记录与创作重试；当前图达到创作重试上限时标记 `quality_status=failed`，必须继续生成剩余计划图片。全部计划图片生成完成后再执行整体质量闸门，决定是否交付或写入结构化失败；审核不可用 warning 不计为质量失败。

@@ -2,7 +2,7 @@
 
 ## 参数语义
 
-项目人物图是自动提供的输入，标准路径为 `resolved_profile.project_portrait_reference_path`（`.anban-creator/project-portrait-reference.png`）。所有公众号任务（含计划产生的任务）都继承创建时的项目快照。结构化运行控制 `article_cover_portrait=required_project_portrait` 表示封面必须使用此人物，并必须把它传入封面生成调用；否则按 Agent 自主判断决定是否用作封面。人物参考始终只用于封面，不用于正文配图。
+项目人物图来自任务冻结的 `resolved_profile.project_portrait_reference_path`（`.anban-creator/project-portrait-reference.png`）。只有 `cover_portrait=required_project_portrait` 时采用，交由 [共用人物封面合同](../../portrait-cover-design/references/platform-integration.md)；未启用时 `portrait_decision.use=false`。人物参考只用于封面，不用于正文配图。
 
 先读取用户要求并分析输入角色，在 `output/cover-plan.md` 写入 `portrait_decision`：
 
@@ -12,9 +12,7 @@
 - `selected_path`：采用时的真实参考路径，否则为 null。
 - `reason`：结合文章内容、账号定位、用户要求和封面概念说明决定。
 
-用户明确要求本人出镜 → `use=true`，以该人物为必需实体；明确不要人物 → `use=false`。其余情况由 Agent 判断：作者故事、人设表达可能适合人物，技术流程图或物件主体可能不需要。不得因缺少 opt-in 字段忽略已提供的人物，也不得仅因配置了人物强行出镜。
-
-令 `$PORTRAIT_REFERENCE_PATH` 默认取项目人物路径。`resolved_profile.task_reference_path`（`.anban-creator/task-reference.png`）是独立的任务参考输入：先分析它是产品、人物还是其他实体；只有用户明确指定其中人物才以它替换项目人物选择。产品图不覆盖项目人物，两者可在需要时共同参与封面生成。
+是否采用只由 `cover_portrait` 决定。启用时 `$PORTRAIT_REFERENCE_PATH` 固定取冻结的项目人物路径；`resolved_profile.task_reference_path`（`.anban-creator/task-reference.png`）保留其独立实体用途，不替代人物。产品图不覆盖项目人物，两者可在需要时共同参与封面生成。
 `.anban-creator/project-style-reference.png` 是项目视觉风格参考，与人物图严格分离：只用 `analyze_image` 提取色彩、光线、材质和构图语言，任何情况下都不得把它的原图路径加入 `$COVER_REFERENCE_PATHS`。
 
 ## 作用域

@@ -1,5 +1,5 @@
 id: montage
-version: 2.0.2
+version: 2.0.3
 kind: managed
 display_name: 视频生成
 description: 从素材和业务输入生成最终视频与交付清单。
@@ -7,7 +7,7 @@ agent:
   name: montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [montage, video-cover-design]
+  skills: [montage, portrait-cover-design]
   max_turns: 180
 bindings:
   project_platforms: [montage]
