@@ -45,7 +45,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 Each shared skill has a `SKILL.md` with YAML frontmatter (`name` + `description`). The main agent discovers plugin Skills from the plugin manifest; every subagent declares its startup dependencies explicitly through `[[skills.config]]`. There is no second Codex Skill copy.
 
 Key skill groups:
-- **Content**: `content-writing`, `topic-research`, `seo-optimization`
+- **Content**: `content-writing`, `article-research`, `seo-optimization`
 - **WeChat article**: `article`, `article-visual-design`, `article-publishing`
 - **SeedNote**: `seednote`, `seednote-research`, `seednote-viral-analysis`, `seednote-writing`, `seednote-visual-design`
 - **Live slicing**: `live-slice`, `capcut-draft`

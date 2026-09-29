@@ -99,7 +99,7 @@ Just ask in natural language:
 写一篇关于 SwiftUI 与 Jetpack Compose 对比的文章
 ```
 
-Codex's main agent detects the request, loads `article`, `content-writing`, `topic-research`, etc. on demand. No subagent is spawned.
+Codex's main agent detects the request, loads `article`, `content-writing`, `article-research`, etc. on demand. No subagent is spawned.
 
 ### Explicit (full pipeline via subagent)
 

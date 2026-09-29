@@ -52,7 +52,10 @@ const EXPECTED_SKILL_NAMES = {
     'humanizer',
     'portrait-cover-design',
     'seo-optimization',
-    'topic-research',
+    'article-research',
+    'topic-evaluator',
+    'trend-rider',
+    'trending-topics',
   ],
   seednote: [
     'humanizer',
@@ -61,6 +64,9 @@ const EXPECTED_SKILL_NAMES = {
     'seednote-viral-analysis',
     'seednote-visual-design',
     'seednote-writing',
+    'topic-evaluator',
+    'trend-rider',
+    'trending-topics',
   ],
 }
 const REGISTRY_ARTIFACT_PATTERN = new RegExp(

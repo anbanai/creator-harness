@@ -1,6 +1,6 @@
 ---
 name: short-video-cover
-description: 'Use when replicating viral short-video covers, generating a short-video cover from a reference cover image, or when user mentions "短视频封面", "爆款封面", "封面复刻", "复刻封面", "cover replication", "B站封面", "抖音封面", "视频号封面", "小红书视频封面". Triggers whenever a user provides a reference cover image and asks for a new short-video cover based on it — even if they don''t explicitly say "复刻". Covers the short-video cover replication workflow: analyze reference cover''s visual logic → migrate to user''s new title → generate cover prompt → quality optimization.'
+description: 'Use when replicating viral short-video covers, generating a short-video cover from a reference cover image, or when user mentions "短视频封面", "爆款封面", "封面复刻", "复刻封面", "cover replication", "B站封面", "抖音封面", "视频号封面", "种草笔记视频封面". Triggers whenever a user provides a reference cover image and asks for a new short-video cover based on it — even if they don''t explicitly say "复刻". Covers the short-video cover replication workflow: analyze reference cover''s visual logic → migrate to user''s new title → generate cover prompt → quality optimization.'
 ---
 
 # 短视频爆款封面——参考封面复刻工作流

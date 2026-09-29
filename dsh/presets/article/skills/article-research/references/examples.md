@@ -1,4 +1,4 @@
-# topic-research Examples
+# article-research Examples
 
 ### Case 1: 公众号选题池
 

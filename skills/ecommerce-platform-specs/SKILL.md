@@ -15,7 +15,7 @@ description: 'Use only when the Ecommerce workflow needs platform dimensions, mo
 
 ## 平台规范
 
-详见 [references/platforms.md](references/platforms.md)，覆盖：淘宝天猫 / 京东 / 抖音电商 / 小红书电商 / **微信小店（新增）** / 通用。
+详见 [references/platforms.md](references/platforms.md)，覆盖：淘宝天猫 / 京东 / 抖音电商 / 种草笔记电商 / **微信小店（新增）** / 通用。
 
 **先归一化**：收到的 `target_platform`（`taobao`/`jd`/`douyin`/`xhs`/`wechat_store`/`general`）按 platforms.md 顶部「标识符契约表」映射到对应中文章节取规范；未知值 → 走「通用」。类目内差异（服饰/3C/食品/美妆/家居）详见 [references/category-specs.md](references/category-specs.md)。
 
@@ -34,7 +34,7 @@ agent 在 `ecommerce-visual-design` 生成时按 `target_platform` 取**投放�
 对照 [references/prohibited-words-ecommerce.md](references/prohibited-words-ecommerce.md) 扫描：
 - **《广告法》极限词**（最/第一/国家级/顶级/极品/100%/绝对/永久/根治/无效退款……）
 - **平台电商违禁词**（虚假承诺、医疗/功效绝对化、贬损竞品、诱导违规等）
-- **平台专属词**（按 `target_platform`：淘宝「原单/外贸/专柜/代购」类目词、京东冒用「自营」/虚假比价、抖音诱导「点赞关注转发返现」话术、微信裂变/诱导分享红线、小红书导流/虚假素人感）
+- **平台专属词**（按 `target_platform`：淘宝「原单/外贸/专柜/代购」类目词、京东冒用「自营」/虚假比价、抖音诱导「点赞关注转发返现」话术、微信裂变/诱导分享红线、种草笔记导流/虚假素人感）
 
 **上下文敏感扫描**（避免误报与漏报）：
 - 同字不同义：「第一代/第一视角」= 序数/客观陈述，放行；「销量第一/好评第一」= 极限化广告宣称，命中。

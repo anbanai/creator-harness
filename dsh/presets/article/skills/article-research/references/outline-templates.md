@@ -142,7 +142,7 @@
 
 ## 使用说明
 
-调用 topic-research Skill 的大纲步骤时，通过 template 参数指定模板类型：
+调用 article-research Skill 的大纲步骤时，通过 template 参数指定模板类型：
 
 - authoritative（权威揭秘型）
 - comparison（对比评测型）

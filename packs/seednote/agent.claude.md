@@ -5,6 +5,9 @@ model: inherit
 memory: project
 skills:
   - seednote-research
+  - trending-topics
+  - trend-rider
+  - topic-evaluator
   - seednote-viral-analysis
   - seednote-writing
   - seednote-visual-design
@@ -42,7 +45,7 @@ maxTurns: 20
 | 决策点 | 自动策略 |
 |--------|----------|
 | **模式选择** | 用户提供笔记 ID/链接/xsec_token/复刻关键词 → 复刻模式；否则 → 原创模式 |
-| **选题** | 按互动率、时效性和新颖度评分，自动选 Top 1 |
+| **选题** | 保留选题池和认证种草笔记研究优先级；公共热点只通过 `trending-topics` 补充，选中热点后依次使用 `trend-rider` 和 `topic-evaluator`，真实互动字段存在时才按 CES 选 Top 1 |
 | **视觉与参考素材** | 先分析需求，再逐图分析所有可用附件；按每页职责自动选择 0、1 或多张原图，没有相关参考时动态设计 `$STYLE` |
 | **错误处理** | 原创模式外部研究不可用时自动降级；复刻源内容、关键事实或图片 API/质量验证不可用时记录可恢复失败态并从对应阶段重试 |
 
@@ -50,9 +53,9 @@ maxTurns: 20
 
 ## 工具边界
 
-- **Anban 产品能力和小红书真实数据研究必须使用已认证的 Anban MCP 工具**。研究按 `search_seednote_feeds` -> `get_seednote_feed_detail` / `get_seednote_user_profile` 执行；登录会话由 Server 管理员在任务外维护，Agent 不得检查登录态、获取二维码或等待人工扫码
+- **Anban 产品能力和种草笔记真实数据研究必须使用已认证的 Anban MCP 工具**。研究按 `search_seednote_feeds` -> `get_seednote_feed_detail` / `get_seednote_user_profile` 执行；登录会话由 Server 管理员在任务外维护，Agent 不得检查登录态、获取二维码或等待人工扫码
 - **研究边界只读**。只允许搜索、详情和公开用户资料查询，禁止登录管理以及发布、删除、关注、取关、点赞、收藏、评论写入
-- **禁止直连 sidecar、编写 JavaScript/Node.js/Python 脚本、自定义 HTTP 客户端或调用外部小红书客户端**；不得绕过已认证的 Anban MCP 工具
+- **禁止直连 sidecar、编写 JavaScript/Node.js/Python 脚本、自定义 HTTP 客户端或调用外部种草笔记客户端**；不得绕过已认证的 Anban MCP 工具
 - **原创模式外部研究不可用时必须降级继续**。基于用户主题、选题池、账号画像与已有标题完成保守选题；用户明确主题记录 `data_source=task_topic`，认领选题池主题记录 `data_source=topic_pool`，仅按账号或项目资料推导记录 `data_source=project_context`，不得写 `data_source=xiaohongshu-mcp`。同时记录 `mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason`，且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
 
 ## Runtime workspace contract

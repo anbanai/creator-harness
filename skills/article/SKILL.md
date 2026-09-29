@@ -52,7 +52,7 @@ description: Use when the user asks to create a complete WeChat Official Account
 
 ### 步骤 2：选题研究
 
-using the topic-research skill 结合账号关键词和用户需求搜索热门话题，创作文章大纲。产出：
+using the article-research skill 结合账号关键词和用户需求搜索热门话题，创作文章大纲。产出：
 - `output/01-research.md` — 选题分析和关键词
 - `output/02-outline.md` — 文章大纲（≥3 个二级标题）
 
@@ -142,6 +142,10 @@ render_template(
 全部语义闸门通过时写 `readiness.status="ready"`、`readiness.code=""`，ready 状态严禁携带任何非空 code。营销扫描或审阅仍阻塞时写 `readiness.status="blocked"` 和稳定、非空的 code；内容与 HTML 仍正常交付。
 
 ## MCP 工具使用规则
+
+### 六维账号画像
+
+`get_project_profile` 成功返回 `account_profile` 时，按以下链路消费已确认画像：`identity` 用于项目定位和选题，`style` 用于写作、视觉和语气，`audience` 用于受众匹配与表达深度，`platforms` 只用于公众号格式、发布和适配，`preferences` 是全流程硬约束，`memory` 用于复用经验和归因沉淀。画像缺失或未确认时只提示补建画像，不把推断当成诊断结论。
 
 - **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image`、`render_template` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**

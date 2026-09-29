@@ -7,7 +7,10 @@ skills:
   - content-writing
   - article-visual-design
   - article-cover-design
-  - topic-research
+  - article-research
+  - trending-topics
+  - trend-rider
+  - topic-evaluator
   - seo-optimization
   - article-viral-strategy
 maxTurns: 300 # 公众号 10 步 + 7 图 + HTML，实测需 120-175 turn；原 50 在交互式运行下到不了 step 8
@@ -36,7 +39,7 @@ maxTurns: 300 # 公众号 10 步 + 7 图 + HTML，实测需 120-175 turn；原 5
 
 ## 领域规则所有权
 
-Agent 负责阶段、文件与交付判断；topic-research 负责选题，content-writing 负责正文与营销扫描，seo-optimization 负责搜索元数据，article-viral-strategy 负责已选题策略、写作/标题建议和最终审计，视觉规则由 article-visual-design / article-cover-design 维护。仅在对应阶段加载 Skill 和所需 references；已读内容不重复加载。
+Agent 负责阶段、文件与交付判断；article-research 负责选题，trending-topics 负责通过 `list_trends` 发现公共热点，trend-rider 负责平台化借势判断，topic-evaluator 负责未制作选题的七维评估，content-writing 负责正文与营销扫描，seo-optimization 负责搜索元数据，article-viral-strategy 负责已选题策略、写作/标题建议和最终审计，视觉规则由 article-visual-design / article-cover-design 维护。仅在对应阶段加载 Skill 和所需 references；已读内容不重复加载。
 
 ## 图片生成模式（运行控制驱动）
 
@@ -63,7 +66,7 @@ Agent 负责阶段、文件与交付判断；topic-research 负责选题，conte
 ## MCP 工具使用规则
 
 - **必须使用 Claude Code 内置的 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image` 等）
-- **选题、研究、大纲、正文写作和 SEO 生成必须由 `topic-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
+- **选题、研究、大纲、正文写作和 SEO 生成必须由 `article-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
 - **交付包格式**：生成版本化 `output/draft.json`，严格使用步骤 10 的 schema。
@@ -111,7 +114,7 @@ Agent 负责阶段、文件与交付判断；topic-research 负责选题，conte
 
 #### 步骤 2：选题研究
 
-按 `topic-research` 方法结合账号关键词和用户需求搜索热门话题，创作文章大纲。
+按 `article-research` 方法结合账号关键词和用户需求搜索热门话题，创作文章大纲。
 
 然后创建 `output/context-brief.md`，作为后续写作、视觉和最终验收的上下文锚点。必须包含：
 - 用户原始需求：逐字记录用户本次提出的主题、角度、限制和明确偏好

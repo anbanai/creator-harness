@@ -29,7 +29,7 @@ description: "Use only for the Article workflow's viral strategy checkpoints: se
 
 ### 环节 1：选题爆款策略锚定（步骤 2，选题已选定**之后**）
 
-**前置不变式**：选题必须已由 `topic-research` 经 `claim_topic` / `about:` 选定。本环节 **只判定、不重新认领、不换题**（保护选题池防重复消费不变式）。
+**前置不变式**：选题必须已由 `article-research` 经 `claim_topic` / `about:` 选定。本环节 **只判定、不重新认领、不换题**（保护选题池防重复消费不变式）。
 
 对已选定的选题，输出「爆款策略」段（追加进 `context-brief.md`）：
 
@@ -84,7 +84,7 @@ description: "Use only for the Article workflow's viral strategy checkpoints: se
 
 | 现有 skill | 做什么 | 本 skill 叠加什么 |
 |------------|--------|-------------------|
-| topic-research | 选题机制（候选话题评分与筛选） | 选定后判定社交货币/情绪/转发收藏潜力 |
+| article-research | 选题机制（候选话题评分与筛选） | 选定后判定社交货币/情绪/转发收藏潜力 |
 | content-writing | 写作执行 + 去AI味 + 合规 | 开头钩子/情绪弧/金句/诱因等爆款写作要求 |
 | seo-optimization | 关键词 + 合规标题 + 摘要 | 标题 CTR 3变体选优 + 三位一体协同 |
 | article-cover-design | 封面视觉（CTR 已含） | 标题-封面-摘要三位一体协同 |

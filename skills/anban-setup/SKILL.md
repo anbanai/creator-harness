@@ -62,7 +62,7 @@ Codex 在 shell 启动文件或项目环境中设置同名变量。任何已有�
 
 **写作去 AI Skill 可用性校验**：在当前插件根目录检查 `skills/humanizer/SKILL.md`。该 Skill 随插件安装，无需联网或 `git clone`；缺失时提示用户重新安装插件。
 
-**Seednote 小红书数据边界**：登录状态检查、扫码登录和退出登录由 Admin 在 Anban 后台维护。Agent 只使用已认证的搜索、详情和用户资料 MCP 工具；不要通过脚本、自定义 HTTP、sidecar 或外部客户端绕过 Anban MCP，也不要尝试管理登录态。
+**Seednote 种草笔记数据边界**：登录状态检查、扫码登录和退出登录由 Admin 在 Anban 后台维护。Agent 只使用已认证的搜索、详情和用户资料 MCP 工具；不要通过脚本、自定义 HTTP、sidecar 或外部客户端绕过 Anban MCP，也不要尝试管理登录态。
 
 告知用户：
 

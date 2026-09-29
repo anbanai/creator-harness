@@ -5,19 +5,24 @@ description: 'Use only during Seednote topic discovery or source-note retrieval.
 
 # 种草笔记选题研究
 
-## 已认证的小红书数据入口
+## 意图路由
 
-小红书真实外部数据只通过已认证的 Anban MCP 工具获取：
+先判断用户是否在询问“今天/当前有什么热点”或其他明确的公共热点发现请求。这类请求必须在选题池认领和认证种草笔记搜索前调用 `trending-topics`，确保实际调用 Server MCP `list_trends`；选题池和认证研究仍可作为补充或降级依据。普通原创选题继续遵循选题池和认证种草笔记研究优先级。
+
+## 已认证的种草笔记数据入口
+
+种草笔记真实外部数据只通过已认证的 Anban MCP 工具获取：
 
 1. 直接调用 `search_seednote_feeds` 搜索真实笔记。
 2. 从 `search_seednote_feeds` 或 `get_seednote_user_profile` 的真实工具返回中取得 `feed_id` 与 `xsec_token`，再调用 `get_seednote_feed_detail`。工具返回的签名 URL 只能作为该工具输出的一部分，不能直接读取用户输入的链接。
 3. 需要作者公开画像时，使用详情或搜索结果中的真实用户标识调用 `get_seednote_user_profile`。
+4. `trending-topics` 可选地调用 Server MCP `list_trends` 获取微博、抖音、知乎、B站、百度或头条公共热点，作为选题补充；公共热点不能替代认证种草笔记搜索，也不能被记录为 `xiaohongshu-mcp` 数据。
 
 登录状态检查、扫码登录和退出登录由 Admin 在 Anban 后台维护。Agent 不管理登录态、不获取二维码、不等待人工扫码，也不得向用户暴露任何登录管理能力；它只调用研究工具并处理工具返回的认证或能力错误。
 
-本 skill 只读：只允许搜索、笔记详情和用户公开资料查询；禁止登录管理以及发布、删除、关注、取关、点赞、收藏、评论写入等写操作。禁止直连 sidecar、私有端口、浏览器抓取器，禁止编写 Python、JavaScript/Node.js 或自定义 HTTP 客户端，也禁止调用任何外部小红书客户端。不得绕过 Anban MCP 的认证、审计与协议边界。
+本 skill 只读：只允许搜索、笔记详情和用户公开资料查询；禁止登录管理以及发布、删除、关注、取关、点赞、收藏、评论写入等写操作。禁止直连 sidecar、私有端口、浏览器抓取器，禁止编写 Python、JavaScript/Node.js 或自定义 HTTP 客户端，也禁止调用任何外部种草笔记客户端。不得绕过 Anban MCP 的认证、审计与协议边界。
 
-原创模式外部研究不可用时，原创模式不得失败、不得写 `output/failure-state.json`：改用用户明确主题、选题池、账号画像和已有标题完成保守选题，并如实记录缺失数据。不得把本地判断描述成热门数据或互动率证据。复刻模式若只提供外部笔记 ID/链接且无法取得任何源内容，才属于无法满足核心输入的可恢复失败。
+原创模式外部研究不可用时，原创模式不得失败、不得写 `output/failure-state.json`：改用用户明确主题、选题池、账号画像和已有标题完成保守选题，并如实记录缺失数据。公共热点或 `list_trends` 不可用时同样按此降级。不得把本地判断描述成热门数据或互动率证据。复刻模式若只提供外部笔记 ID/链接且无法取得任何源内容，才属于无法满足核心输入的可恢复失败。
 
 ## Anban MCP 工具
 
@@ -28,6 +33,7 @@ description: 'Use only during Seednote topic discovery or source-note retrieval.
 | `search_seednote_feeds` | 按关键词搜索真实笔记并返回可追溯标识 |
 | `get_seednote_feed_detail` | 使用真实 `feed_id` 与 `xsec_token` 获取详情和互动字段 |
 | `get_seednote_user_profile` | 获取搜索或详情结果对应的公开用户资料 |
+| `list_trends` | 获取公共平台热点补充；不提供种草笔记认证笔记或 CES 证据 |
 
 传输错误、超时或临时 MCP 不可达时，原调用只重试一次。认证失败、参数错误和业务拒绝不是传输失败，不得盲目重试。每次调用都保留原始结构化错误摘要，不得通过其他通道补取数据，也不得尝试自行恢复登录。
 
@@ -46,6 +52,8 @@ missing_fields=<缺失字段列表；无缺失时写 none>
 fallback_reason=<无降级则写 none>
 ```
 
+使用公共热点时，额外记录每个候选的 `trend_source`、平台、`rank`、`hot`、`fetched_at`、`expires_at`、`stale`、`source` 和 `last_error`。随后调用 `trend-rider` 输出关联度、生命周期、借势结论、平台形式和风险，再调用 `topic-evaluator` 输出七维定性评估。低关联度必须标记不建议借势并给出常青替代方向。只有真实互动字段存在时才使用 CES；七维结果用于解释定位、差异化、时效、制作成本和合规，不与 CES 机械相加。
+
 `data_source=xiaohongshu-mcp` 只表示数据经过已认证的 Anban MCP 能力取得。外部数据未取得时必须按实际采用的主要业务输入记录：用户明确主题写 `data_source=task_topic`，认领的选题池主题写 `data_source=topic_pool`，仅按账号画像或项目资料推导写 `data_source=project_context`；绝不把本地回退伪造成 MCP 成功采集。研究必须记录 `mcp_tools_used` 和 `available`，并用 `missing_fields` 与 `fallback_reason` 准确说明降级。
 
 ## 完整研究流程
@@ -55,7 +63,8 @@ fallback_reason=<无降级则写 none>
 复刻模式不做选题，直接进入「复刻模式源笔记获取」。原创模式先检查任务 user prompt：
 
 1. 任务已指定主题：直接采用主题，禁止调用 `claim_topic`，将其作为搜索关键词；外部评分仅作参考。
-2. 任务未指定主题：先调用 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")`。返回非空 `topic` 则采用；返回 `null` 时再结合账号画像、已有标题和可用外部数据选题。
+2. 用户请求当前公共热点：先调用 `trending-topics`，再按需调用 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")` 和认证搜索；公共热点调用不得被非空选题池跳过。
+3. 任务未指定主题：先调用 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")`。返回非空 `topic` 则采用；返回 `null` 时再结合账号画像、已有标题和可用外部数据选题。
 
 项目 profile 的 keywords 不是已经指定的主题。选题池是正式业务输入，不得因为外部搜索可用而跳过。
 
@@ -69,13 +78,15 @@ fallback_reason=<无降级则写 none>
 
 任一传输失败只重试一次。认证或能力不可用、工具不可用或重试后仍无外部数据时，跳过后续外部调用并继续原创流程。`output/topic-analysis.md` 必须按实际选题输入记录 `data_source=task_topic`、`data_source=topic_pool` 或 `data_source=project_context`，并记录 `token_source=missing`、`missing_fields=external_hot_data` 和具体 `fallback_reason`；不得写 `data_source=xiaohongshu-mcp`。
 
+认证搜索完成后，普通原创模式可按需调用 `trending-topics` 获取公共热点补充；当前公共热点意图已在前置路由调用。公共热点失败时记录 `list_trends` 的错误和 freshness 缺失，继续使用认证搜索、选题池、账号画像和历史标题。选中热点时，先调用 `trend-rider`，再调用 `topic-evaluator`；公共热点不能提供 CES，也不能替代 `search_seednote_feeds`。
+
 ### 步骤 3：分析热门笔记
 
 只有取得真实外部数据时才提取：标题句式和情绪词、封面信息层级、正文钩子和段落结构、评论信号、标签组合。缺失的评论或作者字段必须进入 `missing_fields`，不得推测补齐。
 
 ### 步骤 4：评分与选题
 
-只有取得真实互动字段时才使用 2026 小红书 CES 互动评分模型：
+只有取得真实互动字段时才使用 2026 种草笔记 CES 互动评分模型：
 
 ```text
 topic_score = engagement_rate × recency_weight × novelty_bonus

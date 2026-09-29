@@ -42,4 +42,4 @@
 
 ## 使用方式
 
-这是 topic-research Skill 的内部评分参考。候选选题评分由 Skill 基于当前项目定位、历史避重、素材可得性和合规风险自行完成，并写入 `output/01-research.md`；不要把候选选题判断委托给生成类 MCP 工具。
+这是 article-research Skill 的内部评分参考。候选选题评分由 Skill 基于当前项目定位、历史避重、素材可得性和合规风险自行完成，并写入 `output/01-research.md`；不要把候选选题判断委托给生成类 MCP 工具。

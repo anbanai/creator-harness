@@ -4,7 +4,9 @@
 
 ### Changed
 
+- Renamed the Article topic research Skill to `article-research` and standardized user-facing Seednote naming as `种草笔记` while preserving external integration identifiers.
 - Upgraded the DSH runtime packages to `0.1.5-rc.3`, Cordis to `4.0.2`, and the development tooling (`@types/node` 26.6.2, `js-yaml` 4.3.2).
+- Added MCP-backed public trend discovery, platform-specific trend riding, and seven-dimension topic evaluation to the Article and Seednote Agent Packs.
 
 ## [4.2.10] - 2026-09-25
 
@@ -597,7 +599,7 @@ This project follows semantic versioning for the plugin package. Patch releases 
 
 ### Changed
 
-- Made Agent-Reach an optional enhancement for original Seednote research: unavailable Xiaohongshu backends now fall back to the task topic, topic pool, project profile, and title deduplication without fabricating external trend evidence.
+- Made Agent-Reach an optional enhancement for original Seednote research: unavailable Seednote backends now fall back to the task topic, topic pool, project profile, and title deduplication without fabricating external trend evidence.
 - Kept recoverable research failures only for replicate tasks whose required external source content cannot be resolved.
 
 ## [2.10.57] - 2026-07-14
@@ -781,7 +783,7 @@ This project follows semantic versioning for the plugin package. Patch releases 
 
 - Moved WeChat article preflight ownership into skills and agents, with anti-diversion review, automatic adjustment loops, and visual prompt guards for QR/contact/link cues.
 - Removed the `inspect_article` MCP preflight path from the article workflow.
-- Routed Seednote external Xiaohongshu research through Agent-Reach doctor/backend selection, with Anban-managed OpenCLI/xiaohongshu-mcp install guidance removed from the main flow.
+- Routed Seednote external Seednote research through Agent-Reach doctor/backend selection, with Anban-managed OpenCLI/xiaohongshu-mcp install guidance removed from the main flow.
 
 ## [2.10.24] - 2026-07-06
 
