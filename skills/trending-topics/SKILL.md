@@ -9,7 +9,7 @@ description: Use when a content workflow needs current public hot topics, a plat
 
 ## 规则
 
-- 调用 `list_trends` 时只把项目平台或用户指定的平台映射到 `platforms` 参数；未指定时使用公众号可用的微博、抖音、知乎、B 站、百度、头条组合。账号关键词只能用于调用后的相关度排序，不能伪装成 MCP 参数或返回字段。
+- `list_trends` 的 `platforms` 只接受 `weibo`、`douyin`、`zhihu`、`bilibili`、`baidu`、`toutiao`。公众号可按定位选择其中的平台，未指定时使用这六个平台；种草笔记没有公共榜参数，必须把这六个平台作为补充来源，绝不能把 `article`、`seednote` 或其他业务平台名直接传给 MCP。账号关键词只能用于调用后的相关度排序，不能伪装成 MCP 参数或返回字段。
 - 禁止直接访问热搜网站、第三方热搜 API、网页抓取工具、自定义 HTTP 客户端或脚本绕过 MCP。
 - 保留每个平台返回的 `title`、`hot`、`url`、`rank`、`fetched_at`、`expires_at`、`stale`、`source`、`last_error`。没有的字段写 `unknown`，不补造热度。
 - `stale=true` 只能作为过期快照证据，不能描述为实时热搜；刷新失败时保留旧数据并记录失败原因。
