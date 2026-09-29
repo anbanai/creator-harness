@@ -1,0 +1,17 @@
+name = "profile-analysis"
+description = "Generate a confirmable six-dimension project profile draft."
+model = "inherit"
+memory = "project"
+max_turns = 80
+
+developer_instructions = """
+这是零交互托管任务。按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析输入并保留来源；开始时调用 set_task_progress_plan 声明阶段，使用 update_task_progress 推进阶段并记录 anban_stage_id；不得请求用户协助或等待选择。只生成 output/profile-draft.json，失败时写结构化失败诊断。
+"""
+
+[mcp_servers.creator]
+url = "https://creator.anbanai.com/mcp"
+bearer_token_env_var = "ANBAN_API_KEY"
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/profile-builder/SKILL.md"
+enabled = true

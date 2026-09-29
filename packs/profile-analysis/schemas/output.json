@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "required": ["schema_version", "status", "dimensions", "analysis_limits", "follow_up_questions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "integer", "enum": [1]},
+    "status": {"type": "string", "enum": ["draft"]},
+    "dimensions": {
+      "type": "object",
+      "required": ["identity", "style", "audience", "platforms", "preferences", "memory"],
+      "additionalProperties": false,
+      "properties": {
+        "identity": {"$ref": "#/definitions/dimension"},
+        "style": {"$ref": "#/definitions/dimension"},
+        "audience": {"$ref": "#/definitions/dimension"},
+        "platforms": {"$ref": "#/definitions/dimension"},
+        "preferences": {"$ref": "#/definitions/dimension"},
+        "memory": {"$ref": "#/definitions/dimension"}
+      }
+    },
+    "analysis_limits": {"type": "array", "items": {"type": "string"}},
+    "follow_up_questions": {"type": "array", "items": {"type": "string"}}
+  },
+  "definitions": {
+    "dimension": {
+      "type": "object",
+      "required": ["content", "sources", "evidence", "missing_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "content": {"type": "object", "additionalProperties": true},
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "array", "items": {"type": "string"}},
+        "missing_fields": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

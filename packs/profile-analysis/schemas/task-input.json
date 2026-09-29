@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": ["project_id", "platform", "profile_url", "answers", "samples"],
+  "additionalProperties": false,
+  "properties": {
+    "project_id": {"type": "string"},
+    "platform": {"type": "string", "enum": ["article", "seednote"]},
+    "profile_url": {"type": "string"},
+    "answers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "basic": {"type": "string"},
+        "intent": {"type": "string"},
+        "content": {"type": "string"},
+        "boundaries": {"type": "string"}
+      }
+    },
+    "samples": {"type": "array", "items": {"type": "string"}}
+  }
+}

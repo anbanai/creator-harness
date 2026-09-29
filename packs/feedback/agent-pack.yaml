@@ -1,0 +1,16 @@
+id: feedback
+version: 1.0.0
+kind: plugin
+display_name: 反馈分析
+description: 周期性分析公众号与种草笔记数据并生成可追溯的反馈证据。
+agent:
+  name: feedback
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [publish-log, data-tracker, publish-analytics, performance-review, content-postmortem, post-scorer, strategy-advisor]
+  max_turns: 80
+bindings: {}
+runtime: {}
+surfaces: [plugin]
+features: [feedback]
+artifacts: []

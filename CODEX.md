@@ -20,7 +20,7 @@ Both hosts connect to the same `anban-creator` MCP server. Skills, themes, write
 The plugin follows Codex's **Skill + Subagent + MCP** model:
 
 - **Skills** (`skills/`) — the canonical shared Skill tree auto-discovered by both hosts
-- **Subagents** (`agents/`) — seven TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
+- **Subagents** (`agents/`) — eight TOML files installed to `~/.codex/agents/` and registered in `~/.codex/config.toml` (Codex plugins cannot bundle subagents directly — see GitHub issue #18988)
 - **MCP server** (`install/agents-registration.toml`) — installed into Codex config with `ANBAN_API_KEY`; managed subagents also declare their MCP dependency. Plugin-only Hypit uses its own CLI and Runtime Profile.
 - **Completion checks** — embedded in TOML subagent instructions because Anban does not yet ship a Codex Hook-based completion or progress reporter adapter
 
