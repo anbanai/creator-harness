@@ -1,5 +1,5 @@
 id: moments
-version: 2.0.1
+version: 2.0.2
 kind: managed
 display_name: 朋友圈素材包
 description: 从素材拆解到朋友圈正文、质量复盘和交付的创作流程。
@@ -26,6 +26,8 @@ artifacts:
   - {role: image_prompt, path: output/image-prompts.md, mime_type: text/markdown, required: true}
   - {role: image, path: output/moments-image.png, mime_type: image/png, required: true}
   - {role: review, path: output/quality-review.md, mime_type: text/markdown, required: true}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
 delivery:
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown}
   - {role: image, path: output/moments-image.png, mime_type: image/png}

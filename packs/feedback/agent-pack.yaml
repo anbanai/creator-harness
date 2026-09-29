@@ -1,5 +1,5 @@
 id: feedback
-version: 1.0.0
+version: 1.0.1
 kind: plugin
 display_name: 反馈分析
 description: 周期性分析公众号与种草笔记数据并生成可追溯的反馈证据。
@@ -13,4 +13,9 @@ bindings: {}
 runtime: {}
 surfaces: [plugin]
 features: [feedback]
-artifacts: []
+artifacts:
+  - {role: analysis_result, path: output/feedback-analysis.json, mime_type: application/json, required: false}
+  - {role: evidence, path: output/feedback-evidence.json, mime_type: application/json, required: false}
+  - {role: skipped, path: output/feedback-skipped.json, mime_type: application/json, required: false}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}

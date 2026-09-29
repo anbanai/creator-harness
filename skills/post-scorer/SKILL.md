@@ -8,3 +8,7 @@ description: Use when a content generation task has a completed draft and is ent
 Read the strategy snapshot and historical performance cache frozen in the task's GenerationContext. Score the draft against the applicable platform and task type, and mark whether the score used an active snapshot or a documented baseline fallback.
 
 This is generation-local. It does not enqueue analytics, rebuild observations, call `strategy-advisor`, or create a new snapshot. If no active strategy is available, continue with the baseline and set `strategy_unavailable`; do not create a compensating analysis task. Record which strategy revision and digest were consumed so the result is auditable.
+
+## Analysis boundary
+
+If both the strategy snapshot and baseline evidence are unavailable, return `data_insufficient` with low confidence and the missing fields. This scoring step must not modify a profile, prompt, publish state, or global configuration.

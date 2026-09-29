@@ -5,6 +5,14 @@ description: 'Use only during Seednote topic discovery or source-note retrieval.
 
 # 种草笔记选题研究
 
+## 目录
+
+- [意图路由](#意图路由)
+- [数据入口](#已认证的种草笔记数据入口)
+- [完整研究流程](#完整研究流程)
+- [复刻模式](#复刻模式源笔记获取)
+- [产出要求](#产出要求)
+
 ## 意图路由
 
 先判断用户是否在询问“今天/当前有什么热点”或其他明确的公共热点发现请求。这类请求必须在选题池认领和认证种草笔记搜索前调用 `trending-topics`，确保实际调用 Server MCP `list_trends`；选题池和认证研究仍可作为补充或降级依据。普通原创选题继续遵循选题池和认证种草笔记研究优先级。
@@ -109,6 +117,8 @@ novelty_bonus: 同角度笔记<3 → 1.2, 否则 → 1.0
 **边界**：不要在本 skill 中提取爆款模板、持久化全局模板或生成改写正文。若认证或能力不可用，或任务仅有外部 ID/链接且一次传输重试后仍无法取得源内容，写结构化 `output/failure-state.json`，字段包含 `version`、`status=recoverable_failure`、`stage=research`、稳定 `error_code`、原始错误摘要和 `resume_from=research`；这条失败规则不适用于原创模式。
 
 ## 产出要求
+
+研究 JSON（如有）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。没有源数据时输出 `skipped` 或 `data_insufficient` 并说明原因；证据不足时降低置信度，不自动修改 Profile、Prompt、发布状态或全局配置。
 
 | 模式 | 产出文件 |
 |------|----------|

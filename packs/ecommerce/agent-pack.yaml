@@ -1,5 +1,5 @@
 id: ecommerce
-version: 2.0.1
+version: 2.0.2
 kind: managed
 display_name: 电商素材
 description: 基于产品图片生成完整电商文案和视觉素材包。
@@ -22,8 +22,16 @@ billing_operations:
   ecommerce: task.ecommerce
 artifacts:
   - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
+  - {role: product_photos, path: output/product-photos.md, mime_type: text/markdown, required: false}
   - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown, required: true}
+  - {role: asset_plan, path: output/asset-plan.md, mime_type: text/markdown, required: false}
+  - {role: image_prompts, path: output/image-prompts.md, mime_type: text/markdown, required: false}
+  - {role: best_refs, path: output/best-refs.md, mime_type: text/markdown, required: false}
+  - {role: compliance, path: output/compliance-report.md, mime_type: text/markdown, required: false}
   - {role: manifest, path: output/manifest.json, mime_type: application/json, required: true}
+  - {role: compressed_image, path: output/compressed_*.png, mime_type: image/png, required: false}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
 delivery:
   - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown}
   - {role: manifest, path: output/manifest.json, mime_type: application/json}

@@ -12,3 +12,7 @@ schema, examples, lookup order, and troubleshooting notes live in
 Writer files define writing voice only. They must not carry visual identity or
 image style fields; visual style is resolved separately from project/task
 configuration.
+
+## Analysis boundary
+
+If a writer file or required source is unavailable, return `skipped` or `data_insufficient` with low confidence and the missing path. Writer guidance is advisory and must not modify a profile, prompt, publish state, or global configuration.

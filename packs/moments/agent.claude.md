@@ -10,6 +10,8 @@ maxTurns: 20
 
 # 朋友圈素材包全自动创作 Agent
 
+JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`missing`、`evidence_paths` 合同；失败写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
+
 仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$CLAUDE_PLUGIN_ROOT/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
 
 ## 角色

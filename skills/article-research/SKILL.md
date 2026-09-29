@@ -8,7 +8,7 @@ description: Use when researching WeChat topics, selecting from a topic pool, ch
 
 ## Intent Routing
 
-Use this Skill for topic source selection, duplicate checks, candidate generation, candidate scoring, Top 1 choice, and outline creation. Topic research and outline writing happen inside the Skill; MCP is used only for controlled discovery such as topic pool, history, profile, and task progress.
+Use this Skill for topic source selection, duplicate checks, candidate generation, candidate scoring, Top 1 choice, and outline creation. Topic research and outline writing happen inside the Skill; MCP is used only for controlled discovery such as topic pool, history, and profile. Task lifecycle and progress are owned by the top-level Agent; this Skill only consumes the current stage context and writes its research artifacts.
 
 ## Discovery First
 
@@ -30,6 +30,8 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 - The Skill chooses structure and scoring rubric itself; do not delegate creative judgment to a generation MCP endpoint.
 
 ## Output Contract
+
+JSON evidence produced by this Skill, when applicable, uses `schema_version`, a finite `status` (`ready`, `warning`, `blocked`, `failed`, or `skipped`), `source`, `data_at`, `missing`, and `evidence_paths`. If a required discovery call cannot be completed, the owning Agent writes the shared `output/failure-state.json` recovery shape with `version`, `status`, `stage`, `error_code`, `message`, and `resume_from`.
 
 Write these file-backed artifacts:
 

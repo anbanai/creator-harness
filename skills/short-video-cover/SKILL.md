@@ -5,6 +5,14 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 # 短视频爆款封面——参考封面复刻工作流
 
+## 目录
+
+- [任务图像参数合同](#任务图像参数合同)
+- [MCP 工具](#mcp-工具)
+- [核心原则](#核心原则)
+- [完整工作流](#完整工作流)
+- [质量与失败合同](#质量与失败合同)
+
 ## 任务图像参数合同
 
 - 调用 `get_project_profile(project_id=$PROJECT_ID, scope="short-video-cover", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
@@ -251,6 +259,10 @@ analyze_image(
 - [ ] `output/cover-review.md` 已生成，5 项审计 PASS/MINOR/FAIL 评级
 
 ### 全部完成后
+
+## 质量与失败合同
+
+生成与审核 JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和适用的 `evidence_paths`。参考图不可用、生成失败或审核证据不足时保留已有产物并写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message` 和 `resume_from`；不得自动修改 Profile 或发布状态。
 
 - [ ] 任一关键项（标题清楚、主体突出）FAIL 时已重试 1 次
 - [ ] 重试后仍 FAIL 已标记 `needs_manual_edit` 并向用户说明

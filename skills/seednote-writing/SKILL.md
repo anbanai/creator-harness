@@ -5,6 +5,15 @@ description: 'Use only during the Seednote writing, title-finalization, or compl
 
 # 种草笔记内容写作知识库
 
+## 目录
+
+- [用户输入锁定规则](#0-用户输入锁定规则)
+- [标题规范](#1-标题规范)
+- [正文结构](#2-正文结构三段式)
+- [Humanizer 适配](#27-通用-humanizer-适配契约)
+- [合规与质量](#7-违禁词与平台合规)
+- [爆款改写](#9-爆款改写)
+
 > **规则时效**：平台算法、资质和 AI 标识要求会变化。带年份、权重或监管结论的内容只作为实验性建议；执行前记录核验日期、来源和适用平台，无法核验时降级为保守合规提示。
 
 ## 0. 用户输入锁定规则
@@ -228,6 +237,10 @@ Lightroom ✅ 专业全面 / 适合 raw 格式 / 稍重
 ---
 
 ## 9. 爆款改写
+
+## 失败与证据合同
+
+写作分析 JSON（如有）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。证据不足时降低置信度并保留待补充项，不自动修改 Profile、Prompt、发布状态或全局配置；无法安全完成时由 Agent 写 `output/failure-state.json` 并提供 `resume_from`。
 
 仅复刻/改写阶段读取模板：`output/viral-template.json`；服从 recommended_clone_depth、confidence 与 do_not_copy，替换事实、经历、措辞和可识别表达。没有源内容不得凭空复刻。原创阶段无需读取本分支。
 

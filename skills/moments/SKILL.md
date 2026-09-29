@@ -5,6 +5,14 @@ description: Use when generating WeChat Moments / 朋友圈 content packages fro
 
 # Moments / 朋友圈素材包
 
+## 目录
+
+- [定位](#定位)
+- [固定产物](#固定产物)
+- [输入理解](#输入理解)
+- [写作流程](#写作流程)
+- [质量与失败合同](#质量与失败合同)
+
 ## 定位
 
 本 skill 直接产出 Anban 朋友圈素材包，不做自动发布，不接定时计划，不依赖运行时外部仓库。方法参考 `Caihui0127/caihui-moments-skill` 的内容拆解框架，但只借鉴公开方法：**不默认使用“彩卉”人设**，不复制私有素材，不把参考 repo 作为运行时依赖。
@@ -159,6 +167,10 @@ generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<最终提示词
 ```
 
 ## 红线
+
+## 质量与失败合同
+
+JSON 结果（如适用）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。数据不足或图像能力不可用时保留已完成文件并写 `output/failure-state.json`，其中包含 `version`、`status`、`stage`、`error_code`、脱敏 `message` 和 `resume_from`；本 Skill 不改变 Profile、发布状态或全局配置。
 
 - 不伪造客户案例、成交数据、用户反馈。
 - 不把“彩卉”或参考 repo 的人物经历、案例、口吻默认套到用户项目上。

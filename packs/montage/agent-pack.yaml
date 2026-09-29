@@ -1,5 +1,5 @@
 id: montage
-version: 2.0.3
+version: 2.0.4
 kind: managed
 display_name: 视频生成
 description: 从素材和业务输入生成最终视频与交付清单。
@@ -25,6 +25,12 @@ artifacts:
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: true}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
+  - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown, required: false}
+  - {role: cover_review, path: output/cover-quality.json, mime_type: application/json, required: false}
+  - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
 delivery:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}

@@ -1,5 +1,5 @@
 id: seednote
-version: 2.0.4
+version: 2.0.5
 kind: managed
 display_name: 种草笔记
 description: 支持原创、复刻和爆款分析的种草笔记图文创作流程。
@@ -23,9 +23,25 @@ billing_operations:
   seednote: task.seednote
   viral_analysis: task.viral_analysis
 artifacts:
+  - {role: topic_analysis, path: output/topic-analysis.md, mime_type: text/markdown, required: false}
+  - {role: source_note, path: output/source-note.md, mime_type: text/markdown, required: false}
+  - {role: source_analysis, path: output/source-analysis.md, mime_type: text/markdown, required: false}
+  - {role: viral_template, path: output/viral-template.json, mime_type: application/json, required: false}
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
   - {role: image_plan, path: output/image-plan.md, mime_type: text/markdown, required: true}
+  - {role: image_prompt, path: output/image-prompts.md, mime_type: text/markdown, required: false}
+  - {role: image_review, path: output/image-review.md, mime_type: text/markdown, required: false}
+  - {role: reference_usage, path: output/reference-usage-summary.json, mime_type: application/json, required: false}
+  - {role: compliance, path: output/compliance-report.md, mime_type: text/markdown, required: false}
+  - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
+  - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown, required: false}
+  - {role: cover_review, path: output/cover-quality.json, mime_type: application/json, required: false}
+  - {role: cover_failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
+  - {role: image, path: output/image_*.png, mime_type: image/png, required: false}
+  - {role: tail, path: output/tail.png, mime_type: image/png, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
 artifacts_by_task_type:
   viral_analysis:
     - {role: analysis, path: output/source-analysis.md, mime_type: text/markdown, required: true}

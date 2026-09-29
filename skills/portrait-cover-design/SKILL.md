@@ -5,6 +5,15 @@ description: Use when an Article, Seednote, video generation, or video replicati
 
 # Portrait Cover Design
 
+## 目录
+
+- [执行合同](#执行合同)
+- [图像参数合同](#图像参数合同)
+- [自动决策](#自动决策)
+- [产物](#产物)
+- [工作流](#工作流)
+- [完成条件](#完成条件)
+
 为公众号、种草笔记、视频生成与视频复刻生成“指定人物＋标题”封面。由对应业务入口在用户启用人物封面时调用；平台衔接只读取 [references/platform-integration.md](references/platform-integration.md) 中对应的一行。
 
 ## 执行合同

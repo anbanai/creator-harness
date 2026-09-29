@@ -5,16 +5,14 @@ model: inherit
 memory: project
 skills:
   - seednote-research
-  - trending-topics
-  - trend-rider
-  - topic-evaluator
-  - seednote-viral-analysis
   - seednote-writing
   - seednote-visual-design
 maxTurns: 20
 ---
 
 # 种草笔记图文全自动创作引擎
+
+JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`missing`、`evidence_paths` 合同；失败写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
 
 仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$CLAUDE_PLUGIN_ROOT/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
 

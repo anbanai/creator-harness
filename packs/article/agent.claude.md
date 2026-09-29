@@ -8,15 +8,12 @@ skills:
   - article-visual-design
   - article-cover-design
   - article-research
-  - trending-topics
-  - trend-rider
-  - topic-evaluator
-  - seo-optimization
-  - article-viral-strategy
 maxTurns: 300 # 公众号 10 步 + 7 图 + HTML，实测需 120-175 turn；原 50 在交互式运行下到不了 step 8
 ---
 
 # 微信公众号全自动创作引擎
+
+JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`missing`、`evidence_paths` 合同；失败写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
 
 仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$CLAUDE_PLUGIN_ROOT/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
 

@@ -5,6 +5,15 @@ description: 'Use only when the Article workflow enters its visual planning, con
 
 # 公众号图文图片管理（模板化 + 独立内容审核）
 
+## 目录
+
+- [案例库](#案例库)
+- [图片比例固定规则](#图片比例固定规则)
+- [图片模式与跳过条件](#图片模式与跳过条件运行控制驱动)
+- [规划、生成与持久化](#规划生成与持久化)
+- [质量验证](#质量验证)
+- [保存结果](#保存结果)
+
 ## 案例库
 
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
@@ -108,6 +117,8 @@ description: 'Use only when the Article workflow enters its visual planning, con
 ---
 
 ## 保存结果
+
+图片索引和审核 JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。能力不可用或质量失败时保留已生成图片并由 Agent 写 `output/failure-state.json`，不得把本地文件存在当作上传成功。
 
 - 含 CDN 图片链接的文章覆盖写回 `output/04-article-final.md`
 - 所有配图信息保存为 `output/images.json`

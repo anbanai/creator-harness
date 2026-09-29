@@ -5,6 +5,13 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 # 微信公众号封面设计
 
+## 目录
+
+- [目标与边界](#目标与边界)
+- [输入合同](#输入合同)
+- [工作流](#工作流)
+- [完成条件](#完成条件)
+
 ## 目标与边界
 
 本 Skill 是公众号文章封面的唯一设计入口。封面首先是“标题与正文承诺的缩略图”，其次才是风格锚点。必须做到：主题具体、缩略图可读、中心分享卡裁切安全、视觉媒介匹配、参考图语义明确、未通过质量闸门不得上传。
@@ -156,6 +163,8 @@ upload_image(
 3 次仍未通过时，在 `output/final-review.md` 记录结构化 warning：`stage=image_generation`、`error_code=article_cover_quality_failed`、安全摘要和可继续的 `resume_from=image_generation`。参考图能力不支持时使用 `article_cover_reference_unsupported`；人物文件缺失或损坏时使用 `article_cover_portrait_unavailable`。保留已有产物并返回 Article Agent 继续核心交付；不得请求用户协助，不得上传未通过封面。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
 
 ## 完成条件
+
+封面审核 JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。生成、裁剪、审核或上传失败时保留已有文件并写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`；上传状态仍以 Server 返回为准。
 
 - `output/cover-plan.md` 已记录 8 要素导演合同和参考图角色。
 - `output/cover-prompt.md` 已记录最终 prompt、比例来源、裁剪决定、`required_entities` 和参考路径用途。

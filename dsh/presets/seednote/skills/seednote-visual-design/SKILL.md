@@ -5,6 +5,15 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 
 # 种草笔记图片生成
 
+## 目录
+
+- [案例库](#案例库)
+- [图片比例固定规则](#图片比例固定规则)
+- [图片阶段交付约束](#图片阶段交付约束)
+- [视觉方法论](#seednote-视觉方法论)
+- [图片内容规划流程](#图片内容规划流程)
+- [质量与失败合同](#质量与失败合同)
+
 ## 案例库
 
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。
@@ -199,6 +208,10 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 ---
 
 ## 失败修订
+
+## 质量与失败合同
+
+所有 JSON 审核或索引文件使用 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和适用的 `evidence_paths`。生成、审核或上传无法继续时写 `output/failure-state.json`，字段固定为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`；单图失败可标记 `warning` 或 `skipped`，不得伪造图片已生成。
 
 针对实际可见问题细化文字、主体和风格；继续沿用相同 output_path 和任务比例，不重试运行身份错误。
 

@@ -49,3 +49,7 @@ description: Use when an unproduced topic needs an evidence-based decision on wh
 ```
 
 平台专属补充规则见 [references/platforms.md](references/platforms.md)。
+
+## Evidence boundary
+
+With no usable topic or platform evidence, return `data_insufficient` and low confidence rather than scoring invented signals. The evaluation is advisory only and must not modify a profile, prompt, publish state, or global configuration.

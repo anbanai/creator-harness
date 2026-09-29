@@ -5,6 +5,16 @@ description: 'Use when 操控剪映/CapCut 草稿文件——创建、读取、�
 
 # CapCut Draft Manipulation (剪映草稿操控)
 
+## 目录
+
+- [案例库](#案例库)
+- [Supported Operations](#supported-operations)
+- [Draft Root Discovery](#draft-root-discovery-草稿根目录)
+- [JSON Templates](#json-templates-json-模板)
+- [Workflow](#workflow-create-a-new-draft-using-templates)
+
+CapCut 草稿操作是宿主适配能力。Skill 只生成任务相对的草稿 JSON 和校验结果，不推断宿主路径、不创建自定义 HTTP/MCP 客户端；宿主不可用时返回 `skipped`，失败由 Agent 记录结构化恢复状态。
+
 ## 案例库
 
 遇到场景分支、产物格式或质量边界不确定时，先读 [references/examples.md](references/examples.md)。

@@ -5,6 +5,15 @@ description: Use when the user asks to create a complete WeChat Official Account
 
 # /article 微信公众号文章创作命令
 
+## 目录
+
+- [强制执行声明](#强制执行声明)
+- [信息收集](#phase-1-信息收集)
+- [内容创作](#phase-2-内容创作)
+- [SEO 与视觉](#phase-3-seo-与视觉)
+- [组装交付](#phase-4-组装交付)
+- [最终质量验收](#步骤-9最终质量验收)
+
 这是托管零交互流程，不得调用 `AskUserQuestion`，也不得请求用户协助；需要后续处理的问题通过结构化 warning 和 `resume_from` 交付。
 
 ## 强制执行声明
@@ -142,6 +151,8 @@ render_template(
 全部语义闸门通过时写 `readiness.status="ready"`、`readiness.code=""`，ready 状态严禁携带任何非空 code。营销扫描或审阅仍阻塞时写 `readiness.status="blocked"` 和稳定、非空的 code；内容与 HTML 仍正常交付。
 
 ## MCP 工具使用规则
+
+文章交付 JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。失败态统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`；`readiness` 只能表达 Skill 证据，发布状态仍由 Server finalizer 决定。
 
 ### 六维账号画像
 

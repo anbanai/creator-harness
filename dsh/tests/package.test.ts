@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.10',
+      version: '4.2.16',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -577,7 +577,7 @@ describe('DSH package manifest', () => {
         './package.json': './package.json',
       },
       dependencies: {
-        '@deepseek-ai/cordis': '4.0.2',
+        '@deepseek-ai/cordis': '4.0.4',
         '@deepseek-ai/dsh-agent-instructions': '0.1.5-rc.3',
         '@deepseek-ai/dsh-commands': '0.1.5-rc.3',
         '@deepseek-ai/dsh-credentials': '0.1.5-rc.3',
@@ -593,7 +593,7 @@ describe('DSH package manifest', () => {
         '@deepseek-ai/dsh-tool-todo': '0.1.5-rc.3',
       },
       peerDependencies: {
-        '@deepseek-ai/cordis': '4.0.2',
+        '@deepseek-ai/cordis': '4.0.4',
         '@deepseek-ai/dsh-commands': '0.1.5-rc.3',
         '@deepseek-ai/dsh-credentials': '0.1.5-rc.3',
         '@deepseek-ai/dsh-home-paths': '0.1.5-rc.3',
@@ -601,7 +601,7 @@ describe('DSH package manifest', () => {
         '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.3',
       },
       devDependencies: {
-        '@deepseek-ai/cordis': '4.0.2',
+        '@deepseek-ai/cordis': '4.0.4',
         '@deepseek-ai/dsh': '0.1.5-rc.3',
         '@deepseek-ai/dsh-agent-presets': '0.1.5-rc.3',
         '@deepseek-ai/dsh-commands': '0.1.5-rc.3',
@@ -609,11 +609,11 @@ describe('DSH package manifest', () => {
         '@deepseek-ai/dsh-home-paths': '0.1.5-rc.3',
         '@deepseek-ai/dsh-mcp-client': '0.1.5-rc.3',
         '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.3',
-        '@types/node': '26.6.2',
+        '@types/node': '26.6.3',
         'cross-spawn': '7.0.6',
         'js-yaml': '4.3.2',
         typescript: '7.0.2',
-        vitest: '5.0.1',
+        vitest: '5.0.2',
       },
     })
   })

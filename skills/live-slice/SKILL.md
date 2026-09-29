@@ -5,7 +5,15 @@ description: Use when working on live video slicing, 直播切片, 剪直播, �
 
 # 直播切片
 
-Use this skill to convert a local livestream video into transcript-backed short-video clip plans and exports. Local media work uses direct `ffmpeg`/`ffprobe` commands only; MCP tools handle OSS upload, TingWu analysis, and LLM JSON planning.
+## 目录
+
+- [产物与运行边界](#default-artifacts)
+- [流程](#workflow)
+- [裁剪与交付](#cutting-commands)
+- [JSON 合同](#json-shapes)
+- [失败与降级](#failure-contract)
+
+Use this skill to convert a local livestream video into transcript-backed short-video clip plans and exports. Local media work uses direct `ffmpeg`/`ffprobe` commands only; registered MCP tools handle upload authorization, TingWu analysis, and deterministic planning. The Live Slicer Agent/runtime adapter owns the atomic presigned file transfer; this Skill never constructs an HTTP client or executes a presigned URL.
 
 ## Default Artifacts
 
@@ -44,10 +52,9 @@ The managed runtime provides a task-private workspace and a pre-created `output/
    ```
 
 3. Upload audio:
-   Call `get_media_pipeline_status` first. TingWu is the required transcription backend; if `oss_direct_upload` or `tingwu_configured` is false, stop and report the missing items.
-   Set `AUDIO_SIZE=$(wc -c < output/audio.mp3 | tr -d ' ')`, then call `prepare_file_upload` with `project_id="$PROJECT_ID"`, `task_id="$TASK_ID"`, `purpose="live_audio"`, `filename="audio.mp3"`, `content_type="audio/mpeg"`, and `size=$AUDIO_SIZE`. Upload `output/audio.mp3` to the returned `upload_url` with `curl --fail -X PUT -H "Content-Type: audio/mpeg" -H "Content-Length: $AUDIO_SIZE" --upload-file "output/audio.mp3" "$UPLOAD_URL"`.
+   Call `get_media_pipeline_status` first. TingWu is the required transcription backend; if `oss_direct_upload` or `tingwu_configured` is false, stop and report the missing items. Call the registered `prepare_file_upload` MCP capability with the task-relative audio path and size. Pass its returned upload capability to the Live Slicer Agent/runtime adapter's atomic file-upload operation. The adapter performs the presigned PUT, bounded retry, response validation, and URL/signature redaction; this Skill only consumes the resulting `audio_key` and upload status.
 
-预签名 PUT 返回非零时不得创建听悟任务；写 `output/failure-state.json`（version、status=recoverable_failure、stage=audio_upload、error_code=audio_upload_failed、脱敏 message、resume_from=audio_upload），保留本地音频并停止。诊断不记录预签名 URL 或签名；恢复时重新经 MCP 获取有效上传授权。
+   If the adapter reports a failed upload, do not create a TingWu task. Write `output/failure-state.json` with `version`, `status=recoverable_failure`, `stage=audio_upload`, stable `error_code=audio_upload_failed`, a redacted `message`, and `resume_from=audio_upload`; retain the local audio and stop. Never copy a presigned URL or signature into an artifact.
 
 4. Create TingWu task:
    Call `create_live_analysis_task(audio_key=..., auto_chapters_enabled=true, summarization_enabled=true, meeting_assistance_enabled=true, diarization_enabled=false, script_template_enable=true)`.
@@ -153,6 +160,8 @@ For clip notes, write the `clip_notes_markdown` returned by `build_live_clip_man
 
 ## JSON Shapes
 
+All JSON files written by this Skill use `schema_version` and a finite `status` value (`ready`, `warning`, `blocked`, `failed`, or `skipped`). They include `source` (the MCP/runtime source or input artifact), `data_at` when the source is time-sensitive, and `missing` as an array when fields or evidence are unavailable. Planning and delivery JSON include `evidence_paths` for review files when applicable. `output/failure-state.json` is the shared recovery shape: `version`, `status`, `stage`, `error_code`, redacted `message`, and `resume_from`.
+
 Before either deterministic planning call, validate that every index is unique and exists, every range is monotonic with `start <= end`, and every source ID comes from `analysis.json`. If MCP validation rejects the files, fix them in the current Agent loop and retry; do not seek another model tool. Use `analyze_video(project_id, task_id, task_file_id|video_url, prompt)` only when complete visual context is needed; it does not replace the TingWu transcript.
 
 `analysis.json` uses:
@@ -187,3 +196,7 @@ Clip manifest is a JSON array of delivered clip objects with status, method, out
 - Use `-c copy` first for speed only when `fast_cut_shell` is non-empty; retry with re-encoding (or go straight to it) if a filter is needed or timestamp accuracy is poor.
 - For subject clips, preserve selected sentence order unless the LLM explicitly provides a better narrative order.
 - Do not cut live-only greetings, thanks, countdowns, real-time stock claims, or room-specific promos into short videos unless the user explicitly asks.
+
+## Failure Contract
+
+Missing media, unavailable registered capabilities, failed upload, failed transcription, and invalid plan indexes are recoverable failures when a resume stage exists; preserve completed artifacts and write `output/failure-state.json`. Partial clip export or unavailable CapCut discovery is a `warning` or `skipped` result and must remain visible in `output/clip_results.json` or `output/clip-draft-results.json`. Never treat an absent optional export as success, and never infer external upload or transcription completion from a local file alone.

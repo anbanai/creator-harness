@@ -5,6 +5,14 @@ description: Use when generating multiple pose/expression variants from a single
 
 # 人像姿态变体——基于一张参考人像生成多张封面
 
+## 目录
+
+- [任务图像参数合同](#任务图像参数合同)
+- [MCP 工具](#mcp-工具)
+- [核心原则](#核心原则)
+- [完整工作流](#完整工作流)
+- [验证清单](#验证清单)
+
 ## 任务图像参数合同
 
 - 调用 `get_project_profile(project_id=$PROJECT_ID, scope="portrait-pose-variants", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。

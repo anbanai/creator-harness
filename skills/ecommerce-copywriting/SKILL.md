@@ -5,6 +5,15 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 
 # 电商转化文案：卖点提炼 + 主图 + 详情页 + 分享
 
+## 目录
+
+- [受众与目标](#受众与目标)
+- [输入](#输入)
+- [卖点提炼](#步骤-1卖点提炼fabe--多框架)
+- [图片与详情文案](#步骤-2主图文案5-张结构ctr-优先)
+- [去 AI 与合规](#步骤-45去-ai-味humanizer-skill)
+- [产出](#产出)
+
 ## 受众与目标
 
 - **受众**：买家/潜在消费者，处于决策路径 **注意 → 兴趣 → 欲望 → 行动（AIDA）**。
@@ -164,6 +173,8 @@ AI 写作模式、误报边界和改写方法以`humanizer` skill 为准；本�
 ---
 
 ## 产出
+
+文案 manifest 或审核 JSON（如有）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。产品证据不足时标记低置信度并保留缺失项；失败由 Agent 写 `output/failure-state.json`，本 Skill 不改变 Profile、发布状态或全局配置。
 
 `output/copywriting.md`，结构：
 ```markdown

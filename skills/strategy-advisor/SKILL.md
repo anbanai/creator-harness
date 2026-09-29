@@ -10,3 +10,7 @@ Combine completed weekly insights, the closed-month performance review, content 
 When evidence is insufficient, persist a data-insufficient status without strong recommendations, without extra LLM interpretation, and without replacing the last valid active snapshot. Recommendations use `keep`, `increase`, `reduce`, and `test` categories and include confidence and limitations. Activate a new revision atomically, retire the prior active revision, and never mutate profile, writer, theme, prompt, or running task snapshots.
 
 New tasks freeze the active snapshot ID, revision, and digest at bootstrap. Running tasks continue using their frozen GenerationContext. Downstream consumer is the next generation's `post-scorer`.
+
+## Analysis boundary
+
+No eligible evidence produces `data_insufficient` with low confidence and no strong recommendations. Never modify a profile, prompt, publish state, or global configuration; activating a snapshot remains a Server-owned persistence operation.

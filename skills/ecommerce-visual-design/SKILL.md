@@ -5,6 +5,15 @@ description: "Use only during the Ecommerce workflow's visual planning and gener
 
 # 电商视觉设计与生成
 
+## 目录
+
+- [图片比例固定规则](#图片比例固定规则)
+- [硬性纪律](#硬性纪律违反视为流程失败)
+- [输入](#输入)
+- [图片生成](#步骤-4图片生成)
+- [常见失败与修复](#常见失败与修复)
+- [产出](#产出)
+
 ## 图片比例固定规则
 
 ### 任务图像参数合同
@@ -180,6 +189,8 @@ SKU 变体图要求「**同一版式、同一打光、仅变体属性不同**」
 ---
 
 ## 产出
+
+视觉计划、审核或 manifest JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。单图失败可标记 `needs_reference` 或 `skipped`；关键模块失败由 Agent 写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`，不得虚报数量或质量。
 
 - `output/asset-plan.md`（仅含已选模块的计划）
 - `output/image-prompts.md`（全部 prompt 备份）

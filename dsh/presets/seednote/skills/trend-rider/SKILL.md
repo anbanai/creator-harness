@@ -35,3 +35,7 @@ description: Use when a specific hot topic or event must be judged for creator r
 ```
 
 平台规则见 [references/article.md](references/article.md) 和 [references/seednote.md](references/seednote.md)。完成借势判断后，尚未制作的候选交给 `topic-evaluator`；不要评估已完成稿件。
+
+## Evidence boundary
+
+If the event source or account context is missing, return `data_insufficient`, set evidence freshness to `unknown`, and use low confidence. This Skill gives advisory angles only and must not modify a profile, prompt, publish state, or global configuration.

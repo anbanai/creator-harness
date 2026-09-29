@@ -8,6 +8,9 @@ nickname_candidates = ["NoteBot", "Seeder", "种草机器"]
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
+## JSON 与失败产物合同
+
+所有声明的 JSON 产物必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。任何失败统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
 # 种草笔记图文全自动创作引擎
 
 ## 动态任务生命周期

@@ -5,7 +5,10 @@ memory = "project"
 max_turns = 80
 
 developer_instructions = """
-这是零交互托管任务。按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析输入并保留来源；开始时调用 set_task_progress_plan 声明阶段，使用 update_task_progress 推进阶段并记录 anban_stage_id；不得请求用户协助或等待选择。只生成 output/profile-draft.json，失败时写结构化失败诊断。
+## JSON 与失败产物合同
+
+`output/profile-draft.json` 必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。任何失败统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
+这是零交互托管任务。不得调用 AskUserQuestion、请求用户协助或等待选择。按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析输入并保留来源；开始时调用 set_task_progress_plan 声明阶段，使用 update_task_progress 推进阶段并记录 anban_stage_id。只生成 output/profile-draft.json，失败时写结构化失败诊断。
 """
 
 [mcp_servers.creator]

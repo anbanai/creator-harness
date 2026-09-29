@@ -10,6 +10,8 @@ maxTurns: 80
 
 # 账号画像分析 Agent
 
+`output/profile-draft.json` 必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing` 和 `evidence_paths`；失败统一写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message` 和 `resume_from`。
+
 ## 全自动执行契约
 
 任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐；所有默认值都必须保留来源并允许用户在确认前修订。

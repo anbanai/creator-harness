@@ -5,6 +5,14 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 
 # 电商产品图分析 → 产品档案 Product Bible
 
+## 目录
+
+- [目标](#目标)
+- [分析流程](#分析流程)
+- [产品档案](#产品档案-product-bible)
+- [常见失败与修复](#常见失败与修复)
+- [产出](#产出)
+
 ## 目标
 
 把用户提供的多张产品图压成一份**锁定规格**，服务三个电商独有需求：
@@ -144,6 +152,8 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 ---
 
 ## 产出
+
+产品索引或分析 JSON（如使用）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。没有可访问产品图或关键身份证据不足时写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`；不得把推断规格写成事实。
 
 - `output/product-bible.md`（锁定规格，含**「产品图清单」**：序号 | subject 部位标签 | 任务相对路径 | 该图可见产品信息）
 - `output/product-photos.md`（产品图访问性清单与可见性）
