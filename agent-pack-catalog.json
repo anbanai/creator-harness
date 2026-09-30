@@ -2,9 +2,8 @@
   "packs": [
     {
       "id": "ecommerce",
-      "channel": "ecommerce",
       "version": "2.0.2",
-      "kind": "managed",
+      "kind": "plugin",
       "display_name": "电商素材",
       "description": "基于产品图片生成完整电商文案和视觉素材包。",
       "agent": {
@@ -18,31 +17,19 @@
         ],
         "max_turns": 120
       },
-      "bindings": {
-        "task_kinds": [
-          "ecommerce"
-        ],
-        "task_types": [
-          "ecommerce"
-        ]
-      },
+      "bindings": {},
       "runtime": {
         "profile": "article",
         "adapter": "standard",
         "max_turns": 90
       },
       "surfaces": [
-        "plugin",
-        "project",
-        "task"
+        "plugin"
       ],
       "features": [
         "image-generation",
         "product-assets"
       ],
-      "billing_operations": {
-        "ecommerce": "task.ecommerce"
-      },
       "artifacts": [
         {
           "role": "product_bible",
@@ -151,7 +138,228 @@
       "ui": {
         "renderer": "custom:ecommerce"
       },
-      "digest": "d6af7cd65a8b83ab05fdbdf0bfaf75d606d0d65cb1ba0e2c281f0c80edc768d6"
+      "digest": "964e20dde9b5e5e608650ff5efe8a69fe348be28fa8cf4dfc83ad2241d78ff5d"
+    },
+    {
+      "id": "article",
+      "channel": "article",
+      "version": "2.0.6",
+      "kind": "managed",
+      "display_name": "微信公众号文章",
+      "description": "从选题研究、写作和视觉设计到文章交付物的完整创作流程。",
+      "agent": {
+        "name": "article",
+        "skills": [
+          "portrait-cover-design",
+          "content-writing",
+          "humanizer",
+          "article-visual-design",
+          "article-cover-design",
+          "article-research",
+          "trending-topics",
+          "trend-rider",
+          "topic-evaluator",
+          "seo-optimization",
+          "article-viral-strategy",
+          "article-publishing"
+        ],
+        "max_turns": 300
+      },
+      "bindings": {
+        "task_kinds": [
+          "article"
+        ]
+      },
+      "runtime": {
+        "profile": "wechat",
+        "adapter": "standard",
+        "max_turns": 60
+      },
+      "surfaces": [
+        "plugin",
+        "project",
+        "task",
+        "plan"
+      ],
+      "features": [
+        "image-generation",
+        "reference-images"
+      ],
+      "billing_operations": {
+        "article": "task.wechat_article"
+      },
+      "artifacts": [
+        {
+          "role": "research",
+          "path": "output/01-research.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "outline",
+          "path": "output/02-outline.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "draft",
+          "path": "output/03-article.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "final_markdown",
+          "path": "output/04-article-final.md",
+          "mime_type": "text/markdown",
+          "required": true
+        },
+        {
+          "role": "html",
+          "path": "output/05-article.html",
+          "mime_type": "text/html",
+          "required": true
+        },
+        {
+          "role": "context",
+          "path": "output/context-brief.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "quality",
+          "path": "output/content-quality-report.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "seo",
+          "path": "output/seo-result.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "visual_plan",
+          "path": "output/visual-rhythm-plan.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "image_plan",
+          "path": "output/image-plan.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "cover_plan",
+          "path": "output/cover-plan.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "cover_prompt",
+          "path": "output/cover-prompt.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "cover",
+          "path": "output/cover.png",
+          "mime_type": "image/png",
+          "required": false
+        },
+        {
+          "role": "cover_exact",
+          "path": "output/cover-exact.png",
+          "mime_type": "image/png",
+          "required": false
+        },
+        {
+          "role": "portrait_failure_diagnosis",
+          "path": "output/failure-diagnosis.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "cover_review",
+          "path": "output/cover-quality.json",
+          "mime_type": "application/json",
+          "required": false
+        },
+        {
+          "role": "images",
+          "path": "output/images.json",
+          "mime_type": "application/json",
+          "required": false
+        },
+        {
+          "role": "image",
+          "path": "output/img_*.png",
+          "mime_type": "image/png",
+          "required": false
+        },
+        {
+          "role": "review",
+          "path": "output/final-review.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "review",
+          "path": "output/marketing-scan.json",
+          "mime_type": "application/json",
+          "required": false
+        },
+        {
+          "role": "viral_audit",
+          "path": "output/viral-audit.md",
+          "mime_type": "text/markdown",
+          "required": false
+        },
+        {
+          "role": "other",
+          "path": "output/draft.json",
+          "mime_type": "application/json",
+          "required": true
+        },
+        {
+          "role": "failure_state",
+          "path": "output/failure-state.json",
+          "mime_type": "application/json",
+          "required": false
+        },
+        {
+          "role": "progress_state",
+          "path": "output/progress-state.json",
+          "mime_type": "application/json",
+          "required": false
+        }
+      ],
+      "delivery": [
+        {
+          "role": "final_markdown",
+          "path": "output/04-article-final.md",
+          "mime_type": "text/markdown"
+        },
+        {
+          "role": "html",
+          "path": "output/05-article.html",
+          "mime_type": "text/html"
+        },
+        {
+          "role": "cover",
+          "path": "output/cover*.png",
+          "mime_type": "image/png"
+        },
+        {
+          "role": "image",
+          "path": "output/img_*.png",
+          "mime_type": "image/png"
+        }
+      ],
+      "ui": {
+        "renderer": "custom:article"
+      },
+      "digest": "bd5f5c89f1a1f56a74bf4629cb007c61f26d19209e7587b2c18aff29ba59803b"
     },
     {
       "id": "channels-video",
@@ -170,9 +378,6 @@
       },
       "bindings": {
         "task_kinds": [
-          "content_generation"
-        ],
-        "task_types": [
           "content_generation"
         ]
       },
@@ -337,9 +542,8 @@
     },
     {
       "id": "hypit",
-      "channel": "hypit",
       "version": "2.0.4",
-      "kind": "managed",
+      "kind": "plugin",
       "display_name": "视频复刻",
       "description": "根据参考视频和替换要求生成成片，保留完整工程用于再次改编。",
       "agent": {
@@ -349,33 +553,20 @@
         ],
         "max_turns": 180
       },
-      "bindings": {
-        "task_kinds": [
-          "hypit"
-        ],
-        "task_types": [
-          "hypit"
-        ]
-      },
+      "bindings": {},
       "runtime": {
         "profile": "hypit",
         "adapter": "standard",
         "max_turns": 180
       },
       "surfaces": [
-        "plugin",
-        "project",
-        "task",
-        "plan"
+        "plugin"
       ],
       "features": [
         "video-replication",
         "source-assets",
         "editable-video"
       ],
-      "billing_operations": {
-        "hypit": "task.hypit"
-      },
       "artifacts": [
         {
           "role": "final_video",
@@ -512,13 +703,12 @@
       "ui": {
         "renderer": "custom:hypit"
       },
-      "digest": "66f65ff40a9b5403fa80755efc3176574c777b0dfced240e2dcf53946583a579"
+      "digest": "18ddd3dddee2e7193034112bec765b33776e69a860d8210542a16117657d1b56"
     },
     {
       "id": "live-slicer",
-      "channel": "live-slicer",
       "version": "2.0.2",
-      "kind": "managed",
+      "kind": "plugin",
       "display_name": "直播切片",
       "description": "从直播视频转写、规划并批量导出短视频切片。",
       "agent": {
@@ -529,14 +719,7 @@
         ],
         "max_turns": 160
       },
-      "bindings": {
-        "task_kinds": [
-          "live-slicer"
-        ],
-        "task_types": [
-          "live-slicer"
-        ]
-      },
+      "bindings": {},
       "runtime": {
         "profile": "montage",
         "adapter": "standard",
@@ -712,13 +895,12 @@
         }
       ],
       "ui": {},
-      "digest": "dbaf5e37aae20f6ef3ba133f5d2bbd63cc9361015a0fffe0f0b6c168e9f7be0d"
+      "digest": "df1fb5d0a31947424e888bc2965e7bf11406eebf6200a93711431671b82601fa"
     },
     {
       "id": "moments",
-      "channel": "moments",
       "version": "2.0.2",
-      "kind": "managed",
+      "kind": "plugin",
       "display_name": "朋友圈素材包",
       "description": "从素材拆解到朋友圈正文、质量复盘和交付的创作流程。",
       "agent": {
@@ -729,30 +911,18 @@
         ],
         "max_turns": 20
       },
-      "bindings": {
-        "task_kinds": [
-          "moments"
-        ],
-        "task_types": [
-          "moments"
-        ]
-      },
+      "bindings": {},
       "runtime": {
         "profile": "article",
         "adapter": "standard",
         "max_turns": 25
       },
       "surfaces": [
-        "plugin",
-        "project",
-        "task"
+        "plugin"
       ],
       "features": [
         "reference-images"
       ],
-      "billing_operations": {
-        "moments": "task.moments"
-      },
       "artifacts": [
         {
           "role": "analysis",
@@ -812,13 +982,12 @@
       "ui": {
         "renderer": "custom:moments"
       },
-      "digest": "0c746d60ad1983238fd4599d3e344036bda7ac5f82e48231e10c67c47e307a51"
+      "digest": "37eff05de4671a88d18c51b0062f114f0976d8fb80b65591233c26e16f934c38"
     },
     {
       "id": "montage",
-      "channel": "montage",
       "version": "2.0.4",
-      "kind": "managed",
+      "kind": "plugin",
       "display_name": "视频生成",
       "description": "从素材和业务输入生成最终视频与交付清单。",
       "agent": {
@@ -829,32 +998,19 @@
         ],
         "max_turns": 180
       },
-      "bindings": {
-        "task_kinds": [
-          "montage"
-        ],
-        "task_types": [
-          "montage"
-        ]
-      },
+      "bindings": {},
       "runtime": {
         "profile": "montage",
         "adapter": "openmontage",
         "max_turns": 40
       },
       "surfaces": [
-        "plugin",
-        "project",
-        "task",
-        "plan"
+        "plugin"
       ],
       "features": [
         "video-generation",
         "source-assets"
       ],
-      "billing_operations": {
-        "montage": "task.montage"
-      },
       "artifacts": [
         {
           "role": "final_video",
@@ -932,13 +1088,12 @@
       "ui": {
         "renderer": "custom:montage"
       },
-      "digest": "907e9fa6dcf35fe75ba17632d501d3cf92affb52d389a1fd42ec4da164c2ce52"
+      "digest": "7f479d6e09ece9459bdcf5380ad6b8277fc485c28c5b60079cc4d63b42495872"
     },
     {
       "id": "profile-analysis",
-      "channel": "profile-analysis",
       "version": "2.0.2",
-      "kind": "managed",
+      "kind": "plugin",
       "display_name": "账号画像分析",
       "description": "基于用户提供的公开资料和问答生成可确认的六维账号画像草稿。",
       "agent": {
@@ -948,30 +1103,18 @@
         ],
         "max_turns": 80
       },
-      "bindings": {
-        "task_kinds": [
-          "profile_analysis"
-        ],
-        "task_types": [
-          "profile_analysis"
-        ]
-      },
+      "bindings": {},
       "runtime": {
         "profile": "article",
         "adapter": "standard",
         "max_turns": 40
       },
       "surfaces": [
-        "plugin",
-        "project",
-        "task"
+        "plugin"
       ],
       "features": [
         "profile-analysis"
       ],
-      "billing_operations": {
-        "profile_analysis": "task.profile_analysis"
-      },
       "artifacts": [
         {
           "role": "profile_draft",
@@ -1159,7 +1302,7 @@
       "ui": {
         "renderer": "custom:profile-analysis"
       },
-      "digest": "a335669a39eefc30481c0be82c1ebe35362efca3562b33643b38b53a9b8c1a71"
+      "digest": "ccb117fa2945a452c4d907ab19252ce8b9d8f3bdd0ab2872327cd4c6e7b3cac1"
     },
     {
       "id": "seednote",
@@ -1185,11 +1328,7 @@
       },
       "bindings": {
         "task_kinds": [
-          "seednote",
-          "viral_analysis"
-        ],
-        "task_types": [
-          "seednote",
+          "content_generation",
           "viral_analysis"
         ]
       },
@@ -1210,7 +1349,7 @@
         "reference-images"
       ],
       "billing_operations": {
-        "seednote": "task.seednote",
+        "content_generation": "task.seednote",
         "viral_analysis": "task.viral_analysis"
       },
       "artifacts": [
@@ -1384,13 +1523,12 @@
       "ui": {
         "renderer": "custom:seednote"
       },
-      "digest": "0dcc8378c007199414eef22f5b8ea4cbf3ef485181e46ea437729a7c52b06dcf"
+      "digest": "d9dc62e952730271ed0a072246f34c3255e54228e42eabcc6e5992eaf7a61d45"
     },
     {
       "id": "wechat-article",
-      "channel": "wechat-article",
       "version": "2.0.6",
-      "kind": "managed",
+      "kind": "plugin",
       "display_name": "微信公众号文章",
       "description": "从选题研究、写作和视觉设计到文章交付物的完整创作流程。",
       "agent": {
@@ -1411,32 +1549,19 @@
         ],
         "max_turns": 300
       },
-      "bindings": {
-        "task_kinds": [
-          "wechat-article"
-        ],
-        "task_types": [
-          "wechat-article"
-        ]
-      },
+      "bindings": {},
       "runtime": {
         "profile": "wechat",
         "adapter": "standard",
         "max_turns": 60
       },
       "surfaces": [
-        "plugin",
-        "project",
-        "task",
-        "plan"
+        "plugin"
       ],
       "features": [
         "image-generation",
         "reference-images"
       ],
-      "billing_operations": {
-        "wechat-article": "task.wechat_article"
-      },
       "artifacts": [
         {
           "role": "research",
@@ -1608,7 +1733,7 @@
       "ui": {
         "renderer": "custom:article"
       },
-      "digest": "b3a47540406d9b203b6a4591b83f4c31383beb9f797b0d12feb1013444c2e113"
+      "digest": "c66c3bf02938975d93da06857fe9dc83f2c0b21953720f12b915302a8f242f47"
     },
     {
       "id": "wechat-picture",
@@ -1628,9 +1753,6 @@
       },
       "bindings": {
         "task_kinds": [
-          "wechat-picture"
-        ],
-        "task_types": [
           "wechat-picture"
         ]
       },

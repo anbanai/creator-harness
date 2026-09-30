@@ -1,6 +1,6 @@
 id: live-slicer
 version: 2.0.2
-kind: managed
+kind: plugin
 display_name: 直播切片
 description: 从直播视频转写、规划并批量导出短视频切片。
 agent:
@@ -9,8 +9,7 @@ agent:
   codex_source: agent.codex.toml
   skills: [live-slice, capcut-draft]
   max_turns: 160
-bindings:
-  task_types: [live-slicer]
+bindings: {}
 runtime:
   profile: montage
   adapter: standard

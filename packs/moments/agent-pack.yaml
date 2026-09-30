@@ -1,6 +1,6 @@
 id: moments
 version: 2.0.2
-kind: managed
+kind: plugin
 display_name: 朋友圈素材包
 description: 从素材拆解到朋友圈正文、质量复盘和交付的创作流程。
 agent:
@@ -9,17 +9,13 @@ agent:
   codex_source: agent.codex.toml
   skills: [moments, humanizer]
   max_turns: 20
-bindings:
-  project_platforms: [moments]
-  task_types: [moments]
+bindings: {}
 runtime:
   profile: article
   adapter: standard
   max_turns: 25
-surfaces: [plugin, project, task]
+surfaces: [plugin]
 features: [reference-images]
-billing_operations:
-  moments: task.moments
 artifacts:
   - {role: analysis, path: output/material-analysis.md, mime_type: text/markdown, required: true}
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}

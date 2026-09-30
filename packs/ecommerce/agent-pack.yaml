@@ -1,6 +1,6 @@
 id: ecommerce
 version: 2.0.2
-kind: managed
+kind: plugin
 display_name: 电商素材
 description: 基于产品图片生成完整电商文案和视觉素材包。
 agent:
@@ -9,17 +9,13 @@ agent:
   codex_source: agent.codex.toml
   skills: [ecommerce-product-analysis, ecommerce-copywriting, humanizer, ecommerce-visual-design, ecommerce-platform-specs]
   max_turns: 120
-bindings:
-  project_platforms: [ecommerce]
-  task_types: [ecommerce]
+bindings: {}
 runtime:
   profile: article
   adapter: standard
   max_turns: 90
-surfaces: [plugin, project, task]
+surfaces: [plugin]
 features: [image-generation, product-assets]
-billing_operations:
-  ecommerce: task.ecommerce
 artifacts:
   - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
   - {role: product_photos, path: output/product-photos.md, mime_type: text/markdown, required: false}

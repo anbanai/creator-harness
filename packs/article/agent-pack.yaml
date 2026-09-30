@@ -1,10 +1,10 @@
-id: wechat-article
+id: article
 version: 2.0.6
 kind: plugin
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
 agent:
-  name: wechat-article
+  name: article
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   dsh_source: agent.dsh.yml

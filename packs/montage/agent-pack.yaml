@@ -1,6 +1,6 @@
 id: montage
 version: 2.0.4
-kind: managed
+kind: plugin
 display_name: 视频生成
 description: 从素材和业务输入生成最终视频与交付清单。
 agent:
@@ -9,17 +9,13 @@ agent:
   codex_source: agent.codex.toml
   skills: [montage, portrait-cover-design]
   max_turns: 180
-bindings:
-  project_platforms: [montage]
-  task_types: [montage]
+bindings: {}
 runtime:
   profile: montage
   adapter: openmontage
   max_turns: 40
-surfaces: [plugin, project, task, plan]
+surfaces: [plugin]
 features: [video-generation, source-assets]
-billing_operations:
-  montage: task.montage
 artifacts:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
