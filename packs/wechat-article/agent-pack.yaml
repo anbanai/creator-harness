@@ -1,10 +1,10 @@
-id: article
+id: wechat-article
 version: 2.0.6
 kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
 agent:
-  name: article
+  name: wechat-article
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   dsh_source: agent.dsh.yml
@@ -12,17 +12,17 @@ agent:
   # the managed Article Agent itself does not load or invoke it.
   skills: [portrait-cover-design, content-writing, humanizer, article-visual-design, article-cover-design, article-research, trending-topics, trend-rider, topic-evaluator, seo-optimization, article-viral-strategy, article-publishing]
   max_turns: 300
+channel: wechat-article
 bindings:
-  project_platforms: [article]
-  task_types: [article]
+  task_kinds: [wechat-article]
 runtime:
-  profile: article
+  profile: wechat
   adapter: standard
   max_turns: 60
 surfaces: [plugin, project, task, plan]
 features: [image-generation, reference-images]
 billing_operations:
-  article: task.article
+  wechat-article: task.wechat_article
 artifacts:
   - {role: research, path: output/01-research.md, mime_type: text/markdown, required: false}
   - {role: outline, path: output/02-outline.md, mime_type: text/markdown, required: false}

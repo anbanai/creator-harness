@@ -1,5 +1,5 @@
 ---
-name: article
+name: wechat-article
 description: 微信公众号图文文章全自动创作引擎，从选题研究到文章交付物生成的端到端流水线。用户提到"写文章"、"写一篇"、"公众号文章"时使用此 agent。
 model: inherit
 memory: project
@@ -93,12 +93,12 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 **项目选择（必须先完成，再调用项目 API）：**
 
 1. 优先使用托管上下文提供的项目 ID（包括 `$ANBAN_DEFAULT_PROJECT` 中的 Article `project_id`），非空则直接作为 `$PROJECT_ID`。
-2. 托管上下文未提供项目 ID 时，调用 `list_projects(platform="article")`；返回恰好一个归属当前用户的 Article 项目时直接使用其 `project_id`。
-3. 返回零个或多个归属当前用户的 Article 项目时，不做语义猜选，不展示候选项，且不得让用户选择；写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"project_resolution","error_code":"article_project_resolution_failed","message":"托管上下文未提供项目 ID，且无法从唯一 Article 项目解析","resume_from":"project_resolution"}`，结束当前托管执行。
+2. 托管上下文未提供项目 ID 时，调用 `list_projects(platform="wechat")`；返回恰好一个归属当前用户的 公众号项目时直接使用其 `project_id`。
+3. 返回零个或多个归属当前用户的 公众号项目时，不做语义猜选，不展示候选项，且不得让用户选择；写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"project_resolution","error_code":"wechat_project_resolution_failed","message":"托管上下文未提供项目 ID，且无法从唯一 公众号项目解析","resume_from":"project_resolution"}`，结束当前托管执行。
 4. `list_projects` 调用不可用或失败属于必需 MCP 能力失败，按 `article_mcp_call_failed` 终止；不得切换其他项目或连接。
 
 **项目选定后，仅对 `$PROJECT_ID` 调用以下 API：**
-- `get_project_profile`（`project_id=$PROJECT_ID`, `scope="article"`, `task_id="$TASK_ID"`）→ 获取账号定位、受众与风格维度。提取并记录 `$ACCOUNT_POSITIONING`（账号定位）、`$ACCOUNT_KEYWORDS`（领域关键词）、`$ACCOUNT_AUDIENCE`（目标受众），供步骤 6 三维风格分析使用。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层）。**务必区分两个易混字段**：顶层 `writer` 仅用于选择写作风格资源。写作风格头像/昵称只是 Studio 展示元数据，不会出现在 MCP profile 中。
+- `get_project_profile`（`project_id=$PROJECT_ID`, `scope="wechat"`, `task_id="$TASK_ID"`）→ 获取账号定位、受众与风格维度。提取并记录 `$ACCOUNT_POSITIONING`（账号定位）、`$ACCOUNT_KEYWORDS`（领域关键词）、`$ACCOUNT_AUDIENCE`（目标受众），供步骤 6 三维风格分析使用。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层）。**务必区分两个易混字段**：顶层 `writer` 仅用于选择写作风格资源。写作风格头像/昵称只是 Studio 展示元数据，不会出现在 MCP profile 中。
 - `list_drafts` 和 `list_published_articles`（`project_id=$PROJECT_ID`）→ 获取已有文章标题，后续选题避开；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功。
 
 **图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio`，取值为 `$EFFECTIVE_ASPECT_RATIO`。
@@ -269,4 +269,4 @@ render_template(
 
 **产出**：`output/draft.json`
 
-交付包生成结果与步骤 9 的最终验收都已写入报告后，调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="article", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<所选模板、交付包状态、内容审核通过率与成果路径摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数；无错误时 `errors` 传空字符串。
+交付包生成结果与步骤 9 的最终验收都已写入报告后，调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="wechat-article", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<所选模板、交付包状态、内容审核通过率与成果路径摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数；无错误时 `errors` 传空字符串。

@@ -1,0 +1,41 @@
+id: wechat-picture
+version: 1.0.0
+kind: managed
+display_name: 微信公众号贴图
+description: 研究选题、编排图片消息并生成公众号 newspic 草稿交付包。
+agent:
+  name: wechat-picture
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [wechat-picture-research, wechat-picture-writing, wechat-picture-visual-design]
+  max_turns: 240
+channel: wechat-picture
+bindings:
+  task_kinds: [wechat-picture]
+runtime:
+  profile: wechat
+  adapter: standard
+  max_turns: 60
+surfaces: [plugin, project, task, plan]
+features: [image-generation, reference-images, wechat-picture]
+billing_operations:
+  wechat-picture: task.wechat_picture
+artifacts:
+  - {role: research, path: output/topic-analysis.md, mime_type: text/markdown, required: true}
+  - {role: content_dna, path: output/content-dna.json, mime_type: application/json, required: true}
+  - {role: script, path: output/content-script.md, mime_type: text/markdown, required: true}
+  - {role: content, path: output/content.md, mime_type: text/markdown, required: true}
+  - {role: image_plan, path: output/image-plan.md, mime_type: text/markdown, required: true}
+  - {role: image_prompts, path: output/image-prompts.md, mime_type: text/markdown, required: true}
+  - {role: cover, path: output/cover.png, mime_type: image/png, required: true}
+  - {role: image, path: output/image_*.png, mime_type: image/png, required: true}
+  - {role: publish_package, path: output/publish-package.json, mime_type: application/json, required: true}
+  - {role: quality, path: output/quality-review.md, mime_type: text/markdown, required: true}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+delivery:
+  - {role: content, path: output/content.md, mime_type: text/markdown}
+  - {role: cover, path: output/cover.png, mime_type: image/png}
+  - {role: image, path: output/image_*.png, mime_type: image/png}
+  - {role: publish_package, path: output/publish-package.json, mime_type: application/json}
+ui:
+  renderer: custom:wechat-picture
