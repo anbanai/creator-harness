@@ -167,7 +167,7 @@
       },
       "bindings": {
         "task_kinds": [
-          "article"
+          "content_generation"
         ]
       },
       "runtime": {
@@ -186,7 +186,7 @@
         "reference-images"
       ],
       "billing_operations": {
-        "article": "task.wechat_article"
+        "content_generation": "task.article"
       },
       "artifacts": [
         {
@@ -359,7 +359,7 @@
       "ui": {
         "renderer": "custom:article"
       },
-      "digest": "bd5f5c89f1a1f56a74bf4629cb007c61f26d19209e7587b2c18aff29ba59803b"
+      "digest": "287d567269e78af4d47ae12e21c031d43a2b3df6832d1e783223b02faadbbad5"
     },
     {
       "id": "channels-video",

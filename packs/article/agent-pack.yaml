@@ -1,6 +1,6 @@
 id: article
 version: 2.0.6
-kind: plugin
+kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
 agent:
@@ -12,13 +12,17 @@ agent:
   # the managed Article Agent itself does not load or invoke it.
   skills: [portrait-cover-design, content-writing, humanizer, article-visual-design, article-cover-design, article-research, trending-topics, trend-rider, topic-evaluator, seo-optimization, article-viral-strategy, article-publishing]
   max_turns: 300
-bindings: {}
+channel: article
+bindings:
+  task_kinds: [content_generation]
 runtime:
   profile: wechat
   adapter: standard
   max_turns: 60
-surfaces: [plugin]
+surfaces: [plugin, project, task, plan]
 features: [image-generation, reference-images]
+billing_operations:
+  content_generation: task.article
 artifacts:
   - {role: research, path: output/01-research.md, mime_type: text/markdown, required: false}
   - {role: outline, path: output/02-outline.md, mime_type: text/markdown, required: false}
