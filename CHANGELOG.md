@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Added the managed `whiteboard-animation` Pack and Skill with pinned upstream runtime assets, automatic SRT storyboard/line-art rendering, structured failure recovery, and 16:9 delivery contracts.
+- Synchronized native plugin, marketplace, Codex, and DSH package metadata at `4.2.17`.
 - Renamed the Article topic research Skill to `article-research` and standardized user-facing Seednote naming as `种草笔记` while preserving external integration identifiers.
 - Upgraded the DSH runtime packages to `0.1.5-rc.3`, Cordis to `4.0.4`, and the development tooling (`@types/node` 26.6.3, `vitest` 5.0.2, `js-yaml` 4.3.2).
 - Added MCP-backed public trend discovery, platform-specific trend riding, and seven-dimension topic evaluation to the Article and Seednote Agent Packs.
