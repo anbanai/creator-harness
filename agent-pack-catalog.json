@@ -256,43 +256,54 @@
     },
     {
       "id": "feedback",
+      "channel": "feedback",
       "version": "1.0.1",
-      "kind": "plugin",
+      "kind": "managed",
       "display_name": "反馈分析",
       "description": "周期性分析公众号与种草笔记数据并生成可追溯的反馈证据。",
       "agent": {
         "name": "feedback",
         "skills": [
-          "publish-log",
           "data-tracker",
           "publish-analytics",
           "performance-review",
           "content-postmortem",
-          "post-scorer",
           "strategy-advisor"
         ],
         "max_turns": 80
       },
-      "bindings": {},
-      "runtime": {},
+      "bindings": {
+        "task_kinds": [
+          "feedback_analysis"
+        ]
+      },
+      "runtime": {
+        "profile": "feedback",
+        "adapter": "standard",
+        "max_turns": 40
+      },
       "surfaces": [
-        "plugin"
+        "plugin",
+        "task"
       ],
       "features": [
         "feedback"
       ],
+      "billing_operations": {
+        "feedback_analysis": "feedback_analysis"
+      },
       "artifacts": [
         {
           "role": "analysis_result",
           "path": "output/feedback-analysis.json",
           "mime_type": "application/json",
-          "required": false
+          "required": true
         },
         {
           "role": "evidence",
           "path": "output/feedback-evidence.json",
           "mime_type": "application/json",
-          "required": false
+          "required": true
         },
         {
           "role": "skipped",
@@ -305,16 +316,24 @@
           "path": "output/failure-state.json",
           "mime_type": "application/json",
           "required": false
+        }
+      ],
+      "delivery": [
+        {
+          "role": "analysis_result",
+          "path": "output/feedback-analysis.json",
+          "mime_type": "application/json",
+          "internal_only": true
         },
         {
-          "role": "progress_state",
-          "path": "output/progress-state.json",
+          "role": "evidence",
+          "path": "output/feedback-evidence.json",
           "mime_type": "application/json",
-          "required": false
+          "internal_only": true
         }
       ],
       "ui": {},
-      "digest": "4d0d5138ef4edaba3815afe2622d919e2f8701b156d7e4ebcb70b3f85e211f7b"
+      "digest": "c268bc3ad802774208960457697d22c6d31a5b2d683c2816881b7061850105cc"
     },
     {
       "id": "hypit",
@@ -882,10 +901,11 @@
     },
     {
       "id": "profile-analysis",
-      "version": "2.0.2",
-      "kind": "plugin",
+      "channel": "profile-analysis",
+      "version": "2.1.1",
+      "kind": "managed",
       "display_name": "账号画像分析",
-      "description": "基于用户提供的公开资料和问答生成可确认的六维账号画像草稿。",
+      "description": "基于用户提供的公开资料和问答生成并提交六维项目账号画像。",
       "agent": {
         "name": "profile-analysis",
         "skills": [
@@ -893,9 +913,13 @@
         ],
         "max_turns": 80
       },
-      "bindings": {},
+      "bindings": {
+        "task_kinds": [
+          "profile_analysis"
+        ]
+      },
       "runtime": {
-        "profile": "wechat",
+        "profile": "profile",
         "adapter": "standard",
         "max_turns": 40
       },
@@ -912,29 +936,17 @@
       },
       "artifacts": [
         {
-          "role": "profile_draft",
-          "path": "output/profile-draft.json",
-          "mime_type": "application/json",
-          "required": true
-        },
-        {
-          "role": "failure_state",
-          "path": "output/failure-state.json",
-          "mime_type": "application/json",
-          "required": false
-        },
-        {
           "role": "progress_state",
           "path": "output/progress-state.json",
           "mime_type": "application/json",
           "required": false
         }
       ],
-      "delivery": [
+      "data_delivery": [
         {
-          "role": "profile_draft",
-          "path": "output/profile-draft.json",
-          "mime_type": "application/json"
+          "role": "profile_result",
+          "type": "database",
+          "required": true
         }
       ],
       "schemas": {
@@ -956,7 +968,8 @@
               "type": "string",
               "enum": [
                 "wechat",
-                "seednote"
+                "seednote",
+                "moments"
               ]
             },
             "profile_url": {
@@ -992,7 +1005,6 @@
           "type": "object",
           "required": [
             "schema_version",
-            "status",
             "dimensions",
             "analysis_limits",
             "follow_up_questions"
@@ -1003,12 +1015,6 @@
               "type": "integer",
               "enum": [
                 1
-              ]
-            },
-            "status": {
-              "type": "string",
-              "enum": [
-                "draft"
               ]
             },
             "dimensions": {
@@ -1097,7 +1103,7 @@
       "ui": {
         "renderer": "custom:profile-analysis"
       },
-      "digest": "1feb9e04b8dca1d2b3cccd13247b27041bfcc7d61f90a9bc9d48bd7c894d0be5"
+      "digest": "b699f1437160de8cdff129320fea5276c2bdf9f75a88250aeb3c699d4ef38045"
     },
     {
       "id": "seednote",

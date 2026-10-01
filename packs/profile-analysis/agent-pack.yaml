@@ -1,14 +1,17 @@
 id: profile-analysis
-version: 2.1.0
-kind: plugin
+version: 2.1.1
+kind: managed
 display_name: 账号画像分析
-description: 基于用户提供的公开资料和问答生成可确认的六维账号画像草稿。
+description: 基于用户提供的公开资料和问答生成并提交六维项目账号画像。
 agent:
   name: profile-analysis
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   skills: [profile-builder]
   max_turns: 80
+channel: profile-analysis
+bindings:
+  task_kinds: [profile_analysis]
 runtime:
   profile: profile
   adapter: standard
@@ -20,6 +23,8 @@ billing_operations:
 artifacts:
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
 delivery: []
+data_delivery:
+  - {role: profile_result, type: database, required: true}
 schemas:
   task_input: schemas/task-input.json
   output: schemas/output.json

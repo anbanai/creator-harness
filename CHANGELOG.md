@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.2.21] - 2026-10-01
+
+- Renamed the WeChat project/runtime identity to `wechat`, renamed long-form
+  tasks to `wechat-article`, and added the `wechat-picture` Agent Pack with
+  dedicated research, writing, and visual Skills.
+- Added Server-owned WeChat `newspic` draft delivery with permanent material
+  uploads, ordered image media evidence, crop metadata, request fingerprints,
+  and recovery-safe publication reconciliation.
+
 ## [Unreleased]
 
 ### Changed

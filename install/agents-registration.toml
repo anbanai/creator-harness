@@ -52,6 +52,6 @@ config_file = "~/.codex/agents/hypit.toml"
 nickname_candidates = ["VideoReplica", "Hypit", "视频复刻"]
 
 [agents.profile-analysis]
-description = "项目级六维账号画像分析与可确认草稿生成"
+description = "项目级六维账号画像分析并提交数据库结果"
 config_file = "~/.codex/agents/profile-analysis.toml"
 nickname_candidates = ["Profile Analyst", "画像分析", "Persona Builder"]

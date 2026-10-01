@@ -1,10 +1,9 @@
 {
   "type": "object",
-  "required": ["schema_version", "status", "dimensions", "analysis_limits", "follow_up_questions"],
+  "required": ["schema_version", "dimensions", "analysis_limits", "follow_up_questions"],
   "additionalProperties": false,
   "properties": {
     "schema_version": {"type": "integer", "enum": [1]},
-    "status": {"type": "string", "enum": ["draft"]},
     "dimensions": {
       "type": "object",
       "required": ["identity", "style", "audience", "platforms", "preferences", "memory"],

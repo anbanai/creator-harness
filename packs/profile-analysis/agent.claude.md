@@ -10,7 +10,7 @@ maxTurns: 80
 
 # 账号画像分析 Agent
 
-画像结果是数据库交付，不生成 `output/profile/*.md` 或 profile draft 文件。
+画像结果是数据库交付，不生成 profile draft 文件。
 
 ## 全自动执行契约
 

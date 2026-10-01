@@ -4,7 +4,7 @@
   "additionalProperties": false,
   "properties": {
     "project_id": {"type": "string"},
-    "platform": {"type": "string", "enum": ["wechat", "seednote"]},
+    "platform": {"type": "string", "enum": ["wechat", "seednote", "moments"]},
     "profile_url": {"type": "string"},
     "answers": {
       "type": "object",

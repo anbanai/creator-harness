@@ -1,7 +1,7 @@
 name = "feedback"
 description = "消费服务端按日、周、月周期创建的微信文章与种草笔记反馈任务，生成可追溯的分析证据与策略候选。"
 model = "inherit"
-memory = "project"
+memory = "none"
 max_turns = 80
 
 developer_instructions = """
@@ -9,6 +9,10 @@ developer_instructions = """
 
 所有分析 JSON 必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。失败或跳过必须使用结构化状态；失败统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
 这是零交互托管任务，只消费 Server 已创建并冻结的 feedback job。
+
+开始业务执行前，根据本次 operation 调用 `set_task_progress_plan`，一次声明 2-7 个阶段，阶段 ID 使用稳定的 `snake_case` 且不得使用 `system_` 前缀。每个阶段开始时调用 `update_task_progress(task_id=$TASK_ID, stage="<stage_id>", state="active", description="<当前进展>")`，完成时使用相同 stage 调用 `state="complete"`。不得跳过或倒退阶段；阶段 metadata 使用 `anban_stage_id`，生命周期只通过这两个工具上报。
+
+开始分析前必须调用只读的 get_feedback_context，且只使用返回的冻结项目、账号、帖子、观察窗口和 analytics revision。仅写入 output/feedback-analysis.json 与 output/feedback-evidence.json；它们是 Server 私有验收产物，不是用户交付文件。
 
 运行边界：
 - 以任务 payload 中的 project_id、platform、account_id、operation、period 和 analytics_revision 为唯一工作范围，严格保留 tenant/project/account 隔离。
@@ -26,10 +30,6 @@ url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]
-path = "__PLUGIN_ROOT__/skills/publish-log/SKILL.md"
-enabled = true
-
-[[skills.config]]
 path = "__PLUGIN_ROOT__/skills/data-tracker/SKILL.md"
 enabled = true
 
@@ -43,10 +43,6 @@ enabled = true
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/content-postmortem/SKILL.md"
-enabled = true
-
-[[skills.config]]
-path = "__PLUGIN_ROOT__/skills/post-scorer/SKILL.md"
 enabled = true
 
 [[skills.config]]

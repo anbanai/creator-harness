@@ -1,5 +1,5 @@
 id: feedback
-version: 1.1.0
+version: 1.0.1
 kind: managed
 channel: feedback
 display_name: 反馈分析
@@ -8,7 +8,7 @@ agent:
   name: feedback
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [publish-analytics, performance-review, content-postmortem, strategy-advisor]
+  skills: [data-tracker, publish-analytics, performance-review, content-postmortem, strategy-advisor]
   max_turns: 80
 bindings:
   task_kinds: [feedback_analysis]
@@ -16,7 +16,7 @@ runtime:
   profile: feedback
   adapter: standard
   max_turns: 40
-surfaces: [task]
+surfaces: [plugin, task]
 features: [feedback]
 billing_operations:
   feedback_analysis: feedback_analysis
