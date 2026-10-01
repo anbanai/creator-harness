@@ -86,7 +86,7 @@ function proxyConfig(
   const handler: ProxyHandler<Config> = {}
   Object.defineProperty(handler, trapName, { value: trap })
   const config = new Proxy(
-    { presetId: 'article', providerName: 'anban-article' },
+    { presetId: 'wechat-article', providerName: 'anban-article' },
     handler,
   )
   return { config, trap }
@@ -108,7 +108,7 @@ describe('skills provider registration', () => {
 
     let settled = false
     const applying = apply(fake.context, {
-      presetId: 'article',
+      presetId: 'wechat-article',
       providerName: 'anban-article',
     }).then((disposer) => {
       settled = true
@@ -119,7 +119,7 @@ describe('skills provider registration', () => {
     expect(fake.plugin).toHaveBeenCalledWith(skillFilesystem, {
       providerName: 'anban-article',
       includeDefaultRoots: false,
-      customSkillDirs: [dshHomePath('.agent-presets', 'article', 'skills')],
+      customSkillDirs: [dshHomePath('.agent-presets', 'wechat-article', 'skills')],
     })
     await Promise.resolve()
     expect(settled).toBe(false)
@@ -149,7 +149,7 @@ describe('skills provider registration', () => {
     const dispose = vi.fn(() => disposal.promise)
     const fake = createContext(childFiber(Promise.resolve(), dispose))
     const cleanup = await apply(fake.context, {
-      presetId: 'article',
+      presetId: 'wechat-article',
       providerName: 'anban-article',
     })
 
@@ -176,7 +176,7 @@ describe('skills provider registration', () => {
 
     let settled = false
     const applying = apply(fake.context, {
-      presetId: 'article',
+      presetId: 'wechat-article',
       providerName: 'anban-article',
     }).catch((error: unknown) => {
       settled = true
@@ -197,7 +197,7 @@ describe('skills provider registration', () => {
     const dispose = vi.fn(() => disposal.promise)
     const fake = createContext(childFiber(Promise.resolve(), dispose))
     const cleanup = await apply(fake.context, {
-      presetId: 'article',
+      presetId: 'wechat-article',
       providerName: 'anban-article',
     })
 
@@ -265,7 +265,7 @@ describe('skills provider registration', () => {
     const dispose = vi.fn().mockRejectedValue(new Error(disposalSecret))
     const fake = createContext(childFiber(Promise.resolve(), dispose))
     const cleanup = await apply(fake.context, {
-      presetId: 'article',
+      presetId: 'wechat-article',
       providerName: 'anban-article',
     })
 
@@ -307,7 +307,7 @@ describe('skills provider Cordis integration', () => {
 
     let settled = false
     const applying = apply(context, {
-      presetId: 'article',
+      presetId: 'wechat-article',
       providerName: 'anban-article',
     }).catch((error: unknown) => {
       settled = true
@@ -405,7 +405,7 @@ describe('skills provider validation', () => {
     [],
     Object.create(null),
     Object.assign(Object.create({ inherited: true }), {
-      presetId: 'article',
+      presetId: 'wechat-article',
       providerName: 'anban-article',
     }),
   ])('rejects a non-plain config before loading a child plugin', async (config) => {
@@ -457,7 +457,7 @@ describe('skills provider validation', () => {
       const fake = createContext()
 
       await expect(
-        apply(fake.context, { presetId: 'article', providerName }),
+        apply(fake.context, { presetId: 'wechat-article', providerName }),
       ).rejects.toThrow('Invalid skills provider config')
 
       expect(fake.plugin).not.toHaveBeenCalled()
@@ -471,7 +471,7 @@ describe('skills provider validation', () => {
     const rejection = apply(
       fake.context,
       invalidConfig({
-        presetId: 'article',
+        presetId: 'wechat-article',
         providerName: 'anban-article',
         token: credential,
       }),
@@ -484,7 +484,7 @@ describe('skills provider validation', () => {
 
   it('rejects accessor properties without executing them', async () => {
     const fake = createContext()
-    const getter = vi.fn(() => 'article')
+    const getter = vi.fn(() => 'wechat-article')
     const config = Object.defineProperties(
       {},
       {

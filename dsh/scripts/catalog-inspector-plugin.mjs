@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises'
 export const name = 'anban-dsh-catalog-smoke'
 export const inject = ['agentPresets', 'skills']
 
-const PRESET_IDS = ['article', 'seednote']
+const PRESET_IDS = ['wechat-article', 'seednote']
 
 export async function apply(ctx, config) {
   try {

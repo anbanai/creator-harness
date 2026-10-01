@@ -83,7 +83,7 @@ const CORDIS_PATCH = [
   },
 ]
 const PRESETS = [
-  { id: 'article', label: 'Article' },
+  { id: 'wechat-article', label: 'WeChat Article' },
   { id: 'seednote', label: 'Seednote' },
 ]
 const jsExpression = new Type('tag:yaml.org,2002:js', {

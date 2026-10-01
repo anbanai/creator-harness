@@ -1,21 +1,30 @@
 id: feedback
-version: 1.0.1
-kind: plugin
+version: 1.1.0
+kind: managed
+channel: feedback
 display_name: 反馈分析
 description: 周期性分析公众号与种草笔记数据并生成可追溯的反馈证据。
 agent:
   name: feedback
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [publish-log, data-tracker, publish-analytics, performance-review, content-postmortem, post-scorer, strategy-advisor]
+  skills: [publish-analytics, performance-review, content-postmortem, strategy-advisor]
   max_turns: 80
-bindings: {}
-runtime: {}
-surfaces: [plugin]
+bindings:
+  task_kinds: [feedback_analysis]
+runtime:
+  profile: feedback
+  adapter: standard
+  max_turns: 40
+surfaces: [task]
 features: [feedback]
+billing_operations:
+  feedback_analysis: feedback_analysis
 artifacts:
-  - {role: analysis_result, path: output/feedback-analysis.json, mime_type: application/json, required: false}
-  - {role: evidence, path: output/feedback-evidence.json, mime_type: application/json, required: false}
+  - {role: analysis_result, path: output/feedback-analysis.json, mime_type: application/json, required: true}
+  - {role: evidence, path: output/feedback-evidence.json, mime_type: application/json, required: true}
   - {role: skipped, path: output/feedback-skipped.json, mime_type: application/json, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
-  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
+delivery:
+  - {role: analysis_result, path: output/feedback-analysis.json, mime_type: application/json, internal_only: true}
+  - {role: evidence, path: output/feedback-evidence.json, mime_type: application/json, internal_only: true}

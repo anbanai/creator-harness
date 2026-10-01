@@ -128,7 +128,7 @@ claude plugin install --scope user anban@anbanai
 如果你想明确指定流程，也可以直接运行：
 
 ```bash
-claude --verbose --agent anban:article AI Agent 入门指南
+claude --verbose --agent anban:wechat-article AI Agent 入门指南
 claude --verbose --agent anban:seednote 降噪耳机种草笔记
 claude --verbose --agent anban:live-slicer ./live.mp4
 ```
@@ -143,7 +143,7 @@ claude --verbose --agent anban:live-slicer ./live.mp4
   初始化配置并验证连接
 - `/plugin`
   查看插件是否已安装成功
-- `/anban:article`
+- `/anban:wechat-article`
   公众号图文创作
 - `/anban:live-slicer`
   直播视频切片，需要本机可用 `ffmpeg` 和 `ffprobe`

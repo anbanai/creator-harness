@@ -11,7 +11,7 @@ agent:
   max_turns: 240
 channel: wechat-picture
 bindings:
-  task_kinds: [wechat-picture]
+  task_kinds: [content_generation]
 runtime:
   profile: wechat
   adapter: standard
@@ -19,7 +19,7 @@ runtime:
 surfaces: [plugin, project, task, plan]
 features: [image-generation, reference-images, wechat-picture]
 billing_operations:
-  wechat-picture: task.wechat_picture
+  content_generation: task.wechat_picture
 artifacts:
   - {role: research, path: output/topic-analysis.md, mime_type: text/markdown, required: true}
   - {role: content_dna, path: output/content-dna.json, mime_type: application/json, required: true}

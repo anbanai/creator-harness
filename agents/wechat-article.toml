@@ -260,7 +260,7 @@ render_template 服务端按 layout_plan 中的 slot 顺序确定性渲染 HTML 
 
 确认 `output/04-article-final.md`、`output/05-article.html` 和 `output/draft.json` 已落盘，并按实际结果汇总模板、交付包状态和内容审核通过率。
 
-最后，调用 submit_agent_feedback(task_id=$TASK_ID, agent_name="article", scores=JSON.stringify({quality:N, completeness:N, efficiency:N}), errors="<errors>", optimizations="<optimizations>", summary="<brief summary with template and content review pass rate>") 提交本次 agent 执行反馈。scores 按 1-10 评分，errors 填写遇到的问题（无则填空字符串），optimizations 填写可改进之处，summary 必须包含所选模板名和内容审核通过率。
+最后，调用 submit_agent_feedback(task_id=$TASK_ID, agent_name="wechat-article", scores=JSON.stringify({quality:N, completeness:N, efficiency:N}), errors="<errors>", optimizations="<optimizations>", summary="<brief summary with template and content review pass rate>") 提交本次 agent 执行反馈。scores 按 1-10 评分，errors 填写遇到的问题（无则填空字符串），optimizations 填写可改进之处，summary 必须包含所选模板名和内容审核通过率。
 """
 
 [mcp_servers.creator]

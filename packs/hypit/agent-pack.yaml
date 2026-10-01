@@ -9,13 +9,14 @@ agent:
   codex_source: agent.codex.toml
   skills: [portrait-cover-design]
   max_turns: 180
-bindings: {}
+surfaces: [plugin]
+features: [video-replication, source-assets, editable-video]
 runtime:
   profile: hypit
   adapter: standard
   max_turns: 180
-surfaces: [plugin]
-features: [video-replication, source-assets, editable-video]
+billing_operations:
+  hypit: task.hypit
 artifacts:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: true}

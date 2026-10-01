@@ -12,7 +12,7 @@ export interface Config {
 }
 
 interface ResolvedConfig {
-  presetId: 'article' | 'seednote'
+  presetId: 'wechat-article' | 'seednote'
   providerName: string
 }
 
@@ -56,7 +56,7 @@ function validateConfig(config: Config): ResolvedConfig {
       return invalidConfig()
     }
 
-    if (presetId.value !== 'article' && presetId.value !== 'seednote') {
+    if (presetId.value !== 'wechat-article' && presetId.value !== 'seednote') {
       return invalidConfig()
     }
     if (

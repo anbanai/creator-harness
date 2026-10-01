@@ -9,7 +9,6 @@ agent:
   codex_source: agent.codex.toml
   skills: [live-slice, capcut-draft]
   max_turns: 160
-bindings: {}
 runtime:
   profile: montage
   adapter: standard

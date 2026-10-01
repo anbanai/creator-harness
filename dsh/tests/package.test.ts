@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.17',
+      version: '4.2.18',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -622,18 +622,18 @@ describe('DSH package manifest', () => {
     const manifest = JSON.parse(await readFile(packageUrl, 'utf8'))
     const skill = await readFile(
       new URL(
-        '../presets/article/skills/content-writing/SKILL.md',
+        '../presets/wechat-article/skills/content-writing/SKILL.md',
         import.meta.url,
       ),
       'utf8',
     )
     const agent = await readFile(
-      new URL('../presets/article/agent.cordis.yml', import.meta.url),
+      new URL('../presets/wechat-article/agent.cordis.yml', import.meta.url),
       'utf8',
     )
     const scanner = await readFile(
       new URL(
-        '../presets/article/skills/content-writing/scripts/scan-article-marketing.mjs',
+        '../presets/wechat-article/skills/content-writing/scripts/scan-article-marketing.mjs',
         import.meta.url,
       ),
       'utf8',
@@ -642,7 +642,7 @@ describe('DSH package manifest', () => {
     expect(manifest.files).not.toContain('scripts/scan-article-marketing.mjs')
     expect(scanner).toContain('createHash("sha256")')
     expect(agent).toContain(
-      '"$DSH_HOME/.agent-presets/article/skills/content-writing/scripts/scan-article-marketing.mjs"',
+      '"$DSH_HOME/.agent-presets/wechat-article/skills/content-writing/scripts/scan-article-marketing.mjs"',
     )
     expect(agent).not.toContain('$CLAUDE_PLUGIN_ROOT')
     expect(skill).not.toContain('$CLAUDE_PLUGIN_ROOT')
@@ -1157,8 +1157,8 @@ describe('DSH package integrity verifier', () => {
     },
     {
       name: 'Preset manifest',
-      path: 'dsh/presets/article/preset.yml',
-      expected: 'Article Preset manifest',
+      path: 'dsh/presets/wechat-article/preset.yml',
+      expected: 'WeChat Article Preset manifest',
     },
     {
       name: 'Agent composition',
@@ -1167,7 +1167,7 @@ describe('DSH package integrity verifier', () => {
     },
     {
       name: 'declared Skill',
-      path: 'dsh/presets/article/skills/content-writing/SKILL.md',
+      path: 'dsh/presets/wechat-article/skills/content-writing/SKILL.md',
       expected: 'Article declared Skill content-writing',
     },
   ])('rejects a missing $name', async ({ path, expected }) => {

@@ -1,5 +1,5 @@
 id: profile-analysis
-version: 2.0.2
+version: 2.1.0
 kind: plugin
 display_name: 账号画像分析
 description: 基于用户提供的公开资料和问答生成可确认的六维账号画像草稿。
@@ -9,19 +9,17 @@ agent:
   codex_source: agent.codex.toml
   skills: [profile-builder]
   max_turns: 80
-bindings: {}
 runtime:
-  profile: article
+  profile: profile
   adapter: standard
   max_turns: 40
-surfaces: [plugin]
+surfaces: [plugin, project, task]
 features: [profile-analysis]
+billing_operations:
+  profile_analysis: task.profile_analysis
 artifacts:
-  - {role: profile_draft, path: output/profile-draft.json, mime_type: application/json, required: true}
-  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
-delivery:
-  - {role: profile_draft, path: output/profile-draft.json, mime_type: application/json}
+delivery: []
 schemas:
   task_input: schemas/task-input.json
   output: schemas/output.json

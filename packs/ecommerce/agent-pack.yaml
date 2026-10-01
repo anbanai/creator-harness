@@ -9,13 +9,14 @@ agent:
   codex_source: agent.codex.toml
   skills: [ecommerce-product-analysis, ecommerce-copywriting, humanizer, ecommerce-visual-design, ecommerce-platform-specs]
   max_turns: 120
-bindings: {}
 runtime:
-  profile: article
+  profile: wechat
   adapter: standard
   max_turns: 90
-surfaces: [plugin]
+surfaces: [plugin, project, task]
 features: [image-generation, product-assets]
+billing_operations:
+  ecommerce: task.ecommerce
 artifacts:
   - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
   - {role: product_photos, path: output/product-photos.md, mime_type: text/markdown, required: false}

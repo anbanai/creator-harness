@@ -1,6 +1,6 @@
 id: channels-video
 version: 2.0.4
-kind: managed
+kind: plugin
 display_name: 视频生成
 description: 从素材和业务输入生成最终视频与交付清单。
 agent:
@@ -9,14 +9,11 @@ agent:
   codex_source: agent.codex.toml
   skills: [montage, portrait-cover-design]
   max_turns: 180
-channel: channels-video
-bindings:
-  task_kinds: [content_generation]
 runtime:
   profile: montage
   adapter: openmontage
   max_turns: 40
-surfaces: [plugin, project, task, plan]
+surfaces: [plugin]
 features: [video-generation, source-assets]
 billing_operations:
   content_generation: task.montage

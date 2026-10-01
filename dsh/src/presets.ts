@@ -28,7 +28,7 @@ import {
   isOperationalError,
 } from './operational-error.js'
 
-export const PRESET_IDS = ['article', 'seednote'] as const
+export const PRESET_IDS = ['wechat-article', 'seednote'] as const
 export type PresetId = (typeof PRESET_IDS)[number]
 
 export interface InstallOptions {

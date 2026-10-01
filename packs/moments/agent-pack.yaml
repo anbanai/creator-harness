@@ -9,13 +9,14 @@ agent:
   codex_source: agent.codex.toml
   skills: [moments, humanizer]
   max_turns: 20
-bindings: {}
 runtime:
-  profile: article
+  profile: wechat
   adapter: standard
   max_turns: 25
-surfaces: [plugin]
+surfaces: [plugin, project, task]
 features: [reference-images]
+billing_operations:
+  moments: task.moments
 artifacts:
   - {role: analysis, path: output/material-analysis.md, mime_type: text/markdown, required: true}
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}

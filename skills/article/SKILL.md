@@ -47,8 +47,8 @@ description: Use when the user asks to create a complete WeChat Official Account
 **项目选择（必须先完成，再调用项目 API）：**
 
 - 优先使用托管上下文提供的项目 ID（包括 `$ANBAN_DEFAULT_PROJECT` 中的 Article `project_id`），非空则直接作为 `$PROJECT_ID`
-- 托管上下文未提供项目 ID 时调用 `list_projects(platform="article")`；返回恰好一个归属当前用户的 Article 项目时直接使用其 `project_id`
-- 返回零个或多个归属当前用户的 Article 项目时，不做语义猜选，不展示候选项，且不得让用户选择；写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"project_resolution","error_code":"article_project_resolution_failed","message":"托管上下文未提供项目 ID，且无法从唯一 Article 项目解析","resume_from":"project_resolution"}`，结束当前托管执行
+- 托管上下文未提供项目 ID 时调用 `list_projects(platform="wechat")`；返回恰好一个归属当前用户的 公众号项目时直接使用其 `project_id`
+- 返回零个或多个归属当前用户的 公众号项目时，不做语义猜选，不展示候选项，且不得让用户选择；写入 `output/failure-state.json`：`{"version":"1.0","status":"recoverable_failure","stage":"project_resolution","error_code":"wechat_project_resolution_failed","message":"托管上下文未提供项目 ID，且无法从唯一公众号项目解析","resume_from":"project_resolution"}`，结束当前托管执行
 - `list_projects` 调用不可用或失败属于必需 MCP 能力失败，按 `article_mcp_call_failed` 终止；不得切换其他项目或连接
 
 **项目选定后，仅对 `$PROJECT_ID` 调用：**

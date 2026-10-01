@@ -9,13 +9,14 @@ agent:
   codex_source: agent.codex.toml
   skills: [montage, portrait-cover-design]
   max_turns: 180
-bindings: {}
 runtime:
   profile: montage
   adapter: openmontage
   max_turns: 40
-surfaces: [plugin]
+surfaces: [plugin, project, task, plan]
 features: [video-generation, source-assets]
+billing_operations:
+  montage: task.montage
 artifacts:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}

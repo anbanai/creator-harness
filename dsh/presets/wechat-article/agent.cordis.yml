@@ -11,7 +11,7 @@
 
       # 微信公众号全自动创作引擎
 
-      仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$DSH_HOME/.agent-presets/article/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
+      仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$DSH_HOME/.agent-presets/wechat-article/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
 
       ## 角色
 
@@ -185,7 +185,7 @@
 
       #### 步骤 7：正文配图与持久化
 
-      仅在正文图片模式开启时按 `article-visual-design` 的 [生成合同]($DSH_HOME/.agent-presets/article/skills/article-visual-design/references/generation-contract.md) 执行；封面关闭或人物参考启用时，不传 ref_image_path，只使用文本风格块。
+      仅在正文图片模式开启时按 `article-visual-design` 的 [生成合同]($DSH_HOME/.agent-presets/wechat-article/skills/article-visual-design/references/generation-contract.md) 执行；封面关闭或人物参考启用时，不传 ref_image_path，只使用文本风格块。
 
       逐图 generate_image → 独立 analyze_image → 审核通过后 upload_image。单图最多 3 次生成，质量耗尽标 quality_status=failed 后继续其余 slot；上传只重试一次。每张立即原子写 `output/images.json`，包含 quality_review / quality_status / wechat_url / media_id，回填 rhythm-plan 的 layout_plan 和最终 Markdown。正文 URL 两两不同且不得复用封面 URL；没有有效 CDN URL 的 slot 保持 null。
 
@@ -293,8 +293,8 @@
 - id: anban-skills
   name: '@anban/dsh-plugin/skills-provider'
   config:
-    presetId: article
-    providerName: anban-article
+    presetId: wechat-article
+    providerName: anban-wechat-article
 
 - id: tool-skill
   name: '@deepseek-ai/dsh-tool-skill'

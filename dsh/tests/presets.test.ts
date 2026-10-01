@@ -562,7 +562,7 @@ describe('preset public contract', () => {
   })
 
   it('exports only the supported preset ids and callable operations', () => {
-    expect(PRESET_IDS).toEqual(['article', 'seednote'])
+    expect(PRESET_IDS).toEqual(['wechat-article', 'seednote'])
     expect(installPresets).toBeTypeOf('function')
     expect(statusPresets).toBeTypeOf('function')
     expect(removePresets).toBeTypeOf('function')
@@ -679,13 +679,13 @@ describe('preset transaction locking', () => {
         }, null, 2)}\n`,
       )
     }
-    const articleBefore = await lstat(destination(fixture, 'article'))
+    const articleBefore = await lstat(destination(fixture, 'wechat-article'))
     await held.release()
     resumeWait()
 
     const result = await installPromise
     expect(result.every((status) => status.state === 'current')).toBe(true)
-    expect((await lstat(destination(fixture, 'article'))).ino).toBe(
+    expect((await lstat(destination(fixture, 'wechat-article'))).ino).toBe(
       articleBefore.ino,
     )
     await expectNoLockResidue(fixture.dshHome)
@@ -693,7 +693,7 @@ describe('preset transaction locking', () => {
 
   it('releases the lock after a failed mutation', async () => {
     const fixture = await createFixture()
-    copyFault.path = join(fixture.sourceRoot, 'article', 'preset.yml')
+    copyFault.path = join(fixture.sourceRoot, 'wechat-article', 'preset.yml')
 
     await expect(
       presetTestInternals.install(fixtureOptions(fixture)),
@@ -721,11 +721,11 @@ describe('preset transaction locking', () => {
     async (state, code, message) => {
       const fixture = await createFixture()
       if (state === 'unowned') {
-        await mkdir(destination(fixture, 'article'), { recursive: true })
-        await writeFile(join(destination(fixture, 'article'), 'personal.txt'), 'keep')
+        await mkdir(destination(fixture, 'wechat-article'), { recursive: true })
+        await writeFile(join(destination(fixture, 'wechat-article'), 'personal.txt'), 'keep')
       } else {
         await presetTestInternals.install(fixtureOptions(fixture))
-        await writeFile(join(destination(fixture, 'article'), 'preset.yml'), 'changed\n')
+        await writeFile(join(destination(fixture, 'wechat-article'), 'preset.yml'), 'changed\n')
       }
       let releaseAttempts = 0
 
@@ -764,8 +764,8 @@ describe('preset transaction locking', () => {
 
   it('keeps the mutation primary when bounded release retries are exhausted', async () => {
     const fixture = await createFixture()
-    await mkdir(destination(fixture, 'article'), { recursive: true })
-    await writeFile(join(destination(fixture, 'article'), 'personal.txt'), 'keep')
+    await mkdir(destination(fixture, 'wechat-article'), { recursive: true })
+    await writeFile(join(destination(fixture, 'wechat-article'), 'personal.txt'), 'keep')
     let releaseAttempts = 0
 
     const failure = await presetTestInternals
@@ -850,14 +850,14 @@ describe('preset installation', () => {
     const fixture = await createFixture()
 
     expect(await presetTestInternals.status(fixtureOptions(fixture))).toEqual([
-      expect.objectContaining({ id: 'article', state: 'absent' }),
+      expect.objectContaining({ id: 'wechat-article', state: 'absent' }),
       expect.objectContaining({ id: 'seednote', state: 'absent' }),
     ])
 
     const statuses = await presetTestInternals.install(fixtureOptions(fixture))
 
     expect(statuses).toEqual([
-      expect.objectContaining({ id: 'article', state: 'current' }),
+      expect.objectContaining({ id: 'wechat-article', state: 'current' }),
       expect.objectContaining({ id: 'seednote', state: 'current' }),
     ])
     for (const status of statuses) {
@@ -884,10 +884,10 @@ describe('preset installation', () => {
   it('leaves identical current installations untouched', async () => {
     const fixture = await createFixture()
     await presetTestInternals.install(fixtureOptions(fixture))
-    const before = await lstat(destination(fixture, 'article'))
+    const before = await lstat(destination(fixture, 'wechat-article'))
 
     const statuses = await presetTestInternals.install(fixtureOptions(fixture))
-    const after = await lstat(destination(fixture, 'article'))
+    const after = await lstat(destination(fixture, 'wechat-article'))
 
     expect(statuses.every((status) => status.state === 'current')).toBe(true)
     expect(after.ino).toBe(before.ino)
@@ -896,14 +896,14 @@ describe('preset installation', () => {
   it('upgrades an owned installation when its source or package version changes', async () => {
     const fixture = await createFixture()
     await presetTestInternals.install(fixtureOptions(fixture))
-    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    await writeFile(join(fixture.sourceRoot, 'wechat-article', 'preset.yml'), 'name: new\n')
 
     const before = await presetTestInternals.status(
       fixtureOptions(fixture, { packageVersion: '2.0.0' }),
     )
     expect(before).toEqual([
       expect.objectContaining({
-        id: 'article',
+        id: 'wechat-article',
         state: 'outdated',
         installedVersion: '1.2.3',
       }),
@@ -920,13 +920,13 @@ describe('preset installation', () => {
 
     expect(after.every((status) => status.state === 'current')).toBe(true)
     expect(
-      await readFile(join(destination(fixture, 'article'), 'preset.yml'), 'utf8'),
+      await readFile(join(destination(fixture, 'wechat-article'), 'preset.yml'), 'utf8'),
     ).toBe('name: new\n')
   })
 
   it('refuses to replace an unowned directory without force', async () => {
     const fixture = await createFixture()
-    const article = destination(fixture, 'article')
+    const article = destination(fixture, 'wechat-article')
     await mkdir(article, { recursive: true })
     await writeFile(join(article, 'personal.txt'), 'keep me')
 
@@ -938,7 +938,7 @@ describe('preset installation', () => {
     })
     expect(await readFile(join(article, 'personal.txt'), 'utf8')).toBe('keep me')
     expect(await presetTestInternals.status(fixtureOptions(fixture))).toEqual([
-      expect.objectContaining({ id: 'article', state: 'unowned' }),
+      expect.objectContaining({ id: 'wechat-article', state: 'unowned' }),
       expect.objectContaining({ id: 'seednote', state: 'absent' }),
     ])
   })
@@ -946,11 +946,11 @@ describe('preset installation', () => {
   it('refuses to replace a modified owned directory without force', async () => {
     const fixture = await createFixture()
     await presetTestInternals.install(fixtureOptions(fixture))
-    const installedPreset = join(destination(fixture, 'article'), 'preset.yml')
+    const installedPreset = join(destination(fixture, 'wechat-article'), 'preset.yml')
     await writeFile(installedPreset, 'name: locally-modified\n')
 
     expect(await presetTestInternals.status(fixtureOptions(fixture))).toEqual([
-      expect.objectContaining({ id: 'article', state: 'modified' }),
+      expect.objectContaining({ id: 'wechat-article', state: 'modified' }),
       expect.objectContaining({ id: 'seednote', state: 'current' }),
     ])
     await expect(
@@ -972,15 +972,15 @@ describe('preset installation', () => {
     async (state, code) => {
       const fixture = await createFixture()
       await presetTestInternals.install(
-        fixtureOptions(fixture, { presetIds: ['article'] }),
+        fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
       )
-      await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'new\n')
+      await writeFile(join(fixture.sourceRoot, 'wechat-article', 'preset.yml'), 'new\n')
       copyFault.before = async () => {
         if (state === 'unowned') {
-          await rm(join(destination(fixture, 'article'), OWNERSHIP_FILE))
+          await rm(join(destination(fixture, 'wechat-article'), OWNERSHIP_FILE))
         } else {
           await writeFile(
-            join(destination(fixture, 'article'), 'preset.yml'),
+            join(destination(fixture, 'wechat-article'), 'preset.yml'),
             'locally modified\n',
           )
         }
@@ -988,7 +988,7 @@ describe('preset installation', () => {
 
       await expect(
         presetTestInternals.install(
-          fixtureOptions(fixture, { presetIds: ['article'] }),
+          fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
         ),
       ).rejects.toMatchObject({ code })
     },
@@ -996,7 +996,7 @@ describe('preset installation', () => {
 
   it('force replaces unowned and modified directories without retaining old files', async () => {
     const fixture = await createFixture()
-    const article = destination(fixture, 'article')
+    const article = destination(fixture, 'wechat-article')
     await mkdir(article, { recursive: true })
     await writeFile(join(article, 'personal.txt'), 'replace me')
     await presetTestInternals.install(
@@ -1019,13 +1019,13 @@ describe('preset installation', () => {
 
   it('cleans operation-owned temporary paths when copying is interrupted', async () => {
     const fixture = await createFixture()
-    copyFault.path = join(fixture.sourceRoot, 'article', 'preset.yml')
+    copyFault.path = join(fixture.sourceRoot, 'wechat-article', 'preset.yml')
 
     await expect(
       presetTestInternals.install(fixtureOptions(fixture)),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
 
-    await expect(lstat(destination(fixture, 'article'))).rejects.toMatchObject({
+    await expect(lstat(destination(fixture, 'wechat-article'))).rejects.toMatchObject({
       code: 'ENOENT',
     })
     const entries = await readdir(join(fixture.dshHome, '.agent-presets'))
@@ -1034,11 +1034,11 @@ describe('preset installation', () => {
 
   it('restores the original and cleans siblings when the replacement rename fails', async () => {
     const fixture = await createFixture()
-    const options = fixtureOptions(fixture, { presetIds: ['article'] })
+    const options = fixtureOptions(fixture, { presetIds: ['wechat-article'] })
     await presetTestInternals.install(options)
-    const article = destination(fixture, 'article')
+    const article = destination(fixture, 'wechat-article')
     const originalOwnership = await readFile(join(article, OWNERSHIP_FILE), 'utf8')
-    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    await writeFile(join(fixture.sourceRoot, 'wechat-article', 'preset.yml'), 'name: new\n')
     let replacementFailed = false
 
     await expect(
@@ -1048,7 +1048,7 @@ describe('preset installation', () => {
             beforeRename(source, target) {
               if (
                 !replacementFailed &&
-                source.includes('.article.anban-temporary-') &&
+                source.includes('.wechat-article.anban-temporary-') &&
                 target === article
               ) {
                 replacementFailed = true
@@ -1056,53 +1056,53 @@ describe('preset installation', () => {
               }
             },
           },
-          presetIds: ['article'],
+          presetIds: ['wechat-article'],
         }),
       ),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
 
-    expect(await readFile(join(article, 'preset.yml'), 'utf8')).toBe('name: article\n')
+    expect(await readFile(join(article, 'preset.yml'), 'utf8')).toBe('name: wechat-article\n')
     expect(await readFile(join(article, OWNERSHIP_FILE), 'utf8')).toBe(
       originalOwnership,
     )
     expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
-      'article',
+      'wechat-article',
     ])
   })
 
   it('preserves rollback recovery when operation cleanup also fails', async () => {
     const fixture = await createFixture()
-    const article = destination(fixture, 'article')
+    const article = destination(fixture, 'wechat-article')
     await presetTestInternals.install(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
-    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    await writeFile(join(fixture.sourceRoot, 'wechat-article', 'preset.yml'), 'name: new\n')
 
     const failure = await presetTestInternals
       .install(
         fixtureOptions(fixture, {
           faults: {
             beforeRemoveOperationPath(path) {
-              if (path.includes('.article.anban-temporary-')) {
+              if (path.includes('.wechat-article.anban-temporary-')) {
                 throw new Error('Authorization Bearer cleanup-secret')
               }
             },
             beforeRename(source, target) {
               if (
-                source.includes('.article.anban-temporary-') &&
+                source.includes('.wechat-article.anban-temporary-') &&
                 target === article
               ) {
                 throw new Error('replacement-secret')
               }
               if (
-                source.includes('.article.anban-backup-') &&
+                source.includes('.wechat-article.anban-backup-') &&
                 target === article
               ) {
                 throw new Error('rollback-secret')
               }
             },
           },
-          presetIds: ['article'],
+          presetIds: ['wechat-article'],
         }),
       )
       .catch((error: unknown) => error)
@@ -1130,9 +1130,9 @@ describe('preset installation', () => {
   it('retries backup cleanup after a successful replacement', async () => {
     const fixture = await createFixture()
     await presetTestInternals.install(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
-    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    await writeFile(join(fixture.sourceRoot, 'wechat-article', 'preset.yml'), 'name: new\n')
     let backupRemovalAttempts = 0
 
     await expect(
@@ -1140,7 +1140,7 @@ describe('preset installation', () => {
         fixtureOptions(fixture, {
           faults: {
             beforeRemoveOperationPath(path) {
-              if (path.includes('.article.anban-backup-')) {
+              if (path.includes('.wechat-article.anban-backup-')) {
                 backupRemovalAttempts += 1
                 if (backupRemovalAttempts === 1) {
                   throw new Error('injected backup cleanup failure')
@@ -1148,26 +1148,26 @@ describe('preset installation', () => {
               }
             },
           },
-          presetIds: ['article'],
+          presetIds: ['wechat-article'],
         }),
       ),
     ).resolves.toEqual([expect.objectContaining({ state: 'current' })])
 
     expect(backupRemovalAttempts).toBe(2)
     expect(
-      await readFile(join(destination(fixture, 'article'), 'preset.yml'), 'utf8'),
+      await readFile(join(destination(fixture, 'wechat-article'), 'preset.yml'), 'utf8'),
     ).toBe('name: new\n')
     expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
-      'article',
+      'wechat-article',
     ])
   })
 
   it('attempts safe backup cleanup even when temporary cleanup fails', async () => {
     const fixture = await createFixture()
     await presetTestInternals.install(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
-    await writeFile(join(fixture.sourceRoot, 'article', 'preset.yml'), 'name: new\n')
+    await writeFile(join(fixture.sourceRoot, 'wechat-article', 'preset.yml'), 'name: new\n')
     let backupRemovalAttempts = 0
     let temporaryCleanupFailed = false
 
@@ -1176,7 +1176,7 @@ describe('preset installation', () => {
         fixtureOptions(fixture, {
           faults: {
             beforeRemoveOperationPath(path) {
-              if (path.includes('.article.anban-backup-')) {
+              if (path.includes('.wechat-article.anban-backup-')) {
                 backupRemovalAttempts += 1
                 if (backupRemovalAttempts === 1) {
                   throw new Error('injected backup cleanup failure')
@@ -1184,14 +1184,14 @@ describe('preset installation', () => {
               }
               if (
                 !temporaryCleanupFailed &&
-                path.includes('.article.anban-temporary-')
+                path.includes('.wechat-article.anban-temporary-')
               ) {
                 temporaryCleanupFailed = true
                 throw new Error('injected temporary cleanup failure')
               }
             },
           },
-          presetIds: ['article'],
+          presetIds: ['wechat-article'],
         }),
       ),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
@@ -1199,11 +1199,11 @@ describe('preset installation', () => {
     expect(backupRemovalAttempts).toBe(2)
     expect(
       await presetTestInternals.status(
-        fixtureOptions(fixture, { presetIds: ['article'] }),
+        fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
       ),
     ).toEqual([expect.objectContaining({ state: 'current' })])
     expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
-      'article',
+      'wechat-article',
     ])
   })
 })
@@ -1212,11 +1212,11 @@ describe('preset removal', () => {
   it('removes directories carrying valid ownership, including modified ones', async () => {
     const fixture = await createFixture()
     await presetTestInternals.install(fixtureOptions(fixture))
-    await writeFile(join(destination(fixture, 'article'), 'preset.yml'), 'modified\n')
+    await writeFile(join(destination(fixture, 'wechat-article'), 'preset.yml'), 'modified\n')
 
     await expect(
       presetTestInternals.remove(fixtureOptions(fixture)),
-    ).resolves.toEqual(['article', 'seednote'])
+    ).resolves.toEqual(['wechat-article', 'seednote'])
     for (const id of PRESET_IDS) {
       await expect(lstat(destination(fixture, id))).rejects.toMatchObject({
         code: 'ENOENT',
@@ -1229,14 +1229,14 @@ describe('preset removal', () => {
     await presetTestInternals.install(
       fixtureOptions(fixture, { presetIds: ['seednote'] }),
     )
-    await mkdir(destination(fixture, 'article'), { recursive: true })
-    await writeFile(join(destination(fixture, 'article'), 'personal.txt'), 'keep')
+    await mkdir(destination(fixture, 'wechat-article'), { recursive: true })
+    await writeFile(join(destination(fixture, 'wechat-article'), 'personal.txt'), 'keep')
 
     await expect(
       presetTestInternals.remove(fixtureOptions(fixture)),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_UNOWNED' })
     expect(
-      await readFile(join(destination(fixture, 'article'), 'personal.txt'), 'utf8'),
+      await readFile(join(destination(fixture, 'wechat-article'), 'personal.txt'), 'utf8'),
     ).toBe('keep')
     expect(await lstat(destination(fixture, 'seednote'))).toBeTruthy()
   })
@@ -1244,7 +1244,7 @@ describe('preset removal', () => {
   it('restores the destination when deletion fails before mutation', async () => {
     const fixture = await createFixture()
     await presetTestInternals.install(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
     let deletionFailed = false
 
@@ -1253,31 +1253,31 @@ describe('preset removal', () => {
         fixtureOptions(fixture, {
           faults: {
             beforeRemoveOperationPath(path) {
-              if (!deletionFailed && path.includes('.article.anban-remove-')) {
+              if (!deletionFailed && path.includes('.wechat-article.anban-remove-')) {
                 deletionFailed = true
                 throw new Error('injected preset deletion failure')
               }
             },
           },
-          presetIds: ['article'],
+          presetIds: ['wechat-article'],
         }),
       ),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
 
     expect(
-      await readFile(join(destination(fixture, 'article'), 'preset.yml'), 'utf8'),
-    ).toBe('name: article\n')
+      await readFile(join(destination(fixture, 'wechat-article'), 'preset.yml'), 'utf8'),
+    ).toBe('name: wechat-article\n')
     expect(await readdir(join(fixture.dshHome, '.agent-presets'))).toEqual([
-      'article',
+      'wechat-article',
     ])
   })
 
   it('reports both failures and the recovery path when removal rollback fails', async () => {
     const fixture = await createFixture()
-    const article = destination(fixture, 'article')
+    const article = destination(fixture, 'wechat-article')
     const presetRoot = join(fixture.dshHome, '.agent-presets')
     await presetTestInternals.install(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
     let failure: unknown
 
@@ -1286,17 +1286,17 @@ describe('preset removal', () => {
         fixtureOptions(fixture, {
           faults: {
             beforeRemoveOperationPath(path) {
-              if (path.includes('.article.anban-remove-')) {
+              if (path.includes('.wechat-article.anban-remove-')) {
                 throw new Error('injected preset deletion failure')
               }
             },
             beforeRename(source, target) {
-              if (source.includes('.article.anban-remove-') && target === article) {
+              if (source.includes('.wechat-article.anban-remove-') && target === article) {
                 throw new Error('injected removal rollback failure')
               }
             },
           },
-          presetIds: ['article'],
+          presetIds: ['wechat-article'],
         }),
       )
     } catch (error) {
@@ -1311,13 +1311,13 @@ describe('preset removal', () => {
     expect(JSON.stringify(failure)).not.toContain(presetRoot)
     const entries = await readdir(presetRoot)
     const recoveryName = entries.find((entry) =>
-      entry.startsWith('.article.anban-remove-'),
+      entry.startsWith('.wechat-article.anban-remove-'),
     )
     expect(recoveryName).toBeDefined()
     await expect(lstat(article)).rejects.toMatchObject({ code: 'ENOENT' })
     expect(
       await readFile(join(presetRoot, recoveryName!, OWNERSHIP_FILE), 'utf8'),
-    ).toContain('"presetId": "article"')
+    ).toContain('"presetId": "wechat-article"')
   })
 })
 
@@ -1341,7 +1341,7 @@ describe('preset containment and digest safety', () => {
     await mkdir(outside)
     await writeFile(join(outside, 'keep.txt'), 'outside')
     await mkdir(join(fixture.dshHome, '.agent-presets'), { recursive: true })
-    await symlink(outside, destination(fixture, 'article'))
+    await symlink(outside, destination(fixture, 'wechat-article'))
 
     await expect(
       presetTestInternals.install(fixtureOptions(fixture, { force: true })),
@@ -1351,10 +1351,10 @@ describe('preset containment and digest safety', () => {
     ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
     expect(await readFile(join(outside, 'keep.txt'), 'utf8')).toBe('outside')
 
-    await rm(destination(fixture, 'article'))
+    await rm(destination(fixture, 'wechat-article'))
     await symlink(
       join(outside, 'keep.txt'),
-      join(fixture.sourceRoot, 'article', 'linked-file'),
+      join(fixture.sourceRoot, 'wechat-article', 'linked-file'),
     )
     await expect(
       presetTestInternals.status(fixtureOptions(fixture)),
@@ -1366,7 +1366,7 @@ describe('preset containment and digest safety', () => {
     await presetTestInternals.install(fixtureOptions(fixture))
     const outside = join(fixture.root, 'outside.txt')
     await writeFile(outside, 'keep')
-    await symlink(outside, join(destination(fixture, 'article'), 'linked-file'))
+    await symlink(outside, join(destination(fixture, 'wechat-article'), 'linked-file'))
 
     await expect(
       presetTestInternals.status(fixtureOptions(fixture)),
@@ -1395,18 +1395,18 @@ describe('preset containment and digest safety', () => {
     const fixture = await createFixture()
     const skillPath = join(
       fixture.sourceRoot,
-      'article',
+      'wechat-article',
       'skills',
-      'article-skill',
+      'wechat-article-skill',
       'SKILL.md',
     )
     const initial = await presetTestInternals.status(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
 
     await realCopyFile(skillPath, `${skillPath}.copy`)
     const withExtraFile = await presetTestInternals.status(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
     expect(withExtraFile[0]?.sourceDigest).not.toBe(initial[0]?.sourceDigest)
 
@@ -1414,26 +1414,26 @@ describe('preset containment and digest safety', () => {
     if (process.platform !== 'win32') {
       await chmod(skillPath, 0o600)
       const nonExecutable = await presetTestInternals.status(
-        fixtureOptions(fixture, { presetIds: ['article'] }),
+        fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
       )
       expect(nonExecutable[0]?.sourceDigest).toBe(initial[0]?.sourceDigest)
       await chmod(skillPath, 0o700)
       const executable = await presetTestInternals.status(
-        fixtureOptions(fixture, { presetIds: ['article'] }),
+        fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
       )
       expect(executable[0]?.sourceDigest).not.toBe(initial[0]?.sourceDigest)
       await chmod(skillPath, 0o600)
     }
 
     await presetTestInternals.install(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
-    const ownershipPath = join(destination(fixture, 'article'), OWNERSHIP_FILE)
+    const ownershipPath = join(destination(fixture, 'wechat-article'), OWNERSHIP_FILE)
     const ownership = JSON.parse(await readFile(ownershipPath, 'utf8'))
     await writeFile(ownershipPath, `${JSON.stringify(ownership, null, 4)}\n`)
     expect(
       await presetTestInternals.status(
-        fixtureOptions(fixture, { presetIds: ['article'] }),
+        fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
       ),
     ).toEqual([expect.objectContaining({ state: 'current' })])
   })
@@ -1455,26 +1455,26 @@ describe('preset containment and digest safety', () => {
     const fixture = await createFixture()
     const skillPath = join(
       fixture.sourceRoot,
-      'article',
+      'wechat-article',
       'skills',
-      'article-skill',
+      'wechat-article-skill',
       'SKILL.md',
     )
     await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'a'))
 
     await presetTestInternals.install(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
     await expect(
       presetTestInternals.status(
-        fixtureOptions(fixture, { presetIds: ['article'] }),
+        fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
       ),
     ).resolves.toEqual([expect.objectContaining({ state: 'current' })])
 
     await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'b'))
     await expect(
       presetTestInternals.status(
-        fixtureOptions(fixture, { presetIds: ['article'] }),
+        fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
       ),
     ).resolves.toEqual([expect.objectContaining({ state: 'outdated' })])
   })
@@ -1483,9 +1483,9 @@ describe('preset containment and digest safety', () => {
     const fixture = await createFixture()
     const skillPath = join(
       fixture.sourceRoot,
-      'article',
+      'wechat-article',
       'skills',
-      'article-skill',
+      'wechat-article-skill',
       'SKILL.md',
     )
     await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'a'))
@@ -1517,7 +1517,7 @@ describe('preset containment and digest safety', () => {
               expect(after.size).toBe(before.size)
             },
           },
-          presetIds: ['article'],
+          presetIds: ['wechat-article'],
         }),
       ),
     ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
@@ -1525,7 +1525,7 @@ describe('preset containment and digest safety', () => {
       afterSize: 2n * 1024n * 1024n,
       beforeSize: 2n * 1024n * 1024n,
     })
-    await expect(lstat(destination(fixture, 'article'))).rejects.toMatchObject({
+    await expect(lstat(destination(fixture, 'wechat-article'))).rejects.toMatchObject({
       code: 'ENOENT',
     })
   })
@@ -1536,9 +1536,9 @@ describe('preset containment and digest safety', () => {
       const fixture = await createFixture()
       const skillPath = join(
         fixture.sourceRoot,
-        'article',
+        'wechat-article',
         'skills',
-        'article-skill',
+        'wechat-article-skill',
         'SKILL.md',
       )
       await writeFile(skillPath, Buffer.alloc(2 * 1024 * 1024, 'a'))
@@ -1559,12 +1559,12 @@ describe('preset containment and digest safety', () => {
                 expect(after.mode & 0o111).not.toBe(0)
               },
             },
-            presetIds: ['article'],
+            presetIds: ['wechat-article'],
           }),
         ),
       ).rejects.toMatchObject({ code: 'ERR_PRESET_OPERATION' })
       expect(modeChanged).toBe(true)
-      await expect(lstat(destination(fixture, 'article'))).rejects.toMatchObject({
+      await expect(lstat(destination(fixture, 'wechat-article'))).rejects.toMatchObject({
         code: 'ENOENT',
       })
     },
@@ -1573,8 +1573,8 @@ describe('preset containment and digest safety', () => {
   it('frames digest records so content cannot forge a following file', async () => {
     const twoFiles = await createFixture()
     const forgedRecord = await createFixture()
-    const twoFilesSource = join(twoFiles.sourceRoot, 'article')
-    const forgedSource = join(forgedRecord.sourceRoot, 'article')
+    const twoFilesSource = join(twoFiles.sourceRoot, 'wechat-article')
+    const forgedSource = join(forgedRecord.sourceRoot, 'wechat-article')
     await rm(twoFilesSource, { recursive: true })
     await rm(forgedSource, { recursive: true })
     await mkdir(twoFilesSource)
@@ -1584,10 +1584,10 @@ describe('preset containment and digest safety', () => {
     await writeFile(join(forgedSource, 'a'), Buffer.from('x\0b\0file\0y'))
 
     const [twoFilesStatus] = await presetTestInternals.status(
-      fixtureOptions(twoFiles, { presetIds: ['article'] }),
+      fixtureOptions(twoFiles, { presetIds: ['wechat-article'] }),
     )
     const [forgedStatus] = await presetTestInternals.status(
-      fixtureOptions(forgedRecord, { presetIds: ['article'] }),
+      fixtureOptions(forgedRecord, { presetIds: ['wechat-article'] }),
     )
 
     expect(twoFilesStatus?.sourceDigest).not.toBe(forgedStatus?.sourceDigest)
@@ -1595,15 +1595,15 @@ describe('preset containment and digest safety', () => {
 
   it('sorts digest paths by a stable lexical order instead of locale', async () => {
     const fixture = await createFixture()
-    await writeFile(join(fixture.sourceRoot, 'article', 'Z.txt'), 'upper')
-    await writeFile(join(fixture.sourceRoot, 'article', 'a.txt'), 'lower')
+    await writeFile(join(fixture.sourceRoot, 'wechat-article', 'Z.txt'), 'upper')
+    await writeFile(join(fixture.sourceRoot, 'wechat-article', 'a.txt'), 'lower')
 
     const files = [
       ['Z.txt', 'upper'],
       ['a.txt', 'lower'],
-      ['agent.cordis.yml', 'id: article\n'],
-      ['preset.yml', 'name: article\n'],
-      ['skills/article-skill/SKILL.md', '# article\n'],
+      ['agent.cordis.yml', 'id: wechat-article\n'],
+      ['preset.yml', 'name: wechat-article\n'],
+      ['skills/wechat-article-skill/SKILL.md', '# wechat-article\n'],
     ] as const
     const expected = createHash('sha256')
     for (const [relativePath, contents] of [...files].sort(([left], [right]) =>
@@ -1626,7 +1626,7 @@ describe('preset containment and digest safety', () => {
     }
 
     const [status] = await presetTestInternals.status(
-      fixtureOptions(fixture, { presetIds: ['article'] }),
+      fixtureOptions(fixture, { presetIds: ['wechat-article'] }),
     )
     expect(status?.sourceDigest).toBe(expected.digest('hex'))
   })
@@ -1803,7 +1803,7 @@ describe('preset cross-process transactions', () => {
     expectCurrentWorkerResult(installResult)
     expect(removeResult).toMatchObject({
       ok: true,
-      value: ['article', 'seednote'],
+      value: ['wechat-article', 'seednote'],
     })
     expect(`${install.output()}\n${remove.output()}`).not.toContain('ENOTEMPTY')
     await expectHealthyOwnership(dshHome, 'absent')
@@ -1814,7 +1814,7 @@ describe('preset cross-process transactions', () => {
     fixtureRoots.push(root)
     const dshHome = join(root, 'home')
     expectCurrentWorkerResult((await runWorker('install', dshHome)).result)
-    await writeFile(join(dshHome, '.agent-presets', 'article', 'preset.yml'), 'modified\n')
+    await writeFile(join(dshHome, '.agent-presets', 'wechat-article', 'preset.yml'), 'modified\n')
     const force = spawnPresetWorker('force-install', dshHome)
     const install = spawnPresetWorker('install', dshHome)
     await Promise.all([force.ready, install.ready])
@@ -1841,7 +1841,7 @@ describe('preset cross-process transactions', () => {
       processPackageRoot,
       'dsh',
       'presets',
-      'article',
+      'wechat-article',
       'unexpected-link',
     )
     await symlink(join(processPackageRoot, 'package.json'), badSource)

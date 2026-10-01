@@ -51,12 +51,12 @@ describe('WeChat draft lifecycle contract', () => {
 
   it('keeps the server publication package contract across managed article assets', async () => {
     const managedAgentPaths = [
-      'agents/article.md',
-      'agents/article.toml',
-      'packs/article/agent.claude.md',
-      'packs/article/agent.codex.toml',
-      'packs/article/agent.dsh.yml',
-      'dsh/presets/article/agent.cordis.yml',
+      'agents/wechat-article.md',
+      'agents/wechat-article.toml',
+      'packs/wechat-article/agent.claude.md',
+      'packs/wechat-article/agent.codex.toml',
+      'packs/wechat-article/agent.dsh.yml',
+      'dsh/presets/wechat-article/agent.cordis.yml',
     ]
     const packagePaths = [...managedAgentPaths, 'skills/article/SKILL.md']
     const interactiveSkill = await readFile(join(root, 'skills/article-publishing/SKILL.md'), 'utf8')
@@ -101,12 +101,12 @@ describe('WeChat draft lifecycle contract', () => {
 
   it('keeps runtime recovery policy out of every managed article agent', async () => {
     const managedAgentPaths = [
-      'agents/article.md',
-      'agents/article.toml',
-      'packs/article/agent.claude.md',
-      'packs/article/agent.codex.toml',
-      'packs/article/agent.dsh.yml',
-      'dsh/presets/article/agent.cordis.yml',
+      'agents/wechat-article.md',
+      'agents/wechat-article.toml',
+      'packs/wechat-article/agent.claude.md',
+      'packs/wechat-article/agent.codex.toml',
+      'packs/wechat-article/agent.dsh.yml',
+      'dsh/presets/wechat-article/agent.cordis.yml',
     ]
     for (const path of managedAgentPaths) {
       const text = await readFile(join(root, path), 'utf8')
@@ -119,7 +119,7 @@ describe('WeChat draft lifecycle contract', () => {
     }
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.2.17', async () => {
+  it('keeps both native manifests and the Claude marketplace at 4.2.18', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -130,7 +130,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.2.17')
+      expect(version, path).toBe('4.2.18')
     }
   })
 })
