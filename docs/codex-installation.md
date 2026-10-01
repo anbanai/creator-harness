@@ -81,7 +81,7 @@ Expected: Anban Creator skills listed (article, content-writing, seednote, ecomm
 /agents
 ```
 
-Expected: 9 subagents listed (article, seednote, moments, montage, live-slicer, ecommerce, hypit, profile-analysis, feedback) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
+Expected: 10 subagents listed (article, seednote, moments, montage, whiteboard-animation, live-slicer, ecommerce, hypit, profile-analysis, feedback) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
 
 ```
 $anban-setup

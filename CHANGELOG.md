@@ -13,6 +13,7 @@
 
 ### Changed
 
+- Added the managed `whiteboard-animation` Pack and Skill with pinned upstream runtime assets, automatic SRT storyboard/line-art rendering, structured failure recovery, and 16:9 delivery contracts.
 - Renamed the WeChat project/runtime identity to `wechat`, renamed long-form
   tasks to `wechat-article`, and added the `wechat-picture` Agent Pack with
   dedicated research, writing, and visual Skills.
