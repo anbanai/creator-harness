@@ -9,7 +9,6 @@ This directory is the unified Anban plugin source for Claude Code and Codex. Cod
 - **WeChat Official Account articles** (微信公众号图文)
 - **SeedNote posts** (种草笔记)
 - **Moments posts** (朋友圈)
-- **Live video slicing** (直播切片)
 - **Hypit video replication** (视频复刻；本地插件流程)
 - **E-commerce product imagery** (电商出图：主图/详情/封面/分享/SKU，多产品图输入保一致)
 
@@ -31,7 +30,6 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 | `hypit` | "视频复刻", "复刻视频", "Hypit" | Reference analysis → Adaptation → SVML/SVRun → MP4 + editable project |
 | `article` | "写文章", "发文章", "公众号文章" | Research → Write → De-AI → SEO → Cover → Illustrations → HTML → Draft |
 | `seednote` | "种草笔记", "种草", "复刻", "仿写" | Research → Viral analysis (replicate) → Content → image-plan/runtime mode output → Compliance → Delivery validation → `output/` delivery |
-| `live-slicer` | "直播切片", "剪直播", "听悟" | ffmpeg prep → TingWu transcription → Invalid sentence filter → Segment/subject planning → Batch cuts/concat → CapCut export → Report |
 | `ecommerce` | "电商出图", "商品图", "主图", "详情页", "商详", "SKU图" | Product Bible → Selling points → Asset plan → Provider-adaptive generation → Vision self-check → Delivery validation → `output/` delivery |
 
 **Codex-specific behavior**:
@@ -48,8 +46,7 @@ Key skill groups:
 - **Content**: `content-writing`, `article-research`, `seo-optimization`
 - **WeChat article**: `article`, `article-visual-design`, `article-publishing`
 - **SeedNote**: `seednote`, `seednote-research`, `seednote-viral-analysis`, `seednote-writing`, `seednote-visual-design`
-- **Live slicing**: `live-slice`, `capcut-draft`
-- **Media and design**: `short-video-cover`, `portrait-pose-variants`, `capcut-draft`
+- **Media and design**: `short-video-cover`, `portrait-pose-variants`
 - **Setup**: `anban-setup` (first-time API Key setup and connectivity verification; Codex-specific — does not auto-write `~/.codex/config.toml`, documents manual setup steps instead)
 
 ### MCP Server
@@ -61,8 +58,6 @@ The installer registers the fixed official endpoint `https://creator.anbanai.com
 - `generate_image`、`analyze_image` 与任务级文件工具：`upload_image(project_id, task_id, file_path)`、`download_image(project_id, task_id, url, output_path)`、`compress_image(task_id, input_path, output_path, max_width?)`
 - `create_draft` (WeChat draft box)
 - `get_feed_detail` (SeedNote source note fetching)
-- `upload_live_audio`, `create_live_analysis_task`, `query_live_analysis_task`, `build_live_clip_plan`, `build_live_subject_clip_plan`, `build_live_clip_manifest`
-- `prepare_file_upload`
 
 ### Themes (Server-managed)
 
@@ -113,7 +108,6 @@ Official references: [Codex Hooks](https://learn.chatgpt.com/docs/hooks) and
 - **Image reference chain**: First image establishes visual style; subsequent images use the first as reference to maintain consistency.
 - **Skill dependencies**: Agent Pack `agent.skills` is the canonical list. Generated Codex subagents preload the same dependencies through `[[skills.config]]`; their instructions refer to the loaded method with `using the <skill-name> skill` phrasing.
 - **Content is Chinese**: All generated content targets Chinese social media platforms. Marketing-risk checks use workflow-owned deterministic scanners; models do not load full prohibited-word lists.
-- **Live media dependency**: `live-slicer` and `live-slice` require local `ffmpeg` and `ffprobe`; TingWu provides transcription.
 - **Subagent invocation**: Codex subagents do NOT auto-spawn. To run a full pipeline, the user must explicitly invoke: "use the article subagent to write an article about X".
 
 ## Modifying This Plugin

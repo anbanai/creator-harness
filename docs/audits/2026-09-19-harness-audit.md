@@ -37,11 +37,9 @@
 | Seednote | `viral_analysis` 只交付 source-analysis 与 viral-template；生成工具失败停止图片阶段，单图质量失败继续其余页，最后仍有失败页则以 `image_quality_failed` 阻止成功交付。分析工具不可用仅记 warning。 |
 | Ecommerce | 父 Skill 是用户入口，四个子 Skill 仅按领域阶段调用；缺产品图停止，只生成已选模块，核心详情场景不通过不得声明全流程成功。 |
 | Moments | 运行时项目 ID 优先；默认、唯一匹配、稳定语义选择均无法安全解析时结构化失败，不向用户提问。 |
-| Live-slicer | 放行本地 ffmpeg/ffprobe、必要辅助命令及预签名 curl PUT；不允许自写服务端 HTTP 客户端。上传失败保留音频和恢复点，跳过听悟创建；CapCut 不可用时只降级可选草稿。 |
 | Montage | 两宿主统一比例冻结、checkpoint、decision log、工作目录、封面调用和最终验证。所有终止路径同时写 Markdown 诊断与运行时识别的 failure-state JSON；Runtime 统一上传登记，Agent 不等待不存在的文件登记 MCP。 |
 | Codex | 零交互、阶段 metadata、恢复入口与最终反馈边界明确；生命周期使用对应宿主的工具合同。 |
 | MCP | 示例和参数表显式携带项目/任务身份；图片生成显式传业务比例。`scope` 按工具和业务传入，不虚构其为 Server schema 的全局必填字段。 |
-| CapCut | 模板 JSON 可解析；类型占位符用明确字符串，实例化时还原数值/对象类型。使用配置草稿根目录；删除先列出目标并取得明确确认。 |
 
 Agent 保留编排、状态、产物验收和恢复；视觉方法、评分卡、详细 schema 与故障处理归对应 Skill/reference。已删除没有分支价值的通用案例提示，修复跨 Skill 与资源链接。未验证的平台算法/权重主张降为实验建议，并记录核验状态、适用范围和失效策略，未声称已在线验证平台规则。
 
@@ -65,7 +63,6 @@ Agent 保留编排、状态、产物验收和恢复；视觉方法、评分卡�
 | Article | 纯文本；图片或上传失败；HTML 成功但 readiness blocked。 |
 | Seednote | 原创研究降级；复刻；viral_analysis；单图质量耗尽；生成工具失败。 |
 | Ecommerce | 缺产品图；仅选详情页；非关键单图失败与核心图失败的区别；全部所选模块成功交付。 |
-| Live-slicer | 本地切片；签名上传成功/失败；命令边界；CapCut 根目录不可用。 |
 | Moments | 运行时项目与默认冲突；多项目无安全匹配时自动失败。 |
 | Montage | 缺比例；pipeline 失败；封面生成；Runtime 最终登记；失败 schema 与 runner 一致。 |
 

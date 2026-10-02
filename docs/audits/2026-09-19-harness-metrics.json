@@ -45,18 +45,6 @@
         "deferred_humanizer_chars": 0,
         "distributed_skills": 5
       },
-      "live-slicer": {
-        "preloaded_skills": [
-          "live-slice",
-          "capcut-draft"
-        ],
-        "agent_chars": 15346,
-        "skill_chars": 23945,
-        "total_chars": 39291,
-        "limit_chars": null,
-        "deferred_humanizer_chars": 0,
-        "distributed_skills": 2
-      },
       "moments": {
         "preloaded_skills": [
           "moments",
@@ -104,18 +92,6 @@
       "skills/seednote-visual-design/SKILL.md: 359 lines exceeds 280; move conditional detail to references",
       "skills/seednote-writing/SKILL.md: 325 lines exceeds 280; move conditional detail to references",
       "skills/short-video-cover/SKILL.md: 378 lines exceeds 280; move conditional detail to references",
-      "skills/capcut-draft/templates/full_draft_info.json: invalid JSON: Unexpected token '_', ...\"\"height\": __CANVAS_H\"... is not valid JSON",
-      "skills/capcut-draft/templates/full_draft_meta_info.json: invalid JSON: Unexpected token '_', ...\"_create\": __TIMESTAM\"... is not valid JSON",
-      "skills/capcut-draft/templates/material_animation.json: invalid JSON: Unexpected token '_', ...\"uration\": __ANIM_DUR\"... is not valid JSON",
-      "skills/capcut-draft/templates/material_audio.json: invalid JSON: Unexpected token '_', ...\"uration\": __AUDIO_DU\"... is not valid JSON",
-      "skills/capcut-draft/templates/material_effect.json: invalid JSON: Unexpected token '_', ...\"_params\": __ADJUST_P\"... is not valid JSON",
-      "skills/capcut-draft/templates/material_transition.json: invalid JSON: Unexpected token '_', ...\"overlap\": __TRANS_IS\"... is not valid JSON",
-      "skills/capcut-draft/templates/material_video.json: invalid JSON: Unexpected token '_', ...\"uration\": __SEGMENT_\"... is not valid JSON",
-      "skills/capcut-draft/templates/root_meta_entry.json: invalid JSON: Unexpected token '_', ...\"_create\": __TIMESTAM\"... is not valid JSON",
-      "skills/capcut-draft/templates/segment_audio.json: invalid JSON: Unexpected token '_', ...\"uration\": __AUDIO_DU\"... is not valid JSON",
-      "skills/capcut-draft/templates/segment_effect.json: invalid JSON: Unexpected token '_', ...\"uration\": __EFFECT_D\"... is not valid JSON",
-      "skills/capcut-draft/templates/segment_text.json: invalid JSON: Unexpected token '_', ...\"uration\": __TEXT_DUR\"... is not valid JSON",
-      "skills/capcut-draft/templates/segment_video.json: invalid JSON: Unexpected token '_', ...\"uration\": __SEGMENT_\"... is not valid JSON",
       "article: startup 91724 > 45000",
       "ecommerce: startup 61624 > 34000",
       "seednote: startup 74498 > 38000"
@@ -162,18 +138,6 @@
         "limit_chars": 34000,
         "deferred_humanizer_chars": 28698,
         "distributed_skills": 5
-      },
-      "live-slicer": {
-        "preloaded_skills": [
-          "live-slice",
-          "capcut-draft"
-        ],
-        "agent_chars": 15707,
-        "skill_chars": 24162,
-        "total_chars": 39869,
-        "limit_chars": null,
-        "deferred_humanizer_chars": 0,
-        "distributed_skills": 2
       },
       "moments": {
         "preloaded_skills": [

@@ -31,11 +31,6 @@ description = "朋友圈素材包全自动创作 Agent（素材拆解 → 正文
 config_file = "~/.codex/agents/moments.toml"
 nickname_candidates = ["Moments", "朋友圈写手", "PrivateDomain"]
 
-[agents.live-slicer]
-description = "直播视频智能切片引擎（ffmpeg + 听悟 + 剪映草稿）"
-config_file = "~/.codex/agents/live-slicer.toml"
-nickname_candidates = ["Slicer", "Cutter", "切片机"]
-
 [agents.ecommerce]
 description = "电商出图全自动执行引擎（多产品图 → 主图/详情/封面/分享/SKU，保证产品跨图一致）"
 config_file = "~/.codex/agents/ecommerce.toml"

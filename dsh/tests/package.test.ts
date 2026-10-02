@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.18',
+      version: '4.2.23',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -696,7 +696,7 @@ minimumReleaseAgeExclude:
     )
     expect(normalized).toMatch(/only Article and Seednote.*DSH Presets/i)
     expect(normalized).not.toMatch(
-      /(?:ecommerce|live-slicer|moments|montage)[^.|\n]*(?:DSH Preset|Preset support)/i,
+      /(?:ecommerce|moments|montage)[^.|\n]*(?:DSH Preset|Preset support)/i,
     )
   })
 

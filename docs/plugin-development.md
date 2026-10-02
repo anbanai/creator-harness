@@ -50,7 +50,7 @@ Do not add a `tools` allowlist to agents that need MCP tools; Claude Code treats
 Do not add `mcpServers` to plugin agent frontmatter. Plugin subagents receive MCP servers from the plugin-level `.mcp.json`; Claude Code ignores `permissionMode`, `mcpServers`, and `hooks` in plugin Agent definitions. Managed lifecycle Hooks are installed by the server SDK path.
 
 The six Agent identities accepted by `submit_agent_feedback` are `article`,
-`ecommerce`, `live-slicer`, `moments`, `montage`, and `seednote`.
+`ecommerce`, `moments`, `montage`, and `seednote`.
 Each Agent owns exactly one final feedback
 call after its delivery report.
 
@@ -95,13 +95,9 @@ MCP owns tool schemas and server-side side effects. In particular:
   Agents and Skills write explicit `output/<filename>` artifacts and never
   create, discover, move, or rename the output directory.
 
-Live slicing keeps only deterministic planning and manifest construction in MCP: use
-`build_live_clip_plan` for segment-based clip plans,
-`build_live_subject_clip_plan` for subject-based plans,
-and `build_live_clip_manifest` for the server-backed delivery manifest. The Agent
-owns semantic JSON, local `ffmpeg` execution, and file-backed evidence. Dedicated
-single-call `analyze_image` and `analyze_video` tools provide media understanding
-without taking over workflow orchestration.
+Media understanding stays a single dedicated MCP call: `analyze_image`
+provides image understanding without taking over workflow orchestration, and
+Agents own semantic JSON and file-backed evidence.
 
 Task artifacts are the resume contract. Store generated content, manifests,
 quality evidence, and structured `output/failure-state.json` files at their

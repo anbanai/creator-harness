@@ -49,7 +49,7 @@ for (const [pattern, value] of values) if (pattern.test(text)) add('value_propos
 if (/图片|配图|封面|视觉|image_|cover\.png/.test(text)) add('visual_style', /插画|手绘/.test(text) ? 'illustration' : 'mixed_visual', 0.58, true);
 if (/数据|统计|报告|引用|来源|研究/.test(text)) add('evidence_level', 'cited_or_data_supported', 0.62, true);
 else if (/经验|我觉得|体会/.test(text)) add('evidence_level', 'experience_based', 0.55, true);
-if (taskType) add('media_shape', taskType === 'live-slicer' || taskType === 'montage' ? 'video' : taskType === 'ecommerce' ? 'commerce_visual' : 'text_visual', 0.99, true);
+if (taskType) add('media_shape', taskType === 'montage' ? 'video' : taskType === 'ecommerce' ? 'commerce_visual' : 'text_visual', 0.99, true);
 if (files.some(name => /^image_|cover|tail/i.test(name))) add('media_shape', 'multimedia', 0.95, false, 'output');
 if (/原创|亲自|我的经历/.test(text)) add('source_relation', 'original', 0.62, true);
 else if (/改写|复刻|参考/.test(text)) add('source_relation', 'adapted', 0.62, true);

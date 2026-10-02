@@ -120,7 +120,6 @@ claude plugin install --scope user anban@anbanai
 ```text
 帮我写一篇关于 AI Agent 的公众号文章
 种草笔记，主题是降噪耳机
-把 ./live.mp4 做成直播切片
 ```
 
 ### 方式二：指定 Agent
@@ -130,7 +129,6 @@ claude plugin install --scope user anban@anbanai
 ```bash
 claude --verbose --agent anban:wechat-article AI Agent 入门指南
 claude --verbose --agent anban:seednote 降噪耳机种草笔记
-claude --verbose --agent anban:live-slicer ./live.mp4
 ```
 
 视频生成、白板动画和视频复刻仅通过 Studio 下发托管任务，并使用各自独立的运行镜像；Agent 名称分别为 `montage`、`whiteboard-animation` 和 `hypit`。白板动画运行时固定上游 `geeklee/srt-whiteboard-animation` 提交，预装字幕解析、线稿预览、流式笔迹渲染和合并所需依赖。需要先启用服务端能力并准备官方 Runtime Profile。仅安装插件不包含浏览器、官方引擎或 Provider 配置，本地直接调用不会启动生产视频工作流。
@@ -145,8 +143,6 @@ claude --verbose --agent anban:live-slicer ./live.mp4
   查看插件是否已安装成功
 - `/anban:wechat-article`
   公众号图文创作
-- `/anban:live-slicer`
-  直播视频切片，需要本机可用 `ffmpeg` 和 `ffprobe`
 
 ## 遇到问题时先检查
 
@@ -161,7 +157,6 @@ claude --verbose --agent anban:live-slicer ./live.mp4
 |------|---------|---------|
 | 微信公众号图文 | "帮我写一篇关于 AI Agent 的文章" | 选题研究 → AI 写作 → 去痕优化 → SEO 优化 → 封面配图 → HTML 转换 → 草稿发布 |
 | 种草笔记 | "种草笔记，主题是降噪耳机" | 选题研究 → 爆款拆解（复刻模式）→ 内容创作 → 图片规划 → 封面 + 内容配图 → 合规检查 → 交付 |
-| 直播切片 | "把 live.mp4 剪成短视频切片" | ffmpeg 准备音频/封面 → 听悟转写 → 无效句过滤 → 智能切片规划 → 批量裁剪 → 报告 |
 | 视频生成 | "用现有素材生成一条产品介绍视频" | 素材分析 → Provider 选择 → OpenMontage 编排 → 成片、封面与交付清单 |
 | 白板动画 | "把这份 SRT 做成白板动画" | SRT 分幕 → 统一风格线稿 → 标注与流式笔迹渲染 → 16:9 成片与交付清单 |
 | 视频复刻 | "复刻 reference.mp4，把产品替换成我的咖啡杯" | 参考拆解 → 内容替换 → SVML/SVRun 编排 → 成片 + 可编辑工程 |
@@ -197,7 +192,7 @@ claude --verbose --agent anban:live-slicer ./live.mp4
 |------------|-----------|----------|--------------|
 | `humanizer` | [blader/humanizer](https://github.com/blader/humanizer) v2.8.2（MIT），以 `skills/humanizer` 嵌套 submodule 固定官方提交 | 不做 Anban 改编；官方仓库直接进入共享 Skill 树，Seednote/Article/电商约束归各业务 workflow；Codex 从递归初始化的本地 clone 安装 | 运行 `make humanizer-update` 手动推进上游 gitlink；审阅上游 diff、跑契约测试并升级两个 manifest 版本 |
 | `moments` | 内容拆解方法参考 [Caihui0127/caihui-moments-skill](https://github.com/Caihui0127/caihui-moments-skill) 的公开框架 | 产出 Anban 朋友圈图文素材包；不默认使用“彩卉”人设，不复制私有素材，不把参考 repo 作为运行时依赖 | 更新时只同步公开方法层；保持文本、语义比例配图和不伪造案例/数据红线 |
-| `article*`、`seednote*`、`ecommerce*`、`live-slice`、`capcut-draft`、`portrait-pose-variants`、`anban-setup`、`writers`、`article-research`、`seo-optimization`、`content-writing`、`short-video-cover` | Anban 原创业务 workflow；结构模式参考 [anthropics/skills](https://github.com/anthropics/skills)、[anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official)、[obra/superpowers](https://github.com/obra/superpowers) 和 [affaan-m/ecc](https://github.com/affaan-m/ecc) | 使用标准 `SKILL.md` + 一层 `references/`；案例是 Anban 场景原创，不复制外部措辞或业务流程 | 从 Anban 产品、MCP、server contract 更新；宿主差异放进薄适配器，不复制 Skill |
+| `article*`、`seednote*`、`ecommerce*`、`portrait-pose-variants`、`anban-setup`、`writers`、`article-research`、`seo-optimization`、`content-writing`、`short-video-cover` | Anban 原创业务 workflow；结构模式参考 [anthropics/skills](https://github.com/anthropics/skills)、[anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official)、[obra/superpowers](https://github.com/obra/superpowers) 和 [affaan-m/ecc](https://github.com/affaan-m/ecc) | 使用标准 `SKILL.md` + 一层 `references/`；案例是 Anban 场景原创，不复制外部措辞或业务流程 | 从 Anban 产品、MCP、server contract 更新；宿主差异放进薄适配器，不复制 Skill |
 
 批量更新规则：
 

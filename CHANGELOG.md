@@ -1,11 +1,16 @@
 # Changelog
 
+## [4.2.23] - 2026-10-02
+
+- Removed the live-slicer Agent Pack, its agents, the live-slice and
+  capcut-draft Skills, and all live slicing MCP tools.
+
 ## [4.2.22] - 2026-10-02
 
 - Isolated Agent Pack runtime profiles for WeChat article, WeChat picture,
   Moments, and ecommerce workflows with independent image identities.
-- Kept video generation and live slicing on the Montage runtime and video
-  replication on the Hypit runtime.
+- Kept video generation on the Montage runtime and video replication on the
+  Hypit runtime.
 
 ## [4.2.21] - 2026-10-01
 
@@ -31,7 +36,7 @@
 - Upgraded the DSH runtime packages to `0.1.5-rc.3`, Cordis to `4.0.4`, and the development tooling (`@types/node` 26.6.3, `vitest` 5.0.2, `js-yaml` 4.3.2).
 - Added MCP-backed public trend discovery, platform-specific trend riding, and seven-dimension topic evaluation to the Article and Seednote Agent Packs.
 - Unified Pack artifact and JSON metadata contracts, including explicit failure and progress evidence, and kept lifecycle ownership in top-level Agents.
-- Moved Live Slicer presigned uploads into the runtime/Agent adapter contract, added progressive Skill loading and long-file contents guidance, and documented the vendored `humanizer` exception.
+- Added progressive Skill loading and long-file contents guidance, and documented the vendored `humanizer` exception.
 - Synchronized native plugin, marketplace, Codex, and DSH package metadata at `4.2.16`.
 
 ## [4.2.10] - 2026-09-25
@@ -67,8 +72,8 @@
 ### Changed
 
 - Repaired task-scoped MCP calls, autonomous project selection, blocked Article
-  draft delivery, Seednote task-type/image failure gates, live upload commands,
-  Montage runtime collection, and CapCut JSON templates and deletion boundaries.
+  draft delivery, Seednote task-type/image failure gates, and Montage runtime
+  collection.
 - Centralized visual methods in Skills and on-demand references; defer pinned
   Humanizer loading until rewriting without changing its upstream checkout.
 - Added workflow auditing for references, JSON, identity parameters, startup
@@ -407,9 +412,7 @@ This project follows semantic versioning for the plugin package. Patch releases 
 
 ### Changed
 
-- Moved live-slicing semantic decisions into the Live Slicer Agent while keeping transcription and clip planning as deterministic MCP capabilities.
 - Added the explicit `viral_analysis` workflow to the Seednote Agents with managed-task artifact requirements.
-- Documented `analyze_video` as the atomic native-video understanding capability for workflows that need complete visual context.
 
 ### Removed
 
@@ -700,7 +703,7 @@ This project follows semantic versioning for the plugin package. Patch releases 
 
 ### Changed
 
-- Clarified videoeditor delivery gates so rendered MP4 output and CapCut draft packages are validated as separate acceptable delivery modes.
+- Clarified videoeditor delivery gates so rendered MP4 output is validated as an acceptable delivery mode.
 
 ## [2.10.44] - 2026-07-08
 

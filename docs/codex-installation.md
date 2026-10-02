@@ -4,15 +4,14 @@ Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit
 
 ## What you get
 
-- **26 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, authenticated MCP-backed Seednote research and viral analysis, WeChat Moments packages, live video slicing, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
+- **26 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, authenticated MCP-backed Seednote research and viral analysis, WeChat Moments packages, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
 - **8 native Codex subagents**: end-to-end orchestrators for the workflows above, including project profile analysis.
-- **MCP integration**: connects to the anban-creator HTTP MCP server for project management, image generation, WeChat publishing, TingWu transcription, and FFmpeg-driven clip assembly.
+- **MCP integration**: connects to the anban-creator HTTP MCP server for project management, image generation, and WeChat publishing.
 - **Embedded completion checks**: every TOML subagent performs its own delivery validation and final quality summary.
 
 ## Prerequisites
 
 - **Codex CLI** installed (`codex --version` works)
-- **`ffmpeg` + `ffprobe`** (required for `live-slicer` and `live-slice`)
 - **`jq`** (used by some skill-side validation steps)
 - **An Anban Creator account** at https://creator.anbanai.com — grab your API Key
 
@@ -75,13 +74,13 @@ After restart, run:
 /skills
 ```
 
-Expected: Anban Creator skills listed (article, content-writing, seednote, ecommerce, live-slice, etc.) with no "some skills omitted" warning.
+Expected: Anban Creator skills listed (article, content-writing, seednote, ecommerce, etc.) with no "some skills omitted" warning.
 
 ```
 /agents
 ```
 
-Expected: 10 subagents listed (article, seednote, moments, montage, whiteboard-animation, live-slicer, ecommerce, hypit, profile-analysis, feedback) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
+Expected: 9 subagents listed (article, seednote, moments, montage, whiteboard-animation, ecommerce, hypit, profile-analysis, feedback) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
 
 ```
 $anban-setup
@@ -109,10 +108,6 @@ For end-to-end runs that produce a complete publishable artifact, delegate to a 
 use the article subagent to write a 3000-word article about Rust ownership
 ```
 
-```
-use the live-slicer subagent on /path/to/live.mp4 — pull 5 high-density clips
-```
-
 The managed runtime supplies a task-private workspace, a pre-created `output/`, and structured `TASK_ID`. The subagent runs autonomously, writes named `output/<filename>` artifacts, calls MCP tools, and emits a delivery summary on completion. It does not create, discover, move, or rename the output directory. **You cannot interrupt mid-run** (zero-interaction contract).
 
 ### Hybrid
@@ -129,7 +124,6 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 |----------|-----------------|
 | `article` | Researched outline → final Markdown → WeChat-safe HTML → uploaded cover + content images → published draft |
 | `seednote` | Topic/viral analysis → Markdown note (title + body + hashtags) → image-plan/runtime mode output → delivery validation → `output/` delivery |
-| `live-slicer` | metadata.json + audio.mp3 + cover.jpg + TingWu analysis + filtered sentences + clip plan + exported MP4s + CapCut drafts + transcript.md + summary.md |
 | `ecommerce` | Product Bible (analyze product photos) → selling points (FABE) → asset plan → anchor-first generation with provider-adaptive ref strategy + vision self-check → compliance (广告法极限词) → delivery validation → `output/manifest.json` delivery |
 
 ## Troubleshooting
