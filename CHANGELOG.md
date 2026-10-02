@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.24] - 2026-10-02
+
+- Unified the Profile Analysis Agent runtime profile, image key, environment
+  variable, Dockerfile, and build target under `profile-analysis`.
+
 ## [4.2.23] - 2026-10-02
 
 - Removed the live-slicer Agent Pack, its agents, the live-slice and
