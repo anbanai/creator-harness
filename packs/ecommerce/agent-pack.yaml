@@ -10,7 +10,7 @@ agent:
   skills: [ecommerce-product-analysis, ecommerce-copywriting, humanizer, ecommerce-visual-design, ecommerce-platform-specs]
   max_turns: 120
 runtime:
-  profile: wechat
+  profile: ecommerce
   adapter: standard
   max_turns: 90
 surfaces: [plugin, project, task]

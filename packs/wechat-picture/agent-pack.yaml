@@ -13,7 +13,7 @@ channel: wechat-picture
 bindings:
   task_kinds: [content_generation]
 runtime:
-  profile: wechat
+  profile: wechat-picture
   adapter: standard
   max_turns: 60
 surfaces: [plugin, project, task, plan]

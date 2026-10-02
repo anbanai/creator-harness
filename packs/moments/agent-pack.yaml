@@ -10,7 +10,7 @@ agent:
   skills: [moments, humanizer]
   max_turns: 20
 runtime:
-  profile: wechat
+  profile: moments
   adapter: standard
   max_turns: 25
 surfaces: [plugin, project, task]

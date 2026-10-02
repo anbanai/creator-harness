@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.22] - 2026-10-02
+
+- Isolated Agent Pack runtime profiles for WeChat article, WeChat picture,
+  Moments, and ecommerce workflows with independent image identities.
+- Kept video generation and live slicing on the Montage runtime and video
+  replication on the Hypit runtime.
+
 ## [4.2.21] - 2026-10-01
 
 - Renamed the WeChat project/runtime identity to `wechat`, renamed long-form

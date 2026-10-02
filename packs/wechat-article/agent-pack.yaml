@@ -16,7 +16,7 @@ channel: wechat-article
 bindings:
   task_kinds: [content_generation]
 runtime:
-  profile: wechat
+  profile: wechat-article
   adapter: standard
   max_turns: 60
 surfaces: [plugin, project, task, plan]
