@@ -1,5 +1,5 @@
 id: montage
-version: 2.0.4
+version: 2.0.5
 kind: plugin
 display_name: 视频生成
 description: 从素材和业务输入生成最终视频与交付清单。
@@ -13,7 +13,7 @@ runtime:
   profile: montage
   adapter: openmontage
   max_turns: 40
-surfaces: [plugin, project, task, plan]
+surfaces: [plugin, task]
 features: [video-generation, source-assets]
 billing_operations:
   montage: task.montage

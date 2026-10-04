@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.25] - 2026-10-02
+
+- Decoupled project context from Agent Pack configuration and added plan output selection metadata.
+
 ## [4.2.24] - 2026-10-02
 
 - Unified the Profile Analysis Agent runtime profile, image key, environment

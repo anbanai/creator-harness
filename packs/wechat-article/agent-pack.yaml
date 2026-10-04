@@ -1,5 +1,5 @@
 id: wechat-article
-version: 2.0.6
+version: 2.0.7
 kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
@@ -13,13 +13,14 @@ agent:
   skills: [portrait-cover-design, content-writing, humanizer, article-visual-design, article-cover-design, article-research, trending-topics, trend-rider, topic-evaluator, seo-optimization, article-viral-strategy, article-publishing]
   max_turns: 300
 channel: wechat-article
+plan_task_kind: content_generation
 bindings:
   task_kinds: [content_generation]
 runtime:
   profile: wechat-article
   adapter: standard
   max_turns: 60
-surfaces: [plugin, project, task, plan]
+surfaces: [plugin, task, plan]
 features: [image-generation, reference-images]
 billing_operations:
   content_generation: task.wechat_article

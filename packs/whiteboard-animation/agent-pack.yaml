@@ -1,5 +1,5 @@
 id: whiteboard-animation
-version: 2.0.2
+version: 2.0.3
 kind: managed
 display_name: 白板动画
 description: 根据 SRT 字幕生成分镜、白板手绘场景和最终动画视频。
@@ -17,7 +17,7 @@ runtime:
   profile: whiteboard-animation
   adapter: standard
   max_turns: 120
-surfaces: [plugin, project, task]
+surfaces: [plugin, task]
 features: [subtitle-to-video, image-generation, source-assets]
 billing_operations:
   whiteboard-animation: task.whiteboard-animation

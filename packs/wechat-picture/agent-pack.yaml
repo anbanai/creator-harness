@@ -1,5 +1,5 @@
 id: wechat-picture
-version: 1.0.0
+version: 1.0.1
 kind: managed
 display_name: 微信公众号贴图
 description: 研究选题、编排图片消息并生成公众号 newspic 草稿交付包。
@@ -10,13 +10,14 @@ agent:
   skills: [wechat-picture-research, wechat-picture-writing, wechat-picture-visual-design]
   max_turns: 240
 channel: wechat-picture
+plan_task_kind: content_generation
 bindings:
   task_kinds: [content_generation]
 runtime:
   profile: wechat-picture
   adapter: standard
   max_turns: 60
-surfaces: [plugin, project, task, plan]
+surfaces: [plugin, task, plan]
 features: [image-generation, reference-images, wechat-picture]
 billing_operations:
   content_generation: task.wechat_picture

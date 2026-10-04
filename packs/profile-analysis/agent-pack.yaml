@@ -1,5 +1,5 @@
 id: profile-analysis
-version: 2.1.2
+version: 2.1.3
 kind: managed
 display_name: 账号画像分析
 description: 基于用户提供的公开资料和问答生成并提交六维项目账号画像。
@@ -16,7 +16,7 @@ runtime:
   profile: profile-analysis
   adapter: standard
   max_turns: 40
-surfaces: [plugin, project, task]
+surfaces: [plugin, task]
 features: [profile-analysis]
 billing_operations:
   profile_analysis: task.profile_analysis

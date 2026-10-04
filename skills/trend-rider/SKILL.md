@@ -5,7 +5,7 @@ description: Use when a specific hot topic or event must be judged for creator r
 
 # 热点借势
 
-输入一个明确热点、`trending-topics` 候选或用户给出的事件，结合 Anban `get_project_profile` 返回的定位、关键词、平台和 `agent_config`，判断是否值得借势，并给出可执行方向。不要在本 Skill 内发现热点、抓取外部数据或写完整正文。
+输入一个明确热点、`trending-topics` 候选或用户给出的事件，结合 Anban `get_project_profile` 返回的定位、关键词、平台和公共账号画像，判断是否值得借势，并给出可执行方向。不要在本 Skill 内发现热点、抓取外部数据或写完整正文。
 
 ## 判断顺序
 
