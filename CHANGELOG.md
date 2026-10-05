@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.26] - 2026-10-05
+
+- Exposed video generation, video replication, and whiteboard animation as managed task Packs without scheduling them as plans.
+
 ## [4.2.25] - 2026-10-02
 
 - Decoupled project context from Agent Pack configuration and added plan output selection metadata.

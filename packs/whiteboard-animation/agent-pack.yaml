@@ -13,6 +13,7 @@ channel: whiteboard-animation
 bindings:
   project_platforms: [whiteboard-animation]
   task_types: [whiteboard-animation]
+  task_kinds: [whiteboard-animation]
 runtime:
   profile: whiteboard-animation
   adapter: standard

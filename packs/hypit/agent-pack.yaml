@@ -1,6 +1,6 @@
 id: hypit
 version: 2.0.4
-kind: plugin
+kind: managed
 display_name: 视频复刻
 description: 根据参考视频和替换要求生成成片，保留完整工程用于再次改编。
 agent:
@@ -9,7 +9,10 @@ agent:
   codex_source: agent.codex.toml
   skills: [portrait-cover-design]
   max_turns: 180
-surfaces: [plugin]
+channel: hypit
+bindings:
+  task_kinds: [hypit]
+surfaces: [plugin, task]
 features: [video-replication, source-assets, editable-video]
 runtime:
   profile: hypit

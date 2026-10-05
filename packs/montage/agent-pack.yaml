@@ -1,6 +1,6 @@
 id: montage
 version: 2.0.5
-kind: plugin
+kind: managed
 display_name: 视频生成
 description: 从素材和业务输入生成最终视频与交付清单。
 agent:
@@ -13,6 +13,9 @@ runtime:
   profile: montage
   adapter: openmontage
   max_turns: 40
+channel: montage
+bindings:
+  task_kinds: [montage]
 surfaces: [plugin, task]
 features: [video-generation, source-assets]
 billing_operations:

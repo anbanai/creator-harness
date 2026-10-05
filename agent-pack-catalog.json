@@ -227,8 +227,9 @@
     },
     {
       "id": "hypit",
+      "channel": "hypit",
       "version": "2.0.4",
-      "kind": "plugin",
+      "kind": "managed",
       "display_name": "视频复刻",
       "description": "根据参考视频和替换要求生成成片，保留完整工程用于再次改编。",
       "agent": {
@@ -238,14 +239,19 @@
         ],
         "max_turns": 180
       },
-      "bindings": {},
+      "bindings": {
+        "task_kinds": [
+          "hypit"
+        ]
+      },
       "runtime": {
         "profile": "hypit",
         "adapter": "standard",
         "max_turns": 180
       },
       "surfaces": [
-        "plugin"
+        "plugin",
+        "task"
       ],
       "features": [
         "video-replication",
@@ -391,7 +397,7 @@
       "ui": {
         "renderer": "custom:hypit"
       },
-      "digest": "3145cc414f92bb2a65949a4a81e736bc465d7e6979f9012edeeb8ed9993768b9"
+      "digest": "d0d2b89a273cd3c3667f53e92389e2f889de276ca38fed80d78e0c9d6ccbefa7"
     },
     {
       "id": "moments",
@@ -486,8 +492,9 @@
     },
     {
       "id": "montage",
+      "channel": "montage",
       "version": "2.0.5",
-      "kind": "plugin",
+      "kind": "managed",
       "display_name": "视频生成",
       "description": "从素材和业务输入生成最终视频与交付清单。",
       "agent": {
@@ -498,7 +505,11 @@
         ],
         "max_turns": 180
       },
-      "bindings": {},
+      "bindings": {
+        "task_kinds": [
+          "montage"
+        ]
+      },
       "runtime": {
         "profile": "montage",
         "adapter": "openmontage",
@@ -592,7 +603,7 @@
       "ui": {
         "renderer": "custom:montage"
       },
-      "digest": "75bab610d27debbffa41dbff0129857b785c1481c4b329b23b1e53d498a4f186"
+      "digest": "82489a0ce09659d93b957b0a4c1de998136f47f9f1bc35ca0c3fac5d38f52241"
     },
     {
       "id": "profile-analysis",
@@ -1515,7 +1526,7 @@
       "ui": {
         "renderer": "custom:whiteboard-animation"
       },
-      "digest": "9296892b37272c6589fc9260082ac07dfe2f4eec63fedeed7396bab4af6bd860"
+      "digest": "d38ff3e48f586184dcc099a14b774c6b7de73947ce531628d8caeaba8fc761f4"
     }
   ]
 }
