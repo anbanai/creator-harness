@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.2.28] - 2026-10-05
+
+- Pinned the Hypit failure contract `error_code` vocabulary to the platform
+  provider categories so a provider block keeps its attribution and recovery
+  action instead of a generic execution failure.
+
 ## [4.2.27] - 2026-10-05
 
 - Unified the Feedback Analysis Agent Pack identity, runtime profile, image key,
