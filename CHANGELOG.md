@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.27] - 2026-10-05
+
+- Unified the Feedback Analysis Agent Pack identity, runtime profile, image key,
+  environment variable, Dockerfile, and build target under `feedback-analysis`.
+  The `feedback_analysis` task kind, billing operation, and artifact paths are
+  unchanged.
+
 ## [4.2.26] - 2026-10-05
 
 - Exposed video generation, video replication, and whiteboard animation as managed task Packs without scheduling them as plans.

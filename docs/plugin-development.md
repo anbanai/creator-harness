@@ -169,6 +169,29 @@ and visual steps; final summaries report `output/`.
 - WeChat HTML must use inline CSS and avoid unsafe tags.
 - Number or semantically name task files so delivery and recovery are explicit.
 
+## Pack and runtime naming
+
+Identity, runtime, and task vocabulary are separate namespaces. Keep each one
+consistent instead of collapsing them into a single string.
+
+- Pack identity is `kebab-case` and is one value across the Pack directory,
+  `packs/<id>/agent-pack.yaml` `id`, `channel`, `agent.name`, `features`, and
+  `runtime.profile`. The Claude and Codex Agent sources under `agents/` use the
+  same name and stay byte-identical to the Pack-local sources.
+- The runtime image key is the Pack id, so `creator-agent-<id>`,
+  `ANBAN_AGENT_IMAGE_<ID_UPPER_SNAKE>`, `Dockerfile.agent-<id>`, and
+  `<id>_agent_image_repo` stay in one-to-one mapping with `runtime.profile`.
+  One profile may serve several task kinds, so a profile name must not encode a
+  single operation.
+- `bindings.task_kinds` and `billing_operations` keys live in a separate
+  business vocabulary. Prefer `snake_case` actions such as `feedback_analysis`
+  and `profile_analysis`. A task kind that reuses a platform value, such as
+  `montage` or `whiteboard-animation`, is acceptable, but a task kind must never
+  equal a different Pack identity, and never reuse a bare product word that
+  already means something else, for example user rating feedback.
+- Artifact paths and file names use the task-kind operation vocabulary and are
+  independent of the Pack rename surface.
+
 ## Asset governance
 
 Classify a Skill before editing it:

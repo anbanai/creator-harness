@@ -1,4 +1,4 @@
-name = "feedback"
+name = "feedback-analysis"
 description = "消费服务端按日、周、月周期创建的微信文章与种草笔记反馈任务，生成可追溯的分析证据与策略候选。"
 model = "inherit"
 memory = "none"

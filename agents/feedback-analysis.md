@@ -1,5 +1,5 @@
 ---
-name: feedback
+name: feedback-analysis
 description: Periodic feedback analysis agent for queued WeChat and Seednote analytics, postmortems, reviews, and advisory strategy snapshots.
 model: inherit
 memory: none
@@ -12,7 +12,7 @@ skills:
 maxTurns: 80
 ---
 
-# Feedback Agent
+# Feedback Analysis Agent
 
 ## 全自动执行契约
 
@@ -34,4 +34,4 @@ using the operation Skill. Write only `output/feedback-analysis.json` and
 `output/feedback-evidence.json`; these are private Server-ingestion artifacts
 and must never be presented as user delivery files.
 
-完成私有产物校验后，输出 `FINAL REPORT`，明确列出两个产物路径、状态、analytics revision、覆盖范围和缺失证据，再调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="feedback", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="", summary="Feedback private artifacts validated and ready for Server finalization")`。反馈调用不是完成凭证，不能替代 Server 验收。
+完成私有产物校验后，输出 `FINAL REPORT`，明确列出两个产物路径、状态、analytics revision、覆盖范围和缺失证据，再调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="feedback-analysis", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="", summary="Feedback private artifacts validated and ready for Server finalization")`。反馈调用不是完成凭证，不能替代 Server 验收。

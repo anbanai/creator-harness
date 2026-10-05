@@ -1,11 +1,11 @@
-id: feedback
-version: 1.0.1
+id: feedback-analysis
+version: 1.0.2
 kind: managed
-channel: feedback
+channel: feedback-analysis
 display_name: 反馈分析
 description: 周期性分析公众号与种草笔记数据并生成可追溯的反馈证据。
 agent:
-  name: feedback
+  name: feedback-analysis
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   skills: [data-tracker, publish-analytics, performance-review, content-postmortem, strategy-advisor]
@@ -13,11 +13,11 @@ agent:
 bindings:
   task_kinds: [feedback_analysis]
 runtime:
-  profile: feedback
+  profile: feedback-analysis
   adapter: standard
   max_turns: 40
 surfaces: [plugin, task]
-features: [feedback]
+features: [feedback-analysis]
 billing_operations:
   feedback_analysis: feedback_analysis
 artifacts:

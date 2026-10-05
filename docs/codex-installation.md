@@ -80,7 +80,7 @@ Expected: Anban Creator skills listed (article, content-writing, seednote, ecomm
 /agents
 ```
 
-Expected: 9 subagents listed (article, seednote, moments, montage, whiteboard-animation, ecommerce, hypit, profile-analysis, feedback) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
+Expected: 9 subagents listed (article, seednote, moments, montage, whiteboard-animation, ecommerce, hypit, profile-analysis, feedback-analysis) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
 
 ```
 $anban-setup
@@ -130,7 +130,7 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 
 ### `/agents` shows nothing
 
-- Confirm `~/.codex/agents/*.toml` contains the 9 Anban subagents, including `profile-analysis.toml` and `feedback.toml`.
+- Confirm `~/.codex/agents/*.toml` contains the 9 Anban subagents, including `profile-analysis.toml` and `feedback-analysis.toml`.
 - Confirm `~/.codex/config.toml` contains `[agents.article]` etc.
 - Confirm `[features] multi_agent = true` is in `config.toml`.
 - Fully restart Codex (not just reload).
