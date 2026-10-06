@@ -1,5 +1,5 @@
 id: wechat-picture
-version: 1.0.1
+version: 1.0.2
 kind: managed
 display_name: 微信公众号贴图
 description: 研究选题、编排图片消息并生成公众号 newspic 草稿交付包。

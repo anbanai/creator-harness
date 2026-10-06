@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.29] - 2026-10-06
+
+- Defined the WeChat picture publication package schema shared by the Agent and
+  Server finalizer, including nested readiness and the `content` caption field.
+- Fixed managed artifact validation so required image globs are expanded and
+  literal wildcard placeholder files cannot satisfy the completion gate.
+
 ## [4.2.28] - 2026-10-05
 
 - Pinned the Hypit failure contract `error_code` vocabulary to the platform

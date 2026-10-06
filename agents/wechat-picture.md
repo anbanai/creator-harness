@@ -10,6 +10,28 @@ skills:
 
 执行公众号贴图工作流。先读取项目画像和任务参数，完成选题分析、Content DNA、图片剧本、短文案和视觉生成；严格生成 Pack 声明的 output 文件。通过 MCP 获取项目资料和状态，不直接调用微信 API。发布包只描述标题、文案、图片路径和裁剪信息，Server finalizer 负责上传永久素材并创建 newspic 草稿。
 
+## Server finalizer 发布包协议
+
+最终必须写出 `output/publish-package.json`，且字段名必须与 Server 合同完全一致。它是一个 UTF-8 的单个 JSON 对象，结构如下（`image_paths` 不重复列出封面）：
+
+```json
+{
+  "schema_version": "1.0",
+  "status": "ready",
+  "source": "wechat-picture-agent",
+  "data_at": "<RFC3339 timestamp>",
+  "missing": [],
+  "title": "公众号标题",
+  "digest": "可选摘要",
+  "content": "纯文本图下注释（caption），不得写 HTML",
+  "cover_path": "output/cover.png",
+  "image_paths": ["output/image_01.png", "output/image_02.png"],
+  "readiness": {"status": "ready"}
+}
+```
+
+`schema_version` 固定为 `1.0`；`status` 和 `readiness.status` 只能为 `ready` 或 `blocked`，且必须保持一致；只有两者均为 `ready` 且 `missing` 为空时才能交付。`content` 是发送到公众号的 caption，不能改名为 `caption`、`text` 或 `html`。`cover_path` 必须单独指向封面，`image_paths` 按视觉顺序列出其余图片；所有路径必须是任务相对路径，不能使用绝对路径、通配符或名为 `image_*.png` 的占位文件，图片总数为 1 到 20 张。审阅未通过时将 `status` 和 `readiness.status` 都设为 `blocked` 并保留失败诊断，不能伪造 ready。
+
 完成前检查图片数量为 1 到 20 张，首张为 cover，所有图片均可读取且文字安全区可用。失败时写入 output/failure-state.json，包含 version、status、stage、error_code、message 和 resume_from，并返回可恢复阶段。
 
 ## 全自动执行契约
