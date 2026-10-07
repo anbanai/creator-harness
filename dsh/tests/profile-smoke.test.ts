@@ -408,11 +408,11 @@ describe('profile-smoke process supervision', () => {
             cwd: root,
             env: { PATH: process.env.PATH },
             label: 'timeout probe',
-            timeoutMs: 150,
+            timeoutMs: 500,
           },
         ),
       ).rejects.toThrow(
-        'Profile smoke command "timeout probe" timed out after 150ms',
+        'Profile smoke command "timeout probe" timed out after 500ms',
       )
       const pids = await Promise.all(
         [parentPidPath, descendantPidPath].map(async (path) =>

@@ -8,9 +8,9 @@
 - [类型二：评论引导（comment）](#类型二评论引导comment)
 - [类型三：站内收束（traffic）](#类型三站内收束traffic)
 - [Prompt 模板（v2 - 中文文字渲染优化）](#prompt-模板v2---中文文字渲染优化)
-  - [关注型 tail_type_specific_instructions](#关注型-tailtypespecificinstructions)
+  - [内容预告型 tail_type_specific_instructions](#内容预告型-tailtypespecificinstructions)
   - [评论型 tail_type_specific_instructions](#评论型-tailtypespecificinstructions)
-  - [引流型 tail_type_specific_instructions](#引流型-tailtypespecificinstructions)
+  - [站内收束型 tail_type_specific_instructions](#站内收束型-tailtypespecificinstructions)
 - [生成方式](#生成方式)
 - [image-plan.md 尾图规划模板](#image-planmd-尾图规划模板)
 - [tail [尾部] 类型：{follow|comment|traffic}](#tail-尾部-类型followcommenttraffic)
@@ -110,7 +110,7 @@ Agent 在 image-plan 阶段根据内容主题自动判断，无需用户指定�
 输出验收：{acceptance_criteria}；无水印、无额外文字，尾图与整组风格一致但不复制封面或内容图的整套构图。
 ```
 
-### 关注型 tail_type_specific_instructions
+### 内容预告型 tail_type_specific_instructions
 
 ```
 尾图目的：内容预告收束
@@ -130,7 +130,7 @@ Agent 在 image-plan 阶段根据内容主题自动判断，无需用户指定�
 - 风格活泼，但不要求关键词、私信、购买或关注转化
 ```
 
-### 引流型 tail_type_specific_instructions
+### 站内收束型 tail_type_specific_instructions
 
 ```
 尾图目的：站内收束（{traffic_direction}）
@@ -159,5 +159,5 @@ Agent 在 image-plan 阶段根据内容主题自动判断，无需用户指定�
 
 匹配依据：{为什么选这个类型}
 
-- 内容点: （根据类型填充，关注型=预告+收束语，评论型=问题，站内收束型=站内检索/合集提示）
+- 内容点: （根据类型填充，内容预告型（follow）=预告+收束语，评论型=问题，站内收束型=站内检索/合集提示）
 ```

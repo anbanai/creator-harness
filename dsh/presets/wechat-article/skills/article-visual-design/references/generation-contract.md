@@ -203,7 +203,7 @@ generate_image(
 - `aspect_ratio`：必须显式传入。用户明确比例时每张都使用同一个 `$EFFECTIVE_ASPECT_RATIO`；智能适配时每张可分别从 `resolved_profile.allowed_image_ratios` 选择。
 - `ref_image_path`：仅当封面开启且人物参考未启用时令 `$CONTENT_STYLE_REFERENCE_PATH="output/cover.png"`；封面关闭或人物参考启用时不传，改用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块。
 - `ref_image_path` 只传递"风格语言"，不得复刻封面主体；正文图必须按章节 `visual_brief` / `required_entities` 独立表达。
-- `generate_image` 成功后单独调用 `analyze_image` 执行评分卡；页面目标、实体和关系、逐字文字、构图、安全区、布局/阅读顺序、无越界内容且无导流/营销/违规元素全部通过后，才可进入上传。
+- `generate_image` 成功后必须单独调用 `analyze_image` 执行评分卡；页面目标、实体和关系、逐字文字、构图、安全区、布局/阅读顺序、无越界内容且无导流/营销/违规元素全部通过后，才可进入上传。分析传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，继续其他 slot，但该图不得上传或插入 Markdown/HTML，最终 readiness 必须为 `blocked`。
 - `upload_image` 是 Server-owned 原子 MCP capability；Agent 不直接访问微信，返回的 `media_id` 和 `wechat_url` 只是渲染输入。Server 将上传事实持久化到当前 execution 的 `TaskFile`，finalizer 创建草稿前会重新读取并重新校验 `TaskFile`、execution、`WechatURL`、`MediaID` 和 delivered 状态。上传失败只重试上传；readiness 必须为 `blocked`。
 
 生成、内容质量分析和 CDN 上传始终作为三个独立调用执行：
@@ -222,7 +222,7 @@ analyze_image(
 读取独立 `analyze_image` 的审核结果，由 Agent 映射为通过、修订或失败：
 - 必须实体、章节相关性、文字、构图和合规均满足 → 接受，继续下一步
 - 存在可修订的可见问题 → 根据缺失实体或构图问题锐化 prompt 重试（最多 2 次，共 3 次生成）
-- 3 次仍失败 → 标记 `quality_status=failed`，继续后续 slot
+- 3 次仍失败 → 标记 `quality_status=failed`，继续后续 slot；`failed` 和 `unavailable` 图片都不得上传或插入 Markdown/HTML
 
 **锐化 prompt 策略**：
 - 在 prompt 开头加 "MUST CONTAIN: " + 独立内容审核指出的缺失实体列表

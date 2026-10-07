@@ -124,7 +124,7 @@ render_template(
 - 内容质量：`content-quality-report.md` 全部通过，文章贴合用户需求、账号定位和上下文
 - **导流风险**：无二维码、联系方式、外链 URL、跳小程序、其他公众号/服务号/视频号、进群、加微信、关注/点赞/留言/转发领资料、回复关键词或多重跳转交易；文章在当前页面提供完整信息
 - **模板与节奏**：`visual-rhythm-plan.md` 存在；所选模板的 rhythm 规则被遵守；每个 `##` 章节映射到 slot；封面/配图开启时 `layout_plan` JSON 块的对应 `image_url` 已用 CDN URL 回填（关闭时对应 slot `image_url=null`）
-- **配图内容贴切**（仅正文配图开启时）：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`；`images.json` 中至少 80% 的内容图 `quality_status=passed`
+- **配图内容贴切**（仅正文配图开启时）：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`；每个计划内容图都必须在 `images.json` 留有独立审核结果；只有 `quality_status=passed` 且已上传的图片才能进入 Markdown 或 HTML，`failed`/`unavailable` 记录不得带有效 CDN 字段；任一 `failed`、`unavailable` 或上传失败都将 readiness 设为 `blocked`
 - **封面质量闸门**（仅封面开关开启时）：`cover-prompt.md` 含 `cover_strategy`；`cover-quality.json` 含 `visual_quality_scorecard`、`cover_effectiveness_scorecard` 和人物启用时的身份结论；缺项、任一 `overall_pass=false` 或仅有旧的 6 维视觉评分全为 high 不得通过，并在 `final-review.md` 写入 `cover_quality_gate`
 - 视觉一致性（配图开关开启时）：未启用人物参考且封面开启时内容图可使用 `ref_image_path="output/cover.png"`；封面关闭或人物参考启用时内容图不传 `ref_image_path`，只使用文本风格块
 - SEO：`seo-result.md` 包含优化后的标题和摘要
@@ -162,7 +162,7 @@ render_template(
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，写结构化失败诊断并保留已有产物
 - **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续生成核心 Markdown 与 HTML；视觉失败不得阻止核心 Markdown 与 HTML 继续生成，但 readiness 必须为 `blocked`
-- **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受交付前质量闸门约束
+- **独立分析调用**：每张生成图都必须独立调用 `analyze_image`；传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续后续已规划的图片生成，但该图不得上传或插入 Markdown/HTML，也不得伪造分析结果；最终 readiness 必须为 `blocked`
 - **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉步骤并继续生成核心 HTML 和 blocked 交付包。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定
 - **唯一配置兜底**：仅当 `get_project_profile` 调用成功但缺少可选语义配置（如 `visual_style`、`writer` 或 `theme`）时，才可采用 Agent 默认值并记录来源；只有这种成功响应中的可选字段缺失允许继续，调用失败不属于配置缺失
 - **Runtime 工作区边界**：托管 runtime 已预创建任务私有的 `output/`；Agent 只写显式 `output/<filename>`，不得创建、发现、移动或重命名该目录。

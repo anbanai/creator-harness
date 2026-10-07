@@ -1,8 +1,12 @@
 # Changelog
 
+## [4.2.34] - 2026-10-07
+
+- Hardened visual generation contracts across Seednote, WeChat articles, and WeChat picture messages with structured prompts, independent image review, fail-closed readiness, exact image counts, and Server-owned publication evidence.
+
 ## [4.2.33] - 2026-10-07
 
-- Clarified the Server-owned article image-upload retry and blocked-readiness contract, synchronized Seednote image-review evidence wording, and documented runtime contract v5.
+- Clarified the Server-owned article image-upload retry and blocked-readiness contract, made article visual review fail closed per image, synchronized Seednote image-review evidence wording, normalized Seednote tail labels, and documented runtime contract v5.
 
 ## [4.2.32] - 2026-10-07
 

@@ -22,7 +22,7 @@
 2. **新增 required_entities**：必须出现的具体物体列表（内容审核依据）
 3. **新增 must_match_excerpts**：章节原文锚点，确保实体不脱离章节
 4. **新增页面级蓝图字段**：页面目标、当前章节范围、主体状态/关系、构图地图、文字白名单、跨页变化和页面外禁止项，让最终 prompt 能从计划复原
-5. **独立内容审核**：每张图生成后按需单独调用 `analyze_image`，由 Agent 根据可见内容决定接受或锐化 prompt 重试
+5. **独立内容审核**：每张图生成后都必须单独调用 `analyze_image`，由 Agent 根据可见内容决定接受或锐化 prompt 重试；审核不可用时不能上传或插入正文
 
 完整的字段含义、编译顺序和 prompt 骨架见 [prompt-blueprint.md](prompt-blueprint.md)。本文件保留文章正文图的 schema、章节取证和审核示例；封面继续使用 `article-cover-design` 的独立合同。
 
@@ -393,7 +393,7 @@ $REQUIRED_ENTITIES（逐行列出）
 
 `analyze_image` 是独立能力。Agent 根据其返回的可见内容分析决定接受、修订或失败，并维护只含业务质量观察的 `quality_review`；不得把分析结果视为生成 API 的字段。
 
-判断时逐项检查 `required_entities`、章节相关性、文字准确性、构图、安全区、布局与阅读顺序和合规。只有页面目标、实体和关系、文字逐字准确、构图、安全区、布局/阅读顺序、无越界内容且无导流/营销/违规元素全部满足时，才标记 `quality_status=passed`；存在可修订问题时标记 `retry_needed`；达到创作重试上限后标记 `failed`。任何调用诊断、路由信息或原始响应都不写入 `images.json`。
+判断时逐项检查 `required_entities`、章节相关性、文字准确性、构图、安全区、布局与阅读顺序和合规。只有页面目标、实体和关系、文字逐字准确、构图、安全区、布局/阅读顺序、无越界内容且无导流/营销/违规元素全部满足时，才标记 `quality_status=passed`；存在可修订问题时标记 `retry_needed`；达到创作重试上限后标记 `failed`。`analyze_image` 传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续其他 slot，但该图不得上传或插入正文。任何调用诊断、路由信息或原始响应都不写入 `images.json`。
 
 ### 步骤 4：失败重试
 
@@ -421,7 +421,6 @@ $REQUIRED_ENTITIES（逐行列出）
 analyze_image(
   project_id=$PROJECT_ID,
   task_id=$TASK_ID,
-  project_id=$PROJECT_ID,
   file_path=output/img_01.png,
   prompt=<步骤 2 的校验 prompt>
 )
@@ -476,6 +475,7 @@ Agent 只读取分析中与可见主体、文字、构图和合规有关的内�
 - `passed`：所有 required_entities 出现、内容与章节一致且无禁止内容
 - `retry_needed`：校验失败但仍在重试中
 - `failed`：3 次重试仍不通过，必须继续后续 slot，并在最终报告中标注
+- `unavailable`：审核调用失败、返回 malformed 或无法可靠判断；不得上传或插入正文，最终 readiness 必须为 `blocked`
 - `skipped`：模板规则下该 slot 不需要图（如 footer 仅 module 无图）
 
 ### 审计规则
@@ -483,6 +483,7 @@ Agent 只读取分析中与可见主体、文字、构图和合规有关的内�
 - 每条必须有 `slot_id` + `section_index`，与 `visual-rhythm-plan.md` 对应
 - `quality_review` 必须只含可见内容质量观察
 - `quality_status=failed` 的图片，最终报告中必须列出
+- `quality_status=unavailable` 的图片，最终报告中必须列出，且不得出现 `wechat_url`、`media_id` 或正文插图
 - `$CONTENT_STYLE_REFERENCE_PATH` 非空时，`ref_image_path` 必须与其相等；为空时必须省略 `ref_image_path`
 - `prompt_source_excerpt` 已升级为 `must_match_excerpts`（list，允许多条）
 

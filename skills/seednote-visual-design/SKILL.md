@@ -47,6 +47,12 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 | `generate_image` (project_id, task_id, prompt, image_type, output_path, aspect_ratio, ref_image_paths) | 从创作 prompt 和有序参考集合生成并登记单张任务图片 |
 | `analyze_image` (project_id, task_id, file_path, prompt) | 每张已生成图片都必须独立分析可见主体、文字、构图与合规；结果决定该图能否通过质量闸门 |
 
+每次生成都必须传入当前任务的有效比例：
+
+```text
+generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<当前页最终提示词>, image_type="content", output_path="output/image_01.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO, ref_image_paths=<当前页相关参考>)
+```
+
 ---
 
 ## 平台 Gotcha
@@ -96,7 +102,7 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 3. **目标受众** — 年龄层、消费力影响配色（年轻用户偏饱和鲜艳；成熟用户偏质感低饱和）
 
 **封面、内容图与尾图的一致性**：
-- 封面、内容图和尾图均不预设是否使用任务上传图片。每页根据 `image-plan.md` 独立选择 0、1 或多张任务原图；没有相关任务参考时使用纯文生图。项目风格图只把分析结果写入共享文本风格块，原图路径不得进入生成调用。
+- 封面、内容图和尾图均不预设是否使用任务上传图片。每页根据 `image-plan.md` 独立选择 0、1 或多张任务原图；没有相关任务参考时使用纯文生图。项目风格图只使用分析得到的文本风格块，原图路径不得进入生成调用。
 - 参考素材用于约束产品事实、品牌要素、结构、包装、颜色、角度或氛围中的相关维度，不得把某张素材的全部画面元素无差别复制到每一页
 - 没有相关参考素材的页面通过共享文本风格块（配色/字体/批注/色调）延续调性，并保持独立视觉主体、场景和构图
 
@@ -104,6 +110,14 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 - 用户使用中文时，图片内所有可见文字必须使用简体中文；禁止英文翻译、拼音、乱码、伪词和中英混排
 - 每张图必须围绕 `content.md` 和 `image-plan.md` 的当页主题，不得把尾图预告、其他季节或无关茶类提前画进内容页
 - 健康养生类主题只能表达生活方式建议和传统茶文化语境，禁止承诺治疗、治愈或绝对功效
+
+### 春季花茶/白茶回归示例
+
+当主题为“春季｜百花复苏，宜饮花茶/白茶”或“春日饮茶指南”时，规划至少包含：
+
+- 封面出现“春日饮茶指南”和“花茶+白茶”
+- 内容图出现“茉莉花茶”“白牡丹白茶”“85-90°C”“10秒出汤”
+- 禁止英文标注、“焖泡10秒”、提前出现夏季主题或非茶相关主体
 
 ---
 
@@ -233,31 +247,3 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 无论哪种模式，`do_not_copy` 中列出的元素都必须写入 `image-plan.md` 的风险提示，并在生成 prompt 时显式避开。若模板 `confidence=low` 或视觉证据不足，按 `style-only` 处理。
 
 ---
-
-## 图片生成方式
-
-通过 MCP 工具调用。每次 `generate_image` 只传当前图片的创作需求和语义相关参考。
-
-1. **规划参考子集**：读取 `image-plan.md`，为每张输出图确定 0、1 或多张相关原图；超过服务端上限时按当页相关性截取
-2. **生成封面（单张）**：调用 `generate_image`，`image_type="cover"`，只传封面相关的 `ref_image_paths`
-3. **逐张生成内容图**：每张使用 `image-plan.md` 对应信息点构造创作 prompt，只传当前页相关的 `ref_image_paths`；没有相关参考时纯文生图
-4. **单独生成尾图**：仅当模式包含尾图时调用 `generate_image`，只传尾图相关参考和创作 prompt；否则跳过
-5. **保持原图与顺序**：不得传截图、拼图或转码替代文件；`ref_image_paths` 顺序与 prompt 中的参考图编号完全一致
-6. **带风格描述**：在 prompt 中加入风格描述（如"手绘感，暖色调，小清新"）
-
-**调用示例（封面，务必带上 task_id）**：
-
-```
-generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)
-```
-
-内容图、尾图同理，逐张调用时只替换 `image_type` 与 `output_path`（如 `output/image_01.png`、`output/tail.png`），`task_id=$TASK_ID` 每张都必须带。托管运行时已提供 `output/`，因此 `output_path` 直接使用这些显式路径，服务端可登记为 task_file。
-
-**关键规则**：封面、内容图和尾图均不预设是否使用任务上传图片。每页根据 `image-plan.md` 独立选择 0、1 或多张任务原图；没有相关任务参考时使用纯文生图。项目风格图只使用分析得到的文本风格块，原图路径不得进入生成调用。每张图都使用独立 prompt、独立参考子集和独立内容质量结论；参考某张任务原图不等于复用它的全部场景或版式。
-
-### 春季花茶/白茶回归示例
-
-当输入包含"春季｜百花复苏，宜饮花茶/白茶"、"春日饮茶指南"时，`image-plan.md` 至少包含：
-- 封面必须出现：`春日饮茶指南`、`花茶+白茶`
-- 内容图必须包含：`茉莉花茶`、`白牡丹白茶`、`85-90°C`、`10秒出汤`
-- 禁止出现：英文标注、"焖泡10秒"、夏季主题提前出现在封面或内容图、非茶相关主体

@@ -65,7 +65,7 @@
       - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
       - **交付包格式**：生成版本化 `output/draft.json`，严格使用步骤 10 的 schema。
       - **上传调用**：通过 Server-owned MCP capability `upload_image` 写入 TaskFile；`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续生成核心 Markdown 与 HTML；视觉失败不得阻止核心 Markdown 与 HTML 继续生成，但 readiness 必须为 `blocked`。
-      - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受最终质量闸门约束。
+      - **独立分析调用**：`analyze_image` 必须对每张生成图独立调用；传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续后续已规划的图片生成，但该图不得上传或插入 Markdown/HTML，也不得伪造分析结果；最终 readiness 必须为 `blocked`。
       - **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉步骤并继续生成核心 HTML 和 blocked 交付包。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定。
       - **唯一配置兜底**：仅当 `get_project_profile` 调用成功但缺少可选语义配置（如 `visual_style`、`writer` 或 `theme`）时，才可采用 Agent 默认值并记录来源；只有这种成功响应中的可选字段缺失允许继续，调用失败不属于配置缺失。
       - **Runtime 工作区边界**：托管 runtime 已预创建任务私有的 `output/`；Agent 只写显式 `output/<filename>`，不得创建、发现、移动或重命名该目录。
@@ -189,7 +189,7 @@
 
       逐图 generate_image → 独立 analyze_image → 审核通过后 upload_image。
       **图片上传边界**：`upload_image` 是 Server-owned 的原子 MCP capability。Agent 不直接访问微信、不维护外部 CDN 或发布事实；返回的 URL/`media_id` 只作为当前 HTML/`images.json` 的渲染输入。Server 将上传事实写入当前 execution 的 `TaskFile`，finalizer 创建草稿前会重新读取并重新校验 execution、路径、`WechatURL`、`MediaID` 和 delivered 状态。只有 finalizer 创建公众号草稿；上传失败继续生成核心 HTML，但 readiness 必须为 `blocked`。
-      单图最多 3 次生成，质量耗尽标 quality_status=failed 后继续其余 slot；上传只重试一次。每张立即原子写 `output/images.json`，包含 quality_review / quality_status / wechat_url / media_id，回填 rhythm-plan 的 layout_plan 和最终 Markdown。正文 URL 两两不同且不得复用封面 URL；没有有效 CDN URL 的 slot 保持 null。
+      单图最多 3 次生成，质量耗尽标 quality_status=failed 后继续其余 slot；审核不可用标 quality_status=unavailable，继续其余 slot；这两类图片均不得上传或插入 Markdown/HTML。上传只重试一次。每张立即原子写 `output/images.json`，包含 quality_review / quality_status / wechat_url / media_id，回填 rhythm-plan 的 layout_plan 和最终 Markdown。正文 URL 两两不同且不得复用封面 URL；没有有效 CDN URL 的 slot 保持 null。
 
       最终核对计划与实物、节奏、质量和 URL。视觉失败、质量不足、上传失败均记录结构化 warning，继续生成核心 HTML，并仍然生成 `output/draft.json`，`readiness.status="blocked"`。
 
@@ -224,7 +224,7 @@
       - 内容质量：`content-quality-report.md` 全部通过，文章贴合用户需求、账号定位和上下文
       - **导流风险**：无二维码、联系方式、外链 URL、跳小程序、其他公众号/服务号/视频号、进群、加微信、关注/点赞/留言/转发领资料、回复关键词或多重跳转交易；文章在当前页面提供完整信息
       - **模板与节奏**：`visual-rhythm-plan.md` 存在；所选模板的 rhythm 规则被遵守；每个 `##` 章节映射到 slot；封面/配图开启时 `layout_plan` JSON 块的所有 `image_url` 已用 CDN URL 回填（关闭时对应 slot `image_url=null`）
-      - **配图内容贴切**（配图开关开启时）：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`；`images.json` 中至少 80% 的内容图 `quality_status=passed`
+      - **配图内容贴切**（配图开关开启时）：`image-plan.md` 每张图含 `visual_brief` + `required_entities` + `must_match_excerpts`；每个计划内容图都必须在 `images.json` 留有独立审核结果；只有 `quality_status=passed` 且已上传的图片才能进入 Markdown 或 HTML，`failed`/`unavailable` 记录不得带有效 CDN 字段；任一 `failed`、`unavailable` 或上传失败都将 readiness 设为 `blocked`
       - **封面质量闸门**（封面开关开启时）：`cover-prompt.md` 含生成前决策与最终 prompt；`cover-quality.json` 含 `visual_quality_scorecard` / `cover_effectiveness_scorecard` 和人物启用时的身份结论，并在 `final-review.md` 写入 `cover_quality_gate`；任一 `overall_pass` 不通过、人物身份不通过、缺 `cover_strategy`、或仅有旧的 6 维视觉评分全为 high 不得通过
       - 视觉一致性（配图开关开启时）：未启用人物参考且封面开启时内容图可使用 `ref_image_path="output/cover.png"`；封面关闭或人物参考启用时内容图不传 `ref_image_path`，只使用文本风格块
       - SEO：`seo-result.md` 包含优化后的标题和摘要
