@@ -132,6 +132,8 @@
 
 主体事实：必须出现 {subjects}；它们分别呈现 {states}，并与信息点建立这些关系：{subject_relations}。只表现 {allowed_action}，不得表现 {forbidden_action}。
 
+事实依据原句：{must_match_excerpts}。这些原句仅用于约束画面事实，不得渲染为图片文字。
+
 艺术指导：{medium_and_surface}；共享风格锚点为 {style_anchors}；本页变化为 {page_variation}；批注/图标语言为 {annotation_language}。
 
 光线与质感：{lighting}；强调 {material_details}；避免塑料感、无关反光和主体糊成一团。

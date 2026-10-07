@@ -27,7 +27,7 @@ JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`m
 
 ## 全自动执行契约
 
-本流程生成 `output/04-article-final.md`、`output/05-article.html` 和 `output/draft.json`。图片开启时，审核通过的图片仍须调用 `upload_image` 写入微信图片元数据。
+本流程生成 `output/04-article-final.md`、`output/05-article.html` 和 `output/draft.json`。图片开启时，审核通过的图片必须通过 Server-owned MCP capability `upload_image` 写入当前 execution 的 TaskFile 元数据；Agent 不直接访问微信。
 
 - 这是平台托管的零交互任务；不得调用 `AskUserQuestion`，不得在文本中向用户提问，也不得请求用户协助或因等待选择而结束当前执行。
 - 缺失选择固定按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析，并把采用的默认值和回退原因写入任务产物或进度记录。
@@ -67,7 +67,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
 - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
 - **交付包格式**：生成版本化 `output/draft.json`，严格使用步骤 10 的 schema。
-- **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续。视觉失败不得阻止核心 Markdown 与 HTML 继续生成。
+- **上传调用**：通过 Server-owned MCP capability `upload_image` 写入 TaskFile；调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续核心 Markdown 与 HTML，但 readiness 必须为 `blocked`。
 - **独立分析调用**：`analyze_image` 的传输或运行时失败记录为警告，不得阻塞后续已规划的图片生成，也不得伪造分析结果；最终质量判断由 Agent 负责，并继续受最终质量闸门约束。
 - **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉步骤并继续生成核心 HTML 和 blocked 交付包。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定。
 - **唯一配置兜底**：仅当 `get_project_profile` 调用成功但缺少可选语义配置（如 `visual_style`、`writer` 或 `theme`）时，才可采用 Agent 默认值并记录来源；只有这种成功响应中的可选字段缺失允许继续，调用失败不属于配置缺失。
@@ -188,7 +188,9 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 
 仅在正文图片模式开启时按 `article-visual-design` 的 [生成合同]($CLAUDE_PLUGIN_ROOT/skills/article-visual-design/references/generation-contract.md) 执行；封面关闭或人物参考启用时，不传 ref_image_path，只使用文本风格块。
 
-逐图 generate_image → 独立 analyze_image → 审核通过后 upload_image。单图最多 3 次生成，质量耗尽标 quality_status=failed 后继续其余 slot；上传只重试一次。每张立即原子写 `output/images.json`，包含 quality_review / quality_status / wechat_url / media_id，回填 rhythm-plan 的 layout_plan 和最终 Markdown。正文 URL 两两不同且不得复用封面 URL；没有有效 CDN URL 的 slot 保持 null。
+逐图 generate_image → 独立 analyze_image → 审核通过后 upload_image。
+**图片上传边界**：`upload_image` 是 Server-owned 的原子 MCP capability。Agent 不直接访问微信、不维护外部 CDN 或发布事实；返回的 URL/`media_id` 只作为当前 HTML/`images.json` 的渲染输入。Server 将上传事实写入当前 execution 的 `TaskFile`，finalizer 创建草稿前会重新读取并重新校验 execution、路径、`WechatURL`、`MediaID` 和 delivered 状态。只有 finalizer 创建公众号草稿；上传失败继续生成核心 HTML，但 readiness 必须为 `blocked`。
+单图最多 3 次生成，质量耗尽标 quality_status=failed 后继续其余 slot；上传只重试一次。每张立即原子写 `output/images.json`，包含 quality_review / quality_status / wechat_url / media_id，回填 rhythm-plan 的 layout_plan 和最终 Markdown。正文 URL 两两不同且不得复用封面 URL；没有有效 CDN URL 的 slot 保持 null。
 
 最终核对计划与实物、节奏、质量和 URL。视觉失败、质量不足、上传失败均记录结构化 warning，继续生成核心 HTML，并仍然生成 `output/draft.json`，`readiness.status="blocked"`。
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.2.32] - 2026-10-07
+
+- Made per-image visual review mandatory for Seednote and WeChat picture-message workflows; unavailable or malformed review now blocks delivery while allowing the remaining planned images to finish.
+- Bound all article-facing profile lookups to the `wechat` scope and documented the Server-owned image-upload/finalizer boundary.
+- Enforced exact requested WeChat picture image counts, clarified source-fact prompt excerpts, and removed private-domain conversion cues from Seednote tails.
+
 ## [4.2.31] - 2026-10-07
 
 - Added structured prompt blueprints for WeChat article body images and

@@ -15,7 +15,7 @@ Use this Skill for正文创作、正文质量修订、公众号文章预检和�
 Before writing, read only the minimum necessary context:
 
 1. `output/context-brief.md` and `output/02-outline.md`.
-2. `get_project_profile(project_id, scope="article", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
+2. `get_project_profile(project_id, scope="wechat", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
 3. `list_resources(category="writers")` to confirm the writer key exists.
 4. `get_resource(category="writers", name="$WRITER", include_raw=true)` for writer metadata, tone rules, structure patterns, title formulas, and raw YAML.
 5. When rendering handoff is needed, use `list_resources(category="article_templates")`, `get_resource(category="article_templates", ...)`, `list_resources(category="layouts")`, and `get_resource(category="layouts", ...)` only for the selected template/modules.

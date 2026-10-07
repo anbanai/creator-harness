@@ -28,7 +28,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ## 输入合同
 
-先调用 `get_project_profile(project_id=$PROJECT_ID, scope="article", task_id=$TASK_ID)`，读取：
+先调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取：
 
 - `resolved_profile.image_ratio`
 - `resolved_profile.allowed_image_ratios`

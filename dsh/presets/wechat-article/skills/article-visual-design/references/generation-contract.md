@@ -98,7 +98,7 @@ Phase 4: 配图生成与独立内容审核
 封面在未启用人物参考时可作为正文配图风格锚点；启用人物参考时只保留为封面产物。**封面设计已独立成稿**——using the `article-cover-design` skill，它遵循任务有效比例，智能适配时参考公众号展示规格与中心安全区，受控决定是否显式裁剪，并从文章核心隐喻推导视觉概念，由 Agent 用质量评分卡把关。本阶段只交代与本 skill 的衔接：
 
 - **核心规格**：用户明确比例原样生成；智能适配时可参考公众号宽屏构图和转发卡中心安全区。只有用户明确要求精确尺寸，或目标展示规格确有需要，才显式调用 `crop_image`。
-- **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`；只有用户明确要求精确像素时再显式 `crop_image` 到 `output/cover-exact.png` 并更新 `$COVER_PATH`，否则 `$COVER_PATH="output/cover.png"`；需要质量审核时单独调用 `analyze_image`，通过后调用 `upload_image`。
+- **生成调用**：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<封面提示词>, image_type="cover", output_path="output/cover.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`；只有用户明确要求精确像素时再显式 `crop_image` 到 `output/cover-exact.png` 并更新 `$COVER_PATH`，否则 `$COVER_PATH="output/cover.png"`；封面生成成功后按封面质量合同单独调用 `analyze_image`，通过后再通过 Server-owned MCP capability 调用 `upload_image`；Agent 不直接访问微信。
 
 - **质量评分卡不过** → 根据可见问题锐化 prompt 重试，最多 3 次；耗尽后保留已有产物，在 `output/final-review.md` 记录 `article_cover_quality_failed` warning，返回 Article Agent 继续核心交付；不得请求用户协助，也不得把未通过封面标记为可用。
 - 详细推导链、双评分卡、迭代策略、`cover-prompt.md` 与 `cover-quality.json` 审计见 [article-cover-design/SKILL.md](../../article-cover-design/SKILL.md)；三维风格方向参考见 [references/cover.md](cover.md)。
@@ -162,6 +162,7 @@ Phase 4: 配图生成与独立内容审核
 主体状态与关系：$SUBJECT_STATES / $SUBJECT_RELATIONS
 构图地图：$CAMERA / $SHOT / $FOCAL_AREA / $TEXT_ZONE / $LAYOUT_MAP / $READING_ORDER
 可见文字白名单：$VISIBLE_TEXT_WHITELIST（无字则明确写 `NO TEXT`）
+事实依据原句（只约束事实，不是画面文字）：$MUST_MATCH_EXCERPTS
 页面外禁止带入：$OUT_OF_SCOPE
 请按 JSON 格式回答：
 {
@@ -172,6 +173,8 @@ Phase 4: 配图生成与独立内容审核
   "visible_text_exact": true/false,
   "extra_text_observed": ["白名单之外的文字", ...],
   "text_readability": "high" | "medium" | "low" | "not_applicable",
+  "safe_zone_ok": true/false,
+  "layout_and_reading_order_ok": true/false,
   "composition_matches": true/false,
   "out_of_scope_content_present": true/false,
   "relevance_score": "high" | "medium" | "low",
@@ -200,7 +203,8 @@ generate_image(
 - `aspect_ratio`：必须显式传入。用户明确比例时每张都使用同一个 `$EFFECTIVE_ASPECT_RATIO`；智能适配时每张可分别从 `resolved_profile.allowed_image_ratios` 选择。
 - `ref_image_path`：仅当封面开启且人物参考未启用时令 `$CONTENT_STYLE_REFERENCE_PATH="output/cover.png"`；封面关闭或人物参考启用时不传，改用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块。
 - `ref_image_path` 只传递"风格语言"，不得复刻封面主体；正文图必须按章节 `visual_brief` / `required_entities` 独立表达。
-- `generate_image` 成功后单独调用 `analyze_image` 执行评分卡；通过后再单独调用 `upload_image` 取得 `media_id` 和 `wechat_url`。上传失败只重试上传。
+- `generate_image` 成功后单独调用 `analyze_image` 执行评分卡；页面目标、实体和关系、逐字文字、构图、安全区、布局/阅读顺序、无越界内容且无导流/营销/违规元素全部通过后，才可进入上传。
+- `upload_image` 是 Server-owned 原子 MCP capability；Agent 不直接访问微信，返回的 `media_id` 和 `wechat_url` 只是渲染输入。Server 将上传事实持久化到当前 execution 的 `TaskFile`，finalizer 创建草稿前会重新读取并重新校验 `TaskFile`、execution、`WechatURL`、`MediaID` 和 delivered 状态。上传失败只重试上传；readiness 必须为 `blocked`。
 
 生成、内容质量分析和 CDN 上传始终作为三个独立调用执行：
 
@@ -227,7 +231,7 @@ analyze_image(
 
 ### 步骤 4e：独立上传并立即原子落盘
 
-- 图片通过 Agent 的质量判断后单独调用 `upload_image`，从其返回值取得 `wechat_url` 和 `media_id`。上传失败时保留已生成图片，只重试上传，不重新生成。
+- 图片通过独立 `analyze_image` 且质量判断通过后，才通过 Server-owned MCP capability 调用 `upload_image`；Agent 不直接访问微信或维护外部事实。上传返回的 `wechat_url` 和 `media_id` 写入记录只是当前渲染输入，Server finalizer 会重新读取当前 execution 的 `TaskFile` 并重新校验后才创建草稿。上传失败时保留已生成图片，只重试上传，不重新生成；readiness 必须为 `blocked`。
 - **原子写** `output/images.json`：先写临时文件 `output/.images.json.tmp` → `fsync` → `rename` 覆盖 `output/images.json`。绝不要"攒齐所有图再一次性写"——那是丢失窗口。
 - 每条记录必须包含：
   ```json

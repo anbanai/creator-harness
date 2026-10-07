@@ -85,7 +85,7 @@ get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)
 图片模型对多行中文的逐字稳定性有限，所以文字必须像数据字段一样写：
 
 - `visible_text_whitelist` 按最终阅读顺序逐条记录完整文案，用全角引号「」包裹；不得改字、换标点、同义改写或自动添加标题/页码。
-- `text_policy` 明确 `NO TEXT`、`short_labels` 或 `information_layout`。若是 `NO TEXT`，不得出现任何可读字形、英文、拼音、数字、书页字、logo 或伪词。
+- `text_policy` 明确 `NO TEXT`、`short_labels` 或 `information_layout`。若是 `NO TEXT`，最终画面不渲染任何文字；`NO TEXT` 只是机器控制标记，绝不能把它作为画面文字。不得出现任何可读字形、字母、拼音、数字、书页字、logo 或伪词。
 - 记录 `text_hierarchy`（主标题/标签/正文短句）和 `text_zone`；写清卡片边距、主体避让、对比背景和阅读顺序。
 - 圆形徽章、箭头标签、页码或图标中的汉字也属于可见文字，必须单独列入白名单；prompt 的 `1.`、`2.` 等元编号不是画面文字。
 - “模糊印章”只能是不可辨识的形状或色块，不能生成伪汉字。
@@ -135,7 +135,7 @@ get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)
 
 文字契约：{TEXT_POLICY}。可见文字白名单（按最终阅读顺序逐字）：{VISIBLE_TEXT_WHITELIST}。文字层级为 {TEXT_HIERARCHY}，文字安全区为 {TEXT_ZONE}；不得出现白名单之外的任何文字、字母、拼音、数字、伪词、水印、logo 或导流元素。
 
-页面范围：只表达 {PAGE_SCOPE}。不得带入 {OUT_OF_SCOPE}。
+页面范围：只表达 {PAGE_SCOPE}。事实依据原句（只约束事实，不是画面文字）：{MUST_MATCH_EXCERPTS}。不得带入 {OUT_OF_SCOPE}。
 
 构图地图：{CAMERA}，{SHOT}；第一焦点是 {FOCAL_AREA}；{LAYOUT_MAP}；保留 {NEGATIVE_SPACE}；阅读顺序为 {READING_ORDER}；信息绑定为 {ENTITY_BINDING}。
 
@@ -144,6 +144,8 @@ MUST CONTAIN:
 {REQUIRED_ENTITIES}
 主体状态：{SUBJECT_STATES}。
 主体关系：{SUBJECT_RELATIONS}。
+
+事实依据原句：{MUST_MATCH_EXCERPTS}。这些原句仅用于约束画面事实，不得渲染为图片文字。
 
 艺术指导：主媒介与表面为 {MEDIUM_SURFACE}；系列锚点为 {SERIES_ANCHORS}；本页变化为 {PAGE_VARIATION}；色彩为 {PALETTE}。
 光线与材质：{LIGHTING}；重点表现 {MATERIAL_DETAILS}。
@@ -200,6 +202,7 @@ MUST CONTAIN:
 ```text
 这是公众号贴图第 {SEQUENCE}/{TOTAL} 张，页面类型 {PAGE_ROLE}，页面目标：{PAGE_GOAL}。
 页面范围：{PAGE_SCOPE}
+事实依据原句（只约束事实，不是画面文字）：{MUST_MATCH_EXCERPTS}
 必须出现的实体：{REQUIRED_ENTITIES}
 主体状态与关系：{SUBJECT_STATES} / {SUBJECT_RELATIONS}
 构图地图：{CAMERA} / {SHOT} / {FOCAL_AREA} / {TEXT_ZONE} / {LAYOUT_MAP} / {READING_ORDER}
@@ -226,7 +229,7 @@ MUST CONTAIN:
 }
 ```
 
-`overall_pass=true` 只能在页面目标、实体状态/关系、文字白名单、安全区、跨页范围和合规项全部通过时使用。审核不可用时写 warning，不伪造通过；可见问题最多按每张 3 次生成预算修订。
+`overall_pass=true` 只能在页面目标、实体状态/关系、文字白名单、安全区、跨页范围和合规项全部通过时使用。审核失败、malformed 或无法可靠判断时记录 `quality_status=unavailable`，写入 `output/quality-review.md` 和 `output/failure-state.json`，将 `publish-package.json.status` 与 `readiness.status` 均设为 `blocked`；只有 `ready` 才能交给 Server finalizer。可见问题最多按每张 3 次生成预算修订。
 
 ## 生成前检查
 

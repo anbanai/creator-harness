@@ -17,7 +17,7 @@ Read these local artifacts first:
 1. `output/04-article-final.md` if present; otherwise `output/03-article.md`.
 2. `output/context-brief.md` and `output/01-research.md` for user intent, positioning, chosen topic, and historical differentiation.
 3. `output/02-outline.md` for section logic and SEO seed keywords.
-4. `get_project_profile(project_id, scope="article", task_id?)` only when project keywords, audience, or writer context is missing from local files.
+4. `get_project_profile(project_id, scope="wechat", task_id?)` only when project keywords, audience, or writer context is missing from local files.
 
 ## Configuration Boundaries
 

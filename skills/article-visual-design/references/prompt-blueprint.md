@@ -138,6 +138,8 @@ slot 与页面目标 → 文字契约 → 构图地图 → 章节证据与主体
 
 章节证据：{visual_brief}。必须出现：{required_entities}。它们的可见状态为 {subject_states}，与本章论点的关系为 {subject_relations}。只使用当前章节的 {page_scope}，不得引入 {out_of_scope}。
 
+事实依据原句：{must_match_excerpts}。这些原句仅用于约束画面事实，不得渲染为图片文字。
+
 艺术指导：主媒介与表面为 {medium_surface}；系列风格锚点为 {series_anchors}；本页变化为 {page_variation}；色彩为 {palette}。
 
 光线与材质：{lighting}；重点表现 {material_details}，让主体与背景分离。

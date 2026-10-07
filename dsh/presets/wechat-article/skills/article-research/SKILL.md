@@ -13,7 +13,7 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 ## Discovery First
 
 1. Read the user prompt and decide whether a concrete topic or current-hot-topic intent was specified. Phrases such as “今天有什么热点” or “当前热搜” are trend-discovery intent, not a concrete article topic.
-2. Call `get_project_profile(project_id, scope="article", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
+2. Call `get_project_profile(project_id, scope="wechat", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
 3. For current-hot-topic intent, invoke `trending-topics` immediately after profile resolution so the request always reaches `list_trends`; do not let a non-empty topic pool suppress that call. Use the pool as fallback or an additional candidate source. For ordinary topic discovery without a specified topic, call `claim_topic(project_id, task_id?)` first.
 4. Always call `list_project_titles(project_id)`, `list_drafts(project_id)`, and `list_published_articles(project_id)` before finalizing a title or outline.
 5. Build an exclusion list from existing titles, draft titles, published titles, and close keyword variants.

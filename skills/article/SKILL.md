@@ -53,7 +53,7 @@ description: Use when the user asks to create a complete WeChat Official Account
 
 **项目选定后，仅对 `$PROJECT_ID` 调用：**
 
-- `get_project_profile(project_id="$PROJECT_ID", scope="article", task_id="$TASK_ID")` → 获取账号定位、受众、风格维度。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `visual_style` 字段、`$VISUAL_STYLE_SOURCE` = `visual_style_source`（task / project）。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层），不传则只拿到 project 级信息。顶层 `writer` 仅用于选择写作风格资源。
+- `get_project_profile(project_id="$PROJECT_ID", scope="wechat", task_id="$TASK_ID")` → 获取账号定位、受众、风格维度。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `visual_style` 字段、`$VISUAL_STYLE_SOURCE` = `visual_style_source`（task / project）。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层），不传则只拿到 project 级信息。顶层 `writer` 仅用于选择写作风格资源。
 - `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功
 - 使用 runtime 已预创建的 `output/`；不得创建、发现、移动或重命名该目录
 

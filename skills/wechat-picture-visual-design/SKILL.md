@@ -24,7 +24,7 @@ get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)
 
 ## 页面规划与生成
 
-1. 读取 `output/content-script.md`、`output/content.md`、项目画像和任务输入，先决定总图片数（封面加内容图为 1–20 张）和每页的 `page_role`：`cover`、`content` 或按任务需要的 `summary`。
+1. 读取 `output/content-script.md`、`output/content.md`、项目画像和任务输入。`picture_image_count` 是请求的总图片数，包含封面，必须为 1–20；`cover_path + image_paths` 必须恰好等于该数量，不足或超出都阻塞交付。再为每页确定 `page_role`：`cover`、`content` 或按任务需要的 `summary`。
 2. 写 `output/image-plan.md`。每页必须独立填写 `page_goal`、`page_scope`、`visible_text_whitelist`、`required_entities`、主体状态/关系、镜头/景别/焦点、文字安全区、`layout_map`、阅读顺序、媒介/色彩/光线、跨页变化、页面外禁止项和验收标准。用户锁定文案逐字保留；无字页写 `NO TEXT`。
 3. 逐页按 [references/prompt-blueprint.md](references/prompt-blueprint.md) 编译最终提示词，记录实际 `$EFFECTIVE_ASPECT_RATIO` 和参考图用途。封面使用 `image_type="cover"`，后续图片使用 `image_type="content"`；调用只传当前页相关参考。
 
@@ -41,9 +41,9 @@ generate_image(
 
 将每张最终提示词写入 `output/image-prompts.md`，按视觉顺序记录用途、有效比例和参考图职责。
 
-4. 每张生成成功后独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核 prompt>)`，检查页面目标、实体、状态/关系、文字逐字准确、阅读顺序、安全区、串页内容、跨页重复和导流元素。可见问题按单图最多 3 次生成尝试修订；分析不可用只能记录 warning，不能伪造通过。
+4. 每张生成成功后必须独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核 prompt>)`，检查页面目标、实体、状态/关系、文字逐字准确、阅读顺序、安全区、串页内容、跨页重复和导流元素。可见问题按单图最多 3 次生成尝试修订；调用失败、malformed 或无法可靠判断时记录 `quality_status=unavailable` 和 warning，继续生成后续计划图片，但不能把该图算作通过。
 5. 只有审核接受后才保留为交付图片并写入 `output/quality-review.md`。图片文件必须可读，`cover_path` 单独指向封面，`image_paths` 按视觉顺序列出后续图片且不重复封面。
-6. 完成前按 Pack 合同写 `output/publish-package.json`：任何缺图、文字错误、关键关系错误或质量失败都把 `status` 与 `readiness.status` 设为 `blocked`，并写 `output/failure-state.json`；本地文件存在不能证明 Server 已上传或创建草稿。
+6. 完成前按 Pack 合同写 `output/publish-package.json`：任何缺图、文字错误、关键关系错误、`quality_status=failed` 或 `quality_status=unavailable` 都把 `status` 与 `readiness.status` 设为 `blocked`，并写 `output/failure-state.json`；只有 `ready` 才能交给 Server finalizer，本地文件存在不能证明 Server 已上传或创建草稿。
 
 ## 质量闸门
 
@@ -53,4 +53,6 @@ generate_image(
 - [ ] 文字区、主体区、边缘裁切和手机缩略图安全
 - [ ] 共享风格稳定，但连续三张不复用同一主体、同一景别和同一色块重心
 - [ ] `image-plan.md`、`image-prompts.md`、`quality-review.md` 和交付包的页序一致
-- [ ] 只把质量通过的本地图片放进 `publish-package.json`；发布事实由 Server finalizer 返回
+- [ ] 每张图片都有独立审核结果；`quality_status=unavailable` 或 `failed` 时 `status` 与 `readiness.status` 必须均为 `blocked`
+- [ ] `picture_image_count` 为总图片数（包含封面），`cover_path + image_paths` 恰好等于请求数，且总数在 1–20
+- [ ] 只有 `ready` 且全部审核通过的图片才进入 `publish-package.json`；发布事实由 Server finalizer 返回

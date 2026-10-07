@@ -55,6 +55,6 @@
 
 ## tail [尾部] 类型：{follow|comment|traffic}（**仅当 `seednote_image_mode` 包含尾图时添加本节；不含尾图则整节省略**）
 
-匹配依据：{根据内容类型自动判断——知识干货→follow, 测评对比→comment, 种草推荐→traffic}
+匹配依据：{根据内容类型自动判断——知识干货→follow, 测评对比→comment, 种草推荐→traffic（仅站内内容收束）}
 - 内容点: （见 tail.md 规范，根据类型填充）
 ```

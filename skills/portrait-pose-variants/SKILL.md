@@ -99,7 +99,7 @@ description: Use when generating multiple pose/expression variants from a single
 
 ### Phase 0 — 初始化
 
-从任务身份和默认项目解析 `$PROJECT_ID` / `$TASK_ID`，读取 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="article")`。记录原始人像、所需姿态/表情、张数、风格和有效比例到 `output/input-manifest.md`；任务给定值优先，不得重问已给信息。
+从任务身份和默认项目解析 `$PROJECT_ID` / `$TASK_ID`，读取 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="wechat")`。记录原始人像、所需姿态/表情、张数、风格和有效比例到 `output/input-manifest.md`；任务给定值优先，不得重问已给信息。
 
 详见 [references/input-template.md](references/input-template.md)；仅在上述阶段读取。
 

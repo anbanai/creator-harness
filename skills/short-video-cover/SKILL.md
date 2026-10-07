@@ -71,7 +71,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ### Phase 0 — 初始化
 
-读取任务身份、项目与参考封面，写 `output/input-manifest.md`：新主题、标题、平台、参考深度、风格、比例和张数。任务输入优先；`get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="article")` 返回任务有效比例。
+读取任务身份、项目与参考封面，写 `output/input-manifest.md`：新主题、标题、平台、参考深度、风格、比例和张数。任务输入优先；`get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="wechat")` 返回任务有效比例。
 
 详见 [references/input-template.md](references/input-template.md)；仅在上述阶段读取。
 

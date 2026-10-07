@@ -377,6 +377,8 @@ $REQUIRED_ENTITIES（逐行列出）
   "visible_text_exact": true/false,
   "extra_text_observed": ["..."],
   "text_readability": "high" | "medium" | "low" | "not_applicable",
+  "safe_zone_ok": true/false,
+  "layout_and_reading_order_ok": true/false,
   "composition_matches": true/false,
   "out_of_scope_content_present": true/false,
   "relevance_score": "high" | "medium" | "low",
@@ -391,7 +393,7 @@ $REQUIRED_ENTITIES（逐行列出）
 
 `analyze_image` 是独立能力。Agent 根据其返回的可见内容分析决定接受、修订或失败，并维护只含业务质量观察的 `quality_review`；不得把分析结果视为生成 API 的字段。
 
-判断时逐项检查 `required_entities`、章节相关性、文字准确性、构图和合规。全部满足时标记 `quality_status=passed`；存在可修订问题时标记 `retry_needed`；达到创作重试上限后标记 `failed`。任何调用诊断、路由信息或原始响应都不写入 `images.json`。
+判断时逐项检查 `required_entities`、章节相关性、文字准确性、构图、安全区、布局与阅读顺序和合规。只有页面目标、实体和关系、文字逐字准确、构图、安全区、布局/阅读顺序、无越界内容且无导流/营销/违规元素全部满足时，才标记 `quality_status=passed`；存在可修订问题时标记 `retry_needed`；达到创作重试上限后标记 `failed`。任何调用诊断、路由信息或原始响应都不写入 `images.json`。
 
 ### 步骤 4：失败重试
 
@@ -454,6 +456,8 @@ Agent 只读取分析中与可见主体、文字、构图和合规有关的内�
       "visible_subjects": ["stone path", "green shoot"],
       "text_observations": [],
       "composition_observations": ["主体位于右侧三分线"],
+      "safe_zone_ok": true,
+      "layout_and_reading_order_ok": true,
       "compliance_observations": []
     },
     "ref_image_path": "output/cover.png",

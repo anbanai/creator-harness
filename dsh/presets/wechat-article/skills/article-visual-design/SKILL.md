@@ -22,7 +22,7 @@ description: 'Use only when the Article workflow enters its visual planning, con
 
 ### 任务图像参数合同
 
-- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="article", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
 - `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，封面和正文图的每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 - `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 按每张产物职责从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；公众号常用宽屏、横版或方形比例只作选择参考。
 - 每次生成都必须显式传 `aspect_ratio` 参数。
@@ -77,6 +77,10 @@ description: 'Use only when the Article workflow enters its visual planning, con
 | `download_image` (project_id, task_id, url, output_path) | 下载公共 HTTPS 图片并登记为持久任务文件 |
 | `compress_image` (task_id, input_path, output_path, max_width?) | 压缩授权任务图并登记新的持久任务文件 |
 
+### Server-owned 上传边界
+
+`upload_image` 是 Server-owned 的原子 MCP capability。Agent 只能通过带有当前 `project_id`/`task_id` 的 MCP 调用提交本地图像；Agent 不直接访问微信 API，也不维护外部 CDN、`media_id` 或草稿事实。MCP 返回的 URL/媒体 ID 只是当前 Markdown/HTML 和 `images.json` 的渲染输入；Server 会把它们写入当前 execution 作用域的 `TaskFile`，由 finalizer 在创建草稿前重新读取并重新校验路径、execution、`WechatURL`、`MediaID` 和状态。只有 Server finalizer 能创建公众号草稿；上传失败时继续生成核心 HTML，但 readiness 必须为 `blocked`。
+
 ---
 
 ## 规划、生成与持久化
@@ -87,7 +91,7 @@ description: 'Use only when the Article workflow enters its visual planning, con
 4. 正文规划：`output/image-plan.md` 每图含 visual_brief、required_entities、must_match_excerpts；实体必须来自该章节，不能仅写抽象风格。按 [references/prompt-blueprint.md](prompt-blueprint.md) 补齐页面目标、文字白名单、构图地图、主体状态/关系、媒介与光线、跨页变化、页面外禁止项和可观察验收条件。
 5. 逐 slot 生成：先按 [references/prompt-blueprint.md](prompt-blueprint.md) 的顺序编译“页面目标 → 文字契约 → 构图地图 → 章节证据 → 艺术指导/光线 → 跨页连续性 → 禁止项 → 输出验收”，再调用 `generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<当页提示词>, image_type="content", output_path="output/img_N.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`。仅当封面可用且未启用人物参考时，可传 `ref_image_path="output/cover.png"`；否则只用文本风格块。
 6. 独立审核：`analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>, prompt=<页面目标/实体与关系/文字白名单/构图/合规检查>)`。可见问题最多共 3 次生成，耗尽标 `quality_status=failed`，继续后续 slot；分析运行失败记 warning，不伪造评分。
-7. 接受图片后调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>)`；失败仅重试上传一次，仍失败保留本地图和 warning，返回 Agent 继续核心 HTML 与 blocked draft。
+7. 接受图片后通过 Server-owned MCP capability 调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>)`；Agent 不直接访问微信。失败仅重试上传一次，仍失败保留本地图和 warning，返回 Agent 继续核心 HTML，但 readiness 必须为 `blocked`。Server finalizer 会重新读取并重新校验当前 execution 的 `TaskFile`、`WechatURL` 与 `MediaID` 后才创建草稿。
 8. 每张立即原子写 `output/images.json`（临时文件 → fsync → rename），包含 slot、章节、实体、原句、最终 prompt、quality_review、file_path、wechat_url、media_id、quality_status。只将已接受且已上传的 CDN 图片按 slot 插回 `output/04-article-final.md`，不得插入失效路径。
 
 详见 [references/generation-contract.md](references/generation-contract.md)；仅在上述阶段读取。
