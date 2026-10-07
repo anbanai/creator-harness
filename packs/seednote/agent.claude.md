@@ -196,7 +196,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 #### 步骤 10：交付校验
 
-再次确认 `output/content.md` 第一行等于已接受 `$FINAL_TITLE`，并逐项校验 `content.md`、`image-plan.md`、`image-prompts.md`、`image-review.md`、`reference-usage-summary.json`、合规报告（复刻模式）以及计划中的全部图片都直接位于 `output`。图片数量必须与计划一致；每张计划图片都必须成功生成。`image-review.md` 记录每张图片的可见内容质量观察和“审核不可用” warning；`quality_status=unavailable` 或 `failed` 时不得报告成功，必须保留 `output/failure-state.json`，整体质量闸门不得放行。所有产物始终保留在 `output`，不得移动、复制或按标题重命名成果目录。`output/failure-state.json` 存在时不得报告成功；恢复执行仅在所有交付校验通过后、即将报告成功前删除 `output/failure-state.json`。
+再次确认 `output/content.md` 第一行等于已接受 `$FINAL_TITLE`，并逐项校验 `content.md`、`image-plan.md`、`image-prompts.md`、`image-review.md`、`reference-usage-summary.json`、合规报告（复刻模式）以及计划中的全部图片都直接位于 `output`。图片数量必须与计划一致；每张计划图片都必须成功生成。`image-review.md` 记录可见内容质量观察和每张图片的“审核不可用” warning；`quality_status=unavailable` 或 `failed` 时不得报告成功，必须保留 `output/failure-state.json`，整体质量闸门不得放行。所有产物始终保留在 `output`，不得移动、复制或按标题重命名成果目录。`output/failure-state.json` 存在时不得报告成功；恢复执行仅在所有交付校验通过后、即将报告成功前删除 `output/failure-state.json`。
 
 **产出**：`output`
 

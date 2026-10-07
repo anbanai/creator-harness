@@ -116,7 +116,7 @@ directory and tests writing; storage failures terminate with
 `project_memory_unavailable` instead of silently losing memory. Memory updates
 remain the Agent's decision, not a mandatory artifact of every task.
 
-This layout requires runtime contract version 4. Build and deploy the Server and
+This layout requires runtime contract version 5. Build and deploy the Server and
 all selected Agent images together; older workers are rejected at bootstrap.
 Use immutable image digests for deployment. There is no legacy-directory
 migration. A completed task alone does not prove a memory file was written.

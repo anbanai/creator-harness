@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.33] - 2026-10-07
+
+- Clarified the Server-owned article image-upload retry and blocked-readiness contract, synchronized Seednote image-review evidence wording, and documented runtime contract v5.
+
 ## [4.2.32] - 2026-10-07
 
 - Made per-image visual review mandatory for Seednote and WeChat picture-message workflows; unavailable or malformed review now blocks delivery while allowing the remaining planned images to finish.
