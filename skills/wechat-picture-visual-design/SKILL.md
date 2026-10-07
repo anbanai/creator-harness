@@ -5,4 +5,52 @@ description: Use when planning or reviewing multi-image WeChat picture-message v
 
 # 微信公众号贴图视觉设计
 
-把内容拆成封面和 1 到 19 张后续图片，优先竖版移动阅读比例，保持标题、正文和安全区清晰。生成 `output/image-plan.md`、`output/image-prompts.md`、`output/cover.png` 与 `output/image_*.png`，并复核文字密度、顺序、重复素材和裁剪安全区。
+把内容拆成封面和 1 到 19 张后续图片，按视觉顺序服务移动端阅读。封面承担停留和点击承诺，内容页承担一个明确的信息理解动作；不能把同一张封面 prompt 换标题后批量复用。完整的页面槽位、文字白名单、构图地图、主体关系、系列连续性和审核 JSON 见 [references/prompt-blueprint.md](references/prompt-blueprint.md)，进入规划和生成阶段必须读取。
+
+## 图像参数合同
+
+生成前调用：
+
+```text
+get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)
+```
+
+读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`、`resolved_profile.visual_style` 和任务可用参考路径：
+
+- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：封面与每一张内容图必须原样作为 `$EFFECTIVE_ASPECT_RATIO`。
+- `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：只能从 `resolved_profile.allowed_image_ratios` 选择；公众号贴图在能力允许时可偏好 `3:4` 或 `1:1`，不能覆盖用户明确值。
+- 每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`（显式传 `aspect_ratio`），并在最终 prompt 中写出严格画布比例；`image_type` 不隐式决定比例或裁剪。
+- 失败、超时、身份错误和比例不支持按 Agent Pack 的失败合同落盘；不能通过换比例、换 Provider 或删掉页面约束掩盖错误。
+
+## 页面规划与生成
+
+1. 读取 `output/content-script.md`、`output/content.md`、项目画像和任务输入，先决定总图片数（封面加内容图为 1–20 张）和每页的 `page_role`：`cover`、`content` 或按任务需要的 `summary`。
+2. 写 `output/image-plan.md`。每页必须独立填写 `page_goal`、`page_scope`、`visible_text_whitelist`、`required_entities`、主体状态/关系、镜头/景别/焦点、文字安全区、`layout_map`、阅读顺序、媒介/色彩/光线、跨页变化、页面外禁止项和验收标准。用户锁定文案逐字保留；无字页写 `NO TEXT`。
+3. 逐页按 [references/prompt-blueprint.md](references/prompt-blueprint.md) 编译最终提示词，记录实际 `$EFFECTIVE_ASPECT_RATIO` 和参考图用途。封面使用 `image_type="cover"`，后续图片使用 `image_type="content"`；调用只传当前页相关参考。
+
+```text
+generate_image(
+  project_id=$PROJECT_ID,
+  task_id=$TASK_ID,
+  prompt=<当前页最终 prompt>,
+  image_type="cover" 或 "content",
+  output_path="output/cover.png" 或 "output/image_NN.png",
+  aspect_ratio=$EFFECTIVE_ASPECT_RATIO
+)
+```
+
+将每张最终提示词写入 `output/image-prompts.md`，按视觉顺序记录用途、有效比例和参考图职责。
+
+4. 每张生成成功后独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核 prompt>)`，检查页面目标、实体、状态/关系、文字逐字准确、阅读顺序、安全区、串页内容、跨页重复和导流元素。可见问题按单图最多 3 次生成尝试修订；分析不可用只能记录 warning，不能伪造通过。
+5. 只有审核接受后才保留为交付图片并写入 `output/quality-review.md`。图片文件必须可读，`cover_path` 单独指向封面，`image_paths` 按视觉顺序列出后续图片且不重复封面。
+6. 完成前按 Pack 合同写 `output/publish-package.json`：任何缺图、文字错误、关键关系错误或质量失败都把 `status` 与 `readiness.status` 设为 `blocked`，并写 `output/failure-state.json`；本地文件存在不能证明 Server 已上传或创建草稿。
+
+## 质量闸门
+
+- [ ] 封面在缩略图中给出具体点击理由，内容页按视觉顺序各自完成一个理解动作
+- [ ] 所有页面文字都在白名单内，无乱码、伪词、英文/拼音、二维码、水印或导流内容
+- [ ] 每个信息点都有对应主体、状态或关系，且没有把其他页面或 caption 带入
+- [ ] 文字区、主体区、边缘裁切和手机缩略图安全
+- [ ] 共享风格稳定，但连续三张不复用同一主体、同一景别和同一色块重心
+- [ ] `image-plan.md`、`image-prompts.md`、`quality-review.md` 和交付包的页序一致
+- [ ] 只把质量通过的本地图片放进 `publish-package.json`；发布事实由 Server finalizer 返回

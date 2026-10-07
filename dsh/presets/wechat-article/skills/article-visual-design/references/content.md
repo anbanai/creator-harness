@@ -21,7 +21,10 @@
 1. **新增 visual_brief**：1-2 句白话"这张图必须画什么"，替代抽象的 visual_subject
 2. **新增 required_entities**：必须出现的具体物体列表（内容审核依据）
 3. **新增 must_match_excerpts**：章节原文锚点，确保实体不脱离章节
-4. **独立内容审核**：每张图生成后按需单独调用 `analyze_image`，由 Agent 根据可见内容决定接受或锐化 prompt 重试
+4. **新增页面级蓝图字段**：页面目标、当前章节范围、主体状态/关系、构图地图、文字白名单、跨页变化和页面外禁止项，让最终 prompt 能从计划复原
+5. **独立内容审核**：每张图生成后按需单独调用 `analyze_image`，由 Agent 根据可见内容决定接受或锐化 prompt 重试
+
+完整的字段含义、编译顺序和 prompt 骨架见 [prompt-blueprint.md](prompt-blueprint.md)。本文件保留文章正文图的 schema、章节取证和审核示例；封面继续使用 `article-cover-design` 的独立合同。
 
 ---
 
@@ -81,16 +84,38 @@ content_only → $CONTENT_STYLE_REFERENCE_PATH = ""
 # 基础字段（沿用旧版）
 - chapter_title: {章节标题}
 - core_point: {章节核心论点，1 句话}
+- page_goal: {读者看到图片后要完成的一个理解动作}
+- page_scope: {本图允许使用的章节事实/段落范围}
 - composition_type: {8 种构图类型之一}
 - source_excerpt: {章节原文摘录}
 
 # 新字段（强制）
 - visual_brief: 1-2 句白话描述"这张图必须画什么"
 - required_entities: 必须出现的具体物体列表（内容审核依据）
+- subject_states: 每个实体的可见状态（打开/密封、干燥/潮湿、正在进行/已完成等）
+- subject_relations: 实体与章节论点、动作、对比或因果关系
 - must_match_excerpts: 章节中支撑这些实体的原句（防止凭空编造）
+- camera: 镜头角度
+- shot: 景别
+- focal_area: 第一视觉焦点及相对区域
+- text_policy: 无字或受控短标签
+- visible_text_whitelist: 按最终阅读顺序逐字列出的可见文字；无字时写 `NO TEXT`
+- text_zone: 文字或主体保护区
+- layout_map: 信息块/主体的相对布局
+- negative_space: 明确留白区域
+- reading_order: 读者扫描顺序
+- medium_surface: 主媒介与表面
+- palette: 主色与强调色
+- lighting: 光线方向、软硬和色温
+- material_details: 要看清的材质细节
+- series_anchors: 跨页共享的风格锚点
+- page_variation: 本页相对前页的主体、视角或场景变化
+- out_of_scope: 不得带入的其他章节信息、主体、数字或结论
+- anti_generic_constraints: 避免模板化的具体约束
+- acceptance_criteria: 可观察的通过条件
 
 # 衍生字段
-- prompt_strategy: 把 visual_brief + required_entities + composition_type + 风格语言组合成最终 prompt 的策略
+- prompt_strategy: 按 prompt-blueprint.md 的顺序把上述字段组合成最终 prompt 的策略
 ```
 
 ---
@@ -187,7 +212,18 @@ must_match_excerpts:
 - section_index: 1
 - chapter_title: 身体的智慧
 - core_point: 身体有自己的节奏，强行加速只会破坏自我修复机制
+- page_goal: 让读者看见“自我修复从裂缝开始”的具体证据
+- page_scope: 本章石板路、新芽和晨光的段落
 - composition_type: 三分法
+- camera: 平视略低角度
+- shot: 石板路局部环境中景
+- focal_area: 右侧三分线交点的裂缝和新芽
+- text_policy: 无字
+- visible_text_whitelist: [NO TEXT]
+- text_zone: 左侧浅色路面保持干净，作为主体保护区
+- layout_map: 裂缝从左下延至右侧焦点，新芽从裂缝向上突破
+- negative_space: 上方和左侧保留晨光留白
+- reading_order: 先看裂缝里的新芽，再看晨光和石板路的压迫感
 - source_excerpt: "他说，'你看这条石板路的缝里，不也长出了新芽？'"
 
 # 新字段
@@ -196,10 +232,26 @@ must_match_excerpts:
   - "stone path with visible crack"
   - "tender green shoots emerging from crack"
   - "soft blurred morning light in background"
+- subject_states:
+  - "weathered stone path with a dry, visible crack"
+  - "fresh shoots actively emerging upward"
+  - "soft morning light falling across the crack"
+- subject_relations:
+  - "the shoots must visibly originate from the crack, not sit beside it"
+  - "the hard path surrounds the shoots and proves the chapter's resilience point"
 - must_match_excerpts:
   - "他说，'你看这条石板路的缝里，不也长出了新芽？'"
   - "晨光透过窗棂，斜斜地落在那道裂缝上。"
-- prompt_strategy: 主体在右三分线交点，裂缝横贯画面，新芽向上突破，强化"自我修复"的隐喻
+- medium_surface: 温暖自然摄影，真实石材和叶片纹理
+- palette: 石板灰、嫩绿、柔金色晨光
+- lighting: 左上方柔和晨光，裂缝和叶片边缘有可见高光
+- material_details: 粗糙石材裂纹、叶片湿润表面
+- series_anchors: 温暖自然光、克制大地色、真实物理关系
+- page_variation: 本页用低角度局部自然场景，不重复封面的主体和视角
+- out_of_scope: 其他章节的人物、茶具、数字或结论
+- anti_generic_constraints: 不要通用绿叶背景、盆栽、无裂缝的草地或抽象励志符号
+- acceptance_criteria: 裂缝与新芽关系清楚；缩略图仍能一眼看到“硬石缝里长出新芽”；无额外文字
+- prompt_strategy: 按 prompt-blueprint.md 编译：主体在右三分线交点，裂缝横贯画面，新芽向上突破，强化"自我修复"的证据
 ```
 
 ---
@@ -227,17 +279,27 @@ must_match_excerpts:
 
 ## 内容配图 Prompt 构建
 
-基于 image-plan.md 的字段构建最终 prompt：
+按 [prompt-blueprint.md](prompt-blueprint.md) 的顺序基于 image-plan.md 的字段构建最终 prompt。`visual_style` 和 `color_palette` 只提供共享锚点，不能覆盖当前章节实体、页面目标或文字策略：
 
 ```
-{VISUAL_STYLE}. {COLOR_PALETTE}.
-{VISUAL_BRIEF}.
+页面契约：公众号文章《{ARTICLE_TITLE}》的 {SLOT_ID}，服务《{CHAPTER_TITLE}》；页面目标：{PAGE_GOAL}；当前章节范围：{PAGE_SCOPE}；最终画布比例严格为 {EFFECTIVE_ASPECT_RATIO}，展示尺寸为 {IMAGE_SIZE}。
+
+文字契约：{TEXT_POLICY}。可见文字白名单（按顺序逐字）：{VISIBLE_TEXT_WHITELIST}。文字/主体保护区：{TEXT_ZONE}；禁止白名单之外的文字、字母、拼音、页码、书页字、水印、logo、二维码或导流信息。
+
+构图地图：{CAMERA}，{SHOT}；第一焦点：{FOCAL_AREA}；{LAYOUT_MAP}；留白：{NEGATIVE_SPACE}；阅读顺序：{READING_ORDER}。
+
+章节证据：{VISUAL_BRIEF}
 
 MUST CONTAIN:
 {REQUIRED_ENTITIES 逐行列出}
 
-{COMPOSITION_TYPE_DESCRIPTION}. {MOOD_MATCHING_CHAPTER}.
-{IMAGE_SIZE_HINT}, photographic quality.
+主体状态：{SUBJECT_STATES}。
+实体关系：{SUBJECT_RELATIONS}。
+艺术指导：主媒介与表面 {MEDIUM_SURFACE}；系列锚点 {SERIES_ANCHORS}；本页变化 {PAGE_VARIATION}；色彩 {PALETTE}。
+光线与材质：{LIGHTING}；重点表现 {MATERIAL_DETAILS}。
+页面外禁止带入：{OUT_OF_SCOPE}。
+负面约束：{ANTI_GENERIC_CONSTRAINTS}；不得复刻封面主体、封面构图或其他章节画面。
+输出验收：{ACCEPTANCE_CRITERIA}；移动端缩略图仍能完成页面目标。
 ```
 
 ### 示例
@@ -245,14 +307,26 @@ MUST CONTAIN:
 基于上面的 img_01：
 
 ```
-Warm natural photography, soft golden hour light. A tender green shoot emerging from a crack in a weathered stone path, symbolizing natural healing and resilience.
+页面契约：公众号文章《慢下来的力量》的 section_opener，服务《身体的智慧》；页面目标：让读者看见“自我修复从裂缝开始”的具体证据；当前章节范围：本章石板路、新芽和晨光的段落；最终画布比例严格为 $EFFECTIVE_ASPECT_RATIO，展示尺寸为 full-width。
+
+文字契约：无字。可见文字白名单（按顺序逐字）：NO TEXT。文字/主体保护区：左侧浅色路面保持干净；禁止白名单之外的文字、字母、拼音、页码、书页字、水印、logo、二维码或导流信息。
+
+构图地图：平视略低角度，石板路局部环境中景；第一焦点是右侧三分线交点的裂缝和新芽；裂缝从左下延至右侧焦点，新芽从裂缝向上突破；留白在上方和左侧；阅读顺序是先看裂缝里的新芽，再看晨光和石板路的压迫感。
+
+章节证据：一颗石头路上的裂缝中钻出嫩绿新芽，背景是虚化的晨光。
 
 MUST CONTAIN:
 - stone path with visible crack
 - tender green shoots emerging from crack
 - soft blurred morning light in background
 
-Rule of thirds composition, shoots at the right intersection. Warm earth tones with fresh green. Use $EFFECTIVE_ASPECT_RATIO and the medium selected by the art direction.
+主体状态：weathered stone path with a dry, visible crack; fresh shoots actively emerging upward; soft morning light falling across the crack。
+实体关系：the shoots must visibly originate from the crack, not sit beside it; the hard path surrounds the shoots and proves the chapter's resilience point。
+艺术指导：主媒介与表面为温暖自然摄影、真实石材和叶片纹理；系列锚点为温暖自然光、克制大地色、真实物理关系；本页变化为低角度局部自然场景；色彩为石板灰、嫩绿、柔金色晨光。
+光线与材质：左上方柔和晨光，裂缝和叶片边缘有可见高光；重点表现粗糙石材裂纹和叶片湿润表面。
+页面外禁止带入：其他章节的人物、茶具、数字或结论。
+负面约束：不要通用绿叶背景、盆栽、无裂缝的草地或抽象励志符号；不得复刻封面主体、封面构图或其他章节画面。
+输出验收：裂缝与新芽关系清楚；缩略图仍能一眼看到“硬石缝里长出新芽”；无额外文字；移动端缩略图仍能完成页面目标。
 ```
 
 ---
@@ -284,14 +358,27 @@ generate_image(
 ```
 这张图用于文章《$ARTICLE_TITLE》的章节《$CHAPTER_TITLE》。
 章节核心论点：$CORE_POINT
+页面目标：$PAGE_GOAL
+当前页面范围：$PAGE_SCOPE
 视觉简报：$VISUAL_BRIEF
 必须出现的视觉元素：
 $REQUIRED_ENTITIES（逐行列出）
+主体状态与关系：$SUBJECT_STATES / $SUBJECT_RELATIONS
+构图地图：$CAMERA / $SHOT / $FOCAL_AREA / $TEXT_ZONE / $LAYOUT_MAP / $READING_ORDER
+可见文字白名单：$VISIBLE_TEXT_WHITELIST（无字则为 `NO TEXT`）
+页面外禁止带入：$OUT_OF_SCOPE
 
 请按 JSON 格式回答，不要包含其他文字：
 {
   "all_entities_present": true/false,
   "missing_entities": ["...", "..."],
+  "subject_relations_correct": true/false,
+  "page_goal_completed": true/false,
+  "visible_text_exact": true/false,
+  "extra_text_observed": ["..."],
+  "text_readability": "high" | "medium" | "low" | "not_applicable",
+  "composition_matches": true/false,
+  "out_of_scope_content_present": true/false,
   "relevance_score": "high" | "medium" | "low",
   "has_forbidden_content": true/false,
   "forbidden_notes": "文字/水印/低俗等问题，如无则空字符串",

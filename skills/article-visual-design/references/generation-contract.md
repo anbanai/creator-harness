@@ -138,8 +138,15 @@ Phase 4: 配图生成与独立内容审核
 基于 image-plan.md 中对应章节的：
 - `visual_brief`（主体描述）
 - `required_entities`（必须出现的实体清单）
+- `page_goal`、`page_scope`、`subject_states`、`subject_relations` 和 `must_match_excerpts`（页面职责与章节证据）
 - `composition_type`（构图约束）
+- `camera`、`shot`、`focal_area`、`text_zone`、`layout_map`、`negative_space`、`reading_order`（构图地图）
+- `text_policy` 与 `visible_text_whitelist`（正文图默认 `NO TEXT`）
+- `medium_surface`、`palette`、`lighting`、`material_details`、`series_anchors`、`page_variation`
+- `out_of_scope`、`anti_generic_constraints` 和 `acceptance_criteria`
 - 叠加 `$VISUAL_STYLE` / `$COLOR_PALETTE` 风格语言
+
+最终 prompt 必须按 [prompt-blueprint.md](prompt-blueprint.md) 的顺序编译：页面目标 → 文字契约 → 构图地图 → 章节证据 → 艺术指导/光线 → 跨页连续性 → 禁止项 → 输出验收。不能把整篇正文或其他章节信息复制进去。
 
 ### 步骤 4b：构建内容审核 prompt
 
@@ -148,15 +155,28 @@ Phase 4: 配图生成与独立内容审核
 ```
 这张图用于文章《$ARTICLE_TITLE》的章节《$CHAPTER_TITLE》。
 章节核心论点：$CORE_POINT
+页面目标：$PAGE_GOAL
+当前页面范围：$PAGE_SCOPE
 必须出现的视觉元素：$REQUIRED_ENTITIES（逐项列出）
 视觉简报：$VISUAL_BRIEF
+主体状态与关系：$SUBJECT_STATES / $SUBJECT_RELATIONS
+构图地图：$CAMERA / $SHOT / $FOCAL_AREA / $TEXT_ZONE / $LAYOUT_MAP / $READING_ORDER
+可见文字白名单：$VISIBLE_TEXT_WHITELIST（无字则明确写 `NO TEXT`）
+页面外禁止带入：$OUT_OF_SCOPE
 请按 JSON 格式回答：
 {
   "all_entities_present": true/false,
   "missing_entities": ["缺的实体 1", ...],
+  "subject_relations_correct": true/false,
+  "page_goal_completed": true/false,
+  "visible_text_exact": true/false,
+  "extra_text_observed": ["白名单之外的文字", ...],
+  "text_readability": "high" | "medium" | "low" | "not_applicable",
+  "composition_matches": true/false,
+  "out_of_scope_content_present": true/false,
   "relevance_score": "high" | "medium" | "low",
   "has_forbidden_content": true/false,
-  "forbidden_notes": "文字/水印/低俗/二维码/联系方式/外链 URL/扫码提示/加群/加微信等问题描述",
+  "forbidden_notes": "文字/水印/低俗/二维码/联系方式/外链 URL/扫码提示/加群/加微信或串页内容等问题描述",
   "overall_pass": true/false,
   "sharper_prompt_hint": "如不通过，给出更锐化的 prompt 建议"
 }
@@ -217,15 +237,30 @@ analyze_image(
     "section_index": 1,
     "image_type": "content",
     "chapter_title": "...",
+    "page_goal": "...",
+    "page_scope": "...",
     "composition_type": "三分法",
+    "camera": "...",
+    "shot": "...",
+    "focal_area": "...",
+    "text_policy": "NO TEXT",
+    "visible_text_whitelist": ["NO TEXT"],
+    "text_zone": "...",
+    "layout_map": "...",
+    "reading_order": "...",
     "visual_brief": "...",
     "required_entities": ["..."],
+    "subject_states": ["..."],
+    "subject_relations": ["..."],
     "must_match_excerpts": ["..."],
+    "out_of_scope": ["..."],
     "prompt": "Final prompt used",
     "quality_review": {
       "visible_subjects": ["..."],
       "text_observations": ["..."],
       "composition_observations": ["..."],
+      "page_goal_observation": "...",
+      "relation_observations": ["..."],
       "compliance_observations": []
     },
     "ref_image_path": "output/cover.png 或 null（封面关·配图开时）",

@@ -84,9 +84,9 @@ description: 'Use only when the Article workflow enters its visual planning, con
 1. 模板与节奏：从文章结构选择 `templates/article/*.yaml`；每个章节映射 slot，写 `output/visual-rhythm-plan.md`，包含 slot_id / section_index / image_size / module / composition_type / chapter_anchor。
 2. 风格：`visual_style`（task > project）优先，三维分析仅补充；`writer` 与 `theme` 不决定图片风格。记录 `$VISUAL_STYLE_SOURCE`。
 3. 封面：模式允许才读取 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)，输出 cover-plan.md / cover-prompt.md / cover-quality.json；审核后独立上传。
-4. 正文规划：`output/image-plan.md` 每图含 visual_brief、required_entities、must_match_excerpts；实体必须来自该章节，不能仅写抽象风格。
-5. 逐 slot 生成：`generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<当页提示词>, image_type="content", output_path="output/img_N.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`。仅当封面可用且未启用人物参考时，可传 `ref_image_path="output/cover.png"`；否则只用文本风格块。
-6. 独立审核：`analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>, prompt=<实体/章节相关性/文字/构图/合规检查>)`。可见问题最多共 3 次生成，耗尽标 `quality_status=failed`，继续后续 slot；分析运行失败记 warning，不伪造评分。
+4. 正文规划：`output/image-plan.md` 每图含 visual_brief、required_entities、must_match_excerpts；实体必须来自该章节，不能仅写抽象风格。按 [references/prompt-blueprint.md](prompt-blueprint.md) 补齐页面目标、文字白名单、构图地图、主体状态/关系、媒介与光线、跨页变化、页面外禁止项和可观察验收条件。
+5. 逐 slot 生成：先按 [references/prompt-blueprint.md](prompt-blueprint.md) 的顺序编译“页面目标 → 文字契约 → 构图地图 → 章节证据 → 艺术指导/光线 → 跨页连续性 → 禁止项 → 输出验收”，再调用 `generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<当页提示词>, image_type="content", output_path="output/img_N.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`。仅当封面可用且未启用人物参考时，可传 `ref_image_path="output/cover.png"`；否则只用文本风格块。
+6. 独立审核：`analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>, prompt=<页面目标/实体与关系/文字白名单/构图/合规检查>)`。可见问题最多共 3 次生成，耗尽标 `quality_status=failed`，继续后续 slot；分析运行失败记 warning，不伪造评分。
 7. 接受图片后调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>)`；失败仅重试上传一次，仍失败保留本地图和 warning，返回 Agent 继续核心 HTML 与 blocked draft。
 8. 每张立即原子写 `output/images.json`（临时文件 → fsync → rename），包含 slot、章节、实体、原句、最终 prompt、quality_review、file_path、wechat_url、media_id、quality_status。只将已接受且已上传的 CDN 图片按 slot 插回 `output/04-article-final.md`，不得插入失效路径。
 
@@ -104,8 +104,9 @@ description: 'Use only when the Article workflow enters its visual planning, con
 - [ ] **风格一致性**：未启用人物参考且封面开启时，内容图可记录 `ref_image_path="output/cover.png"`；封面关闭或人物参考启用时无 `ref_image_path`，并通过文本风格块保持一致
 - [ ] **视觉多样性**：3 张以上配图使用 3 种以上不同 `composition_type`（清单模板可豁免，因要求统一构图）
 - [ ] **反同质化**：不得连续 3 张正文图复用同主体/同远近景/同色调重心；正文图不得复刻封面主体
+- [ ] **Prompt 蓝图完整**：每个最终 prompt 都能复原页面目标、当前章节范围、主体状态与关系、构图地图、文字策略/白名单、风格与光线、跨页变化、页面外禁止项和移动端验收
 - [ ] **内容审核通过率**：至少 80% 的内容图 `quality_status=passed`
-- [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / `quality_review` / `slot_id` / `section_index` / `wechat_url` / `media_id`
+- [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / `page_goal` / `page_scope` / `subject_states` / `subject_relations` / `camera` / `shot` / `focal_area` / `text_policy` / `visible_text_whitelist` / `text_zone` / `layout_map` / `reading_order` / `out_of_scope` / `quality_review` / `slot_id` / `section_index` / `wechat_url` / `media_id`
 - [ ] **CDN 持久化**：`images.json` 每条都有非空 `wechat_url`（每张图已独立上传到 CDN）；缺 URL 的 slot 只调用 `upload_image` 重传，禁止重新生成
 
 未通过检查时：
@@ -135,4 +136,5 @@ description: 'Use only when the Article workflow enters its visual planning, con
 
 - [references/cover.md](references/cover.md) — 封面设计规范（三维风格分析 + prompt 模板）
 - [references/content.md](references/content.md) — 配图规划与生成（新 schema + 独立内容审核循环）
+- [references/prompt-blueprint.md](references/prompt-blueprint.md) — 正文图页面槽位、prompt 编译顺序与审核字段
 - [references/rhythm.md](references/rhythm.md) — 节奏规划与模板选择（visual-rhythm-plan.md 模板）

@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.2.31] - 2026-10-07
+
+- Added structured prompt blueprints for WeChat article body images and
+  WeChat picture-message pages, including page goals, text whitelists,
+  composition maps, subject relations, continuity, negative constraints, and
+  independent visual review fields.
+- Updated the WeChat picture Agent contract to resolve effective image ratios,
+  generate and review each page independently, and keep failed packages
+  blocked for Server finalization.
+
+## [4.2.30] - 2026-10-07
+
+- Added a structured Seednote visual prompt blueprint covering page role,
+  exact text whitelist, layout map, subject state, material, lighting,
+  continuity, negative constraints, and mobile-readable acceptance checks.
+- Updated cover, content, tail, and image-plan guidance so explicit page
+  requirements (including visible Chinese badge text) survive prompt
+  compilation without importing unrelated page content.
+
 ## [4.2.29] - 2026-10-06
 
 - Defined the WeChat picture publication package schema shared by the Agent and

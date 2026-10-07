@@ -176,9 +176,13 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 
 每张图在规划阶段先定义视觉策略：统一色彩、画面主体、标题层级、构图层级、信息密度和图文节奏。社交图文视觉原则用于组织画面：`editorial 信息层级` 让标题、辅助信息、证据点和主体互不抢戏；`Swiss/magazine 秩序感` 用留白、对齐、分组和对比提高移动端可读性；`图文节奏` 让封面、内容图和尾图各自完成不同传播任务。
 
+规划不能只停留在主题和物件名：按 [references/prompt-blueprint.md](references/prompt-blueprint.md) 为每页补齐页面目标、文字白名单、镜头/景别、焦点区域、文字安全区、布局地图、主体状态/关系、媒介与光线、跨页变化和页面级禁止项。用户已指定的字段原样保留，不用审美词替换事实。
+
 ### 步骤 4：生成 image-plan.md 与 Prompt 蓝图
 
 计划必须写实际「计划图片数量」，每页写用途、主题、必须文字、主体、参考子集、禁用元素与验收标准；只包括模式允许的 cover / image_01…03 / tail。
+
+完成页面规划后，先按 [references/prompt-blueprint.md](references/prompt-blueprint.md) 做一次槽位检查，再编译最终 prompt。对文字较多的内容图，优先明确布局和安全区，不得为了让 prompt 更短而删掉用户锁定文案；对文字白名单之外的装饰印章，只能允许不可辨识的形状，不能让模型补出伪文字。
 
 详见 [references/image-plan-template.md](references/image-plan-template.md)；仅在上述阶段读取。
 
@@ -188,7 +192,7 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 
 1. **逐页选参考素材**：先按 `image-plan.md` 为封面、每张内容图和尾图分别确定 0、1 或多张附件，只保留能服务当前页面职责的原始路径
 2. **封面**：按上方「封面设计规范」选择人物或普通分支；人物分支只调用共用 Skill 一次，接收 `output/cover.png` 与质量结果，并回填计划、prompt、审核和参考使用记录；不得再套普通模板生成。普通分支传入该页选中的原始路径子集。
-3. **内容图**：使用 [references/content.md](references/content.md) 的 Prompt 模板逐张生成（1~3 张），传入当前页选中的原始路径子集以及对应信息点和布局；没有相关参考时纯文生图；始终保证不同实景背景和构图角度
+3. **内容图**：使用 [references/content.md](references/content.md) 的 Prompt 模板逐张生成（1~3 张），传入当前页选中的原始路径子集以及对应信息点和布局；没有相关参考时纯文生图；始终保证不同场景/媒介构图和构图角度，避免多页机械复用
 4. **尾图（仅当 `seednote_image_mode` 包含尾图时）**：使用 [references/tail.md](references/tail.md) 的 Prompt 模板单独生成，并仅传尾图相关的原始路径子集；不含尾图则跳过
 5. **生成与创作记录**：每次只调用 `generate_image` 生成当前计划图片；`image-prompts.md` 使用“文件名 / 用途 / 提示词”格式记录创作内容。
 6. **失败记录**：`generate_image` 返回错误或超时时，写入 `output/failure-state.json`，保留已生成产物并停止；不得把分析、计费、配置或其他错误改写成图片生成超时。
@@ -202,6 +206,7 @@ description: 'Use only during the Seednote workflow image-planning and generatio
 - [ ] 图片内文字为简体中文，无英文、拼音、乱码、伪词或错别字
 - [ ] 茶类/产品/数字参数准确，不出现误导性内容（例如"10 秒出汤"不得写成"焖泡10秒"）
 - [ ] 封面、内容图（、尾图，仅当生成）视觉风格一致，内容图之间有视觉多样性
+- [ ] 每张最终 prompt 均通过 Blueprint 槽位检查：页面职责、文字白名单（含可见徽章字）、布局地图、主体关系、镜头/安全区、风格锚点、页面级禁止项和移动端验收均可从 prompt 复原
 
 需要内容质量审核时，逐张单独调用 `analyze_image`，根据当页职责检查可见主体、文字、构图和合规。内容问题可调整参考集合和创作 prompt 后覆盖同一 `output_path` 重试，每张最多 3 次；分析不可用不阻止继续生成后续计划图片。交付前仅保留 `image-plan.md` 列出的图片。
 

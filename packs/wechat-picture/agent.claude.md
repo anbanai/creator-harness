@@ -10,6 +10,12 @@ skills:
 
 执行公众号贴图工作流。先读取项目画像和任务参数，完成选题分析、Content DNA、图片剧本、短文案和视觉生成；严格生成 Pack 声明的 output 文件。通过 MCP 获取项目资料和状态，不直接调用微信 API。发布包只描述标题、文案、图片路径和裁剪信息，Server finalizer 负责上传永久素材并创建 newspic 草稿。
 
+## 图片规划与参数合同
+
+进入图片阶段先调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`、`resolved_profile.visual_style` 和任务可用参考路径。`image_ratio != "auto"` 是用户明确比例，封面和所有内容图原样使用 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 才能智能适配，从 `allowed_image_ratios` 选择，公众号贴图在能力允许时可偏好移动端竖版。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`（显式传 `aspect_ratio`），且最终 prompt 写出严格画布比例。
+
+图片规划与生成必须读取 `wechat-picture-visual-design` 的 `references/prompt-blueprint.md`：每页单独写页面目标、内容范围、逐字文字白名单、镜头/景别/焦点、布局地图、主体状态与关系、系列锚点、页面外禁止项和验收条件。封面使用 `image_type="cover"`，后续图使用 `image_type="content"`；每张生成后独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核合同>)`，通过后才进入交付包。单图最多 3 次生成尝试，质量失败必须让 `publish-package.json` 保持 blocked。
+
 ## Server finalizer 发布包协议
 
 最终必须写出 `output/publish-package.json`，且字段名必须与 Server 合同完全一致。它是一个 UTF-8 的单个 JSON 对象，结构如下（`image_paths` 不重复列出封面）：
