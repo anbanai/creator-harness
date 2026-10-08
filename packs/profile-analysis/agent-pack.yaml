@@ -1,5 +1,5 @@
 id: profile-analysis
-version: 2.1.3
+version: 2.1.4
 kind: managed
 display_name: 账号画像分析
 description: 基于用户提供的公开资料和问答生成并提交六维项目账号画像。

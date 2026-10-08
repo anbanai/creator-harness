@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.36] - 2026-10-08
+
+- Made profile analysis opt-in after project creation, accepted structured multi-platform onboarding answers, and kept first-run results as unconfirmed drafts until user confirmation.
+
 ## [4.2.35] - 2026-10-08
 
 - Default WeChat picture messages to a five-image maximum, select page count by distinct reader value, preserve fixed-count requests, and keep legacy exact-count validation.

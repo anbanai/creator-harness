@@ -1,21 +1,70 @@
 {
   "type": "object",
-  "required": ["project_id", "platform", "profile_url", "answers", "samples"],
+  "required": ["project_id", "profile_url", "answers", "samples"],
   "additionalProperties": false,
   "properties": {
-    "project_id": {"type": "string"},
-    "platform": {"type": "string", "enum": ["wechat", "seednote", "moments"]},
-    "profile_url": {"type": "string"},
+    "project_id": { "type": "string" },
+    "profile_url": { "type": "string", "description": "Optional legacy project homepage; Server accepts empty or validates an absolute HTTP(S) URL." },
     "answers": {
       "type": "object",
+      "required": ["basic", "platform_accounts", "intent", "content", "boundaries"],
       "additionalProperties": false,
       "properties": {
-        "basic": {"type": "string"},
-        "intent": {"type": "string"},
-        "content": {"type": "string"},
-        "boundaries": {"type": "string"}
+        "basic": {
+          "type": "object",
+          "required": ["project_name", "account_status"],
+          "additionalProperties": false,
+          "properties": {
+            "project_name": { "type": "string" },
+            "account_status": { "type": "string", "enum": ["", "new", "existing"] }
+          }
+        },
+        "platform_accounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["platform", "account_name", "profile_url"],
+            "additionalProperties": false,
+            "properties": {
+              "platform": { "type": "string", "enum": ["xiaohongshu", "douyin", "bilibili", "video_account", "wechat_official_account", "weibo", "zhihu"] },
+              "account_name": { "type": "string" },
+              "profile_url": { "type": "string", "description": "Optional; non-empty values must be absolute HTTP(S) URLs." }
+            }
+          }
+        },
+        "intent": {
+          "type": "object",
+          "required": ["goals", "direction", "differentiation"],
+          "additionalProperties": false,
+          "properties": {
+            "goals": { "type": "string" },
+            "direction": { "type": "string" },
+            "differentiation": { "type": "string" }
+          }
+        },
+        "content": {
+          "type": "object",
+          "required": ["preferences", "formats", "tone", "audience"],
+          "additionalProperties": false,
+          "properties": {
+            "preferences": { "type": "string" },
+            "formats": { "type": "string" },
+            "tone": { "type": "string" },
+            "audience": { "type": "string" }
+          }
+        },
+        "boundaries": {
+          "type": "object",
+          "required": ["exclusions", "collaboration", "compliance"],
+          "additionalProperties": false,
+          "properties": {
+            "exclusions": { "type": "string" },
+            "collaboration": { "type": "string" },
+            "compliance": { "type": "string" }
+          }
+        }
       }
     },
-    "samples": {"type": "array", "items": {"type": "string"}}
+    "samples": { "type": "array", "items": { "type": "string" } }
   }
 }
