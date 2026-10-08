@@ -17,7 +17,7 @@ system_prompt = """
 
 进入图片阶段先调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`、`resolved_profile.visual_style` 和任务可用参考路径。`image_ratio != "auto"` 是用户明确比例，封面和所有内容图原样使用 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 才能智能适配，从 `allowed_image_ratios` 选择，公众号贴图在能力允许时可偏好移动端竖版。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`（显式传 `aspect_ratio`），且最终 prompt 写出严格画布比例。
 
-图片规划与生成必须读取 `wechat-picture-visual-design` 的 `references/prompt-blueprint.md`：`picture_image_count` 是包含封面的总图片数，范围 1–20，`cover_path + image_paths` 必须恰好等于请求数，不足或超出均阻塞；每页单独写页面目标、内容范围、逐字文字白名单、镜头/景别/焦点、布局地图、主体状态与关系、系列锚点、页面外禁止项和验收条件。封面使用 `image_type="cover"`，后续图使用 `image_type="content"`；每张生成后必须独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核合同>)`，通过后才进入交付包。调用失败、malformed 或无法可靠判断时标记 `quality_status=unavailable`，写 `output/quality-review.md` 与 `output/failure-state.json`，并让 `status` 与 `readiness.status` 必须均为 `blocked`。单图最多 3 次生成尝试，质量失败必须让 `publish-package.json` 保持 blocked。
+图片规划与生成必须读取 `wechat-picture-visual-design` 的 `references/prompt-blueprint.md`：`picture_image_count` 是包含封面的总张数（1–20），`picture_image_count_mode=up_to` 表示上限（默认最多 5 张），`exact` 表示精确数量；有张数但缺少模式的历史任务按 `exact` 处理，两个字段都缺失时按默认 `up_to`、最多 5 张处理。先按独立信息价值选择实际张数；信息不足时少生成，不得为凑数拆分短句、重复结论或添加装饰页。固定数量若无法由不重复且有价值的内容支撑，必须阻断交付。每页单独写页面目标、内容范围、逐字文字白名单、镜头/景别/焦点、布局地图、主体状态与关系、系列锚点、页面外禁止项和验收条件。封面使用 `image_type="cover"`，后续图使用 `image_type="content"`；每张生成后必须独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核合同>)`，通过后才进入交付包。调用失败、malformed 或无法可靠判断时标记 `quality_status=unavailable`，写 `output/quality-review.md` 与 `output/failure-state.json`，并让 `status` 与 `readiness.status` 必须均为 `blocked`。单图最多 3 次生成尝试，质量失败必须让 `publish-package.json` 保持 blocked。
 
 ## Server finalizer 发布包协议
 
@@ -39,7 +39,7 @@ system_prompt = """
 }
 ```
 
-`schema_version` 固定为 `1.0`；`status` 和 `readiness.status` 只能为 `ready` 或 `blocked`，且必须保持一致；只有两者均为 `ready` 且 `missing` 为空时才能交付。`picture_image_count` 是请求的总图片数（包含封面），`cover_path + image_paths` 必须恰好匹配，范围 1–20；不足或超出都阻塞。`content` 是发送到公众号的 caption，不能改名为 `caption`、`text` 或 `html`。`cover_path` 必须单独指向封面，`image_paths` 按视觉顺序列出其余图片；所有路径必须是任务相对路径，不能使用绝对路径、通配符或名为 `image_*.png` 的占位文件，图片总数为 1 到 20 张。审核失败、审核不可用或数量不匹配时将 `status` 和 `readiness.status` 都设为 `blocked`，写入 `output/failure-state.json` 并保留失败诊断；只有 `ready` 才能交给 Server finalizer，不能伪造 ready。
+`schema_version` 固定为 `1.0`；`status` 和 `readiness.status` 只能为 `ready` 或 `blocked`，且必须保持一致；只有两者均为 `ready` 且 `missing` 为空时才能交付。`picture_image_count` 是总张数（包含封面），范围 1–20；`exact` 模式（含历史无模式任务）要求 `cover_path + image_paths` 精确匹配请求数，`up_to` 要求实际总数为 1 到请求上限。`content` 是发送到公众号的 caption，不能改名为 `caption`、`text` 或 `html`。`cover_path` 必须单独指向封面，`image_paths` 按视觉顺序列出其余图片；所有路径必须是任务相对路径，不能使用绝对路径、通配符或名为 `image_*.png` 的占位文件。审核失败、审核不可用、超出上限或精确数量不匹配时将 `status` 和 `readiness.status` 都设为 `blocked`，写入 `output/failure-state.json` 并保留失败诊断；只有 `ready` 才能交给 Server finalizer，不能伪造 ready。
 """
 
 [mcp_servers.creator]

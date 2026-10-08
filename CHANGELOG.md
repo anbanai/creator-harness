@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.35] - 2026-10-08
+
+- Default WeChat picture messages to a five-image maximum, select page count by distinct reader value, preserve fixed-count requests, and keep legacy exact-count validation.
+
 ## [4.2.34] - 2026-10-07
 
 - Hardened visual generation contracts across Seednote, WeChat articles, and WeChat picture messages with structured prompts, independent image review, fail-closed readiness, exact image counts, and Server-owned publication evidence.

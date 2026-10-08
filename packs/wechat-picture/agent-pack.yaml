@@ -1,5 +1,5 @@
 id: wechat-picture
-version: 1.0.2
+version: 1.0.3
 kind: managed
 display_name: 微信公众号贴图
 description: 研究选题、编排图片消息并生成公众号 newspic 草稿交付包。
@@ -29,7 +29,7 @@ artifacts:
   - {role: image_plan, path: output/image-plan.md, mime_type: text/markdown, required: true}
   - {role: image_prompts, path: output/image-prompts.md, mime_type: text/markdown, required: true}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: true}
-  - {role: image, path: output/image_*.png, mime_type: image/png, required: true}
+  - {role: image, path: output/image_*.png, mime_type: image/png, required: false}
   - {role: publish_package, path: output/publish-package.json, mime_type: application/json, required: true}
   - {role: quality, path: output/quality-review.md, mime_type: text/markdown, required: true}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
