@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.37] - 2026-10-08
+
+- Added the Server-owned `search_web` MCP contract for article and Seednote research, including cited evidence and provider-unavailable fallback guidance.
+
 ## [4.2.36] - 2026-10-08
 
 - Made profile analysis opt-in after project creation, accepted structured multi-platform onboarding answers, and kept first-run results as unconfirmed drafts until user confirmation.

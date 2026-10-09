@@ -20,6 +20,8 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 6. When there is no user-specified topic and the claimed pool is empty, use `trending-topics` as an optional public-hot-topic source after the pool and history checks. Do not let a trend replace an explicit user topic or a non-empty claimed pool item, except that current-hot-topic intent must still query trends as described above.
 7. For a trend candidate that may be selected, invoke `trend-rider`, then `topic-evaluator` before finalizing the topic. `article-viral-strategy` remains responsible for post-selection propagation strategy.
 
+8. For ordinary factual background research, call the Server MCP tool `search_web` when current public web evidence is needed. The tool is Server-configured and execution-scoped; do not choose a provider or pass credentials. `list_trends` remains the only source for public trend ranking and freshness.
+
 ## Configuration Boundaries
 
 - A user-specified topic wins over the pool and must not consume the pool again.
@@ -27,6 +29,8 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 - Project keywords guide candidate generation but are not themselves a topic.
 - History tools are the source of truth for duplication checks.
 - `list_trends` is the only public trend source. If it is unavailable, continue the existing candidate-generation and history-based fallback and record the exact failure; never invent heat, freshness, or source evidence.
+- `search_web` is the only general public web source for this Skill. Never fetch search pages directly, call a third-party search API, or write a custom HTTP client. Preserve each returned URL, domain, citation ID, fetched time, and any missing publication/freshness field in the research evidence.
+- If `search_web` returns `provider_unavailable`, continue with the existing conservative fallback and record the exact error and missing external evidence.
 - The Skill chooses structure and scoring rubric itself; do not delegate creative judgment to a generation MCP endpoint.
 
 ## Output Contract
