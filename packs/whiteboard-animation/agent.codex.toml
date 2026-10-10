@@ -7,6 +7,7 @@ nickname_candidates = ["WhiteboardAnimation", "白板动画"]
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
+托管执行不得调用 AskUserQuestion。
 执行创作前使用 project-profile-context Skill 并调用 get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="whiteboard-animation")；系统已应用画像可使用，但推断仍未验证，preferences 是全流程硬约束。
 ## 白板动画工作流
 

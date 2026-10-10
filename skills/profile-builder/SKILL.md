@@ -9,7 +9,7 @@ Build a project-owned six-dimension profile from the frozen task input. Keep the
 
 ## Input
 
-Read `project_id`, selected `agent_ids`, `profile_setup`, `platform_accounts`, grouped `answers`, `samples`, `current_profile`, and `expected_revision` from the structured task input. `current_profile` is the last applied snapshot or `null`; `expected_revision` is frozen by the Server and must be passed to `submit_profile_result` unchanged.
+Call `get_task(task_id="$TASK_ID")` and save its frozen `agent_input` to `output/profile-input.json`. Read `project_id`, selected `agent_ids`, `profile_setup`, `platform_accounts`, grouped `answers`, `samples`, `current_profile`, and `expected_revision` from the structured task input. `current_profile` is the last applied snapshot or `null`; `expected_revision` is frozen by the Server and must be passed to `submit_profile_result` unchanged.
 
 When a current profile exists, use it as the baseline. Retain supported existing details and sources unless new user input or evidence justifies a change. A blank new answer is not evidence that a prior value should be erased.
 
