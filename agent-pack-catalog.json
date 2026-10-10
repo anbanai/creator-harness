@@ -686,6 +686,7 @@
           "type": "object",
           "required": [
             "project_id",
+            "platform",
             "agent_ids",
             "profile_url",
             "platform_accounts",
@@ -702,7 +703,7 @@
             },
             "platform": {
               "type": "string",
-              "description": "Legacy primary context when supplied by older clients; selected creation Agents remain authoritative in agent_ids."
+              "description": "Legacy primary context. The selected creation Agents are authoritative in agent_ids."
             },
             "agent_ids": {
               "type": "array",
@@ -1446,7 +1447,7 @@
       "ui": {
         "renderer": "custom:profile-analysis"
       },
-      "digest": "d9ce240d4a42e696f2f0f5c6e06dacd326d6b8f3e6a3d2444568d7b02d294ade"
+      "digest": "e743a3178b47b1f6128b1dadd9b4614a982185e2a3226315e8315d445c97e921"
     },
     {
       "id": "seednote",
