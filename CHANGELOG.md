@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.40] - 2026-10-10
+
+- Align native Agent contracts with Pack sources and clarify Seednote image outputs.
+
 ## [4.2.39] - 2026-10-10
 
 - Retain and validate frozen profile input and result artifacts before Server submission, preserving missing-field evidence and follow-up question transport.

@@ -686,7 +686,6 @@
           "type": "object",
           "required": [
             "project_id",
-            "platform",
             "agent_ids",
             "profile_url",
             "platform_accounts",
@@ -703,7 +702,7 @@
             },
             "platform": {
               "type": "string",
-              "description": "Legacy primary context. The selected creation Agents are authoritative in agent_ids."
+              "description": "Legacy primary context when supplied by older clients; selected creation Agents remain authoritative in agent_ids."
             },
             "agent_ids": {
               "type": "array",
@@ -1447,7 +1446,7 @@
       "ui": {
         "renderer": "custom:profile-analysis"
       },
-      "digest": "e743a3178b47b1f6128b1dadd9b4614a982185e2a3226315e8315d445c97e921"
+      "digest": "d9ce240d4a42e696f2f0f5c6e06dacd326d6b8f3e6a3d2444568d7b02d294ade"
     },
     {
       "id": "seednote",
@@ -1669,7 +1668,7 @@
       "ui": {
         "renderer": "custom:seednote"
       },
-      "digest": "0839754d90b782a14d31ab62d20bc4c616a503cd8bb438b6b1c066605fd65ccd"
+      "digest": "cb9eb31914bc11ccfe84e7de599b8abcfcde08741cd43c03bbacc18b0fbddca9"
     },
     {
       "id": "wechat-article",
@@ -1891,7 +1890,7 @@
       "ui": {
         "renderer": "custom:article"
       },
-      "digest": "4091f2bcd4152408824ef82f9cd42ecf5caa6e9fb7acadcfd92058db525e0f01"
+      "digest": "3ed57008b9ca17468bc03af7a0ebe80f08cc8a1d792855a70a14ffbae4e5c93f"
     },
     {
       "id": "wechat-picture",

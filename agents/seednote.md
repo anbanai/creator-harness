@@ -87,7 +87,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 调用 `get_project_profile(project_id=$PROJECT_ID, scope="seednote", task_id=$TASK_ID)` 和 `list_project_titles(project_id=$PROJECT_ID)`。`task_id` 必传以应用任务级视觉覆盖；记录画像、已有标题及其避重用途。
 
-**图像参数合同**：读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`。用户明确比例原样作为 `$EFFECTIVE_ASPECT_RATIO`；`auto` 时按允许比例为每张图智能适配。每次 `generate_image` 显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
+**图像参数合同**：读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`。用户明确比例原样作为 `$EFFECTIVE_ASPECT_RATIO`；`auto` 时按允许比例为每张图智能适配。每次 `generate_image` 必须显式传 `aspect_ratio` 参数，并将其值设为 `$EFFECTIVE_ASPECT_RATIO`。
 
 ### 原创模式
 
@@ -167,7 +167,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 再次确认 `output/content.md` 第一行等于已接受 `$FINAL_TITLE`，并逐项校验 `content.md`、`image-plan.md`、`image-prompts.md`、`image-review.md`、`reference-usage-summary.json`、合规报告（复刻模式）以及计划中的全部图片都直接位于 `output`。图片数量必须与计划一致；每张计划图片都必须成功生成。`image-review.md` 记录可见内容质量观察和每张图片的“审核不可用” warning；原始 `analyze_image` 运行错误只保留在服务端观测记录中，不单独让交付校验失败；调用失败必须映射为 `quality_status=unavailable`，不得作为通过，继续生成其他计划图片但整体质量闸门不得放行，必须保留 `output/failure-state.json`，整体质量闸门不得放行。所有产物始终保留在 `output`，不得移动、复制或按标题重命名成果目录。`output/failure-state.json` 存在时不得报告成功；恢复执行仅在所有交付校验通过后、即将报告成功前删除 `output/failure-state.json`。
 
-**产出**：`output`
+**产出**：`output/cover.png`（封面）、`output/image_01.png` 至 `output/image_03.png`（按模式生成的内容图）和 `output/tail.png`（仅 `cover_tail`/`full` 模式），以及其他阶段声明的文件。
 
 #### 步骤 11：最终报告
 

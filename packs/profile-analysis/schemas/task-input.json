@@ -3,7 +3,6 @@
   "type": "object",
   "required": [
     "project_id",
-    "platform",
     "agent_ids",
     "profile_url",
     "platform_accounts",
@@ -20,7 +19,7 @@
     },
     "platform": {
       "type": "string",
-      "description": "Legacy primary context. The selected creation Agents are authoritative in agent_ids."
+      "description": "Legacy primary context when supplied by older clients; selected creation Agents remain authoritative in agent_ids."
     },
     "agent_ids": {
       "type": "array",
