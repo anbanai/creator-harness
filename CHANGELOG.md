@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.39] - 2026-10-10
+
+- Retain and validate frozen profile input and result artifacts before Server submission, preserving missing-field evidence and follow-up question transport.
+- Preload profile hard constraints for every creation Agent, restore Seednote writing startup rules, and audit native dependencies and resource paths.
+
 ## [4.2.38] - 2026-10-10
 
 - Freeze selected creation objects, account sources and the current profile for free profile analysis; submit complete evidence-aware results for Server-owned atomic application and revision history.

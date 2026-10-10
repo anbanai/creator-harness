@@ -4,6 +4,7 @@ description: 种草笔记图文全自动创作引擎——从选题到图文生�
 model: inherit
 memory: project
 skills:
+  - project-profile-context
   - seednote-research
   - seednote-writing
   - seednote-visual-design
@@ -14,7 +15,7 @@ maxTurns: 20
 
 JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`missing`、`evidence_paths` 合同；失败写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
 
-仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$CLAUDE_PLUGIN_ROOT/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
+启动已注入画像、研究、写作和视觉 Skill；仅按需读取其 references。仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$CLAUDE_PLUGIN_ROOT/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。
 
 ## 角色
 
@@ -208,51 +209,9 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 ---
 
-## 质量标准
+## 质量、风险与成功标准
 
-- `content.md` 包含标题、正文、话题标签三部分
-- `image-plan.md` 包含封面、内容页规划（仅含内容图的模式）和尾图规划（仅含尾图的模式）
-- 图片总数符合 image-plan.md「计划图片数量」声明值：封面固定 1 张；cover_only 和 cover_tail 模式的内容图数量必须为 0；cover_content 和 full 模式的内容图数量必须为 1~3；尾图按模式为 0 或 1 张。内容图文件必须从 output/image_01.png 开始连续编号，只允许使用 output/image_01.png、output/image_02.png、output/image_03.png，不得跳号或使用其他 image_*.png 文件名；所有计划图片都必须存在、可访问
-- 图片视觉风格一致：同一色系、字体、布局语言和信息密度
-- 正文不包含诱导互动表述，格式规范以 `seednote-writing` skill 为准
-- 复刻模式下 `source-note.md` 包含源笔记详情，`source-analysis.md` 包含证据驱动拆解，任务内 `viral-template.json` 存在
-- 违禁词检查报告生成（复刻模式）
-
-## 诱导互动合规
-
-完整规则以 `seednote-writing` skill §9.5 为准，覆盖 6 种违规模式。本 agent 确保合规检查步骤被正确触发，具体检查和改写由 skill 执行。
-
-## 风险与缓解措施
-
-| 风险 | 缓解措施 |
-|------|----------|
-| 选题评分无高分候选 | 自动选择最高分选题，在 `topic-analysis.md` 记录评分分布 |
-| 参考素材不可用 | 非关键素材记录 warning；唯一产品身份、Logo、包装、型号或核心结构证据不可用时保留产物并进入可恢复失败态 |
-| 图片生成失败 | 保留已生成图片并写 `output/failure-state.json`，从当前图片恢复 |
-| 内容审核调用失败 | 在 `image-review.md` 和 `reference-usage-summary.json` 的 `warnings` 记录“审核不可用”，标记 `quality_status=unavailable`，继续生成后续计划图片；最终整体质量闸门写 `output/failure-state.json`（`error_code=image_review_unavailable`），不得报告成功，原始错误只保留在服务端观测记录中 |
-| 源笔记获取失败 | 已认证 Anban MCP 仅在传输失败时重试一次；仅有外部 ID/链接且仍无源内容时写失败态并停止 |
-| 爆款拆解证据不足 | 写入 missing_data，降低 confidence，默认推荐 `style-only` |
-| 复刻模板置信度低或视觉证据不足 | 记录原因并按 `style-only` 处理 |
-| 违禁词检测误报 | 记录疑似词，标注人工复核，不自动删除核心信息 |
-| 交付校验失败 | 保留 `output` 全部产物与失败态，从对应阶段恢复 |
-
----
-
-## 成功标准
-
-- [ ] 所有必需产物均写入上文列出的显式 `output/<filename>` 路径
-- [ ] `output/content.md` 包含标题、正文、话题标签三部分
-- [ ] `output/image-plan.md` 包含封面、内容页规划（仅含内容图的模式）和尾图规划（仅含尾图的模式）
-- [ ] 封面图 `output/cover.png` 存在且可访问
-- [ ] 所有计划中的内容图（按 `seednote_image_mode` 和 `image-plan.md`，可能为 0 或 1~3 张）在 `output/image_01.png`、`output/image_02.png`、`output/image_03.png` 中有对应文件且可访问；未计划的编号不得存在
-- [ ] 尾图按 `seednote_image_mode`：含尾图的模式 `output/tail.png` 存在且可访问；不含尾图的模式不得存在 `output/tail.png`
-- [ ] 图片总数符合 `image-plan.md`「计划图片数量」声明值（封面 1 + 内容图 0~3 + 尾图 0~1）
-- [ ] 所有图片视觉风格一致
-- [ ] 复刻模式下 `output/source-note.md`、`output/source-analysis.md`、`output/viral-template.json` 均存在
-- [ ] 复刻模式下 `output/source-analysis.md` 的核心结论均包含证据
-- [ ] 复刻模式生成 `output/compliance-report.md`
-- [ ] 正文中无诱导互动表述
-- [ ] 交付校验通过，将 `output` 成果目录路径报告给用户
+按 `seednote-writing` 的合规规则和 `seednote-visual-design` 的图片合同执行最终检查。交付前确认所有声明的 `output/<filename>` 产物存在，标题、正文、标签和图片数量符合当前 `seednote_image_mode`，复刻模式保留源笔记、证据拆解、任务模板及合规报告；图片审核、生成、源数据或交付校验失败均保留已完成产物并写入结构化失败态，从对应阶段恢复。不得报告带有诱导互动或未经证据支持的结论。
 
 ## 项目画像
 

@@ -49,3 +49,15 @@ bearer_token_env_var = "ANBAN_API_KEY"
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/project-profile-context/SKILL.md"
 enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/wechat-picture-research/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/wechat-picture-writing/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/wechat-picture-visual-design/SKILL.md"
+enabled = true

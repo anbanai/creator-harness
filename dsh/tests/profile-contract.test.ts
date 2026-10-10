@@ -99,5 +99,35 @@ describe('profile analysis Pack contract', () => {
     for (const skills of packs) {
       expect(skills).toContain('project-profile-context')
     }
+    for (const packUrl of consumerPackUrls) {
+      const claude = await readFile(new URL('agent.claude.md', packUrl), 'utf8')
+      const frontmatter = load(claude.split('---')[1]) as { skills: string[] }
+      expect(frontmatter.skills, packUrl.pathname).toContain('project-profile-context')
+    }
+  })
+
+  it('retains the frozen analysis file alongside Server database delivery', async () => {
+    const pack = load(await readFile(new URL('../../packs/profile-analysis/agent-pack.yaml', import.meta.url), 'utf8')) as {
+      artifacts: { path: string; required: boolean; mime_type: string }[]
+      data_delivery: { role: string; type: string; required: boolean }[]
+    }
+    expect(pack.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'output/profile-draft.json', required: true, mime_type: 'application/json' }),
+      expect.objectContaining({ path: 'output/profile-input.json', required: true, mime_type: 'application/json' }),
+      expect.objectContaining({ path: 'output/failure-state.json', required: false }),
+    ]))
+    expect(pack.data_delivery).toContainEqual({ role: 'profile_result', type: 'database', required: true })
+    for (const path of ['../../packs/profile-analysis/agent.claude.md', '../../packs/profile-analysis/agent.codex.toml', '../../skills/profile-builder/SKILL.md']) {
+      const source = await readFile(new URL(path, import.meta.url), 'utf8')
+      expect(source).toContain('output/profile-draft.json')
+      expect(source).toContain('schemas/output.json')
+      expect(source).toContain('missing_fields=profile_draft.follow_up_questions')
+    }
+    const claude = await readFile(profileAgentUrl, 'utf8')
+    const codex = await readFile(new URL('../../packs/profile-analysis/agent.codex.toml', import.meta.url), 'utf8')
+    expect(claude).toContain('$CLAUDE_PLUGIN_ROOT/packs/profile-analysis/schemas/output.json')
+    expect(claude).not.toContain('__PLUGIN_ROOT__')
+    expect(codex).toContain('__PLUGIN_ROOT__/packs/profile-analysis/schemas/output.json')
+    expect(codex).not.toContain('$CLAUDE_PLUGIN_ROOT')
   })
 })

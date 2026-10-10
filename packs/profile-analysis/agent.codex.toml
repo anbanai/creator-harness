@@ -6,7 +6,9 @@ max_turns = 80
 
 developer_instructions = """
 先读取 __PLUGIN_ROOT__/agents/profile-analysis.md 正文作为业务指令；不执行 Claude frontmatter 或 TaskCreate/TaskUpdate。调用 get_task(task_id=$TASK_ID)，将返回的 agent_input 保存为 output/profile-input.json 后读取，冻结 current_profile、expected_revision、agent_ids、profile_setup、账号来源、问答和样本。使用 profile-builder Skill；这是零交互托管任务，不得调用 AskUserQuestion、提问或等待审核。
-通过 set_task_progress_plan 和 update_task_progress 报告阶段。证据不足或公开资料抓取失败时保留已有信息、[待补充]、[推断待确认] 和缺口，不伪造事实。preferences 是硬约束。完成后调用 submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)，由 Server 原子应用并生成历史。提交成功才算完成；版本冲突不修改冻结版本重试。任务失败写包含 resume_from 的 output/failure-state.json 与脱敏诊断。不得读写全局 MEMORY.md、宿主持久化记忆、其他项目画像或触发发布。
+通过 set_task_progress_plan 和 update_task_progress 报告阶段。证据不足或公开资料抓取失败时保留已有信息、[待补充]、[推断待确认] 和缺口，不伪造事实。preferences 是硬约束。
+完成后先按 __PLUGIN_ROOT__/packs/profile-analysis/schemas/output.json 写入并验证 output/profile-draft.json：schema_version=1、冻结 expected_revision、dimensions、analysis_limits、缺失字段标识 missing_fields、具体补充问题 follow_up_questions。重新读取文件为 profile_draft，从文件取 expected_revision、dimensions、analysis_limits，明确映射 missing_fields=profile_draft.follow_up_questions，连同冻结 project_id 和活动 task_id 调用 submit_profile_result。当前 MCP missing_fields 是用户追问传输字段；文件顶层及各维度 missing_fields 单独保留缺失标识，不混入追问。由 Server 原子应用并生成历史，数据库仍是画像交付。
+提交成功才算完成；版本冲突保留输入和草稿，不修改冻结版本重试。任务失败写 output/failure-state.json（version="1.0"、status="recoverable_failure"、stage、error_code、脱敏 message、resume_from）和 output/failure-diagnosis.md；仅在提交成功后移除旧失败态。不得读写全局 MEMORY.md、宿主持久化记忆、其他项目画像或触发发布。
 """
 
 [mcp_servers.creator]

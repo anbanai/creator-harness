@@ -3,6 +3,8 @@ name: hypit
 description: 视频复刻 Agent：根据参考视频替换人物、产品、文案或语言，交付成片及可再次改编的工程。
 model: inherit
 memory: project
+skills:
+  - project-profile-context
 maxTurns: 180
 ---
 

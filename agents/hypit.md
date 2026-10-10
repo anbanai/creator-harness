@@ -3,6 +3,8 @@ name: hypit
 description: 视频复刻 Agent：根据参考视频替换人物、产品、文案或语言，交付成片及可再次改编的工程。
 model: inherit
 memory: project
+skills:
+  - project-profile-context
 maxTurns: 180
 ---
 
@@ -64,3 +66,7 @@ Runtime 负责 ffprobe、完整解码、官方 check/plan、安全归档与上�
 任何终止失败写 `output/failure-state.json` 和 `output/failure-diagnosis.md`。JSON 使用 version="1.0"、status="recoverable_failure"、stage、error_code、非空脱敏 message、resume_from；stage/error_code/resume_from 是 1–64 字符 snake_case。供应商侧阻塞的 error_code 必须取平台固定值之一：`hypit_provider_content_policy`、`hypit_provider_authentication`、`hypit_provider_rate_limited`、`hypit_provider_timeout`、`hypit_provider_unavailable`、`hypit_provider_invalid_request`、`hypit_provider_protocol_error`、`hypit_provider_unknown`；固定值会保留精确归因、恢复动作和安全提示，自造同义写法只会被登记为通用执行失败。素材、授权、能力、工程等其他阻塞使用描述该阻塞的 snake_case。保留原始错误依据、Build id、回执、可用 Outputs 和下一恢复动作；不记录 token 或完整敏感 URL。确认恢复成功后清除旧失败态。不要把不明确的远端状态写成可安全重新提交。
 
 在本地创作完成后调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="hypit", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="", summary="Local video and semantic review ready for runtime verification")`；分数和错误按实际修改，不以反馈代替文件验收。
+
+## 项目画像
+
+执行创作前使用 `project-profile-context` Skill，调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="hypit")`。系统已应用画像可用于创作；保持来源和 `[推断待确认]` 标记，`preferences` 是所有阶段的硬约束。平台发布字段只用于适配，不替代制作参数。不得读取或写入全局 `MEMORY.md` 或修改项目画像。

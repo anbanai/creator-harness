@@ -53,9 +53,13 @@ Every dimension must include `content`, `sources`, `evidence`, and `missing_fiel
 
 ## Apply Through Server
 
-Submit the complete six-dimension result once through the authenticated Anban MCP `submit_profile_result` capability with `project_id`, the active `task_id`, the frozen `expected_revision`, `dimensions`, `analysis_limits`, and `missing_fields`. The Server validates task ownership and revision, atomically applies the result, and records history. Do not edit project files, prompts, or persistent memory directly.
+Before submitting, write `output/profile-draft.json` using the Pack's [output Schema](../../packs/profile-analysis/schemas/output.json). Resolve this resource relative to this Skill's directory. Validate `schema_version=1`, the unchanged frozen `expected_revision`, all six `dimensions`, `analysis_limits`, missing field identifiers in top-level and per-dimension `missing_fields`, and concrete user-answerable `follow_up_questions`. Keep identifiers and questions separate, with empty arrays when there are no gaps.
+
+Read that file back as `profile_draft`. Submit its exact revision, dimensions and analysis limits once through authenticated Anban MCP `submit_profile_result`, with the frozen `project_id` and active `task_id`. The existing MCP transport requires `missing_fields=profile_draft.follow_up_questions`: this parameter carries concrete supplementation questions, not the draft's missing-field identifiers. Those identifiers remain in the file and each dimension; do not overwrite them with questions. The Server validates task ownership and revision, atomically applies the result, and records history. Database delivery remains Server-owned. Do not edit project files, prompts, or persistent memory directly.
 
 Wait for the Server result before reporting success. On version conflict or rejected submission, stop and preserve the prior profile; do not retry with a new revision or claim the profile was updated. Missing evidence is a partial profile, not a failed task: apply the supported information and leave concrete gaps for later editing.
+
+Retain required `output/profile-input.json` and `output/profile-draft.json` as execution evidence. On terminal failure preserve them and write `output/failure-state.json` with `version="1.0"`, `status="recoverable_failure"`, `stage`, `error_code`, sanitized `message`, `resume_from`, plus `output/failure-diagnosis.md`. Remove a stale failure only after Server submission succeeds.
 
 ## Quality Check
 

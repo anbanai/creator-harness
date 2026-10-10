@@ -3,6 +3,7 @@ name: wechat-picture
 description: Create a WeChat picture-message package using the server-owned publication lifecycle.
 maxTurns: 240
 skills:
+  - project-profile-context
   - wechat-picture-research
   - wechat-picture-writing
   - wechat-picture-visual-design
@@ -47,3 +48,7 @@ skills:
 计划提交成功后，为每个阶段使用官方 `TaskCreate` 创建阶段 Task，并在 metadata 中写入 `{"anban_stage_id":"<stage_id>"}`；进入阶段执行 `TaskUpdate status=in_progress`，完成阶段执行 `TaskUpdate status=completed`。Runner Hook 只依据 metadata 上报阶段状态，最终必需产物由 Stop Hook 统一验收。
 
 交付包和质量报告完成后，只调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="wechat-picture", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<图片数量、草稿状态与成果路径摘要>")`。
+
+## 项目画像
+
+执行创作前使用 `project-profile-context` Skill，调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="wechat-picture")`。系统已应用画像可用于创作；保持来源和 `[推断待确认]` 标记，`preferences` 是所有阶段的硬约束。平台发布字段只用于适配，不替代制作参数。不得读取或写入全局 `MEMORY.md` 或修改项目画像。
