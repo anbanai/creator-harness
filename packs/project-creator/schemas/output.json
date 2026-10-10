@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "profile", "progress", "ready", "missing_fields", "inferred_fields"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "platform"],
+      "properties": {
+        "name": {"type": "string"},
+        "platform": {"type": "string"},
+        "instructions": {"type": "string"},
+        "keywords": {"type": "string"},
+        "visual_style": {"type": "string"}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {"type": "string"},
+        "style": {"type": "string"},
+        "audience": {"type": "string"},
+        "platforms": {"type": "string"},
+        "preferences": {"type": "string"},
+        "memory": {"type": "string"}
+      }
+    },
+    "ready": {"type": "boolean"},
+    "missing_fields": {"type": "array", "items": {"type": "string"}},
+    "inferred_fields": {"type": "array", "items": {"type": "string"}}
+  }
+}

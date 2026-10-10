@@ -103,7 +103,7 @@ for (const path of (await walk(join(root, 'packs'))).filter((p) => p.endsWith('/
     distributed_skills: manifest.agent.skills.length,
   }
   if (limit && startup[manifest.id].total_chars > limit) errors.push(`${manifest.id}: startup ${startup[manifest.id].total_chars} > ${limit}`)
-  documents.set(rel(join(dirname(path), manifest.agent.claude_source)), claude)
+      documents.set(rel(join(dirname(path), manifest.agent.claude_source)), claude)
   if (!baseline) {
     for (const source of [manifest.agent.claude_source, manifest.agent.codex_source, manifest.agent.dsh_source].filter(Boolean)) {
       const body = await read(join(dirname(path), source))
@@ -112,7 +112,13 @@ for (const path of (await walk(join(root, 'packs'))).filter((p) => p.endsWith('/
         if (!existsSync(resolve(root, match[1]))) errors.push(`${manifest.id}/${source}: missing Skill dependency ${match[1]}`)
       }
       if (manifest.kind === 'managed') {
-        for (const term of ['AskUserQuestion', 'resume_from', 'set_task_progress_plan']) if (!body.includes(term)) errors.push(`${manifest.id}/${source}: missing autonomy contract ${term}`)
+        const interactive = manifest.interaction?.user_questions === true
+        const hasAskUserQuestion = /AskUserQuestion|ask_user_question/.test(body)
+        if (interactive) {
+          if (!hasAskUserQuestion) errors.push(`${manifest.id}/${source}: missing autonomy contract AskUserQuestion`)
+        } else {
+          for (const term of ['AskUserQuestion', 'resume_from', 'set_task_progress_plan']) if (!body.includes(term)) errors.push(`${manifest.id}/${source}: missing autonomy contract ${term}`)
+        }
       }
       if (/无法判断时向用户列出候选|跳过剩余视觉与交付包|不得生成交付包/.test(body)) errors.push(`${manifest.id}/${source}: obsolete interaction/delivery branch`)
     }

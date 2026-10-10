@@ -20,6 +20,7 @@ import { DEFAULT_SCHEMA, Type, dump, load } from 'js-yaml'
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const FILES_CONTRACT = [
   'dsh/cordis.patch.yml',
+  'dsh/project-creator.patch.yml',
   'dsh/lib/**/*.js',
   'dsh/lib/**/*.d.ts',
   'dsh/bin/anban-dsh.js',

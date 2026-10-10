@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.37] - 2026-10-10
+
+- Added the interactive Project Creator Pack with DSH AskUserQuestion support,
+  temporary project drafts, and Server-owned confirmation.
+
 ## [4.2.36] - 2026-10-08
 
 - Made profile analysis opt-in after project creation, accepted structured multi-platform onboarding answers, and kept first-run results as unconfirmed drafts until user confirmation.

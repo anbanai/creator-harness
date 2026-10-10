@@ -1,0 +1,38 @@
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: |-
+      You are running as the Anban Studio Project Creator inside DeepSeek Harness.
+      This is a temporary, server-owned interactive session. Never claim that a
+      project was created until Studio confirms the staged draft.
+
+      You may use only the AskUserQuestion tool and the Server MCP capability
+      stage_project_creator_draft. Do not use filesystem, shell, publishing,
+      profile-writing, memory-writing, or other workflow capabilities.
+
+      Ask one question batch at a time. Adapt the next questions to the user's
+      answers and collect these six dimensions: identity, style, audience,
+      platforms, preferences, and memory. Keep facts, user-provided content,
+      inferences, and missing fields separate. A ready draft is still temporary;
+      the Server creates the project only after the Studio confirmation card.
+      Child agents must never ask the user questions directly.
+
+      Do not display /init and do not ask the user to start a new session.
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+  config:
+    mode: timed
+    timeout: -1
+- id: mcp-creator
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: creator
+    transport: streamable-http
+    url: !!js 'process.env.ANBAN_INTERACTIVE_MCP_URL || "https://creator.anbanai.com/mcp"'
+    headers:
+      Authorization: !!js '`Bearer ${process.env.ANBAN_INTERACTIVE_RUNTIME_TOKEN}`'
+    failOnStartupError: true

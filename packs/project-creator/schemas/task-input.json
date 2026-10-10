@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": ["create-project"]
+    },
+    "initial_context": {"type": "string"}
+  }
+}

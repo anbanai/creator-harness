@@ -35,6 +35,9 @@ importers:
       '@deepseek-ai/dsh-tool-bash':
         specifier: 0.1.5-rc.3
         version: 0.1.5-rc.3(9055efa72e5ac4a20c7a1925e3c329e7)
+      '@deepseek-ai/dsh-tool-ask-user':
+        specifier: 0.1.5-rc.3
+        version: 0.1.5-rc.3(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-agent@0.1.5-rc.3(89a2ae5b94824445293afcd8aa955423))(@deepseek-ai/dsh-tools@0.1.5-rc.3(3d934dd3e83b2eef68f1b79df32c588e))(@deepseek-ai/dsh-user-questions@0.1.5-rc.3(@deepseek-ai/cordis@4.0.4(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3))(@deepseek-ai/dsh-agent@0.1.5-rc.3(89a2ae5b94824445293afcd8aa955423))(@deepseek-ai/dsh-llm@0.1.5-rc.3(@deepseek-ai/cordis@4.0.4(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)))(@deepseek-ai/dsh-scope@0.1.5-rc.3(@deepseek-ai/cordis@4.0.4(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3))(@deepseek-ai/dsh-invariants@0.1.5-rc.3(@deepseek-ai/cordis@4.0.4(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)))))
       '@deepseek-ai/dsh-tool-fs':
         specifier: 0.1.5-rc.3
         version: 0.1.5-rc.3(9b97156f632f4affed893617b6a639b3)

@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.35',
+      version: '4.2.38',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -537,6 +537,7 @@ describe('DSH package manifest', () => {
       },
       files: [
         'dsh/cordis.patch.yml',
+        'dsh/project-creator.patch.yml',
         'dsh/lib/**/*.js',
         'dsh/lib/**/*.d.ts',
         'dsh/bin/anban-dsh.js',
@@ -586,6 +587,7 @@ describe('DSH package manifest', () => {
         '@deepseek-ai/dsh-persona': '0.1.5-rc.3',
         '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.3',
         '@deepseek-ai/dsh-tool-bash': '0.1.5-rc.3',
+        '@deepseek-ai/dsh-tool-ask-user': '0.1.5-rc.3',
         '@deepseek-ai/dsh-tool-fs': '0.1.5-rc.3',
         '@deepseek-ai/dsh-tool-fs-search': '0.1.5-rc.3',
         '@deepseek-ai/dsh-tool-pwsh': '0.1.5-rc.3',

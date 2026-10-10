@@ -75,6 +75,16 @@ test('Agent plugin-root Skill dependencies must exist', async (t) => {
   assert.match(result.report.errors.join('\n'), /missing Skill dependency skills\/missing\/SKILL.md/)
 })
 
+test('interactive managed Packs require questions without task lifecycle contracts', async (t) => {
+  const root = await fixture(t)
+  await writeFile(join(root, 'packs/article/agent-pack.yaml'), 'id: article\nkind: managed\ninteraction:\n  user_questions: true\nagent:\n  claude_source: agent.claude.md\n  codex_source: agent.codex.toml\n  skills: [demo]\n')
+  for (const name of ['agent.claude.md', 'agent.codex.toml']) {
+    await writeFile(join(root, 'packs/article', name), '---\nname: article\nskills: [demo]\n---\nask_user_question\n')
+  }
+  const result = audit(root)
+  assert.equal(result.code, 0)
+})
+
 for (const kind of ['plugin', 'managed']) {
   test(`${kind} autonomy checks follow the Pack execution kind`, async (t) => {
     const root = await fixture(t)

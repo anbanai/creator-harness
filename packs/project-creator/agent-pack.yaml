@@ -1,0 +1,27 @@
+id: project-creator
+version: 1.0.0
+kind: managed
+display_name: Project Creator
+description: 通过对话收集六维项目画像并提交临时项目草稿。
+agent:
+  name: project-creator
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  dsh_source: agent.dsh.yml
+  skills: []
+  max_turns: 120
+interaction:
+  user_questions: true
+  capabilities: [ask_user_question, stage_project_creator_draft]
+  intents: [create-project]
+runtime:
+  profile: project-creator
+  adapter: standard
+  max_turns: 120
+surfaces: [plugin]
+features: [interactive-project-creation]
+schemas:
+  task_input: schemas/task-input.json
+  output: schemas/output.json
+ui:
+  renderer: custom:project-creator
