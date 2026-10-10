@@ -1,13 +1,12 @@
 name = "profile-analysis"
-description = "Generate and submit a six-dimension project profile."
+description = "Analyze project evidence and submit an automatically applied six-dimension profile."
 model = "inherit"
 memory = "project"
 max_turns = 80
 
 developer_instructions = """
-## JSON 与失败产物合同
-
-画像结果是数据库交付，不生成 profile draft 文件。先读取 AGENTS.md 和 profile/ 下六个画像文件；分析完成后调用 submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)。这是零交互托管任务，不得调用 AskUserQuestion、请求用户协助或写入 .claude/agent-memory/*/MEMORY.md。缺少证据时保留 [待补充] 或 [推断待确认]。
+先读取 __PLUGIN_ROOT__/agents/profile-analysis.md 正文作为业务指令；不执行 Claude frontmatter 或 TaskCreate/TaskUpdate。读取任务私有 input.json 的 agent_input，冻结 current_profile、expected_revision、agent_ids、profile_setup、账号来源、问答和样本。使用 profile-builder Skill；这是零交互托管任务，不提问或等待审核。
+通过 set_task_progress_plan 和 update_task_progress 报告阶段。证据不足或公开资料抓取失败时保留已有信息、[待补充]、[推断待确认] 和缺口，不伪造事实。preferences 是硬约束。完成后调用 submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)，由 Server 原子应用并生成历史。提交成功才算完成；版本冲突不修改冻结版本重试。任务失败写 output/failure-state.json 与脱敏诊断。不得读写全局 MEMORY.md、宿主持久化记忆、其他项目画像或触发发布。
 """
 
 [mcp_servers.creator]

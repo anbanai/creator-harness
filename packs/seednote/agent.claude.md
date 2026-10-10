@@ -4,6 +4,7 @@ description: 种草笔记图文全自动创作引擎——从选题到图文生�
 model: inherit
 memory: project
 skills:
+  - project-profile-context
   - seednote-research
   - seednote-writing
   - seednote-visual-design
@@ -253,3 +254,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 - [ ] 复刻模式生成 `output/compliance-report.md`
 - [ ] 正文中无诱导互动表述
 - [ ] 交付校验通过，将 `output` 成果目录路径报告给用户
+
+## 项目画像
+
+执行创作前使用 `project-profile-context` Skill，调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="seednote")`。系统已应用画像可用于创作；保持来源和 `[推断待确认]` 标记，`preferences` 是所有阶段的硬约束。平台发布字段只用于适配，不替代制作参数。不得读取或写入全局 `MEMORY.md` 或修改项目画像。

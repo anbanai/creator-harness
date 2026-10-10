@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.38] - 2026-10-10
+
+- Freeze selected creation objects, account sources and the current profile for free profile analysis; submit complete evidence-aware results for Server-owned atomic application and revision history.
+- Share six-dimension profile usage and preference hard constraints across article, picture, note, generation, replication and whiteboard Agents.
+
 ## [4.2.35] - 2026-10-08
 
 - Default WeChat picture messages to a five-image maximum, select page count by distinct reader value, preserve fixed-count requests, and keep legacy exact-count validation.

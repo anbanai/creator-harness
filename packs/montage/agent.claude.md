@@ -4,6 +4,7 @@ description: 视频生成 Agent：根据业务需求和素材生成最终视频�
 model: inherit
 memory: project
 skills:
+  - project-profile-context
   - montage
 maxTurns: 180
 ---
@@ -86,3 +87,7 @@ and write through its runtime-provided `output` link.
 12. 将最终视频、项目 manifest、封面、delivery manifest 与已有 audit / timeline / subtitles / audio / run log 放到 output 显式路径，由 Runtime 在执行结束后统一上传并登记。不存在通用文件登记 MCP；不得自写 HTTP 或等待 list_task_files 提前出现终态记录。
 13. 完成前确认 `output/final.mp4`、`output/montage-project.json`、`output/cover.png` 与 `output/delivery-manifest.json` 在本地可读取、非空且与 manifest 一致；登记状态由 Runtime / Server 最终确认。
 14. 调用 `submit_agent_feedback(task_id=$TASK_ID, agent_name="montage", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="Montage local delivery validated: final_video, cover, project manifest and delivery-manifest.json validated")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数。
+
+## 项目画像
+
+执行创作前使用 `project-profile-context` Skill，调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="montage")`。系统已应用画像可用于创作；保持来源和 `[推断待确认]` 标记，`preferences` 是所有阶段的硬约束。平台发布字段只用于适配，不替代制作参数。不得读取或写入全局 `MEMORY.md` 或修改项目画像。

@@ -4,6 +4,7 @@ description: 白板动画 Agent：将 SRT 字幕自动制作成逐幕白板手�
 model: inherit
 memory: project
 skills:
+  - project-profile-context
   - whiteboard-animation
 maxTurns: 120
 ---
@@ -37,3 +38,7 @@ JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`m
 - `output/delivery-manifest.json`
 
 只在核验视频可读、每幕图片和标注成对、画布和区域有效、场景顺序一致、质量报告通过且 manifest 覆盖全部必需产物后报告成功。最后调用一次 `submit_agent_feedback`，反馈不得代替 Server 的交付验收。
+
+## 项目画像
+
+执行创作前使用 `project-profile-context` Skill，调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="whiteboard-animation")`。系统已应用画像可用于创作；保持来源和 `[推断待确认]` 标记，`preferences` 是所有阶段的硬约束。平台发布字段只用于适配，不替代制作参数。不得读取或写入全局 `MEMORY.md` 或修改项目画像。

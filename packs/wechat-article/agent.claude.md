@@ -4,6 +4,7 @@ description: 微信公众号图文文章全自动创作引擎，从选题研究�
 model: inherit
 memory: project
 skills:
+  - project-profile-context
   - content-writing
   - article-visual-design
   - article-cover-design
@@ -272,3 +273,7 @@ render_template(
 **产出**：`output/draft.json`
 
 交付包生成结果与步骤 9 的最终验收都已写入报告后，调用一次 `submit_agent_feedback(task_id=$TASK_ID, agent_name="wechat-article", scores='{"quality":8,"completeness":8,"efficiency":8}', errors="", optimizations="<本次可改进项；无则空字符串>", summary="<所选模板、交付包状态、内容审核通过率与成果路径摘要>")`。调用前按实际情况调整 JSON 字符串中的 1-10 分数；无错误时 `errors` 传空字符串。
+
+## 项目画像
+
+执行创作前使用 `project-profile-context` Skill，调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="wechat")`。系统已应用画像可用于创作；保持来源和 `[推断待确认]` 标记，`preferences` 是所有阶段的硬约束。平台发布字段只用于适配，不替代制作参数。不得读取或写入全局 `MEMORY.md` 或修改项目画像。

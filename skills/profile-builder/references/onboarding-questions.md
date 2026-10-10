@@ -1,10 +1,37 @@
-# 画像提问清单
+# Profile Lab Question Sequence
 
-这份顺序沿用 Easel `skill-profile-builder` 的自研流程语义，字段由 Anban Server 保存。
+This sequence adapts Easel's self-authored `skill-profile-builder` questions to Anban's four-group project form. Ask one group at a time in the UI; the managed Agent consumes submitted answers without interactive questions. Skip anything already answered, and keep every field optional.
 
-1. 基础平台与账号信息：平台、账号名称、主页链接、主要内容。
-2. 运营意图、方向和差异化：目标、长期方向、希望被记住的特征。
-3. 内容偏好、形式、调性和受众：主题、形式、节奏、语气、读者与表达深度。
-4. 不做内容、合作边界和合规红线：禁用主题、合作要求、敏感信息和硬性约束。
+## A. Basic Account And Platforms
 
-问题答案只进入对应维度的 `content`，用户明确确认的值标记 `[用户确认]`。
+1. Is this a new account or an existing account?
+2. Which supported platforms are active for this project?
+3. What is each account name, public homepage URL, and approximate follower range?
+4. Are there titles, links, or short descriptions of recent content the user can share?
+
+## B. Operating Intent
+
+5. What specific content direction should the account pursue? Prefer a concrete niche over a broad category.
+6. Why this direction? What experience, strengths, or resources make the account distinct?
+7. What is the primary goal: growth, monetization, brand-building, private-domain discovery, or personal interest?
+
+## C. Content Preferences And Audience
+
+8. What content does the user enjoy reading, watching, saving, or liking?
+9. Which formats should the project produce: image/text, short video, long video, or long-form writing?
+10. Are there reference accounts? What specific qualities should be learned from them?
+11. What tone should the work use: professional, relaxed, humorous, conversational, sharp, reassuring, or another description?
+12. Who is the intended audience, and what needs or problems should the content address? An uncertain answer can remain blank.
+
+## D. Boundaries
+
+13. Which topics, claims, or collaboration types should the project avoid?
+14. Which compliance boundaries are mandatory, such as avoiding medical-effect claims or unsupported advertising claims?
+
+## Collection Rules
+
+- The four groups are ordered: account/platform details; intent and differentiation; content preferences and audience; exclusions and compliance.
+- Give a short example where it lowers the effort to answer, but do not make the example look like a recommendation.
+- The user can skip any field. Record the missing field and a concrete follow-up question instead of filling it with generic wording.
+- Prefer analyzing user-supplied public material before asking the user to restate observable style or topic patterns.
+- Do not infer a fact from an unanswered question. An evidence-based hypothesis is labeled `[推断待确认]` and stays unresolved until the user confirms it.
