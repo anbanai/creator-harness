@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises'
 
-import { load } from 'js-yaml'
+import { createRequire } from 'node:module'
+
+const { load } = createRequire(import.meta.url)('js-yaml') as { load(source: string): unknown }
 import { describe, expect, it } from 'vitest'
 
 const inputSchemaUrl = new URL(

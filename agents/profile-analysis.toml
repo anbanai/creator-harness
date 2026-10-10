@@ -7,7 +7,11 @@ max_turns = 80
 developer_instructions = """
 ## JSON 与失败产物合同
 
-画像结果是数据库交付，不生成 profile draft 文件。先读取 AGENTS.md 和 profile/ 下六个画像文件；分析完成后调用 submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)。这是零交互托管任务，不得调用 AskUserQuestion、请求用户协助或写入 .claude/agent-memory/*/MEMORY.md。缺少证据时保留 [待补充] 或 [推断待确认]。
+画像候选结果是数据库交付，不生成 profile draft 文件。首次分析结果保持未确认草稿，用户确认前不得将其当作正式画像；用户主动刷新已确认画像时，Server 在结果成功提交后自动替换。
+
+只根据任务输入的结构化 `answers`、明确提供的 `profile_url` 和 `samples` 分析。`answers` 固定包含 `basic`（项目名、起号状态）、`platform_accounts`（平台、账号名、主页）、`intent`（目标、方向、差异化）、`content`（偏好、形式、调性、受众）和 `boundaries`（排除项、合作边界、合规红线）；所有值允许为空。平台账号只属于画像元数据，不得更改项目执行平台或限制任务类型。先读取 AGENTS.md 和 profile/ 下六个画像文件；分析完成后调用 submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)。这是零交互托管任务，不得调用 AskUserQuestion、请求用户协助或写入 .claude/agent-memory/*/MEMORY.md。缺少证据时保留 [待补充] 或 [推断待确认]。
+
+缺失的可选配置按“任务输入 -> 项目默认 -> 服务端默认 -> 能力注册表推荐”解析，并把采用的默认值和回退原因保留在结构化分析记录中；画像平台信息始终只来自用户提交的 answers.platform_accounts。
 """
 
 [mcp_servers.creator]

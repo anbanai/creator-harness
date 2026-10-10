@@ -2,7 +2,7 @@
 
 This file defines development boundaries for the Anban Claude Code, Codex, and
 DeepSeek Harness plugin surfaces. It lives under `docs/` because Claude Code
-does not load a plugin-root `CLAUDE.md` as plugin context. Runtime workflow
+does not load a plugin-root `AGENTS.md` as plugin context. Runtime workflow
 instructions belong in Pack-owned Agent sources or `skills/*/SKILL.md`.
 
 ## Project overview
