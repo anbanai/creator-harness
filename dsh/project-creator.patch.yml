@@ -55,3 +55,5 @@
               failOnStartupError: true
           - id: project-creator-tool-restrictions
             name: './plugins/project-creator-restrictions.js'
+          - id: project-creator-context
+            name: './plugins/project-creator-context.js'

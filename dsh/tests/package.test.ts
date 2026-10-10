@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.39',
+      version: '4.2.40',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -584,6 +584,7 @@ describe('DSH package manifest', () => {
         '@deepseek-ai/dsh-commands': '0.1.5-rc.3',
         '@deepseek-ai/dsh-credentials': '0.1.5-rc.3',
         '@deepseek-ai/dsh-home-paths': '0.1.5-rc.3',
+        '@deepseek-ai/dsh-llm': '0.1.5-rc.3',
         '@deepseek-ai/dsh-mcp-client': '0.1.5-rc.3',
         '@deepseek-ai/dsh-persona': '0.1.5-rc.3',
         '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.3',

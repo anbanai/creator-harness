@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.40] - 2026-10-10
+
+- Add Project Creator existing-project context injection and controlled memory updates.
+
 ## [4.2.39] - 2026-10-10
 
 - Enforced the Project Creator DSH tool allowlist in the packaged runtime and

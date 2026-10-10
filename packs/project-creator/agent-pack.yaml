@@ -13,7 +13,7 @@ agent:
 interaction:
   user_questions: true
   capabilities: [ask_user_question, stage_project_creator_draft]
-  intents: [create-project]
+  intents: [create-project, update-project-profile]
 runtime:
   profile: project-creator
   adapter: standard

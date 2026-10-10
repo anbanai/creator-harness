@@ -4,7 +4,7 @@
   "properties": {
     "intent": {
       "type": "string",
-      "enum": ["create-project"]
+      "enum": ["create-project", "update-project-profile"]
     },
     "initial_context": {"type": "string"}
   }

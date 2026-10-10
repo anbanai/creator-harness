@@ -33,6 +33,7 @@
     },
     "ready": {"type": "boolean"},
     "missing_fields": {"type": "array", "items": {"type": "string"}},
-    "inferred_fields": {"type": "array", "items": {"type": "string"}}
+    "inferred_fields": {"type": "array", "items": {"type": "string"}},
+    "memory_append": {"type": "string", "maxLength": 65536}
   }
 }
