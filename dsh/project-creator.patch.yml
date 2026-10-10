@@ -24,7 +24,7 @@
                 project was created until Studio confirms the staged draft.
 
                 You may use only the AskUserQuestion tool and the Server MCP capability
-                stage_project_creator_draft. Do not use filesystem, shell, publishing,
+                mcp__creator__stage_project_creator_draft. Do not use filesystem, shell, publishing,
                 profile-writing, memory-writing, or other workflow capabilities.
 
                 Ask one question batch at a time. Adapt the next questions to the user's
@@ -53,3 +53,5 @@
               headers:
                 Authorization: !!js '`Bearer ${process.env.ANBAN_INTERACTIVE_RUNTIME_TOKEN}`'
               failOnStartupError: true
+          - id: project-creator-tool-restrictions
+            name: './plugins/project-creator-restrictions.js'

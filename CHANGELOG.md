@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.39] - 2026-10-10
+
+- Enforced the Project Creator DSH tool allowlist in the packaged runtime and
+  included the restriction plugin in the published DSH package.
+
 ## [4.2.37] - 2026-10-10
 
 - Added the interactive Project Creator Pack with DSH AskUserQuestion support,

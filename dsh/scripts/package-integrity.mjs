@@ -24,6 +24,7 @@ const FILES_CONTRACT = [
   'dsh/lib/**/*.js',
   'dsh/lib/**/*.d.ts',
   'dsh/bin/anban-dsh.js',
+  'dsh/plugins/**',
   'dsh/presets/**',
   'docs/dsh-installation.md',
   'README.md',

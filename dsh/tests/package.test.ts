@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.38',
+      version: '4.2.39',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -541,6 +541,7 @@ describe('DSH package manifest', () => {
         'dsh/lib/**/*.js',
         'dsh/lib/**/*.d.ts',
         'dsh/bin/anban-dsh.js',
+        'dsh/plugins/**',
         'dsh/presets/**',
         'docs/dsh-installation.md',
         'README.md',
