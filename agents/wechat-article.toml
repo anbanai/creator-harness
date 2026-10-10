@@ -319,3 +319,7 @@ enabled = true
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/project-profile-context/SKILL.md"
 enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/article-publishing/SKILL.md"
+enabled = true

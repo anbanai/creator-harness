@@ -101,7 +101,7 @@ describe('profile analysis Pack contract', () => {
     }
     for (const packUrl of consumerPackUrls) {
       const claude = await readFile(new URL('agent.claude.md', packUrl), 'utf8')
-      const frontmatter = load(claude.split('---')[1]) as { skills: string[] }
+      const frontmatter = load(claude.split('---')[1] ?? '') as { skills: string[] }
       expect(frontmatter.skills, packUrl.pathname).toContain('project-profile-context')
     }
   })
