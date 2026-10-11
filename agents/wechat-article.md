@@ -4,6 +4,7 @@ description: 微信公众号图文文章全自动创作引擎，从选题研究�
 model: inherit
 memory: project
 skills:
+  - project-profile-context
   - content-writing
   - article-visual-design
   - article-cover-design

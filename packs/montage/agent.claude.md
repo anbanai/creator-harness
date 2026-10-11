@@ -4,6 +4,7 @@ description: 视频生成 Agent：根据业务需求和素材生成最终视频�
 model: inherit
 memory: project
 skills:
+  - project-profile-context
   - montage
 maxTurns: 180
 ---

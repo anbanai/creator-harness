@@ -1,6 +1,6 @@
 # 画像提问清单
 
-这份顺序沿用 Easel `skill-profile-builder` 的自研流程语义，字段由 Anban Server 保存。
+这份顺序沿用 Easel `skill-project-profile-context` 的自研流程语义，字段由 Anban Server 保存。
 
 1. 基础平台与账号信息：平台、账号名称、主页链接、主要内容。
 2. 运营意图、方向和差异化：目标、长期方向、希望被记住的特征。

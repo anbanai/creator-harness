@@ -4,7 +4,7 @@ description: 生成并提交 Anban 项目级六维账号画像。
 model: inherit
 memory: project
 skills:
-  - profile-builder
+  - project-profile-context
 maxTurns: 80
 ---
 

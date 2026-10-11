@@ -13,5 +13,5 @@ url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]
-path = "__PLUGIN_ROOT__/skills/profile-builder/SKILL.md"
+path = "__PLUGIN_ROOT__/skills/project-profile-context/SKILL.md"
 enabled = true

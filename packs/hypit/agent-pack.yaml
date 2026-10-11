@@ -7,7 +7,7 @@ agent:
   name: hypit
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [portrait-cover-design]
+  skills: [project-profile-context, portrait-cover-design]
   max_turns: 180
 channel: hypit
 bindings:

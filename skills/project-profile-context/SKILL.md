@@ -1,5 +1,5 @@
 ---
-name: profile-builder
+name: project-profile-context
 description: Use when building or reviewing an Anban project account profile; reuse Easel six-dimension semantics, question order, source labels, and public-material fallback rules.
 ---
 
