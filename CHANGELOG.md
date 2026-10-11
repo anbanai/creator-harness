@@ -4,6 +4,8 @@
 
 - Add Project Creator existing-project context injection and controlled memory updates.
 
+- Added the Server-owned `search_web` MCP contract for article and Seednote research, including cited evidence and provider-unavailable fallback guidance.
+
 ## [4.2.39] - 2026-10-10
 
 - Enforced the Project Creator DSH tool allowlist in the packaged runtime and

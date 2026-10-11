@@ -25,10 +25,13 @@ description: 'Use only during Seednote topic discovery or source-note retrieval.
 2. 从 `search_seednote_feeds` 或 `get_seednote_user_profile` 的真实工具返回中取得 `feed_id` 与 `xsec_token`，再调用 `get_seednote_feed_detail`。工具返回的签名 URL 只能作为该工具输出的一部分，不能直接读取用户输入的链接。
 3. 需要作者公开画像时，使用详情或搜索结果中的真实用户标识调用 `get_seednote_user_profile`。
 4. `trending-topics` 可选地调用 Server MCP `list_trends` 获取微博、抖音、知乎、B站、百度或头条公共热点，作为选题补充；公共热点不能替代认证种草笔记搜索，也不能被记录为 `xiaohongshu-mcp` 数据。
+5. 一般事实、产品背景或非种草笔记的公开资料研究，使用 Server MCP `search_web`。该工具由 Server 选择 Provider 并持有密钥；Agent 不得传入 Provider、读取密钥，或直接访问搜索网站。
 
 登录状态检查、扫码登录和退出登录由 Admin 在 Anban 后台维护。Agent 不管理登录态、不获取二维码、不等待人工扫码，也不得向用户暴露任何登录管理能力；它只调用研究工具并处理工具返回的认证或能力错误。
 
 本 skill 只读：只允许搜索、笔记详情和用户公开资料查询；禁止登录管理以及发布、删除、关注、取关、点赞、收藏、评论写入等写操作。禁止直连 sidecar、私有端口、浏览器抓取器，禁止编写 Python、JavaScript/Node.js 或自定义 HTTP 客户端，也禁止调用任何外部种草笔记客户端。不得绕过 Anban MCP 的认证、审计与协议边界。
+
+`search_web` 仅用于一般公开资料，不能替代 `search_seednote_feeds` 的认证种草笔记数据，也不能用于推断缺失的互动字段。保留搜索结果的 URL、域名、引用 ID、抓取时间和缺失字段；收到 `provider_unavailable` 时按原创模式的保守降级规则继续，并记录错误。
 
 原创模式外部研究不可用时，原创模式不得失败、不得写 `output/failure-state.json`：改用用户明确主题、选题池、账号画像和已有标题完成保守选题，并如实记录缺失数据。公共热点或 `list_trends` 不可用时同样按此降级。不得把本地判断描述成热门数据或互动率证据。复刻模式若只提供外部笔记 ID/链接且无法取得任何源内容，才属于无法满足核心输入的可恢复失败。
 
