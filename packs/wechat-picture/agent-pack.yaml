@@ -1,5 +1,5 @@
 id: wechat-picture
-version: 1.0.3
+version: 1.0.4
 kind: managed
 display_name: 微信公众号贴图
 description: 研究选题、编排图片消息并生成公众号 newspic 草稿交付包。
@@ -21,6 +21,8 @@ surfaces: [plugin, task, plan]
 features: [image-generation, reference-images, wechat-picture]
 billing_operations:
   content_generation: task.wechat_picture
+schemas:
+  task_input: schemas/task-input.json
 artifacts:
   - {role: research, path: output/topic-analysis.md, mime_type: text/markdown, required: true}
   - {role: content_dna, path: output/content-dna.json, mime_type: application/json, required: true}

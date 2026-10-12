@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.41] - 2026-10-12
+
+- Declared the WeChat picture Agent Pack task-input schema so image-count and
+  draft controls can be created and cloned through the Server contract.
+
 ## [4.2.40] - 2026-10-10
 
 - Add Project Creator existing-project context injection and controlled memory updates.

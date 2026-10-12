@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "picture_image_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20,
+      "description": "Total image count including the cover."
+    },
+    "picture_image_count_mode": {
+      "type": "string",
+      "enum": ["up_to", "exact"],
+      "description": "Whether the requested image count is an upper bound or exact."
+    },
+    "picture_publish_draft": {
+      "type": "boolean",
+      "description": "Whether the Server should create a WeChat draft after delivery."
+    }
+  }
+}

@@ -31,11 +31,11 @@ async function trackedTextFiles(): Promise<Array<[string, string]>> {
 
 describe('WeChat draft lifecycle contract', () => {
   it('removes the legacy draft tool and fake draft URL from tracked plugin assets', async () => {
-	const legacyTool = 'publish' + '_draft'
-	const legacyURL = 'draft' + '_url'
+	const legacyTool = new RegExp('(?<![A-Za-z0-9_])' + 'publish' + '_' + 'draft(?![A-Za-z0-9_])', 'u')
+	const legacyURL = new RegExp('(?<![A-Za-z0-9_])' + 'draft' + '_' + 'url(?![A-Za-z0-9_])', 'u')
     for (const [path, text] of await trackedTextFiles()) {
-	  expect(text, path).not.toContain(legacyTool)
-	  expect(text, path).not.toContain(legacyURL)
+	  expect(text, path).not.toMatch(legacyTool)
+	  expect(text, path).not.toMatch(legacyURL)
     }
   })
 
@@ -119,7 +119,7 @@ describe('WeChat draft lifecycle contract', () => {
     }
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.2.40', async () => {
+  it('keeps both native manifests and the Claude marketplace at 4.2.41', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -130,7 +130,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.2.40')
+      expect(version, path).toBe('4.2.41')
     }
   })
 })
