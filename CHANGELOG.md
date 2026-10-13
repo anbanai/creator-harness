@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.45] - 2026-10-13
+
+- Require Taxonomy v2 in completion metadata before accepting content tags.
+
 ## [4.2.44] - 2026-10-13
 
 - Added v2 evidence-backed content tagging contracts to all content Agent Packs.

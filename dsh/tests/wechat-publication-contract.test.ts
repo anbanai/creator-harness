@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
-import { readFile, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -30,6 +31,45 @@ async function trackedTextFiles(): Promise<Array<[string, string]>> {
 }
 
 describe('WeChat draft lifecycle contract', () => {
+  it('accepts completion tags only when both schema and taxonomy are v2', async () => {
+    const output = await mkdtemp(join(tmpdir(), 'anban-completion-tags-'))
+    const hook = join(root, 'hooks/completion-metadata.sh')
+    try {
+      for (const [name, taxonomyVersion, wantStatus, wantDiagnostic] of [
+        ['schema-only', '', 'failed', 'tagging_invalid_schema'],
+        ['taxonomy-v2', '2.0', 'succeeded', ''],
+      ] as const) {
+        const folder = join(output, name)
+        await mkdir(join(folder, 'output'), { recursive: true })
+        await writeFile(
+          join(folder, 'output', 'content-tags.json'),
+          JSON.stringify({
+            schema_version: '2.0',
+            ...(taxonomyVersion ? { taxonomy_version: taxonomyVersion } : {}),
+            status: 'succeeded',
+            subjects: [{ artifact_role: 'final_markdown', tags: [], omitted_dimensions: ['domain'] }],
+          }),
+        )
+        const result = spawnSync('bash', [hook], {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            CLAUDE_PROJECT_DIR: folder,
+            ANBAN_TASK_ID: 'task-1',
+            ANBAN_EXECUTION_ID: 'execution-1',
+            ANBAN_TASK_TYPE: 'wechat-article',
+          },
+        })
+        expect(result.status, result.stderr).toBe(0)
+        const metadata = JSON.parse(await readFile(join(folder, 'output', 'completion-metadata.json'), 'utf8'))
+        expect(metadata.tagging_status).toBe(wantStatus)
+        expect(metadata.tagging_diagnostic).toBe(wantDiagnostic)
+      }
+    } finally {
+      await rm(output, { recursive: true, force: true })
+    }
+  })
+
   it('removes the legacy draft tool and fake draft URL from tracked plugin assets', async () => {
 	const legacyTool = new RegExp('(?<![A-Za-z0-9_])' + 'publish' + '_' + 'draft(?![A-Za-z0-9_])', 'u')
 	const legacyURL = new RegExp('(?<![A-Za-z0-9_])' + 'draft' + '_' + 'url(?![A-Za-z0-9_])', 'u')
@@ -119,7 +159,7 @@ describe('WeChat draft lifecycle contract', () => {
     }
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.2.44', async () => {
+  it('keeps both native manifests and the Claude marketplace at 4.2.45', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -130,7 +170,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.2.44')
+      expect(version, path).toBe('4.2.45')
     }
   })
 })
