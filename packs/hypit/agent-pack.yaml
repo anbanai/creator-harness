@@ -21,6 +21,7 @@ runtime:
 billing_operations:
   hypit: task.hypit
 artifacts:
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: true}
   - {role: project_manifest, path: output/project.json, mime_type: application/json, required: true}
@@ -47,3 +48,4 @@ delivery:
   - {role: review, path: output/cover-quality.json, mime_type: application/json}
 ui:
   renderer: custom:hypit
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final_video], extensions: [presentation_device, funnel_stage]}

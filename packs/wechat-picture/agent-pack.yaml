@@ -24,6 +24,7 @@ billing_operations:
 schemas:
   task_input: schemas/task-input.json
 artifacts:
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
   - {role: research, path: output/topic-analysis.md, mime_type: text/markdown, required: true}
   - {role: content_dna, path: output/content-dna.json, mime_type: application/json, required: true}
   - {role: script, path: output/content-script.md, mime_type: text/markdown, required: true}
@@ -42,3 +43,4 @@ delivery:
   - {role: publish_package, path: output/publish-package.json, mime_type: application/json}
 ui:
   renderer: custom:wechat-picture
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [content], extensions: [presentation_device, funnel_stage]}

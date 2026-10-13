@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.44] - 2026-10-13
+
+- Added v2 evidence-backed content tagging contracts to all content Agent Packs.
+
 ## [4.2.43] - 2026-10-13
 
 - Renamed the DSH Project Creator mode to 画像模式 and the Studio project navigation to 项目.

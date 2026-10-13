@@ -57,4 +57,4 @@ delivery:
   - {role: image, path: output/img_*.png, mime_type: image/png}
 ui:
   renderer: custom:article
-tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final], extensions: [presentation_device, funnel_stage]}
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final_markdown], extensions: [presentation_device, funnel_stage]}

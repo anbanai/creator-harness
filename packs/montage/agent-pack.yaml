@@ -21,6 +21,7 @@ features: [video-generation, source-assets]
 billing_operations:
   montage: task.montage
 artifacts:
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: true}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: true}
@@ -36,3 +37,4 @@ delivery:
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
 ui:
   renderer: custom:montage
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final_video], extensions: [presentation_device, funnel_stage]}

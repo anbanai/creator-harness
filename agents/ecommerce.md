@@ -4,6 +4,7 @@ description: 电商出图全自动执行引擎——多张产品图输入，产�
 model: inherit
 memory: project
 skills:
+  - content-tagging
   - ecommerce-product-analysis
   - ecommerce-copywriting
   - ecommerce-visual-design

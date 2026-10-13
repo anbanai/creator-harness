@@ -59,4 +59,4 @@ delivery_by_task_type:
     - {role: template, path: output/viral-template.json, mime_type: application/json}
 ui:
   renderer: custom:seednote
-tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final], extensions: [presentation_device, funnel_stage]}
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final_markdown], extensions: [presentation_device, funnel_stage]}

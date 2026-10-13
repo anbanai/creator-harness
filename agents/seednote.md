@@ -4,6 +4,7 @@ description: 种草笔记图文全自动创作引擎——从选题到图文生�
 model: inherit
 memory: project
 skills:
+  - content-tagging
   - project-profile-context
   - seednote-research
   - seednote-writing

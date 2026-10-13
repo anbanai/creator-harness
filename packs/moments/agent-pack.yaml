@@ -18,6 +18,7 @@ features: [reference-images]
 billing_operations:
   moments: task.moments
 artifacts:
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
   - {role: analysis, path: output/material-analysis.md, mime_type: text/markdown, required: true}
   - {role: final_markdown, path: output/content.md, mime_type: text/markdown, required: true}
   - {role: image_prompt, path: output/image-prompts.md, mime_type: text/markdown, required: true}
@@ -30,3 +31,4 @@ delivery:
   - {role: image, path: output/moments-image.png, mime_type: image/png}
 ui:
   renderer: custom:moments
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final_markdown], extensions: [presentation_device, funnel_stage]}

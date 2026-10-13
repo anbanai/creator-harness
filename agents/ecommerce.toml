@@ -201,3 +201,8 @@ enabled = true
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/ecommerce-platform-specs/SKILL.md"
 enabled = true
+
+# Shared semantic content tagging
+[[skills.config]]
+name = "content-tagging"
+path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"

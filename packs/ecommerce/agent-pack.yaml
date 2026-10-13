@@ -18,6 +18,7 @@ features: [image-generation, product-assets]
 billing_operations:
   ecommerce: task.ecommerce
 artifacts:
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
   - {role: product_bible, path: output/product-bible.md, mime_type: text/markdown, required: true}
   - {role: product_photos, path: output/product-photos.md, mime_type: text/markdown, required: false}
   - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown, required: true}
@@ -39,3 +40,4 @@ delivery:
   - {role: sku_image, path: output/sku_*.png, mime_type: image/png}
 ui:
   renderer: custom:ecommerce
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [copywriting], extensions: [presentation_device, funnel_stage]}

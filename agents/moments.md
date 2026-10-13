@@ -4,6 +4,7 @@ description: 朋友圈素材包全自动创作 Agent——从素材拆解到正�
 model: inherit
 memory: project
 skills:
+  - content-tagging
   - moments
 maxTurns: 20
 ---

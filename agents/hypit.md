@@ -4,6 +4,7 @@ description: 视频复刻 Agent：根据参考视频替换人物、产品、文�
 model: inherit
 memory: project
 skills:
+  - content-tagging
   - project-profile-context
 maxTurns: 180
 ---

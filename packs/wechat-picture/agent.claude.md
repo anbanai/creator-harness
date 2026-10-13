@@ -3,6 +3,7 @@ name: wechat-picture
 description: Create a WeChat picture-message package using the server-owned publication lifecycle.
 maxTurns: 240
 skills:
+  - content-tagging
   - wechat-picture-research
   - wechat-picture-writing
   - wechat-picture-visual-design

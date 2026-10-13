@@ -4,6 +4,7 @@ description: 白板动画 Agent：将 SRT 字幕自动制作成逐幕白板手�
 model: inherit
 memory: project
 skills:
+  - content-tagging
   - whiteboard-animation
 maxTurns: 120
 ---
