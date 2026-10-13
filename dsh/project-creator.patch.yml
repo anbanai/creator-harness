@@ -12,8 +12,8 @@
       name: '@deepseek-ai/dsh-agent-preset'
       config:
         id: project-creator
-        name: Project Creator
-        description: 通过对话收集六维项目画像并提交临时项目草稿。
+        name: 画像模式
+        description: 通过对话收集六维项目画像，创建或更新项目画像。
         plugins:
           - id: persona
             name: '@deepseek-ai/dsh-persona'

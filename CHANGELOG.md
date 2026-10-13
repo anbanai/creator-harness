@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.43] - 2026-10-13
+
+- Renamed the DSH Project Creator mode to 画像模式 and the Studio project navigation to 项目.
+
 ## [4.2.42] - 2026-10-13
 
 - Namespaced Project Creator's internal DSH Bridge environment variables under
