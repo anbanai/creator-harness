@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.42] - 2026-10-13
+
+- Namespaced Project Creator's internal DSH Bridge environment variables under
+  `ANBAN_DSH_BRIDGE_*`.
+
 ## [4.2.41] - 2026-10-12
 
 - Declared the WeChat picture Agent Pack task-input schema so image-count and

@@ -7,7 +7,7 @@ import { apply } from './project-creator-context.js'
 const homes = []
 
 afterEach(() => {
-  delete process.env.ANBAN_INTERACTIVE_INITIAL_CONTEXT_FILE
+  delete process.env.ANBAN_DSH_BRIDGE_INITIAL_CONTEXT_FILE
   for (const home of homes.splice(0)) rmSync(home, { recursive: true, force: true })
 })
 
@@ -16,7 +16,7 @@ function setup(context) {
   homes.push(home)
   const file = join(home, 'context.json')
   if (context !== undefined) writeFileSync(file, context)
-  process.env.ANBAN_INTERACTIVE_INITIAL_CONTEXT_FILE = file
+  process.env.ANBAN_DSH_BRIDGE_INITIAL_CONTEXT_FILE = file
   const listeners = new Map()
   const injected = []
   const root = {

@@ -39,7 +39,7 @@
   config:
     serverName: creator
     transport: streamable-http
-    url: !!js 'process.env.ANBAN_INTERACTIVE_MCP_URL || "https://creator.anbanai.com/mcp"'
+    url: !!js 'process.env.ANBAN_DSH_BRIDGE_MCP_URL || "https://creator.anbanai.com/mcp"'
     headers:
-      Authorization: !!js '`Bearer ${process.env.ANBAN_INTERACTIVE_RUNTIME_TOKEN}`'
+      Authorization: !!js '`Bearer ${process.env.ANBAN_DSH_BRIDGE_RUNTIME_TOKEN}`'
     failOnStartupError: true

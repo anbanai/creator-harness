@@ -12,7 +12,7 @@ export const inject = ['agents']
 const MAX_CONTEXT_BYTES = 256 * 1024
 
 export function apply(ctx) {
-  const path = process.env.ANBAN_INTERACTIVE_INITIAL_CONTEXT_FILE ?? ''
+  const path = process.env.ANBAN_DSH_BRIDGE_INITIAL_CONTEXT_FILE ?? ''
   let context = ''
   if (path) {
     try { context = readFileSync(path, 'utf8') } catch { return }
