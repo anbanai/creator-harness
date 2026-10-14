@@ -11,7 +11,7 @@ afterEach(() => {
   for (const home of homes.splice(0)) rmSync(home, { recursive: true, force: true })
 })
 
-function setup(context) {
+function setup(context, preset = 'project-creator') {
   const home = mkdtempSync(join(tmpdir(), 'project-creator-context-test-'))
   homes.push(home)
   const file = join(home, 'context.json')
@@ -19,21 +19,24 @@ function setup(context) {
   process.env.ANBAN_DSH_BRIDGE_INITIAL_CONTEXT_FILE = file
   const listeners = new Map()
   const injected = []
+  const agentContext = {
+    get: () => ({ composedPreset: () => preset }),
+  }
   const root = {
+    ctx: { ...agentContext, systemPrompt: { context: (value) => injected.push(['root', value]) } },
     session: { header: {} },
-    inject: (message) => injected.push(['root', message]),
   }
   const child = {
+    ctx: { ...agentContext, systemPrompt: { context: (value) => injected.push(['child', value]) } },
     session: { header: { parentSession: 'root' } },
-    inject: (message) => injected.push(['child', message]),
   }
   const ctx = {
     on: (event, listener) => listeners.set(event, listener),
     agents: { list: () => [root, child] },
   }
   apply(ctx)
-  listeners.get('agent/created')({ agent: root })
-  listeners.get('agent/created')({ agent: child })
+  listeners.get('agent/created')?.({ agent: root })
+  listeners.get('agent/created')?.({ agent: child })
   return { injected }
 }
 
@@ -42,11 +45,15 @@ describe('Project Creator initial context plugin', () => {
     const { injected } = setup('{"kind":"anban.project_profile_reference"}')
     expect(injected).toHaveLength(1)
     expect(injected[0][0]).toBe('root')
-    expect(injected[0][1].source).toEqual({ kind: 'runtime-context', form: 'snapshot' })
+    expect(injected[0][1]).toMatchObject({ name: 'anban-project-creator', text: '{"kind":"anban.project_profile_reference"}', interpolate: false, required: true })
   })
 
   it('fails closed for missing or oversized snapshots', () => {
     expect(setup(undefined).injected).toHaveLength(0)
     expect(setup('x'.repeat(256 * 1024 + 1)).injected).toHaveLength(0)
+  })
+
+  it('does not inject context for another preset', () => {
+    expect(setup('{"kind":"other"}', 'wechat-article').injected).toHaveLength(0)
   })
 })

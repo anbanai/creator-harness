@@ -8,12 +8,17 @@ const ASK_USER_QUESTION = 'ask_user_question'
 const STAGE_DRAFT = 'mcp__creator__stage_project_creator_draft'
 const ROOT_ALLOW = [ASK_USER_QUESTION, STAGE_DRAFT]
 
+function isProjectCreatorAgent(agent) {
+  return agent.ctx.get?.('agentPresets')?.composedPreset(agent.ctx) === 'project-creator'
+}
+
 export function apply(ctx) {
   const installed = new WeakSet()
 
   const install = (agent) => {
     if (installed.has(agent)) return
     installed.add(agent)
+    if (!isProjectCreatorAgent(agent)) return
 
     const child = agent.session.header.parentSession !== undefined
     const allow = child ? [] : ROOT_ALLOW

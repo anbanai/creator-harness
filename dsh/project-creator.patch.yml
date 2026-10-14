@@ -53,7 +53,11 @@
               headers:
                 Authorization: !!js '`Bearer ${process.env.ANBAN_DSH_BRIDGE_RUNTIME_TOKEN}`'
               failOnStartupError: true
-          - id: project-creator-tool-restrictions
-            name: './plugins/project-creator-restrictions.js'
-          - id: project-creator-context
-            name: './plugins/project-creator-context.js'
+    - id: project-creator-plugins
+      name: '@deepseek-ai/cordis-plugin-group'
+      group: true
+      config:
+        - id: project-creator-tool-restrictions
+          name: './plugins/project-creator-restrictions.js'
+        - id: project-creator-context
+          name: './plugins/project-creator-context.js'
