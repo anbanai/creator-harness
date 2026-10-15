@@ -3,6 +3,7 @@ import {
   access,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   rm,
   writeFile,
@@ -183,6 +184,7 @@ export function smokeEnvironment(dshHome, smokeRoot, source = process.env) {
     ...environment,
     DSH_HOME: dshHome,
     HOME: dshHome,
+    npm_config_minimum_release_age_strict: 'false',
     NPM_CONFIG_USERCONFIG: join(smokeRoot, '.npmrc'),
     TEMP: temporary,
     TMP: temporary,
@@ -306,9 +308,39 @@ function defaultResolveDshCommand() {
   )
 }
 
-async function defaultDiscoverPresets(roots, harnessBase) {
-  const { discoverPresets } = await import('@deepseek-ai/dsh-agent-presets')
-  return discoverPresets(roots, harnessBase)
+export async function defaultDiscoverPresets(roots, harnessBase) {
+  const [{ DEFAULT_SCHEMA, Type, load }, { entryListProblem }] =
+    await Promise.all([
+      import('js-yaml'),
+      import('@deepseek-ai/dsh-agent-preset-registry'),
+    ])
+  const jsExpression = new Type('tag:yaml.org,2002:js', {
+    construct: (value) => value,
+    kind: 'scalar',
+  })
+  const schema = DEFAULT_SCHEMA.extend([jsExpression])
+  const presets = []
+  for (const root of roots) {
+    let entries
+    try {
+      entries = await readdir(root.path, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !/^[a-z0-9][a-z0-9-]*$/.test(entry.name)) continue
+      const presetPath = join(root.path, entry.name, 'agent.cordis.yml')
+      let broken
+      try {
+        const composition = load(await readFile(presetPath, 'utf8'), { schema })
+        broken = entryListProblem(composition)
+      } catch (error) {
+        broken = error instanceof Error ? error.message : String(error)
+      }
+      presets.push({ id: entry.name, trust: root.trust, path: presetPath, ...(broken === undefined ? {} : { broken }) })
+    }
+  }
+  return presets
 }
 
 async function defaultParseConfig(source) {

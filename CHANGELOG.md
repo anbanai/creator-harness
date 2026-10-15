@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.49] - 2026-10-16
+
+- Upgraded the DSH runtime packages and profile tooling to `0.2.1-alpha.4`.
+
 ## [4.2.45] - 2026-10-13
 
 - Require Taxonomy v2 in completion metadata before accepting content tags.

@@ -274,6 +274,7 @@ describe('portable profile-smoke commands', () => {
     ).resolves.toEqual({
       DSH_HOME: '/tmp/profile-smoke/home',
       HOME: '/tmp/profile-smoke/home',
+      npm_config_minimum_release_age_strict: 'false',
       NPM_CONFIG_USERCONFIG: '/tmp/profile-smoke/.npmrc',
       PATH: '/runtime/bin:/usr/bin',
       TEMP: '/tmp/profile-smoke/tmp',
@@ -292,6 +293,27 @@ describe('portable profile-smoke commands', () => {
       '',
       { flag: 'wx' },
     )
+  })
+
+  it('discovers alpha.4 preset compositions with Cordis JavaScript expressions', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+
+    const presets = (await smokeModule.defaultDiscoverPresets(
+      [{ path: join(packageRoot, 'dsh/presets'), trust: 'system' }],
+      packageRoot,
+    )) as Array<{ id: string; trust: string; broken?: string }>
+
+    expect(presets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'seednote', trust: 'system' }),
+        expect.objectContaining({ id: 'wechat-article', trust: 'system' }),
+      ]),
+    )
+    expect(
+      presets
+        .filter(({ id }) => ['seednote', 'wechat-article'].includes(id))
+        .every(({ broken }) => broken === undefined),
+    ).toBe(true)
   })
 
 })
@@ -742,6 +764,7 @@ describe('DSH profile smoke flow', () => {
       expect(call.options.env).toEqual({
         DSH_HOME: fixture.dshHome,
         HOME: fixture.dshHome,
+        npm_config_minimum_release_age_strict: 'false',
         NPM_CONFIG_USERCONFIG: join(fixture.smokeRoot, '.npmrc'),
         PATH: '/runtime/bin:/usr/bin',
         TEMP: join(fixture.smokeRoot, 'tmp'),

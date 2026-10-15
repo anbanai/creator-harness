@@ -521,7 +521,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.48',
+      version: '4.2.49',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -579,40 +579,41 @@ describe('DSH package manifest', () => {
         './package.json': './package.json',
       },
       dependencies: {
-        '@deepseek-ai/cordis': '4.0.4',
-        '@deepseek-ai/dsh-agent-instructions': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-commands': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-credentials': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-home-paths': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-llm': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-mcp-client': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-persona': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-tool-bash': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-tool-ask-user': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-tool-fs': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-tool-fs-search': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-tool-pwsh': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-tool-skill': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-tool-todo': '0.1.5-rc.3',
+        '@deepseek-ai/cordis': '4.0.5-alpha.2',
+        '@deepseek-ai/dsh-agent-instructions': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-commands': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-credentials': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-home-paths': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-llm': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-mcp-client': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-persona': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-skill-filesystem': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-tool-bash': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-tool-ask-user': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-tool-fs': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-tool-fs-search': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-tool-pwsh': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-tool-skill': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-tool-todo': '0.2.1-alpha.4',
       },
       peerDependencies: {
-        '@deepseek-ai/cordis': '4.0.4',
-        '@deepseek-ai/dsh-commands': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-credentials': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-home-paths': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-mcp-client': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.3',
+        '@deepseek-ai/cordis': '4.0.5-alpha.2',
+        '@deepseek-ai/dsh-commands': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-credentials': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-home-paths': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-mcp-client': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-skill-filesystem': '0.2.1-alpha.4',
       },
       devDependencies: {
-        '@deepseek-ai/cordis': '4.0.4',
-        '@deepseek-ai/dsh': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-agent-presets': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-commands': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-credentials': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-home-paths': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-mcp-client': '0.1.5-rc.3',
-        '@deepseek-ai/dsh-skill-filesystem': '0.1.5-rc.3',
+        '@deepseek-ai/cordis': '4.0.5-alpha.2',
+        '@deepseek-ai/dsh': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-agent-preset': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-agent-preset-registry': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-commands': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-credentials': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-home-paths': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-mcp-client': '0.2.1-alpha.4',
+        '@deepseek-ai/dsh-skill-filesystem': '0.2.1-alpha.4',
         '@types/node': '26.6.3',
         'cross-spawn': '7.0.6',
         'js-yaml': '4.3.2',
@@ -653,15 +654,31 @@ describe('DSH package manifest', () => {
   })
 
   it('approves the exact dependency build scripts required by the DSH runtime', async () => {
-    expect(await readFile(workspaceUrl, 'utf8')).toBe(`allowBuilds:
-  '@deepseek-ai/dsh-subprocess-local': true
-  '@google/genai': true
-  koffi: true
-  node-pty: true
-  protobufjs: true
-minimumReleaseAgeExclude:
-  - '@deepseek-ai/dsh-client-ui-sidebar-documentpreview@0.1.5-rc.3'
-`)
+    const workspace = await readFile(workspaceUrl, 'utf8')
+    for (const entry of [
+      "  '@deepseek-ai/dsh-subprocess-local': true",
+      "  '@google/genai': true",
+      '  koffi: true',
+      '  node-pty: true',
+      '  protobufjs: true',
+    ]) {
+      expect(workspace).toContain(entry)
+    }
+
+    const exclusions = workspace
+      .match(/^  - '([^']+)'$/gm)
+      ?.map((entry) => entry.slice(5, -1)) ?? []
+    expect(exclusions).toContain(
+      '@deepseek-ai/dsh-client-ui-sidebar-documentpreview@0.2.1-alpha.4',
+    )
+    expect(exclusions.length).toBeGreaterThan(1)
+    expect(
+      exclusions.every(
+        (entry) =>
+          entry.startsWith('@deepseek-ai/dsh') &&
+          entry.endsWith('@0.2.1-alpha.4'),
+      ),
+    ).toBe(true)
   })
 
   it('ships the exact two-entry Cordis host patch', async () => {
