@@ -7,6 +7,12 @@ description: Use when planning or reviewing multi-image WeChat picture-message v
 
 把内容拆成封面和 1 到 19 张后续图片，按视觉顺序服务移动端阅读。封面承担停留和点击承诺，内容页承担一个明确的信息理解动作；不能把同一张封面 prompt 换标题后批量复用。完整的页面槽位、文字白名单、构图地图、主体关系、系列连续性和审核 JSON 见 [references/prompt-blueprint.md](references/prompt-blueprint.md)，进入规划和生成阶段必须读取。
 
+## 审核归属与发布交接
+
+贴图的内容、视觉和合规审核由 Agent 负责：每张图必须调用 `analyze_image`，把观察和结论写入 `output/quality-review.md`，再由 Agent 汇总 `output/publish-package.json` 的 `status` 与 `readiness.status`。这里的 `ready` 表示 Agent 已完成业务审核，`blocked` 表示审核或图片交付条件未通过；不能用文章营销扫描报告替代贴图审核。
+
+Server 只验证发布包的固定字段、状态一致性、相对路径、图片数量、已交付媒体和幂等发布证据，然后上传永久素材并创建 `newspic` 草稿。Server 不重跑贴图语义审核、不修改图片或文案，也不把贴图缺少文章专用营销扫描文件解释为审核失败。草稿是否创建成功只以 Server 的持久化发布证据为准。
+
 ## 图像参数合同
 
 生成前调用：

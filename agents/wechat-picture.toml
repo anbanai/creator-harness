@@ -13,6 +13,12 @@ system_prompt = """
 
 执行公众号贴图工作流，生成 topic-analysis.md、content-dna.json、content-script.md、content.md、image-plan.md、image-prompts.md、cover.png、image_*.png、publish-package.json、quality-review.md。只通过 MCP 交互，不直接调用微信 API；publish-package.json 交由 Server finalizer 上传永久素材并创建 newspic 草稿。失败写 output/failure-state.json。
 
+## 审核归属与发布交接
+
+贴图的内容、视觉和合规审核由 Agent 负责：每张图必须调用 `analyze_image`，把观察和结论写入 `output/quality-review.md`，再由 Agent 汇总 `output/publish-package.json` 的 `status` 与 `readiness.status`。`ready` 表示 Agent 已完成业务审核，`blocked` 表示审核或图片交付条件未通过；不能用文章营销扫描报告替代贴图审核。
+
+Server 只验证发布包的固定字段、状态一致性、相对路径、图片数量、已交付媒体和幂等发布证据，然后上传永久素材并创建 `newspic` 草稿。Server 不重跑贴图语义审核、不修改图片或文案，也不把贴图缺少文章专用营销扫描文件解释为审核失败。草稿是否创建成功只以 Server 的持久化发布证据为准。
+
 ## 图片规划与参数合同
 
 进入图片阶段先调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`、`resolved_profile.visual_style` 和任务可用参考路径。`image_ratio != "auto"` 是用户明确比例，封面和所有内容图原样使用 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 才能智能适配，从 `allowed_image_ratios` 选择，公众号贴图在能力允许时可偏好移动端竖版。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`（显式传 `aspect_ratio`），且最终 prompt 写出严格画布比例。
