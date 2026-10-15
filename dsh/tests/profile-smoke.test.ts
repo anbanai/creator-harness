@@ -29,7 +29,7 @@ const publicExports = [
   '@anban/dsh-plugin/package.json',
 ]
 const expectedSkillNames = {
-  article: [
+  'wechat-article': [
     'article-cover-design',
     'article-publishing',
     'article-viral-strategy',
@@ -39,17 +39,21 @@ const expectedSkillNames = {
     'portrait-cover-design',
     'seo-optimization',
     'article-research',
+    'content-tagging',
+    'project-profile-context',
     'topic-evaluator',
     'trend-rider',
     'trending-topics',
   ],
   seednote: [
+    'content-tagging',
     'humanizer',
     'portrait-cover-design',
     'seednote-research',
     'seednote-viral-analysis',
     'seednote-visual-design',
     'seednote-writing',
+    'project-profile-context',
     'topic-evaluator',
     'trend-rider',
     'trending-topics',
@@ -85,7 +89,8 @@ describe('portable profile-smoke commands', () => {
     const source = await readFile(catalogInspectorUrl, 'utf8')
 
     for (const required of [
-      'ctx.agentPresets.standingKeyFor',
+      'ctx.agentPresets.resolve',
+      'ctx.agentPresets.acquireScope',
       'ctx.skills.snapshot',
       'ctx.skills.get',
     ]) {
@@ -272,6 +277,7 @@ describe('portable profile-smoke commands', () => {
         writeFile: writeFileMock,
       }),
     ).resolves.toEqual({
+      CI: '1',
       DSH_HOME: '/tmp/profile-smoke/home',
       HOME: '/tmp/profile-smoke/home',
       npm_config_minimum_release_age_strict: 'false',
@@ -552,8 +558,13 @@ function profileFixture(version = packageVersion) {
   )
   const discoverPresets = vi.fn(async () => [
     {
-      id: 'article',
-      path: join(dshHome, '.agent-presets', 'article', 'agent.cordis.yml'),
+      id: 'wechat-article',
+      path: join(
+        dshHome,
+        '.agent-presets',
+        'wechat-article',
+        'agent.cordis.yml',
+      ),
       trust: 'user',
     },
     {
@@ -592,19 +603,23 @@ function profileFixture(version = packageVersion) {
     names: readonly string[],
   ) {
     const presetRoot = join(dshHome, '.agent-presets', presetId)
+    const provider = presetId === 'wechat-article' ? 'anban-article' : 'anban-seednote'
     return {
       presetPath: join(presetRoot, 'agent.cordis.yml'),
-      providers: [`anban-${presetId}`],
+      providers: [provider],
       skills: names.map((name) => ({
         contentBytes: 128,
         name,
         path: join(presetRoot, 'skills', name, 'SKILL.md'),
-        provider: `anban-${presetId}`,
+        provider,
       })),
     }
   }
   const mountedSkillCatalogs = {
-    article: mountedSkillCatalog('article', expectedSkillNames.article),
+    'wechat-article': mountedSkillCatalog(
+      'wechat-article',
+      expectedSkillNames['wechat-article'],
+    ),
     seednote: mountedSkillCatalog('seednote', expectedSkillNames.seednote),
   }
   const inspectMountedSkillCatalogs = vi.fn(async () => mountedSkillCatalogs)
@@ -736,6 +751,14 @@ describe('DSH profile smoke flow', () => {
         args: ['--profile', 'web', '--dump-config'],
       },
       {
+        command: fixture.pnpmCommand,
+        args: ['install', '--offline', '--ignore-scripts', '--trust-lockfile'],
+      },
+      {
+        command: fixture.pnpmCommand,
+        args: ['peers', 'check', '--lockfile-only'],
+      },
+      {
         command: fixture.dshCommand,
         args: [
           'plugin',
@@ -755,13 +778,16 @@ describe('DSH profile smoke flow', () => {
       packageRoot,
       packageRoot,
       packageRoot,
-      packageRoot,
+      fixture.profileDir,
+      fixture.profileDir,
+      fixture.profileDir,
       packageRoot,
     ])
     const localEnvironment = fixture.commandCalls[0]?.options.env
     for (const call of fixture.commandCalls) {
       expect(call.options.env).toBe(localEnvironment)
       expect(call.options.env).toEqual({
+        CI: '1',
         DSH_HOME: fixture.dshHome,
         HOME: fixture.dshHome,
         npm_config_minimum_release_age_strict: 'false',
@@ -793,13 +819,15 @@ describe('DSH profile smoke flow', () => {
       env: localEnvironment,
       profile: 'web',
       profileDir: fixture.profileDir,
+      pnpmCommand: fixture.pnpmCommand,
       smokeRoot: fixture.smokeRoot,
     })
+    expect(fixture.overrides.resolvePnpmCommand).toHaveBeenCalledTimes(1)
     expect(fixture.resolveInstalledCommand).not.toHaveBeenCalled()
     expect(fixture.overrides.log.mock.calls.map(([line]) => line)).toEqual([
       'Bundle rows: anban-mcp=1 anban-preset-manager=1 preset-local-mcp=0',
-      'Healthy Presets: article, seednote',
-      'Mounted Skill catalogs: article=12 seednote=9',
+      'Healthy Presets: wechat-article, seednote',
+      'Mounted Skill catalogs: wechat-article=14 seednote=11',
       `Export resolution: ${publicExports.join(', ')}`,
     ])
     expect(fixture.overrides.rm).toHaveBeenCalledWith(fixture.smokeRoot, {
@@ -808,15 +836,34 @@ describe('DSH profile smoke flow', () => {
     })
   })
 
+  it('passes pnpm to existing-profile catalog inspection', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+
+    await smokeModule.verifyInstalledProfile({
+      ...fixture.overrides,
+      dshHome: fixture.dshHome,
+      profileDir: fixture.profileDir,
+      smokeRoot: fixture.smokeRoot,
+    })
+
+    expect(fixture.overrides.resolvePnpmCommand).toHaveBeenCalledTimes(1)
+    expect(fixture.inspectMountedSkillCatalogs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pnpmCommand: fixture.pnpmCommand,
+      }),
+    )
+  })
+
   it.each([
     {
       name: 'cross-preset bleed',
       mutate: (catalogs: ReturnType<typeof profileFixture>['mountedSkillCatalogs']) => {
-        catalogs.article.skills.push({
+        catalogs['wechat-article'].skills.push({
           contentBytes: 128,
           name: 'seednote-writing',
           path: join(
-            catalogs.article.presetPath,
+            catalogs['wechat-article'].presetPath,
             '..',
             'skills',
             'seednote-writing',
@@ -829,14 +876,14 @@ describe('DSH profile smoke flow', () => {
     {
       name: 'duplicate provider',
       mutate: (catalogs: ReturnType<typeof profileFixture>['mountedSkillCatalogs']) => {
-        catalogs.article.providers.push('anban-article')
+        catalogs['wechat-article'].providers.push('anban-article')
       },
     },
     {
       name: 'wrong generated root',
       mutate: (catalogs: ReturnType<typeof profileFixture>['mountedSkillCatalogs']) => {
         catalogs.seednote.skills[0]!.path = join(
-          catalogs.article.presetPath,
+          catalogs['wechat-article'].presetPath,
           '..',
           'skills',
           'seednote-research',
@@ -885,7 +932,7 @@ describe('DSH profile smoke flow', () => {
       artifactSource,
     })
 
-    expect(fixture.overrides.resolvePnpmCommand).not.toHaveBeenCalled()
+    expect(fixture.overrides.resolvePnpmCommand).toHaveBeenCalledTimes(1)
     expect(
       fixture.commandCalls.map(({ command, args, options }) => ({
         command,
@@ -904,6 +951,16 @@ describe('DSH profile smoke flow', () => {
         cwd: packageRoot,
       },
       {
+        command: fixture.pnpmCommand,
+        args: ['install', '--offline', '--ignore-scripts', '--trust-lockfile'],
+        cwd: fixture.profileDir,
+      },
+      {
+        command: fixture.pnpmCommand,
+        args: ['peers', 'check', '--lockfile-only'],
+        cwd: fixture.profileDir,
+      },
+      {
         command: fixture.dshCommand,
         args: [
           'plugin',
@@ -913,7 +970,7 @@ describe('DSH profile smoke flow', () => {
           'anban-dsh',
           'install-presets',
         ],
-        cwd: packageRoot,
+        cwd: fixture.profileDir,
       },
       {
         command: fixture.dshCommand,

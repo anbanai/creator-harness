@@ -8,6 +8,7 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises'
+import { realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import {
   basename,
@@ -44,7 +45,7 @@ const PUBLIC_EXPORT_NAMES = {
   [`${PACKAGE_NAME}/skills-provider`]: 'anban-skills-provider',
 }
 const EXPECTED_SKILL_NAMES = {
-  article: [
+  'wechat-article': [
     'article-cover-design',
     'article-publishing',
     'article-viral-strategy',
@@ -54,21 +55,29 @@ const EXPECTED_SKILL_NAMES = {
     'portrait-cover-design',
     'seo-optimization',
     'article-research',
+    'content-tagging',
+    'project-profile-context',
     'topic-evaluator',
     'trend-rider',
     'trending-topics',
   ],
   seednote: [
+    'content-tagging',
     'humanizer',
     'portrait-cover-design',
     'seednote-research',
     'seednote-viral-analysis',
     'seednote-visual-design',
     'seednote-writing',
+    'project-profile-context',
     'topic-evaluator',
     'trend-rider',
     'trending-topics',
   ],
+}
+const PRESET_PROVIDER_NAMES = {
+  'wechat-article': 'anban-article',
+  seednote: 'anban-seednote',
 }
 const REGISTRY_ARTIFACT_PATTERN = new RegExp(
   `^${PACKAGE_NAME.replace('/', '\\/')}@((?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)$`,
@@ -182,6 +191,7 @@ export function smokeEnvironment(dshHome, smokeRoot, source = process.env) {
   const temporary = join(smokeRoot, 'tmp')
   return {
     ...environment,
+    CI: '1',
     DSH_HOME: dshHome,
     HOME: dshHome,
     npm_config_minimum_release_age_strict: 'false',
@@ -365,19 +375,20 @@ async function defaultImportInstalledExport(profileDir, specifier) {
 
 async function defaultInspectMountedSkillCatalogs({
   dshCommand,
+  dshHome,
   env,
+  pnpmCommand,
   profile,
   profileDir,
   smokeRoot,
 }) {
   const inspectorName = 'anban-dsh-catalog-smoke'
+  const inspectorSourceDir = join(smokeRoot, inspectorName)
   const inspectorDir = join(profileDir, 'node_modules', inspectorName)
-  const inspectorEntrypoint = join(inspectorDir, 'index.mjs')
-  const patchPath = join(smokeRoot, 'catalog-inspector.patch.yml')
-  const resultPath = join(smokeRoot, 'mounted-skill-catalogs.json')
-  await mkdir(inspectorDir, { recursive: true })
+  const inspectorEntrypoint = join(inspectorSourceDir, 'index.mjs')
+  await mkdir(inspectorSourceDir, { recursive: true })
   await writeFile(
-    join(inspectorDir, 'package.json'),
+    join(inspectorSourceDir, 'package.json'),
     `${JSON.stringify({
       name: inspectorName,
       version: '0.0.0',
@@ -395,39 +406,108 @@ async function defaultInspectMountedSkillCatalogs({
     ),
     'utf8',
   )
+  const profileManifestPath = join(profileDir, 'package.json')
+  const profileManifest = JSON.parse(
+    await readFile(profileManifestPath, 'utf8'),
+  )
+  profileManifest.dependencies = {
+    ...(profileManifest.dependencies ?? {}),
+    [inspectorName]: `file:${relative(profileDir, inspectorSourceDir)}`,
+  }
   await writeFile(
-    patchPath,
-    `${JSON.stringify([
-      {
-        insert: [
-          {
-            id: inspectorName,
-            name: inspectorName,
-            config: { resultPath },
-          },
-        ],
-      },
-    ])}\n`,
+    profileManifestPath,
+    `${JSON.stringify(profileManifest, null, 2)}\n`,
     'utf8',
   )
+  await runProfileCommand(
+    pnpmCommand,
+    [
+      'install',
+      '--offline',
+      '--ignore-scripts',
+      '--trust-lockfile',
+      '--no-frozen-lockfile',
+    ],
+    {
+      cwd: profileDir,
+      env,
+      label: 'DSH catalog inspector dependency install',
+    },
+  )
   try {
-    await runProfileCommand(
-      dshCommand,
-      ['--profile', profile, '--patch', patchPath],
-      {
-        cwd: profileDir,
-        env,
-        label: 'DSH mounted Skill catalog inspection',
-      },
-    )
-    return JSON.parse(await readFile(resultPath, 'utf8'))
+    const catalogs = {}
+    for (const [index, presetId] of Object.keys(EXPECTED_SKILL_NAMES).entries()) {
+      const patchPath = join(smokeRoot, `catalog-inspector-${presetId}.patch.yml`)
+      const resultPath = join(smokeRoot, `mounted-skill-catalog-${presetId}.json`)
+      await writeFile(
+        patchPath,
+        `${JSON.stringify([
+          {
+            insert: [
+              {
+                id: `anban-preset-${presetId}`,
+                name: '@deepseek-ai/dsh-agent-preset',
+                config: {
+                  id: presetId,
+                  order: index + 10,
+                  plugins: [
+                    {
+                      id: 'anban-skills',
+                      name: `${PACKAGE_NAME}/skills-provider`,
+                      config: {
+                        presetId,
+                        providerName: PRESET_PROVIDER_NAMES[presetId],
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                id: inspectorName,
+                name: inspectorName,
+                config: {
+                  presetId,
+                  presetPaths: {
+                    [presetId]: join(
+                      dshHome,
+                      '.agent-presets',
+                      presetId,
+                      'agent.cordis.yml',
+                    ),
+                  },
+                  resultPath,
+                },
+              },
+            ],
+          },
+        ])}\n`,
+        'utf8',
+      )
+      await runProfileCommand(
+        dshCommand,
+        ['--profile', profile, '--patch', patchPath],
+        {
+          cwd: profileDir,
+          env,
+          label: `DSH mounted Skill catalog inspection (${presetId})`,
+        },
+      )
+      const result = JSON.parse(await readFile(resultPath, 'utf8'))
+      catalogs[presetId] = result[presetId]
+    }
+    return catalogs
   } finally {
     await rm(inspectorDir, { force: true, recursive: true })
   }
 }
 
 function exactPath(path, expected) {
-  return typeof path === 'string' && resolve(path) === resolve(expected)
+  if (typeof path !== 'string') return false
+  try {
+    return realpathSync(path) === realpathSync(expected)
+  } catch {
+    return resolve(path) === resolve(expected)
+  }
 }
 
 export function requireMountedSkillCatalogs(catalogs, dshHome) {
@@ -435,7 +515,7 @@ export function requireMountedSkillCatalogs(catalogs, dshHome) {
     catalogs === null ||
     typeof catalogs !== 'object' ||
     Array.isArray(catalogs) ||
-    Object.keys(catalogs).sort().join(',') !== 'article,seednote'
+    Object.keys(catalogs).sort().join(',') !== 'seednote,wechat-article'
   ) {
     throw new Error('Mounted Skill catalog is invalid')
   }
@@ -445,7 +525,7 @@ export function requireMountedSkillCatalogs(catalogs, dshHome) {
     EXPECTED_SKILL_NAMES,
   )) {
     const catalog = catalogs[presetId]
-    const provider = `anban-${presetId}`
+    const provider = PRESET_PROVIDER_NAMES[presetId]
     const presetRoot = join(dshHome, '.agent-presets', presetId)
     const skillRoot = join(presetRoot, 'skills')
     const providers = catalog?.providers
@@ -503,6 +583,7 @@ export async function verifyInstalledProfile(overrides = {}) {
     parseConfig: defaultParseConfig,
     readFile,
     resolveDshCommand: defaultResolveDshCommand,
+    resolvePnpmCommand,
     rm,
     runCommand: runProfileCommand,
     tmpdir,
@@ -533,6 +614,7 @@ export async function verifyInstalledProfile(overrides = {}) {
       })
     }
     const dshCommand = await dependencies.resolveDshCommand()
+    const pnpmCommand = await dependencies.resolvePnpmCommand()
     const presets = await dependencies.discoverPresets(
       [{ path: join(dshHome, '.agent-presets'), trust: 'user' }],
       pathToFileURL(profileDir).href,
@@ -545,6 +627,7 @@ export async function verifyInstalledProfile(overrides = {}) {
         env: environment,
         profile,
         profileDir,
+        pnpmCommand,
         smokeRoot,
       }),
       dshHome,
@@ -573,9 +656,9 @@ export async function verifyInstalledProfile(overrides = {}) {
     dependencies.log(
       `Bundle rows: anban-mcp=${bundleRows.mcp} anban-preset-manager=${bundleRows.presetManager} preset-local-mcp=${bundleRows.presetLocalMcp}`,
     )
-    dependencies.log('Healthy Presets: article, seednote')
+    dependencies.log('Healthy Presets: wechat-article, seednote')
     dependencies.log(
-      `Mounted Skill catalogs: article=${mountedCatalogCounts.article} seednote=${mountedCatalogCounts.seednote}`,
+      `Mounted Skill catalogs: wechat-article=${mountedCatalogCounts['wechat-article']} seednote=${mountedCatalogCounts.seednote}`,
     )
     dependencies.log(`Export resolution: ${PUBLIC_EXPORTS.join(', ')}`)
   } finally {
@@ -723,7 +806,7 @@ function requireBundleRows(config) {
 }
 
 function requireHealthyPresets(presets) {
-  for (const id of ['article', 'seednote']) {
+  for (const id of ['wechat-article', 'seednote']) {
     const preset = presets.find((candidate) => candidate.id === id)
     if (preset === undefined || preset.broken !== undefined) {
       throw new Error(`Installed Preset is not healthy: ${id}`)
@@ -784,6 +867,7 @@ export async function smokeProfile(overrides = {}) {
   }
   await dependencies.access(join(PACKAGE_ROOT, 'dsh', 'lib', 'cli.js'))
   const dshCommand = await dependencies.resolveDshCommand()
+  const pnpmCommand = await dependencies.resolvePnpmCommand()
   const smokeRoot = await dependencies.mkdtemp(
     join(dependencies.tmpdir(), 'anban-dsh-profile-smoke-'),
   )
@@ -801,7 +885,6 @@ export async function smokeProfile(overrides = {}) {
     let expectedVersion = registryArtifactVersion
 
     if (artifact === undefined) {
-      const pnpmCommand = await dependencies.resolvePnpmCommand()
       const packed = await dependencies.runCommand(
         pnpmCommand,
         ['pack', '--json', '--pack-destination', smokeRoot],
@@ -827,6 +910,24 @@ export async function smokeProfile(overrides = {}) {
       { cwd: PACKAGE_ROOT, env: environment, label: 'DSH profile boot' },
     )
     await dependencies.runCommand(
+      pnpmCommand,
+      ['install', '--offline', '--ignore-scripts', '--trust-lockfile'],
+      {
+        cwd: profileDir,
+        env: environment,
+        label: 'Profile dependency prewarm',
+      },
+    )
+    await dependencies.runCommand(
+      pnpmCommand,
+      ['peers', 'check', '--lockfile-only'],
+      {
+        cwd: profileDir,
+        env: environment,
+        label: 'Profile peer dependency check',
+      },
+    )
+    await dependencies.runCommand(
       dshCommand,
       [
         'plugin',
@@ -836,7 +937,7 @@ export async function smokeProfile(overrides = {}) {
         'anban-dsh',
         'install-presets',
       ],
-      { cwd: PACKAGE_ROOT, env: environment, label: 'Anban preset install' },
+      { cwd: profileDir, env: environment, label: 'Anban preset install' },
     )
 
     const presets = await dependencies.discoverPresets(
@@ -852,6 +953,7 @@ export async function smokeProfile(overrides = {}) {
         env: environment,
         profile: PROFILE,
         profileDir,
+        pnpmCommand,
         smokeRoot,
       }),
       dshHome,
@@ -877,9 +979,9 @@ export async function smokeProfile(overrides = {}) {
     dependencies.log(
       `Bundle rows: anban-mcp=${bundleRows.mcp} anban-preset-manager=${bundleRows.presetManager} preset-local-mcp=${bundleRows.presetLocalMcp}`,
     )
-    dependencies.log('Healthy Presets: article, seednote')
+    dependencies.log('Healthy Presets: wechat-article, seednote')
     dependencies.log(
-      `Mounted Skill catalogs: article=${mountedCatalogCounts.article} seednote=${mountedCatalogCounts.seednote}`,
+      `Mounted Skill catalogs: wechat-article=${mountedCatalogCounts['wechat-article']} seednote=${mountedCatalogCounts.seednote}`,
     )
     dependencies.log(`Export resolution: ${PUBLIC_EXPORTS.join(', ')}`)
   } catch (error) {

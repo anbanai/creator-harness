@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.50] - 2026-10-16
+
+- Completed the DSH `0.2.1-alpha.4` runtime dependency closure and hardened
+  fresh profile smoke validation for both Agent preset Skill catalogs.
+
 ## [4.2.49] - 2026-10-16
 
 - Upgraded the DSH runtime packages and profile tooling to `0.2.1-alpha.4`.

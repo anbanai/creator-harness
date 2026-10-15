@@ -66,6 +66,8 @@ const COMMAND_TIMEOUT_MS = 120_000
 const CHILD_TERMINATION_GRACE_MS = 100
 const CHILD_CLOSE_WATCHDOG_MS = 1_000
 const VERIFIED_RUNTIME_OVERRIDES = Object.freeze({
+  'fast-uri': '3.1.5',
+  'resolve.exports': '2.0.3',
   yaml: '2.9.0',
   zod: '4.4.3',
 })
@@ -1151,6 +1153,7 @@ async function installPackedRuntime(sandboxRoot, tarball, manifest) {
     'install',
     '--offline',
     '--ignore-scripts',
+    '--trust-lockfile',
     '--lockfile=false',
   ])
   const installed = await runBoundedCommand(invocation.command, invocation.args, {
