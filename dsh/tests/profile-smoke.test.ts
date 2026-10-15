@@ -1,4 +1,5 @@
 import {
+  access,
   mkdir,
   mkdtemp,
   readFile,
@@ -688,6 +689,114 @@ function profileFixture(version = packageVersion) {
 }
 
 describe('DSH profile smoke flow', () => {
+  it('restores existing profile manifests after mounted catalog inspection', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const root = await mkdtemp(join(tmpdir(), 'profile-smoke-restore-'))
+    const profileDir = join(root, 'profile')
+    const smokeRoot = join(root, 'smoke')
+    const manifestPath = join(profileDir, 'package.json')
+    const lockfilePath = join(profileDir, 'pnpm-lock.yaml')
+    const inspectorDir = join(
+      profileDir,
+      'node_modules',
+      'anban-dsh-catalog-smoke',
+    )
+    const manifestSource = '{"name":"existing-profile","dependencies":{}}\n'
+    const lockfileSource = 'lockfileVersion: 9\n'
+
+    await mkdir(profileDir, { recursive: true })
+    await writeFile(manifestPath, manifestSource)
+    await writeFile(lockfilePath, lockfileSource)
+
+    try {
+      const runCommand = vi.fn(async (_command, args) => {
+        if (args[0] === 'install') {
+          await writeFile(lockfilePath, 'mutated by pnpm\n')
+          return
+        }
+        const patchPath = args[args.indexOf('--patch') + 1]
+        const patch = JSON.parse(await readFile(patchPath, 'utf8'))
+        const inspectorConfig = patch[0].insert[1].config
+        await writeFile(
+          inspectorConfig.resultPath,
+          JSON.stringify({ [inspectorConfig.presetId]: {} }),
+        )
+      })
+
+      await smokeModule.defaultInspectMountedSkillCatalogs({
+        dshCommand: { executable: 'dsh', prefixArgs: [] },
+        dshHome: join(root, 'home'),
+        env: {},
+        pnpmCommand: { executable: 'pnpm', prefixArgs: [] },
+        profile: 'web',
+        profileDir,
+        runCommand,
+        smokeRoot,
+      })
+
+      await expect(readFile(manifestPath, 'utf8')).resolves.toBe(
+        manifestSource,
+      )
+      await expect(readFile(lockfilePath, 'utf8')).resolves.toBe(
+        lockfileSource,
+      )
+      await expect(access(inspectorDir)).rejects.toMatchObject({
+        code: 'ENOENT',
+      })
+    } finally {
+      await rm(root, { force: true, recursive: true })
+    }
+  })
+
+  it('restores an existing profile when mounted catalog inspection fails', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const root = await mkdtemp(join(tmpdir(), 'profile-smoke-restore-'))
+    const profileDir = join(root, 'profile')
+    const smokeRoot = join(root, 'smoke')
+    const manifestPath = join(profileDir, 'package.json')
+    const lockfilePath = join(profileDir, 'pnpm-lock.yaml')
+    const inspectorDir = join(
+      profileDir,
+      'node_modules',
+      'anban-dsh-catalog-smoke',
+    )
+    const manifestSource = '{"name":"existing-profile","dependencies":{}}\n'
+
+    await mkdir(profileDir, { recursive: true })
+    await writeFile(manifestPath, manifestSource)
+
+    try {
+      const runCommand = vi.fn(async (_command, args) => {
+        if (args[0] !== 'install') throw new Error('inspection failed')
+      })
+
+      await expect(
+        smokeModule.defaultInspectMountedSkillCatalogs({
+          dshCommand: { executable: 'dsh', prefixArgs: [] },
+          dshHome: join(root, 'home'),
+          env: {},
+          pnpmCommand: { executable: 'pnpm', prefixArgs: [] },
+          profile: 'web',
+          profileDir,
+          runCommand,
+          smokeRoot,
+        }),
+      ).rejects.toThrow('inspection failed')
+
+      await expect(readFile(manifestPath, 'utf8')).resolves.toBe(
+        manifestSource,
+      )
+      await expect(access(lockfilePath)).rejects.toMatchObject({
+        code: 'ENOENT',
+      })
+      await expect(access(inspectorDir)).rejects.toMatchObject({
+        code: 'ENOENT',
+      })
+    } finally {
+      await rm(root, { force: true, recursive: true })
+    }
+  })
+
   it('preserves the primary smoke failure when cleanup also fails', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
     const fixture = profileFixture()

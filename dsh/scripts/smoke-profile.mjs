@@ -373,21 +373,36 @@ async function defaultImportInstalledExport(profileDir, specifier) {
   return import(pathToFileURL(resolved).href)
 }
 
-async function defaultInspectMountedSkillCatalogs({
+export async function defaultInspectMountedSkillCatalogs({
   dshCommand,
   dshHome,
   env,
   pnpmCommand,
   profile,
   profileDir,
+  fileSystem = { mkdir, readFile, rm, writeFile },
+  runCommand = runProfileCommand,
   smokeRoot,
 }) {
   const inspectorName = 'anban-dsh-catalog-smoke'
   const inspectorSourceDir = join(smokeRoot, inspectorName)
   const inspectorDir = join(profileDir, 'node_modules', inspectorName)
   const inspectorEntrypoint = join(inspectorSourceDir, 'index.mjs')
-  await mkdir(inspectorSourceDir, { recursive: true })
-  await writeFile(
+  const profileManifestPath = join(profileDir, 'package.json')
+  const lockfilePath = join(profileDir, 'pnpm-lock.yaml')
+  const profileManifestSource = await fileSystem.readFile(
+    profileManifestPath,
+    'utf8',
+  )
+  let lockfileSource
+  try {
+    lockfileSource = await fileSystem.readFile(lockfilePath, 'utf8')
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+  }
+
+  await fileSystem.mkdir(inspectorSourceDir, { recursive: true })
+  await fileSystem.writeFile(
     join(inspectorSourceDir, 'package.json'),
     `${JSON.stringify({
       name: inspectorName,
@@ -398,48 +413,50 @@ async function defaultInspectMountedSkillCatalogs({
     })}\n`,
     'utf8',
   )
-  await writeFile(
+  await fileSystem.writeFile(
     inspectorEntrypoint,
-    await readFile(
+    await fileSystem.readFile(
       new URL('./catalog-inspector-plugin.mjs', import.meta.url),
       'utf8',
     ),
     'utf8',
   )
-  const profileManifestPath = join(profileDir, 'package.json')
   const profileManifest = JSON.parse(
-    await readFile(profileManifestPath, 'utf8'),
+    profileManifestSource,
   )
   profileManifest.dependencies = {
     ...(profileManifest.dependencies ?? {}),
     [inspectorName]: `file:${relative(profileDir, inspectorSourceDir)}`,
   }
-  await writeFile(
+  await fileSystem.writeFile(
     profileManifestPath,
     `${JSON.stringify(profileManifest, null, 2)}\n`,
     'utf8',
   )
-  await runProfileCommand(
-    pnpmCommand,
-    [
-      'install',
-      '--offline',
-      '--ignore-scripts',
-      '--trust-lockfile',
-      '--no-frozen-lockfile',
-    ],
-    {
-      cwd: profileDir,
-      env,
-      label: 'DSH catalog inspector dependency install',
-    },
-  )
+  let primaryFailure
+  let catalogs
   try {
-    const catalogs = {}
+    await runCommand(
+      pnpmCommand,
+      [
+        'install',
+        '--offline',
+        '--ignore-scripts',
+        '--trust-lockfile',
+        '--no-frozen-lockfile',
+      ],
+      {
+        cwd: profileDir,
+        env,
+        label: 'DSH catalog inspector dependency install',
+      },
+    )
+
+    catalogs = {}
     for (const [index, presetId] of Object.keys(EXPECTED_SKILL_NAMES).entries()) {
       const patchPath = join(smokeRoot, `catalog-inspector-${presetId}.patch.yml`)
       const resultPath = join(smokeRoot, `mounted-skill-catalog-${presetId}.json`)
-      await writeFile(
+      await fileSystem.writeFile(
         patchPath,
         `${JSON.stringify([
           {
@@ -483,7 +500,7 @@ async function defaultInspectMountedSkillCatalogs({
         ])}\n`,
         'utf8',
       )
-      await runProfileCommand(
+      await runCommand(
         dshCommand,
         ['--profile', profile, '--patch', patchPath],
         {
@@ -492,13 +509,53 @@ async function defaultInspectMountedSkillCatalogs({
           label: `DSH mounted Skill catalog inspection (${presetId})`,
         },
       )
-      const result = JSON.parse(await readFile(resultPath, 'utf8'))
+      const result = JSON.parse(await fileSystem.readFile(resultPath, 'utf8'))
       catalogs[presetId] = result[presetId]
     }
-    return catalogs
-  } finally {
-    await rm(inspectorDir, { force: true, recursive: true })
+  } catch (error) {
+    primaryFailure = error
   }
+
+  const cleanupFailures = []
+  try {
+    await fileSystem.writeFile(
+      profileManifestPath,
+      profileManifestSource,
+      'utf8',
+    )
+  } catch (error) {
+    cleanupFailures.push(error)
+  }
+  try {
+    if (lockfileSource === undefined) {
+      await fileSystem.rm(lockfilePath, { force: true })
+    } else {
+      await fileSystem.writeFile(lockfilePath, lockfileSource, 'utf8')
+    }
+  } catch (error) {
+    cleanupFailures.push(error)
+  }
+  try {
+    await fileSystem.rm(inspectorDir, { force: true, recursive: true })
+  } catch (error) {
+    cleanupFailures.push(error)
+  }
+
+  if (primaryFailure !== undefined) {
+    if (cleanupFailures.length > 0) {
+      throw new AggregateError(
+        [primaryFailure, ...cleanupFailures],
+        primaryFailure instanceof Error
+          ? primaryFailure.message
+          : 'DSH catalog inspection failed',
+      )
+    }
+    throw primaryFailure
+  }
+  if (cleanupFailures.length > 0) {
+    throw new AggregateError(cleanupFailures, 'DSH catalog inspection cleanup failed')
+  }
+  return catalogs
 }
 
 function exactPath(path, expected) {
