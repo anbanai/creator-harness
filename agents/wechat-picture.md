@@ -43,6 +43,8 @@ Server 只验证发布包的固定字段、状态一致性、相对路径、图�
 }
 ```
 
+发布包的 `title`（含标点）不得超过 20 字。标题须在图片生成前校验；超长时先精简并复核与内容的对应关系，不能直接截断或交付超长标题。
+
 `schema_version` 固定为 `1.0`；`status` 和 `readiness.status` 只能为 `ready` 或 `blocked`，且必须保持一致；只有两者均为 `ready` 且 `missing` 为空时才能交付。`picture_image_count` 是总张数（包含封面），范围 1–20；`exact` 模式（含历史无模式任务）要求 `cover_path + image_paths` 精确匹配请求数，`up_to` 要求实际总数为 1 到请求上限。`content` 是发送到公众号的 caption，不能改名为 `caption`、`text` 或 `html`。`cover_path` 必须单独指向封面，`image_paths` 按视觉顺序列出其余图片；所有路径必须是任务相对路径，不能使用绝对路径、通配符或名为 `image_*.png` 的占位文件。审核失败、审核不可用、超出上限或精确数量不匹配时将 `status` 和 `readiness.status` 都设为 `blocked`，写入 `output/failure-state.json` 并保留失败诊断；只有 `ready` 才能交给 Server finalizer，不能伪造 ready。
 
 完成前检查总张数符合输入模式且为 1 到 20 张，首张为 cover，所有图片均可读取且文字安全区可用。固定数量无法以不重复、有价值且通过审核的页面满足时，阻断交付。失败时写入 output/failure-state.json，包含 version、status、stage、error_code、message 和 resume_from，并返回可恢复阶段。

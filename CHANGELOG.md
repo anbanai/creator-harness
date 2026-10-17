@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.51] - 2026-10-17
+
+- Limit WeChat picture package titles to 20 characters before visual generation.
+
 ## [4.2.50] - 2026-10-16
 
 - Completed the DSH `0.2.1-alpha.4` runtime dependency closure and hardened
