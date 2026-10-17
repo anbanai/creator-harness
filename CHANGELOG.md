@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.2.53] - 2026-10-17
+
+- 为 DSH Project Creator 增加面向自媒体客户的发现与方案推荐 Skill，并把它接入真实交互 preset；Skill 先理解业务、受众、平台和内容目标，再推荐适配的内容组合。
+- Project Creator 的 DSH 运行时现在可以加载该 Skill，同时保留仅提问、加载 Skill 和提交临时草稿的工具边界。
+
+## [4.2.52] - 2026-10-17
+
+- 改进 DSH 项目创建 Agent：首轮及后续交互默认使用中文，先判断 Anban
+  Studio 的平台适配性和内容类型，再动态收集项目画像，避免使用与平台无关的固定示例问卷。
+- 保留 `project-creator` 的交互职责与 `profile-analysis` 的后台分析职责边界。
+
 ## [4.2.51] - 2026-10-17
 
 - Limit WeChat picture package titles to 20 characters before visual generation.

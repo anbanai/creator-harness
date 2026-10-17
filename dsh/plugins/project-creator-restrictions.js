@@ -5,8 +5,9 @@ export const name = 'project-creator-tool-restrictions'
 export const inject = ['agents']
 
 const ASK_USER_QUESTION = 'ask_user_question'
+const LOAD_SKILL = 'skill'
 const STAGE_DRAFT = 'mcp__creator__stage_project_creator_draft'
-const ROOT_ALLOW = [ASK_USER_QUESTION, STAGE_DRAFT]
+const ROOT_ALLOW = [ASK_USER_QUESTION, LOAD_SKILL, STAGE_DRAFT]
 
 function isProjectCreatorAgent(agent) {
   return agent.ctx.get?.('agentPresets')?.composedPreset(agent.ctx) === 'project-creator'

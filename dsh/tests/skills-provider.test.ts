@@ -144,6 +144,21 @@ describe('skills provider registration', () => {
     })
   })
 
+  it('mounts the isolated Project Creator discovery Skill root', async () => {
+    const fake = createContext()
+
+    await apply(fake.context, {
+      presetId: 'project-creator',
+      providerName: 'anban-project-creator',
+    })
+
+    expect(fake.plugin).toHaveBeenCalledWith(skillFilesystem, {
+      providerName: 'anban-project-creator',
+      includeDefaultRoots: false,
+      customSkillDirs: [dshHomePath('.agent-presets', 'project-creator', 'skills')],
+    })
+  })
+
   it('awaits the child fiber disposer', async () => {
     const disposal = deferred()
     const dispose = vi.fn(() => disposal.promise)

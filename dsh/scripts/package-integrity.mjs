@@ -89,6 +89,7 @@ const CORDIS_PATCH = [
 const PRESETS = [
   { id: 'wechat-article', label: 'WeChat Article' },
   { id: 'seednote', label: 'Seednote' },
+  { id: 'project-creator', label: 'Project Creator' },
 ]
 const jsExpression = new Type('tag:yaml.org,2002:js', {
   construct: (value) => value,
@@ -336,9 +337,23 @@ async function verifyPreset(root, preset) {
   if (!Array.isArray(generatedComposition)) {
     fail(`${preset.label} Agent composition is not a row array`)
   }
-  const providers = generatedComposition.filter(
-    (row) => isRecord(row) && row.name === '@anban/dsh-plugin/skills-provider',
-  )
+  const providerRows = []
+  const collectProviderRows = (value) => {
+    if (Array.isArray(value)) {
+      for (const item of value) collectProviderRows(item)
+      return
+    }
+    if (!isRecord(value)) return
+    if (
+      value.name === '@anban/dsh-plugin/skills-provider' ||
+      value.name === './plugins/project-creator-skills-provider.js'
+    ) {
+      providerRows.push(value)
+    }
+    collectProviderRows(value.config)
+  }
+  collectProviderRows(generatedComposition)
+  const providers = providerRows
   if (
     providers.length !== 1 ||
     !isRecord(providers[0].config) ||

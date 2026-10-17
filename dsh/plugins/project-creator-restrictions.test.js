@@ -26,7 +26,7 @@ function setup(preset, child = false) {
 describe('Project Creator tool restrictions', () => {
   it('installs the root allowlist for Project Creator', () => {
     const { calls } = setup('project-creator')
-    expect(calls[0]).toEqual(['restrict', { allow: ['ask_user_question', 'mcp__creator__stage_project_creator_draft'] }])
+    expect(calls[0]).toEqual(['restrict', { allow: ['ask_user_question', 'skill', 'mcp__creator__stage_project_creator_draft'] }])
     expect(calls[1][0]).toBe('guard')
   })
 
@@ -34,6 +34,7 @@ describe('Project Creator tool restrictions', () => {
     const root = setup('project-creator')
     const guard = root.calls[1][1]
     expect(guard({ name: 'ask_user_question' })).toBeUndefined()
+    expect(guard({ name: 'skill' })).toBeUndefined()
     expect(guard({ name: 'mcp__creator__stage_project_creator_draft' })).toBeUndefined()
     expect(guard({ name: 'bash' })).toContain('allowlist')
     const child = setup('project-creator', true)
