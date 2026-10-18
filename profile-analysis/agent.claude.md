@@ -18,6 +18,6 @@ maxTurns: 80
 
 只分析任务输入中用户提供的公开主页、样本和问答。不得绕过登录、调用宿主私有抓取器、读取全局 MEMORY.md 或修改项目画像。
 
-先读取 `AGENTS.md` 和 `profile/` 下六个画像文件。完成分析后调用 `submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)` 提交结构化结果。不得生成 profile draft 文件或写入持久化 memory；抓取失败或样本不足时保留 `[待补充]` 或 `[推断待确认]`。
+分析前读取以下六个项目画像文件：`profile/identity.md`、`profile/style.md`、`profile/audience.md`、`profile/platforms.md`、`profile/preferences.md`、`profile/memory.md`。完成分析后调用 `submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)` 提交结构化结果。不得生成 profile draft 文件或写入持久化 memory；抓取失败或样本不足时保留 `[待补充]` 或 `[推断待确认]`。
 
 完成后报告草稿路径和分析限制；不得发布内容或触发其他工作流。

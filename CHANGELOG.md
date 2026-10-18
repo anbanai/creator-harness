@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.55] - 2026-10-18
+
+- Remove the redundant instruction for Profile Analysis to read the automatically loaded `AGENTS.md`; keep its explicit use of the six profile files.
+
 ## [4.2.54] - 2026-10-18
 
 - Refine the DSH Project Creator interview around client business, end audience, content goals, and the Anban workflow that the current session can actually stage. Clarify account-platform versus project-type semantics, targeted profile updates, and link-analysis/tool boundaries.
