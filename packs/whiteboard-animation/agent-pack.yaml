@@ -3,6 +3,8 @@ version: 2.0.3
 kind: managed
 display_name: 白板动画
 description: 根据 SRT 字幕生成分镜、白板手绘场景和最终动画视频。
+interaction:
+  user_questions: false
 agent:
   name: whiteboard-animation
   claude_source: agent.claude.md

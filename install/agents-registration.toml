@@ -50,3 +50,23 @@ nickname_candidates = ["VideoReplica", "Hypit", "视频复刻"]
 description = "项目级六维账号画像分析并提交数据库结果"
 config_file = "~/.codex/agents/profile-analysis.toml"
 nickname_candidates = ["Profile Analyst", "画像分析", "Persona Builder"]
+
+[agents.feedback-analysis]
+description = "消费服务端反馈任务，生成可追溯的分析证据与策略候选"
+config_file = "~/.codex/agents/feedback-analysis.toml"
+nickname_candidates = ["Feedback Analyst", "反馈分析", "复盘助手"]
+
+[agents.project-creator]
+description = "通过连续对话创建或更新项目，并收集六维账号画像"
+config_file = "~/.codex/agents/project-creator.toml"
+nickname_candidates = ["Project Creator", "项目创建", "画像访谈"]
+
+[agents.wechat-picture]
+description = "微信公众号贴图内容、视觉与发布包全自动创作引擎"
+config_file = "~/.codex/agents/wechat-picture.toml"
+nickname_candidates = ["Newspic", "公众号贴图", "贴图助手"]
+
+[agents.whiteboard-animation]
+description = "将 SRT 字幕制作成逐幕白板动画视频并交付文件"
+config_file = "~/.codex/agents/whiteboard-animation.toml"
+nickname_candidates = ["WhiteboardAnimation", "白板动画"]

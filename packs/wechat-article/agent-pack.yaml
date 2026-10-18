@@ -56,5 +56,5 @@ delivery:
   - {role: cover, path: output/cover*.png, mime_type: image/png}
   - {role: image, path: output/img_*.png, mime_type: image/png}
 ui:
-  renderer: custom:article
+  renderer: custom:wechat-article
 tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final_markdown], extensions: [presentation_device, funnel_stage]}

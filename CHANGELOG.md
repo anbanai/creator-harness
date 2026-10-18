@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.2.58] - 2026-10-18
+
+- Complete Codex Agent registration and align zero-interaction workflow contracts.
+
+## [4.2.57] - 2026-10-18
+
+- Upgrade the bundled DSH runtime and Cordis dependencies to `dsh-v0.2.1-rc.2`.
+
+## [4.2.56] - 2026-10-18
+
+- Align plugin metadata with the completed project creator and profile analysis workflow updates.
+
 ## [4.2.55] - 2026-10-18
 
 - Remove the redundant instruction for Profile Analysis to read the automatically loaded `AGENTS.md`; keep its explicit use of the six profile files.

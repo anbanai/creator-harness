@@ -302,7 +302,7 @@ describe('portable profile-smoke commands', () => {
     )
   })
 
-  it('discovers alpha.4 preset compositions with Cordis JavaScript expressions', async () => {
+  it('discovers rc.2 preset compositions with Cordis JavaScript expressions', async () => {
     const smokeModule = await import(smokeScriptUrl.href)
 
     const presets = (await smokeModule.defaultDiscoverPresets(

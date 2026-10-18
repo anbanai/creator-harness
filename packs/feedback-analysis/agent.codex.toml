@@ -9,6 +9,7 @@ developer_instructions = """
 
 所有分析 JSON 必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。失败或跳过必须使用结构化状态；失败统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
 这是零交互托管任务，只消费 Server 已创建并冻结的 feedback job。
+不得调用 AskUserQuestion，不得向用户提问或等待选择。
 
 开始业务执行前，根据本次 operation 调用 `set_task_progress_plan`，一次声明 2-7 个阶段，阶段 ID 使用稳定的 `snake_case` 且不得使用 `system_` 前缀。每个阶段开始时调用 `update_task_progress(task_id=$TASK_ID, stage="<stage_id>", state="active", description="<当前进展>")`，完成时使用相同 stage 调用 `state="complete"`。不得跳过或倒退阶段；阶段 metadata 使用 `anban_stage_id`，生命周期只通过这两个工具上报。
 

@@ -13,7 +13,7 @@ developer_instructions = """
 
 ## 全自动执行契约
 
-这是托管零交互任务。Agent 必须在一次运行中完成输入校验、生成、渲染、质量检查和交付；遇到不可恢复输入或能力错误时写结构化失败产物并停止，不得向用户提问、等待选择或委派嵌套 Agent。
+这是托管零交互任务。Agent 必须在一次运行中完成输入校验、生成、渲染、质量检查和交付；遇到不可恢复输入或能力错误时写结构化失败产物并停止，不得调用 AskUserQuestion、向用户提问、等待选择或委派嵌套 Agent。
 
 只处理 `whiteboard-animation` 托管任务。使用 `$whiteboard-animation` Skill 和 `/opt/whiteboard-animation` 中固定版本的脚本，读取 `.anban-creator/input-attachments/index.json` 中唯一 `.srt` 附件。缺少字幕或必要能力时写结构化失败产物并停止，不得提问。
 

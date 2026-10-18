@@ -96,7 +96,20 @@ else
 
   # Idempotent merge: append top-level keys, append missing tables,
   # AND append missing keys within existing tables (key-level merge for [features], [agents]).
-  python3 - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" <<'PY'
+  python_bin="${ANBAN_PYTHON_BIN:-}"
+  if [[ -z "$python_bin" ]]; then
+    for candidate in python3.13 python3.12 python3.11 python3; do
+      if command -v "$candidate" >/dev/null 2>&1; then
+        python_bin="$candidate"
+        break
+      fi
+    done
+  fi
+  if [[ -z "$python_bin" ]]; then
+    echo "[install-subagents] ERROR: Python 3.11+ is required to safely update config.toml (or install the tomli package for this Python interpreter)." >&2
+    exit 1
+  fi
+  "$python_bin" - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" <<'PY'
 import re, sys
 
 try:
@@ -408,7 +421,7 @@ echo "  1. Set ANBAN_API_KEY in your shell (e.g. ~/.zshrc):"
 echo "       export ANBAN_API_KEY=\"<your-api-key>\""
 echo "  2. Restart Codex."
 echo "  3. Verify with:"
-echo "       /agents        # should list 9 Anban Creator subagents"
+echo "       /agents        # should list 11 Anban Creator subagents"
 echo "       /skills        # should list Anban Creator skills"
 echo "  4. Trigger explicitly:"
 echo "       use the article subagent to write an article about X"

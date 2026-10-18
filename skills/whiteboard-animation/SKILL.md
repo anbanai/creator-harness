@@ -18,12 +18,12 @@ description: Use when a managed Anban whiteboard-animation task turns an uploade
 
 ## 执行
 
-1. 读取附件索引，定位唯一 SRT 和可选风格参考图。使用 `scripts/parse_srt.py` 校验字幕并按 25–35 秒分幕，保留原始时间戳及字幕文本。
+1. 读取附件索引，定位唯一 SRT 和可选风格参考图。使用 `/opt/whiteboard-animation/scripts/parse_srt.py` 校验字幕并按 25–35 秒分幕，保留原始时间戳及字幕文本。
 2. 生成 `output/storyboard.json`，每幕对应一个叙事核心、字幕区间、画面主体和时长。以 storyboard 为唯一场景清单。
 3. 对每幕使用 Anban MCP `generate_image` 生成 16:9 暖米黄纸张底的统一手绘线稿。可选参考图只约束风格，不复用图中身份或内容。每张图通过 `analyze_image` 核对主体、风格、比例和无文字要求；最多修订一次，仍不合格则失败。
 4. 实际查看每张线稿，再按字幕事件语义创建同名 `scene-NN.annotation.json`。坐标使用源图像素整数；区域在画布内；sequence 连续；时序不重叠；遮罩保护后续区域与重叠对象。
-5. 使用 `scripts/render_annotation_preview.py` 生成并检查分区预览。使用 `scripts/render_stream_whiteboard.py` 为每幕渲染 MP4，参数采用 `--ink-path grid --color-fill contour-wipe`。抽查开场、作画中段和收尾，确认未开始区域不可见、末帧完整且停留至少 0.5 秒。
-6. 使用 `scripts/merge_scenes.py` 按 storyboard 顺序合并各幕。输出最终视频为 `output/final.mp4`，场景 PNG、annotation JSON、单幕视频和分区预览均保存在 `output/scenes/`。
+5. 使用 `/opt/whiteboard-animation/scripts/render_annotation_preview.py` 生成并检查分区预览。使用 `/opt/whiteboard-animation/scripts/render_stream_whiteboard.py` 为每幕渲染 MP4，参数采用 `--ink-path grid --color-fill contour-wipe`。抽查开场、作画中段和收尾，确认未开始区域不可见、末帧完整且停留至少 0.5 秒。
+6. 使用 `/opt/whiteboard-animation/scripts/merge_scenes.py` 按 storyboard 顺序合并各幕。输出最终视频为 `output/final.mp4`，场景 PNG、annotation JSON、单幕视频和分区预览均保存在 `output/scenes/`。
 7. 写 `output/quality-report.json` 与 `output/delivery-manifest.json`，核对所有文件存在、非空、场景配对完整、顺序一致且 manifest 路径准确。失败状态清除只可发生在全部验收通过之后。
 
 ## 画面与标注规则

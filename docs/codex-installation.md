@@ -5,7 +5,7 @@ Professional **WeChat** and **Seednote (种草笔记)** content creation toolkit
 ## What you get
 
 - **26 auto-discovered skills** (SKILL.md format): content writing, WeChat article assembly, authenticated MCP-backed Seednote research and viral analysis, WeChat Moments packages, short-video cover replication, portrait pose variants, SEO, e-commerce product imagery, and more.
-- **8 native Codex subagents**: end-to-end orchestrators for the workflows above, including project profile analysis.
+- **11 native Codex subagents**: end-to-end orchestrators for the workflows above, including project creation, profile analysis, feedback analysis, and whiteboard animation.
 - **MCP integration**: connects to the anban-creator HTTP MCP server for project management, image generation, and WeChat publishing.
 - **Embedded completion checks**: every TOML subagent performs its own delivery validation and final quality summary.
 
@@ -39,7 +39,7 @@ codex plugin add anban@anbanai
 
 ### 2. Install the subagents
 
-Codex plugins cannot bundle subagents (open limitation — see `../CODEX.md`). The eight subagents live in `agents/*.toml` and must be copied to `~/.codex/agents/`:
+Codex plugins cannot bundle subagents (open limitation — see `../CODEX.md`). The eleven subagents live in `agents/*.toml` and must be copied to `~/.codex/agents/`:
 
 ```bash
 bash harness/install/install-subagents.sh
@@ -80,7 +80,7 @@ Expected: Anban Creator skills listed (article, content-writing, seednote, ecomm
 /agents
 ```
 
-Expected: 9 subagents listed (article, seednote, moments, montage, whiteboard-animation, ecommerce, hypit, profile-analysis, feedback-analysis) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
+Expected: 11 subagents listed (article, seednote, moments, montage, whiteboard-animation, ecommerce, hypit, profile-analysis, feedback-analysis, project-creator, wechat-picture) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
 
 ```
 $anban-setup
@@ -130,7 +130,7 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 
 ### `/agents` shows nothing
 
-- Confirm `~/.codex/agents/*.toml` contains the 9 Anban subagents, including `profile-analysis.toml` and `feedback-analysis.toml`.
+- Confirm `~/.codex/agents/*.toml` contains the 11 Anban subagents, including `project-creator.toml`, `profile-analysis.toml`, `feedback-analysis.toml`, and `wechat-picture.toml`.
 - Confirm `~/.codex/config.toml` contains `[agents.article]` etc.
 - Confirm `[features] multi_agent = true` is in `config.toml`.
 - Fully restart Codex (not just reload).
