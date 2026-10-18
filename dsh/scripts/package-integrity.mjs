@@ -182,6 +182,17 @@ function sameStructure(actual, expected, label) {
   }
 }
 
+function rowsWithId(value, id, rows = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) rowsWithId(item, id, rows)
+    return rows
+  }
+  if (!isRecord(value)) return rows
+  if (value.id === id) rows.push(value)
+  for (const item of Object.values(value)) rowsWithId(item, id, rows)
+  return rows
+}
+
 async function directoryFiles(
   root,
   directory,
@@ -336,6 +347,33 @@ async function verifyPreset(root, preset) {
   )
   if (!Array.isArray(generatedComposition)) {
     fail(`${preset.label} Agent composition is not a row array`)
+  }
+  if (preset.id === 'project-creator') {
+    const runtimePatch = await parseYamlFile(
+      root,
+      'dsh/project-creator.patch.yml',
+      'Project Creator runtime patch',
+    )
+    const runtimePresetRows = rowsWithId(runtimePatch, 'preset-project-creator')
+    if (runtimePresetRows.length !== 1 || !isRecord(runtimePresetRows[0].config)) {
+      fail('Project Creator runtime patch has an invalid preset declaration')
+    }
+    const runtimePreset = runtimePresetRows[0].config
+    sameStructure(
+      { name: runtimePreset.name, description: runtimePreset.description },
+      { name: pack.display_name, description: pack.description },
+      'Project Creator runtime preset metadata',
+    )
+    const sourcePersonas = rowsWithId(sourceComposition, 'persona')
+    const runtimePersonas = rowsWithId(runtimePreset.plugins, 'persona')
+    if (sourcePersonas.length !== 1 || runtimePersonas.length !== 1) {
+      fail('Project Creator runtime patch has an invalid persona declaration')
+    }
+    sameStructure(
+      runtimePersonas[0],
+      sourcePersonas[0],
+      'Project Creator runtime persona',
+    )
   }
   const providerRows = []
   const collectProviderRows = (value) => {

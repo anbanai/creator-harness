@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.54] - 2026-10-18
+
+- Refine the DSH Project Creator interview around client business, end audience, content goals, and the Anban workflow that the current session can actually stage. Clarify account-platform versus project-type semantics, targeted profile updates, and link-analysis/tool boundaries.
+
 ## [4.2.53] - 2026-10-17
 
 - 为 DSH Project Creator 增加面向自媒体客户的发现与方案推荐 Skill，并把它接入真实交互 preset；Skill 先理解业务、受众、平台和内容目标，再推荐适配的内容组合。

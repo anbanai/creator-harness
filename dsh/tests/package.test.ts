@@ -523,7 +523,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.53',
+      version: '4.2.54',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -1191,6 +1191,26 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
 describe('DSH package integrity verifier', () => {
   it('accepts the generated source package contract', async () => {
     await expect(verifySourceIntegrity(packageRootPath)).resolves.toBeUndefined()
+  })
+
+  it('rejects a Project Creator runtime persona that drifts from its Pack source', async () => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const patchPath = join(fixture.root, 'dsh/project-creator.patch.yml')
+      const patch = await readFile(patchPath, 'utf8')
+      await writeFile(
+        patchPath,
+        patch.replace(
+          'Anban Studio 是面向自媒体创作者、品牌团队、电商和专业服务客户的内容创作工作台。',
+          'Anban Studio runtime persona drift.',
+        ),
+      )
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow(
+        'Project Creator runtime persona',
+      )
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
   })
 
   it.each([
