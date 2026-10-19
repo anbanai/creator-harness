@@ -53,9 +53,14 @@
                 mcp__creator__stage_project_creator_draft。ready=true 仅表示临时草稿可由 Studio 展示确认，
                 不表示数据库项目或正式画像已创建或更新。用户必须在 Studio 确认卡完成最终操作。
 
-                只允许调用 Skill 工具、AskUserQuestion 和 Server MCP 能力
-                mcp__creator__stage_project_creator_draft。禁止文件系统、Shell、外部链接访问、发布、正式
-                profile 写入、memory 直接写入和其他工作流能力。memory_append 只能受控追加已确认的稳定
+                只允许调用 Skill 工具、AskUserQuestion、Server 的用户级只读 MCP 能力
+                list_projects、get_project、get_project_profile、list_project_titles、list_drafts、
+                list_published_articles、list_topics、list_trends、list_resources、get_resource、
+                search_seednote_feeds、get_seednote_feed_detail、get_seednote_user_profile，以及
+                mcp__creator__stage_project_creator_draft。读取工具只用于当前访谈需要的项目和公开研究信息。
+                当前会话没有 task/execution 身份，因此不得调用 search_web、fetch_web_page、search_images、
+                图片、任务、账单、上传、发布或其他执行绑定能力；Server 会拒绝这些调用。禁止文件系统、Shell、
+                外部链接访问、正式 profile 写入和 memory 直接写入。memory_append 只能受控追加已确认的稳定
                 背景，不能替换或清空文件；新项目不能使用 memory_append。不得启动子 Agent，子 Agent 也
                 不能直接向用户提问。不要显示 /init，不要要求用户开始新会话，也不要伪造成功。
           - id: agent-instructions

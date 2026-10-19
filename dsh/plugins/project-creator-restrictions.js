@@ -7,7 +7,26 @@ export const inject = ['agents']
 const ASK_USER_QUESTION = 'ask_user_question'
 const LOAD_SKILL = 'skill'
 const STAGE_DRAFT = 'mcp__creator__stage_project_creator_draft'
-const ROOT_ALLOW = [ASK_USER_QUESTION, LOAD_SKILL, STAGE_DRAFT]
+// Project Creator sessions do not have a task/execution identity. Keep their
+// MCP surface to user-scoped reads plus the session's draft staging capability.
+// Search, fetch, media, billing, task, and publication tools
+// remain unavailable even though the MCP server advertises them globally.
+const ROOT_MCP_READS = [
+  'mcp__creator__list_projects',
+  'mcp__creator__get_project',
+  'mcp__creator__get_project_profile',
+  'mcp__creator__list_project_titles',
+  'mcp__creator__list_drafts',
+  'mcp__creator__list_published_articles',
+  'mcp__creator__list_topics',
+  'mcp__creator__list_trends',
+  'mcp__creator__list_resources',
+  'mcp__creator__get_resource',
+  'mcp__creator__search_seednote_feeds',
+  'mcp__creator__get_seednote_feed_detail',
+  'mcp__creator__get_seednote_user_profile',
+]
+const ROOT_ALLOW = [ASK_USER_QUESTION, LOAD_SKILL, STAGE_DRAFT, ...ROOT_MCP_READS]
 
 function isProjectCreatorAgent(agent) {
   return agent.ctx.get?.('agentPresets')?.composedPreset(agent.ctx) === 'project-creator'

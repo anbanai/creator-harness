@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.62] - 2026-10-19
+
+- Expose the user-scoped read-only Anban MCP tools to DSH Project Creator sessions while keeping execution-bound capabilities server-restricted.
+
 ## [4.2.60] - 2026-10-19
 
 - Split web research into provider-neutral `search_web`, `fetch_web_page`, and an explicit `search_images` capability; research Skills now use page fetch for source verification.
