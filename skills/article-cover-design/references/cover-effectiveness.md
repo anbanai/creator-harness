@@ -1,5 +1,13 @@
 # Cover Effectiveness Reference
 
+## Contents
+
+- Purpose and method sources
+- Building `cover_strategy`
+- Three concept gate and hard tests
+- `cover_effectiveness_scorecard`
+- Strategy and evidence review
+
 ## Purpose
 
 Use this reference before generating a WeChat article cover. The cover is not only a style anchor; it is the article's thumbnail promise. Style can be controlled by prompt, but content relevance and click motivation must be proven before image generation.
