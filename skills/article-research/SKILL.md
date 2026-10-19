@@ -21,6 +21,7 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 7. For a trend candidate that may be selected, invoke `trend-rider`, then `topic-evaluator` before finalizing the topic. `article-viral-strategy` remains responsible for post-selection propagation strategy.
 
 8. For ordinary factual background research, call the Server MCP tool `search_web` when current public web evidence is needed. The tool is Server-configured and execution-scoped; do not choose a provider or pass credentials. `list_trends` remains the only source for public trend ranking and freshness.
+9. When a search result must be verified or its full source text is needed, call `fetch_web_page` with that result URL. Keep the returned title, URL, Markdown content, provider request ID, and fetched time in the research evidence.
 
 ## Configuration Boundaries
 
@@ -29,7 +30,7 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 - Project keywords guide candidate generation but are not themselves a topic.
 - History tools are the source of truth for duplication checks.
 - `list_trends` is the only public trend source. If it is unavailable, continue the existing candidate-generation and history-based fallback and record the exact failure; never invent heat, freshness, or source evidence.
-- `search_web` is the only general public web source for this Skill. Never fetch search pages directly, call a third-party search API, or write a custom HTTP client. Preserve each returned URL, domain, citation ID, fetched time, and any missing publication/freshness field in the research evidence.
+- `search_web` and `fetch_web_page` are the only general public web sources for this Skill. Never fetch search pages directly, call a third-party search API, or write a custom HTTP client. Preserve each returned URL, domain, citation ID, fetched time, and any missing publication/freshness field in the research evidence.
 - If `search_web` returns `provider_unavailable`, continue with the existing conservative fallback and record the exact error and missing external evidence.
 - The Skill chooses structure and scoring rubric itself; do not delegate creative judgment to a generation MCP endpoint.
 

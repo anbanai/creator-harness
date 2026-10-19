@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.60] - 2026-10-19
+
+- Split web research into provider-neutral `search_web`, `fetch_web_page`, and an explicit `search_images` capability; research Skills now use page fetch for source verification.
+
 ## [4.2.58] - 2026-10-18
 
 - Complete Codex Agent registration and align zero-interaction workflow contracts.

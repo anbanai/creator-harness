@@ -31,7 +31,7 @@ description: 'Use only during Seednote topic discovery or source-note retrieval.
 
 本 skill 只读：只允许搜索、笔记详情和用户公开资料查询；禁止登录管理以及发布、删除、关注、取关、点赞、收藏、评论写入等写操作。禁止直连 sidecar、私有端口、浏览器抓取器，禁止编写 Python、JavaScript/Node.js 或自定义 HTTP 客户端，也禁止调用任何外部种草笔记客户端。不得绕过 Anban MCP 的认证、审计与协议边界。
 
-`search_web` 仅用于一般公开资料，不能替代 `search_seednote_feeds` 的认证种草笔记数据，也不能用于推断缺失的互动字段。保留搜索结果的 URL、域名、引用 ID、抓取时间和缺失字段；收到 `provider_unavailable` 时按原创模式的保守降级规则继续，并记录错误。
+`search_web` 仅用于一般公开资料；需要核验具体来源正文时使用 `fetch_web_page`。两者都不能替代 `search_seednote_feeds` 的认证种草笔记数据，也不能用于推断缺失的互动字段。保留 URL、域名、引用 ID、抓取时间、正文来源和缺失字段；收到 `provider_unavailable` 时按原创模式的保守降级规则继续，并记录错误。
 
 原创模式外部研究不可用时，原创模式不得失败、不得写 `output/failure-state.json`：改用用户明确主题、选题池、账号画像和已有标题完成保守选题，并如实记录缺失数据。公共热点或 `list_trends` 不可用时同样按此降级。不得把本地判断描述成热门数据或互动率证据。复刻模式若只提供外部笔记 ID/链接且无法取得任何源内容，才属于无法满足核心输入的可恢复失败。
 
