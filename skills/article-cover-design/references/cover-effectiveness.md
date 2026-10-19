@@ -17,6 +17,8 @@ Read `context-brief.md`, `seo-result.md`, `04-article-final.md`, and digest. Wri
 
 ```json
 {
+  "final_title": "最终 SEO 标题",
+  "digest_hook": "摘要中的核心钩子",
   "target_reader": "具体读者画像，不写泛泛的公众号读者",
   "reader_pain_or_job": "读者正在试图解决的问题或要完成的任务",
   "article_promise": "本文承诺帮读者看清/避免/获得什么",
@@ -34,13 +36,27 @@ Read `context-brief.md`, `seo-result.md`, `04-article-final.md`, and digest. Wri
       "swap_risk": "是否能换到其他文章仍成立"
     }
   ],
-  "selected_cover_concept": "三项硬测试全过且评分最高的概念"
+  "selected_cover_concept": "三项硬测试全过且评分最高的概念",
+  "cover_hook": "封面要让人立即看懂的冲突或承诺",
+  "visual_metaphor": "从正文证据提炼的可视化关系",
+  "thumbnail_strategy": "缩小后仍能识别主视觉和关系的方法",
+  "required_entities": ["必须保留的具体主体或证据"],
+  "anti_generic_constraints": ["不得出现的泛化或误导性视觉"],
+  "selected_visual_treatment": {
+    "mode": "editorial-cover|documentary-photography|conceptual-illustration|diagrammatic-explainer|hybrid-editorial",
+    "why_this_mode": "为什么这种呈现方式比其他方式更快表达文章承诺",
+    "primary_anchor": "唯一第一视觉锚点",
+    "secondary_evidence": ["可删减的正文证据"],
+    "text_policy": "none|short-label|headline-and-subtitle|labeled-comparison",
+    "visible_text_whitelist": [],
+    "reading_order": ["first", "second", "third"]
+  }
 }
 ```
 
 ## Three Concept Gate
 
-Generate at least 3 `cover_concept_candidates` before building the image prompt. Do not draw first. Score each candidate against the title, digest, body evidence, reader motivation, visual specificity, and truthfulness. Select one only after the tests below pass.
+Generate at least 3 `cover_concept_candidates` before building the image prompt. Do not draw first. Score each candidate against the title, digest, body evidence, reader motivation, visual specificity, and truthfulness. After selecting the concept, independently compare at least two plausible visual treatments and record why the chosen treatment makes the concept legible at thumbnail size. Select the concept and treatment only after the tests below pass.
 
 ## Hard Tests
 

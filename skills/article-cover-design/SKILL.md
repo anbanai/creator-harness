@@ -22,6 +22,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 - 生成 `cover_strategy` 前读 [references/cover-effectiveness.md](references/cover-effectiveness.md)。
 - 生成 `output/cover-plan.md` 和 prompt 前读 [references/art-direction.md](references/art-direction.md)。
+- 选择封面呈现方式和编译视觉 prompt 时读 [references/presentation-strategy.md](references/presentation-strategy.md)。
 - 人物参考说明见 [references/portrait-reference.md](references/portrait-reference.md)；启用人物封面时以共用调用合同为准。
 - 生成前准备审核、生成后验收时读 [references/quality-gate.md](references/quality-gate.md)。
 - 需要判断场景分支和失败边界时读 [references/examples.md](references/examples.md)。
@@ -68,9 +69,10 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 - `article_promise`、`content_proof_points`、`click_trigger`
 - 至少 3 个 `cover_concept_candidates` 与 `selected_cover_concept`
 - `cover_hook`、`visual_metaphor`、`thumbnail_strategy`
+- `selected_visual_treatment`：呈现方式、版式意图及选择理由，与概念分开决策
 - `required_entities`、`anti_generic_constraints`
 
-候选必须通过 `generic_swap_test`、`promise_proof_test`、`audience_motivation_test`。通用养生水墨背景、无主体山水、无内容证据的陌生人像、只靠氛围成立的空泛概念直接淘汰。
+候选必须通过 `generic_swap_test`、`promise_proof_test`、`audience_motivation_test`。通用养生水墨背景、无主体山水、无内容证据的陌生人像、只靠氛围成立的空泛概念直接淘汰。概念回答“画什么”，`selected_visual_treatment` 回答“怎样呈现”；分别评估，避免把有效概念默认做成无字静物照片。不要把候选概念所列的每个实体都提升为同等重要的硬性主体，明确一个主视觉锚点，其余只在确实增强信息表达时保留。
 
 ### 2. 写 `output/cover-plan.md`
 
@@ -85,7 +87,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 7. 视觉层级与动线
 8. 禁止事项
 
-计划必须给出可执行的景别、主体位置、画面占比、视线方向、负空间和中心安全区，不得只写“高级、电影感、有质感”。先定媒介，再使用该媒介自己的语言；不得给所有方案固定追加摄影术语。
+计划必须给出可执行的层级、主体/文字位置、画面占比、视线方向、负空间和中心安全区，不得只写“高级、电影感、有质感”。按 presentation-strategy 决定标题是只由公众号 UI 承担，还是在图上呈现准确短标题/标签；无字不是默认值。先定媒介和版式，再使用相匹配的语言；不得给所有方案固定追加摄影术语。
 
 ### 3. 解析参考图
 
@@ -95,16 +97,16 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ### 4. 写 prompt 与审核合同
 
-根据 `output/cover-plan.md` 组合最终 prompt，写入 `output/cover-prompt.md`。必须包含：文章承诺、选中概念、正文证据、明确实体、构图坐标、媒介语言、色彩、光线、缩略图策略、中心安全区、文字策略和禁止事项。
+根据 `output/cover-plan.md` 组合最终 prompt，写入 `output/cover-prompt.md`。必须包含：文章承诺、选中概念、选中呈现方式、一个主视觉锚点、正文证据、构图/版式层级、媒介语言、色彩、光线、缩略图策略、中心安全区、文字策略和禁止事项。按 [references/presentation-strategy.md](references/presentation-strategy.md) 保留明确的信息层级，避免把所有约束写成同等权重的物件清单。
 
 受控文字策略：
 
-- 人物、真实场景、氛围意象默认无字。
-- 教程、清单、栏目或编辑设计只有在短文字能明显增强信息气味时才带字。
-- 最多 2-8 个中文字或一个短标签，精确写入 prompt；文字必须位于安全区且避开底部 20%。
+- 根据标题与选中呈现方式决定文字。可采用纯画面、短标签、封面式大标题/副标题或精简图解；这些是可选手段，不是模板。若字能让冲突/主题在缩略图上更快读懂，明确使用文字，不因“避免乱码”而自动删掉。
+- 图中文字应从标题/摘要/正文证据中准确摘取，控制为一个主标题和必要的少量标签；写明逐字白名单、层级、断行、对齐、字重/字形气质、文字区与留白区。不要将整篇标题机械塞入画面，也不要编造数据或标签。
+- 文字必须位于对应展示形态的安全区并避开底部 20%；若启用中心 1:1 分享裁切，标题、主体和必要标签都须在中心安全区内。
 - 始终禁止乱码、伪文字、水印、logo、二维码、联系方式、外链 URL、扫码提示、加群、加微信等导流元素。
 
-审核结构按 `references/quality-gate.md`，至少包含 `visual_quality_scorecard` 与 `cover_effectiveness_scorecard`，以及这些字段：`information_scent_alignment`、`audience_motivation`、`content_specificity`、`thumbnail_attention`、`truthfulness_not_clickbait`、`brand_style_fit`、`visual_distinctiveness`、`safe_zone_text_policy`、`title_cover_digest_alignment`、`thumbnail_readability`、`contrast_focus`、`specificity_not_generic`、`series_distinctiveness`、`hard_no_forbidden_cues`。
+审核结构按 `references/quality-gate.md`，至少包含 `visual_quality_scorecard` 与 `cover_effectiveness_scorecard`，以及这些字段：`information_scent_alignment`、`audience_motivation`、`content_specificity`、`thumbnail_attention`、`truthfulness_not_clickbait`、`brand_style_fit`、`visual_distinctiveness`、`safe_zone_text_policy`、`title_cover_digest_alignment`、`thumbnail_readability`、`first_glance_hierarchy`、`layout_finish`、`treatment_fit`、`contrast_focus`、`specificity_not_generic`、`series_distinctiveness`、`hard_no_forbidden_cues`。
 
 ### 5. 生成、审核、上传
 
@@ -167,6 +169,7 @@ upload_image(
 封面审核 JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。生成、裁剪、审核或上传失败时保留已有文件并写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`；上传状态仍以 Server 返回为准。
 
 - `output/cover-plan.md` 已记录 8 要素导演合同和参考图角色。
+- `output/cover-plan.md` 已记录概念与呈现方式的独立选择；文字策略与呈现方式相符。
 - `output/cover-prompt.md` 已记录最终 prompt、比例来源、裁剪决定、`required_entities` 和参考路径用途。
 - `output/cover-quality.json` 中两个评分卡均通过；人物启用时身份字段也通过。
 - `cover_effectiveness_scorecard.overall_pass=true` 且 `visual_quality_scorecard.overall_pass=true`。仅有旧的 6 维视觉评分全为 high 不得通过。

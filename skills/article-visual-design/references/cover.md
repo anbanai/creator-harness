@@ -82,14 +82,14 @@
 
 ## 封面 Prompt 模板
 
-根据三维分析结果，按以下模板从零构建封面 prompt（不使用 writer YAML 的 cover_prompt）：
+根据三维分析结果和 `article-cover-design/references/presentation-strategy.md` 选出的呈现方式，按以下顺序构建封面 prompt（不使用 writer YAML 的 cover_prompt）。封面必须先通过 `article-cover-design` 的受控文字策略决定是否出现文字，再编译对应的版式和媒介语言。
 
 ```
-An image composed for {$EFFECTIVE_ASPECT_RATIO} as a WeChat article cover. {VISUAL_STYLE}.
-Cover hook: {COVER_HOOK}. {COLOR_PALETTE}. {CONTENT_SUBJECT} — {VISUAL_METAPHOR_FROM_ARTICLE}.
-Thumbnail strategy: {THUMBNAIL_STRATEGY}. Avoid generic visuals: {ANTI_GENERIC_CONSTRAINTS}.
-{MOOD_TONE}. {COMPOSITION_GUIDANCE}.
-Photographic quality, {TEXT_POLICY_FROM_ARTICLE_COVER_DESIGN}, no watermarks, no logo.
+An image composed for {$EFFECTIVE_ASPECT_RATIO} as a WeChat article cover. Presentation treatment: {SELECTED_VISUAL_TREATMENT}.
+Reader must understand: {INFORMATION_RELATION}. Primary visual anchor: {PRIMARY_ANCHOR}. Reading order: {READING_ORDER}.
+{VISUAL_STYLE}. Cover hook: {COVER_HOOK}. {COLOR_PALETTE}. {CONTENT_SUBJECT} — {VISUAL_METAPHOR_FROM_ARTICLE}.
+Thumbnail strategy: {THUMBNAIL_STRATEGY}. Text policy and exact whitelist: {TEXT_POLICY}. Avoid generic visuals: {ANTI_GENERIC_CONSTRAINTS}.
+{MOOD_TONE}. {COMPOSITION_GUIDANCE}. Use only the selected medium's own visual language. No watermarks, no logo.
 ```
 
 ### Prompt 构建要点
@@ -103,18 +103,20 @@ Photographic quality, {TEXT_POLICY_FROM_ARTICLE_COVER_DESIGN}, no watermarks, no
 7. **ANTI_GENERIC_CONSTRAINTS**：禁止通用养生水墨背景、无主体山水、与标题无关的摆拍素材
 8. **MOOD_TONE**：与内容情绪匹配的氛围（如 "contemplative and peaceful atmosphere"）
 9. **COMPOSITION_GUIDANCE**：构图指导（如 "generous negative space, rule of thirds"）
-10. **TEXT_POLICY_FROM_ARTICLE_COVER_DESIGN**：按 `article-cover-design` 的受控文字策略决定：需要时写精确 2-8 字短文字，否则写 `NO text`
+10. **SELECTED_VISUAL_TREATMENT**：从呈现方式参考中选择，不把摄影当作默认
+11. **INFORMATION_RELATION / PRIMARY_ANCHOR / READING_ORDER**：让缩略图先表达关系和层级，再补风格
+12. **TEXT_POLICY**：按呈现方式决定无字、短标签、标题副标题或标注对比，并写出逐字白名单
 
 ### 好的封面 prompt 示例
 
-**养生账号，文章关于"慢下来的力量"**（比例占位符必须替换为任务有效值）：
+**企业内容账号，文章关于“AI 产能很高但没人阅读”**（比例占位符必须替换为任务有效值）：
 ```
-An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Warm natural photography, soft morning light filtering through translucent leaves, organic textures. Cover hook: slow but visible recovery. Warm earth tones with soft sage green and golden accents. A single lotus bud slowly opening at dawn, dewdrops on petals, mist rising from still water. Thumbnail strategy: one large high-contrast lotus bud, visible at 200px. Avoid generic visuals: no empty ink-wash mountains, no tea cup still life. Serene and meditative atmosphere. Generous negative space, the bud placed in the safe zone for the effective ratio. Photographic quality, NO text, no watermarks, no logo.
+An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Presentation treatment: editorial-cover. The reader must understand the contrast between high content output and zero attention within half a second. Primary visual anchor: a large cream editorial card marked exactly “100” and “篇文章”, with a dark navy reading counter marked exactly “0 阅读”. Reading order: title, 100 articles, 0 reads. Clean modern editorial design, deep navy field, warm apricot accent, restrained paper texture, generous left-side negative space. Exact visible text whitelist: “AI 一天能写一百篇”, “为什么还是没人看？”, “100”, “篇文章”, “0”, “阅读”. Use a clear Chinese sans-serif hierarchy, exact glyphs, deliberate line breaks, crisp alignment, no invented text. Keep the title and both counters inside the central 1:1 safety area and above the bottom 20%. No watermarks, no logo, no QR code, no extra numbers, no pseudo-text.
 ```
 
-**文化账号，文章关于"文字的温度"**（比例占位符必须替换为任务有效值）：
+**文化账号，文章关于“文字的温度”**（比例占位符必须替换为任务有效值）：
 ```
-An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditional Chinese aesthetic, subtle ink wash texture blending with warm photography. Cover hook: words can still carry warmth. Ink black, warm brown, and celadon tones. An ancient calligraphy brush resting on handmade paper, a single character partially written, warm golden light from a window. Thumbnail strategy: one large brush tip and glowing paper texture, high contrast against the background. Avoid generic visuals: no empty study room, no random book stack. Contemplative and elegant atmosphere. Shallow depth of field, paper texture in foreground. Photographic quality, NO text, no watermarks, no logo.
+An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Presentation treatment: documentary-photography. The reader must understand that a handwritten note carries a human trace. Primary visual anchor: one worn calligraphy brush touching warm handmade paper. Reading order: brush tip, paper texture, the small pool of window light. Traditional Chinese material language, ink black, warm brown, celadon, restrained natural light, believable paper fibers and ink. No text is required because the title already carries the promise; show only a single incomplete ink stroke with no readable character. Keep the brush and paper within the central 1:1 safety area and above the bottom 20%. No watermarks, no logo, no pseudo-text, no random books, no empty study-room stock scene.
 ```
 
 ---
@@ -122,11 +124,11 @@ An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditi
 ## 封面约束
 
 **必须**：
-- 摄影级或绘画级质感，与账号领域匹配
+- 与选中的呈现方式匹配的完成度和媒介质感，与账号领域和文章承诺一致
 - 与文章内容有视觉隐喻关联（不是通用素材图）
 - 与最终标题、digest 前半句强化同一个钩子
 - 主体大、对比强，缩成 200px 仍可读
-- 温暖/积极的情感基调（适合大多数中文内容账号）
+- 情绪基调服务标题与正文承诺，不默认套用温暖/积极
 - **公众号横版**：按任务有效比例显式生成；智能适配时从能力允许比例中选择最宽横图。只有用户明确要求精确像素时才调用原子的 `crop_image`，不得依赖服务端按平台或产物角色隐式裁剪
 - **主体居中安全区**：主体落在画面中央 ≈1:1 区域，转发卡 1:1 自动裁切后仍完整；避开底部 20%（微信会在底部叠加文章标题）
 
@@ -134,7 +136,7 @@ An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Traditi
 - 3D 渲染 / 合成感
 - 卡通 / 动漫 / 剪纸风格
 - 暗黑 / 恐怖 / 压抑意象（除非账号定位明确要求）
-- 违背受控文字策略的文字叠层 / 水印 / logo 占位
+- 未列入白名单或与呈现方式无关的文字叠层 / 水印 / logo 占位
 - 纯色 / 渐变背景（无内容实体）
 - 对称 PPT 式布局
 - 通用养生水墨背景、无主体山水、只放茶盏/莲花/药材摆拍导致每篇看起来一样
