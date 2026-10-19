@@ -44,8 +44,8 @@ JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`m
 
 | 决策点 | 自动策略 |
 |--------|----------|
-| **模式选择** | 用户提供笔记 ID/链接/xsec_token/复刻关键词 → 复刻模式；否则 → 原创模式 |
-| **选题** | 保留选题池和认证种草笔记研究优先级；公共热点只通过 `trending-topics` 补充，选中热点后依次使用 `trend-rider` 和 `topic-evaluator`，真实互动字段存在时才按 CES 选 Top 1 |
+| **模式选择** | 用户提供公开笔记链接、分享文本或源内容/复刻关键词 → 复刻模式；否则 → 原创模式 |
+| **选题** | 优先使用用户主题和选题池，再参考项目资料、公共热点和公开网页；仅在来源明确提供真实互动字段时才按 CES 选 Top 1 |
 | **视觉与参考素材** | 先分析需求，再逐图分析所有可用附件；按每页职责自动选择 0、1 或多张原图，没有相关参考时动态设计 `$STYLE` |
 | **错误处理** | 原创模式外部研究不可用时自动降级；复刻源内容、关键事实或图片 API/质量验证不可用时记录可恢复失败态并从对应阶段重试 |
 
@@ -53,10 +53,9 @@ JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`m
 
 ## 工具边界
 
-- **Anban 产品能力和种草笔记真实数据研究必须使用已认证的 Anban MCP 工具**。研究按 `search_seednote_feeds` -> `get_seednote_feed_detail` / `get_seednote_user_profile` 执行；登录会话由 Server 管理员在任务外维护，Agent 不得检查登录态、获取二维码或等待人工扫码
-- **研究边界只读**。只允许搜索、详情和公开用户资料查询，禁止登录管理以及发布、删除、关注、取关、点赞、收藏、评论写入
-- **禁止直连 sidecar、编写 JavaScript/Node.js/Python 脚本、自定义 HTTP 客户端或调用外部种草笔记客户端**；不得绕过已认证的 Anban MCP 工具
-- **原创模式外部研究不可用时必须降级继续**。基于用户主题、选题池、账号画像与已有标题完成保守选题；用户明确主题记录 `data_source=task_topic`，认领选题池主题记录 `data_source=topic_pool`，仅按账号或项目资料推导记录 `data_source=project_context`，不得写 `data_source=xiaohongshu-mcp`。同时记录 `mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason`，且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
+- **研究边界只读**。原创研究使用选题池、公共热点和公开网页；复刻研究只处理用户提供的公开 URL、分享文本或源内容。不得登录、索取私有资料或猜测互动数据
+- **禁止编写脚本或自定义 HTTP 客户端抓取平台内容**；网页研究使用 Anban 提供的 `search_web` 和 `fetch_web_page`
+- **原创模式外部研究不可用时必须降级继续**。基于用户主题、选题池、账号画像与已有标题完成保守选题；按实际输入记录 `data_source=task_topic`、`data_source=topic_pool`、`data_source=project_context`、`data_source=public_trends` 或 `data_source=public_web`，同时记录 `mcp_tools_used`、`available`、`missing_fields`、`fallback_reason`，且不得生成虚构热门数据；仅当复刻任务只有外部 ID/链接且无法取得源内容时才停止
 
 ## Runtime workspace contract
 
@@ -100,7 +99,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 #### 步骤 1：判断模式并创建任务
 
-如果用户提供种草笔记 ID、链接、xsec_token 线索，或明确说复刻、仿写、改写、克隆，则选择复刻模式（8 个任务：公共前置、源笔记获取、爆款拆解、内容改写、标题终稿锁定、图片生成、合规检查、交付校验与最终报告）；否则选择原创模式（7 个任务：公共前置、选题研究、内容写作、标题终稿锁定、图片生成、交付校验、最终报告）。
+如果用户提供公开笔记链接、分享文本或源内容，或明确说复刻、仿写、改写、克隆，则选择复刻模式（8 个任务：公共前置、源笔记获取、爆款拆解、内容改写、标题终稿锁定、图片生成、合规检查、交付校验与最终报告）；否则选择原创模式（7 个任务：公共前置、选题研究、内容写作、标题终稿锁定、图片生成、交付校验、最终报告）。
 
 使用 `TaskCreate` 创建上述细粒度业务任务列表，设置依赖：每个任务 `blockedBy` 前一个任务，且都不携带 `anban_stage_id`。后续每步开始前执行 `TaskUpdate status=in_progress`，完成后执行 `TaskUpdate status=completed`；这些细粒度任务不属于平台生命周期，只有前述按本次计划动态创建、携带 `anban_stage_id` 的阶段 Task 驱动生命周期。
 
@@ -122,7 +121,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 #### 步骤 5：研究选题
 
-按 `seednote-research` 方法调用 `search_seednote_feeds`，再用搜索返回的真实 `feed_id` / `xsec_token` 调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。`feed_id` / `xsec_token` 只能使用 MCP 工具返回，不得从用户输入的链接直接提取。登录会话由 Server 管理员在任务外维护；Agent 不得调用登录管理能力或等待扫码。传输失败时只重试一次。只有取得真实互动字段时才按互动率、时效性和新颖度评分。研究能力不可用、工具不可用或重试后仍无外部数据时，基于用户明确主题、选题池、账号画像和已有标题完成保守选题，原创模式不得因此写 `output/failure-state.json` 或停止。将候选列表、外部评分或降级依据、避重判断、`mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason` 写入 `output/topic-analysis.md`；取得 MCP 外部数据时记录 `data_source=xiaohongshu-mcp`，否则按实际主要输入记录 `data_source=task_topic`、`data_source=topic_pool` 或 `data_source=project_context`，不得把降级结果描述为热门数据。
+按 `seednote-research` 方法结合用户主题、选题池、项目画像、`list_trends`、`search_web` 和 `fetch_web_page` 研究选题。只有来源明确提供真实互动字段时才按互动率、时效性和新颖度评分。外部研究不可用时，基于用户明确主题、选题池、账号画像和已有标题完成保守选题，原创模式不得因此写 `output/failure-state.json` 或停止。将候选列表、外部证据或降级依据、避重判断、`mcp_tools_used`、`available`、`missing_fields`、`fallback_reason` 写入 `output/topic-analysis.md`，按实际主要输入记录 `data_source`；不得把降级结果描述为热门数据。
 
 **产出**：`output/topic-analysis.md`
 
@@ -140,7 +139,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 #### 步骤 5：获取源笔记
 
-按 `seednote-research` 方法通过 `search_seednote_feeds` 或 `get_seednote_user_profile` 的工具返回获取真实 `feed_id` / `xsec_token`，再调用 `get_seednote_feed_detail`，需要作者画像时调用 `get_seednote_user_profile`。`feed_id` / `xsec_token` 只能使用 MCP 工具返回，不得从用户输入的链接直接提取或凭空构造。登录会话由 Server 管理员在任务外维护；Agent 不得调用登录管理能力或等待扫码。详情、互动与评论写入 `output/source-note.md`，并记录 `data_source=xiaohongshu-mcp`、`mcp_tools_used`、`available`、`token_source`、`missing_fields`、`fallback_reason`。仅传输失败时重试一次；研究能力或工具不可用时不盲目重试。若任务只有外部 ID/链接且仍无源内容，写结构化 `output/failure-state.json` 并从 `research` 恢复。
+按 `seednote-research` 方法读取用户提供的公开 URL、分享文本或源内容；使用 `fetch_web_page` 检查可访问页面。将可核验的标题、正文、图片线索、公开标签、页面时间和引用 URL 写入 `output/source-note.md`；页面未提供的互动或作者字段记录为缺失，不得猜测。若只有外部链接或 ID 且页面不可访问，写结构化 `output/failure-state.json` 并从 `research` 恢复。
 
 **产出**：源笔记详情、`output/source-note.md`
 
@@ -232,7 +231,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 | 参考素材不可用 | 非关键素材记录 warning；唯一产品身份、Logo、包装、型号或核心结构证据不可用时保留产物并进入可恢复失败态 |
 | 图片生成失败 | 保留已生成图片并写 `output/failure-state.json`，从当前图片恢复 |
 | 内容审核调用失败 | 在 `image-review.md` 和 `reference-usage-summary.json` 的 `warnings` 记录“审核不可用”，标记 `quality_status=unavailable`，继续生成后续计划图片；最终整体质量闸门写 `output/failure-state.json`（`error_code=image_review_unavailable`），不得报告成功，原始错误只保留在服务端观测记录中 |
-| 源笔记获取失败 | 已认证 Anban MCP 仅在传输失败时重试一次；仅有外部 ID/链接且仍无源内容时写失败态并停止 |
+| 源笔记获取失败 | 公开页面不可访问且没有用户提供源内容时写失败态并停止 |
 | 爆款拆解证据不足 | 写入 missing_data，降低 confidence，默认推荐 `style-only` |
 | 复刻模板置信度低或视觉证据不足 | 记录原因并按 `style-only` 处理 |
 | 违禁词检测误报 | 记录疑似词，标注人工复核，不自动删除核心信息 |

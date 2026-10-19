@@ -22,9 +22,6 @@ const ROOT_MCP_READS = [
   'mcp__creator__list_trends',
   'mcp__creator__list_resources',
   'mcp__creator__get_resource',
-  'mcp__creator__search_seednote_feeds',
-  'mcp__creator__get_seednote_feed_detail',
-  'mcp__creator__get_seednote_user_profile',
 ]
 const ROOT_ALLOW = [ASK_USER_QUESTION, LOAD_SKILL, STAGE_DRAFT, ...ROOT_MCP_READS]
 

@@ -1,129 +1,54 @@
 ---
 name: seednote-research
-description: 'Use only during Seednote topic discovery or source-note retrieval. Do not trigger for writing, visual generation, or generic competitor research.'
+description: 'Use when researching Seednote topics or retrieving a user-provided source note. Do not trigger for writing, visual generation, or generic competitor research.'
 ---
 
 # 种草笔记选题研究
 
-## 目录
-
-- [意图路由](#意图路由)
-- [数据入口](#已认证的种草笔记数据入口)
-- [完整研究流程](#完整研究流程)
-- [复刻模式](#复刻模式源笔记获取)
-- [产出要求](#产出要求)
-
 ## 意图路由
 
-先判断用户是否在询问“今天/当前有什么热点”或其他明确的公共热点发现请求。这类请求必须在选题池认领和认证种草笔记搜索前调用 `trending-topics`，确保实际调用 Server MCP `list_trends`；选题池和认证研究仍可作为补充或降级依据。普通原创选题继续遵循选题池和认证种草笔记研究优先级。
+先判断用户是否在询问当前公共热点。明确的热点请求先调用 `trending-topics` 获取公共榜单；普通原创选题遵循选题池、项目资料、已有标题和公开资料的顺序。研究失败时原创流程继续，不得编造热度、互动或作者数据。
 
-## 已认证的种草笔记数据入口
+## 数据入口
 
-种草笔记真实外部数据只通过已认证的 Anban MCP 工具获取：
+只使用 Anban MCP 提供的业务能力和通用公开网页能力：
 
-1. 直接调用 `search_seednote_feeds` 搜索真实笔记。
-2. 从 `search_seednote_feeds` 或 `get_seednote_user_profile` 的真实工具返回中取得 `feed_id` 与 `xsec_token`，再调用 `get_seednote_feed_detail`。工具返回的签名 URL 只能作为该工具输出的一部分，不能直接读取用户输入的链接。
-3. 需要作者公开画像时，使用详情或搜索结果中的真实用户标识调用 `get_seednote_user_profile`。
-4. `trending-topics` 可选地调用 Server MCP `list_trends` 获取微博、抖音、知乎、B站、百度或头条公共热点，作为选题补充；公共热点不能替代认证种草笔记搜索，也不能被记录为 `xiaohongshu-mcp` 数据。
-5. 一般事实、产品背景或非种草笔记的公开资料研究，使用 Server MCP `search_web`。该工具由 Server 选择 Provider 并持有密钥；Agent 不得传入 Provider、读取密钥，或直接访问搜索网站。
+1. 已指定主题时直接采用用户主题，不能因为外部研究可用而改写主题。
+2. 未指定主题时优先调用 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")`；没有可认领主题时再使用项目画像和公开资料。
+3. 定标题前必须调用 `list_project_titles(project_id="$PROJECT_ID")`，避免重复表达。
+4. 公共热点使用 `list_trends`，一般事实和产品背景使用 `search_web`，核验具体页面使用 `fetch_web_page`。保留 URL、域名、引用 ID、抓取时间和缺失字段。
+5. 复刻模式只处理用户提供的公开 URL、分享文本或源内容。用 `fetch_web_page` 读取实际可访问页面；不能从链接拼接隐藏参数、调用登录接口、请求用户资料或猜测互动数据。
 
-登录状态检查、扫码登录和退出登录由 Admin 在 Anban 后台维护。Agent 不管理登录态、不获取二维码、不等待人工扫码，也不得向用户暴露任何登录管理能力；它只调用研究工具并处理工具返回的认证或能力错误。
+本 skill 只读。禁止登录、扫码、退出登录、点赞、收藏、评论、关注、发布、删除、直连私有服务或编写自定义 HTTP 客户端。MCP 工具失败时保留结构化错误摘要；传输错误最多重试一次，认证或参数错误不得盲目重试。
 
-本 skill 只读：只允许搜索、笔记详情和用户公开资料查询；禁止登录管理以及发布、删除、关注、取关、点赞、收藏、评论写入等写操作。禁止直连 sidecar、私有端口、浏览器抓取器，禁止编写 Python、JavaScript/Node.js 或自定义 HTTP 客户端，也禁止调用任何外部种草笔记客户端。不得绕过 Anban MCP 的认证、审计与协议边界。
+## 研究流程
 
-`search_web` 仅用于一般公开资料；需要核验具体来源正文时使用 `fetch_web_page`。两者都不能替代 `search_seednote_feeds` 的认证种草笔记数据，也不能用于推断缺失的互动字段。保留 URL、域名、引用 ID、抓取时间、正文来源和缺失字段；收到 `provider_unavailable` 时按原创模式的保守降级规则继续，并记录错误。
+### 原创模式
 
-原创模式外部研究不可用时，原创模式不得失败、不得写 `output/failure-state.json`：改用用户明确主题、选题池、账号画像和已有标题完成保守选题，并如实记录缺失数据。公共热点或 `list_trends` 不可用时同样按此降级。不得把本地判断描述成热门数据或互动率证据。复刻模式若只提供外部笔记 ID/链接且无法取得任何源内容，才属于无法满足核心输入的可恢复失败。
+1. 确定主题来源：用户主题、选题池、项目画像或公开热点。
+2. 调用 `list_project_titles` 做查重。
+3. 用 `list_trends`、`search_web` 和 `fetch_web_page` 补充可验证的公开证据。
+4. 记录候选角度、证据、缺失字段、风险和最终选题理由。没有外部数据时按用户主题匹配度、账号定位匹配度、与历史标题差异度和内容具体性做定性判断。
 
-## Anban MCP 工具
+### 复刻模式
 
-| MCP 工具 | 说明 |
-|----------|------|
-| `claim_topic` (project_id, task_id?) | 从项目选题池认领下一个未用选题；原创模式选题池非空时优先使用 |
-| `list_project_titles` (project_id) | 查看系统内已有标题；定标题前必调 |
-| `search_seednote_feeds` | 按关键词搜索真实笔记并返回可追溯标识 |
-| `get_seednote_feed_detail` | 使用真实 `feed_id` 与 `xsec_token` 获取详情和互动字段 |
-| `get_seednote_user_profile` | 获取搜索或详情结果对应的公开用户资料 |
-| `list_trends` | 获取公共平台热点补充；不提供种草笔记认证笔记或 CES 证据 |
+1. 读取用户提供的公开 URL、分享文本或已附带的源内容。
+2. 对可访问页面保存标题、正文、图片线索、公开标签、页面时间和引用 URL；页面未提供的互动或作者字段记入缺失项。
+3. 页面不可访问且任务只有外部链接或 ID 时，写 `output/failure-state.json`，状态为 `recoverable_failure`，阶段为 `research`，并设置 `resume_from=research`。
+4. 后续由 `seednote-viral-analysis` 读取 `output/source-note.md`，生成模板和分析，不在本 skill 中改写正文。
 
-传输错误、超时或临时 MCP 不可达时，原调用只重试一次。认证失败、参数错误和业务拒绝不是传输失败，不得盲目重试。每次调用都保留原始结构化错误摘要，不得通过其他通道补取数据，也不得尝试自行恢复登录。
+## 产出合同
 
-## xsec_token 与来源合同
-
-`feed_id` 和 `xsec_token` 只能使用 MCP 工具返回：从 `search_seednote_feeds` 或 `get_seednote_user_profile` 的真实工具结果中提取；工具返回的签名 URL 也必须属于该结果。不能读取用户输入的签名 URL、不能凭空构造。裸 note ID 不足以证明 token；复刻模式必须保留 token 来源。
-
-研究产物必须记录：
+研究产物记录以下字段，值必须与实际调用一致：
 
 ```text
-data_source=<xiaohongshu-mcp|task_topic|topic_pool|project_context>
+data_source=<task_topic|topic_pool|project_context|public_trends|public_web|user_source|missing>
 mcp_tools_used=<实际调用工具列表；未调用写 none>
 available=<true|false|unknown>
-token_source=<search|profile|signed_url|missing>
 missing_fields=<缺失字段列表；无缺失时写 none>
 fallback_reason=<无降级则写 none>
 ```
 
-使用公共热点时，额外记录每个候选的 `trend_source`、平台、`rank`、`hot`、`fetched_at`、`expires_at`、`stale`、`source` 和 `last_error`。随后调用 `trend-rider` 输出关联度、生命周期、借势结论、平台形式和风险，再调用 `topic-evaluator` 输出七维定性评估。低关联度必须标记不建议借势并给出常青替代方向。只有真实互动字段存在时才使用 CES；七维结果用于解释定位、差异化、时效、制作成本和合规，不与 CES 机械相加。
+公共热点还要记录 `trend_source`、平台、`rank`、`hot`、`fetched_at`、`expires_at`、`stale`、`source` 和 `last_error`。只有页面明确提供互动字段时才可引用互动数据；不得套用 CES 或推测互动率。
 
-`data_source=xiaohongshu-mcp` 只表示数据经过已认证的 Anban MCP 能力取得。外部数据未取得时必须按实际采用的主要业务输入记录：用户明确主题写 `data_source=task_topic`，认领的选题池主题写 `data_source=topic_pool`，仅按账号画像或项目资料推导写 `data_source=project_context`；绝不把本地回退伪造成 MCP 成功采集。研究必须记录 `mcp_tools_used` 和 `available`，并用 `missing_fields` 与 `fallback_reason` 准确说明降级。
-
-## 完整研究流程
-
-### 步骤 0：确定选题来源（仅原创模式）
-
-复刻模式不做选题，直接进入「复刻模式源笔记获取」。原创模式先检查任务 user prompt：
-
-1. 任务已指定主题：直接采用主题，禁止调用 `claim_topic`，将其作为搜索关键词；外部评分仅作参考。
-2. 用户请求当前公共热点：先调用 `trending-topics`，再按需调用 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")` 和认证搜索；公共热点调用不得被非空选题池跳过。
-3. 任务未指定主题：先调用 `claim_topic(project_id="$PROJECT_ID", task_id="$TASK_ID")`。返回非空 `topic` 则采用；返回 `null` 时再结合账号画像、已有标题和可用外部数据选题。
-
-项目 profile 的 keywords 不是已经指定的主题。选题池是正式业务输入，不得因为外部搜索可用而跳过。
-
-### 步骤 1：查重
-
-调用 `list_project_titles(project_id="$PROJECT_ID")` 查看已有标题，后续标题必须避开重复和近似表达。
-
-### 步骤 2：采集真实热门笔记
-
-根据账号定位和用户需求确定 2-3 个搜索关键词。直接搜索笔记，再选择 Top 3-5 条结果获取详情，需要作者画像时查询公开用户资料。所有详情调用必须使用搜索或用户资料工具返回的真实 `feed_id` / `xsec_token`；用户输入的链接不能作为 token 来源。
-
-任一传输失败只重试一次。认证或能力不可用、工具不可用或重试后仍无外部数据时，跳过后续外部调用并继续原创流程。`output/topic-analysis.md` 必须按实际选题输入记录 `data_source=task_topic`、`data_source=topic_pool` 或 `data_source=project_context`，并记录 `token_source=missing`、`missing_fields=external_hot_data` 和具体 `fallback_reason`；不得写 `data_source=xiaohongshu-mcp`。
-
-认证搜索完成后，普通原创模式可按需调用 `trending-topics` 获取公共热点补充；当前公共热点意图已在前置路由调用。公共热点失败时记录 `list_trends` 的错误和 freshness 缺失，继续使用认证搜索、选题池、账号画像和历史标题。选中热点时，先调用 `trend-rider`，再调用 `topic-evaluator`；公共热点不能提供 CES，也不能替代 `search_seednote_feeds`。
-
-### 步骤 3：分析热门笔记
-
-只有取得真实外部数据时才提取：标题句式和情绪词、封面信息层级、正文钩子和段落结构、评论信号、标签组合。缺失的评论或作者字段必须进入 `missing_fields`，不得推测补齐。
-
-### 步骤 4：评分与选题
-
-只有取得真实互动字段时才使用 2026 种草笔记 CES 互动评分模型：
-
-```text
-topic_score = engagement_rate × recency_weight × novelty_bonus
-engagement_rate = (like_count×1 + collect_count×1 + comment_count×4 + share_count×4) / max(total, 1)
-recency_weight: 24h→1.0, 7d→0.8, 30d→0.5, 更早→0.3
-novelty_bonus: 同角度笔记<3 → 1.2, 否则 → 1.0
-```
-
-字段缺失时按 0 计入并在 `missing_fields` 中记录；不要补造数据。无外部数据时不得套用 CES 或伪造互动率，改按“用户主题匹配度、账号定位匹配度、与已有标题差异度、内容具体性”记录定性依据。评分明细或降级依据、最终选题理由和来源合同写入 `output/topic-analysis.md`。
-
-## 复刻模式源笔记获取
-
-当用户提供笔记 ID 或链接时，本 skill 只负责获取源笔记详情，不做爆款模板分析：
-
-1. 通过 `search_seednote_feeds` 或 `get_seednote_user_profile` 获取真实 `feed_id` 与 `xsec_token`；用户输入的链接不能直接提供 token。
-2. 调用 `get_seednote_feed_detail`；需要作者公开资料时调用 `get_seednote_user_profile`。传输失败时原调用重试一次。
-3. 将原始详情、互动数据、评论摘要、`data_source=xiaohongshu-mcp`、`mcp_tools_used`、`available`、`token_source`、`missing_fields` 和 `fallback_reason` 写入 `output/source-note.md`。
-4. 后续由 `seednote-viral-analysis` skill 读取 `output/source-note.md`，生成 `output/source-analysis.md` 和任务内 `output/viral-template.json`。
-
-**边界**：不要在本 skill 中提取爆款模板、持久化全局模板或生成改写正文。若认证或能力不可用，或任务仅有外部 ID/链接且一次传输重试后仍无法取得源内容，写结构化 `output/failure-state.json`，字段包含 `version`、`status=recoverable_failure`、`stage=research`、稳定 `error_code`、原始错误摘要和 `resume_from=research`；这条失败规则不适用于原创模式。
-
-## 产出要求
-
-研究 JSON（如有）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。没有源数据时输出 `skipped` 或 `data_insufficient` 并说明原因；证据不足时降低置信度，不自动修改 Profile、Prompt、发布状态或全局配置。
-
-| 模式 | 产出文件 |
-|------|----------|
-| 原创模式 | `output/topic-analysis.md`（候选话题、真实外部评分或降级依据、最终选题理由、来源合同） |
-| 复刻模式 | `output/source-note.md`（源笔记原始详情、互动数据、评论摘要、来源合同、数据缺失项） |
+原创模式写 `output/topic-analysis.md`，包括候选话题、证据、查重结果、最终选题理由和来源合同。复刻模式写 `output/source-note.md`，包括源内容、引用 URL、缺失字段和来源合同。研究 JSON 如有，必须包含 `schema_version`、`status`、`source`、`data_at`、`missing` 和 `evidence_paths`。
