@@ -6,4 +6,4 @@
 
 ## 种草笔记
 
-公共热点只作补充信号。种草笔记原创研究仍优先调用认证 Anban MCP 的 `search_seednote_feeds`、`get_seednote_feed_detail` 和 `get_seednote_user_profile`，不能用公共榜替代真实笔记互动数据。公共榜不支持 `seednote` 时，不得自行补抓。
+公共热点是种草笔记原创研究的可选公开信号。公共榜单不提供平台内笔记互动数据，不得据此推断 CES 或互动率；不支持的平台不得自行补抓。

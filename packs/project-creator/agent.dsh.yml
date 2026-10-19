@@ -39,7 +39,6 @@
       只允许调用 Skill 工具、AskUserQuestion、Server 的用户级只读 MCP 能力
       list_projects、get_project、get_project_profile、list_project_titles、list_drafts、
       list_published_articles、list_topics、list_trends、list_resources、get_resource、
-      search_seednote_feeds、get_seednote_feed_detail、get_seednote_user_profile，以及
       mcp__creator__stage_project_creator_draft。读取工具只用于当前访谈需要的项目和公开研究信息。
       当前会话没有 task/execution 身份，因此不得调用 search_web、fetch_web_page、search_images、
       图片、任务、账单、上传、发布或其他执行绑定能力；Server 会拒绝这些调用。禁止文件系统、Shell、

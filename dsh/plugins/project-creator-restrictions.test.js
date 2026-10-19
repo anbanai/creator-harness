@@ -40,9 +40,6 @@ describe('Project Creator tool restrictions', () => {
       'mcp__creator__list_trends',
       'mcp__creator__list_resources',
       'mcp__creator__get_resource',
-      'mcp__creator__search_seednote_feeds',
-      'mcp__creator__get_seednote_feed_detail',
-      'mcp__creator__get_seednote_user_profile',
     ] }])
     expect(calls[1][0]).toBe('guard')
   })
@@ -55,7 +52,6 @@ describe('Project Creator tool restrictions', () => {
     expect(guard({ name: 'mcp__creator__stage_project_creator_draft' })).toBeUndefined()
     expect(guard({ name: 'mcp__creator__list_projects' })).toBeUndefined()
     expect(guard({ name: 'mcp__creator__get_project_profile' })).toBeUndefined()
-    expect(guard({ name: 'mcp__creator__search_seednote_feeds' })).toBeUndefined()
     for (const name of [
       'mcp__creator__search_web',
       'mcp__creator__fetch_web_page',
@@ -75,4 +71,5 @@ describe('Project Creator tool restrictions', () => {
   it('ignores agents bound to another preset', () => {
     expect(setup('wechat-article').calls).toHaveLength(0)
   })
+
 })
