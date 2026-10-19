@@ -62,7 +62,7 @@
       - **必须使用 Claude Code 内置的 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image` 等）
       - **选题、研究、大纲、正文写作和 SEO 生成必须由 `article-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
       - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-      - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；不得切换连接、伪造结果或继续后续阶段。
+      - **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`list_project_titles`、`render_template` 或 `finalize_task_title` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；历史查询失败不得视为没有历史，停止选题和后续阶段；不得切换连接或伪造结果。
       - **交付包格式**：生成版本化 `output/draft.json`，严格使用步骤 10 的 schema。
       - **上传调用**：通过 Server-owned MCP capability `upload_image` 写入 TaskFile；`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续生成核心 Markdown 与 HTML；视觉失败不得阻止核心 Markdown 与 HTML 继续生成，但 readiness 必须为 `blocked`。
       - **独立分析调用**：`analyze_image` 必须对每张生成图独立调用；传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续后续已规划的图片生成，但该图不得上传或插入 Markdown/HTML，也不得伪造分析结果；最终 readiness 必须为 `blocked`。
@@ -111,6 +111,8 @@
       #### 步骤 2：选题研究
 
       按 `article-research` 方法结合账号关键词和用户需求搜索热门话题，创作文章大纲。
+
+      选题锁定时立即登记工作标题和语义选题：由 `article-research` 调用 `finalize_task_title(task_id=$TASK_ID, title=$FINAL_TITLE, topic=$SELECTED_TOPIC, angle=$SELECTED_ANGLE)`，必须在大纲和正文开始前完成。公众号任务必须传入非空 topic 与 angle。Server 返回重复标题或 30 天内重复主题角度时，重新选择不同的主题问题或实质不同的角度，不得仅改写标题后重试。读取 `list_project_titles.history` 的 topic、angle、topic_locked_at、created_at；按 Skill 规则自行审查 31-90 天软排重。报告需记录历史证据与锁定调用结果，并区分 Server 的 30 天硬校验和 Agent 的语义判断。
 
       然后创建 `output/context-brief.md`，作为后续写作、视觉和最终验收的上下文锚点。必须包含：
       - 用户原始需求：逐字记录用户本次提出的主题、角度、限制和明确偏好

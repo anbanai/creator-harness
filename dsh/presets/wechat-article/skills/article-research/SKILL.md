@@ -16,7 +16,7 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 2. Call `get_project_profile(project_id, scope="wechat", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
 3. For current-hot-topic intent, invoke `trending-topics` immediately after profile resolution so the request always reaches `list_trends`; do not let a non-empty topic pool suppress that call. Use the pool as fallback or an additional candidate source. For ordinary topic discovery without a specified topic, call `claim_topic(project_id, task_id?)` first.
 4. Always call `list_project_titles(project_id)`, `list_drafts(project_id)`, and `list_published_articles(project_id)` before finalizing a title or outline.
-5. Build an exclusion list from existing titles, draft titles, published titles, and close keyword variants.
+5. Build a topic-history set from recorded task titles, drafts, and published articles. Compare the underlying reader problem and article angle, not title wording alone; use [recent-topic-deduplication.md](references/recent-topic-deduplication.md) for time windows and the MCP history contract.
 6. When there is no user-specified topic and the claimed pool is empty, use `trending-topics` as an optional public-hot-topic source after the pool and history checks. Do not let a trend replace an explicit user topic or a non-empty claimed pool item, except that current-hot-topic intent must still query trends as described above.
 7. For a trend candidate that may be selected, invoke `trend-rider`, then `topic-evaluator` before finalizing the topic. `article-viral-strategy` remains responsible for post-selection propagation strategy.
 
@@ -29,6 +29,8 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 - A non-empty topic pool wins over Skill-generated candidates.
 - Project keywords guide candidate generation but are not themselves a topic.
 - History tools are the source of truth for duplication checks.
+- A selected WeChat topic must be recorded to the current task with `finalize_task_title(task_id, title, topic, angle)` as soon as its working title is chosen, before drafting the outline. This makes completed-but-unpublished work and its semantic selection visible to later executions. If the final article title changes later, update the title while passing the same topic and angle before delivery.
+- A duplicate-title rejection requires a materially different topic or reader problem; do not evade it by paraphrasing the title. Treat non-duplicate persistence errors as a failed required capability, not as an empty history result.
 - `list_trends` is the only public trend source. If it is unavailable, continue the existing candidate-generation and history-based fallback and record the exact failure; never invent heat, freshness, or source evidence.
 - `search_web` and `fetch_web_page` are the only general public web sources for this Skill. Never fetch search pages directly, call a third-party search API, or write a custom HTTP client. Preserve each returned URL, domain, citation ID, fetched time, and any missing publication/freshness field in the research evidence.
 - If `search_web` returns `provider_unavailable`, continue with the existing conservative fallback and record the exact error and missing external evidence.
@@ -42,7 +44,7 @@ Write these file-backed artifacts:
 
 1. `output/01-research.md` with:
    - topic source: user prompt / claimed pool item / Skill-generated candidate;
-   - existing titles and exclusion list;
+   - history sources queried, returned titles and counts, exclusion list, and whether records include `topic`, `angle`, and `topic_locked_at`; distinguish unavailable history from a successfully returned empty history;
    - candidates, angles, audience fit, freshness, risk, and score;
    - when trends were used: MCP source/platform, `fetched_at`, `expires_at`, `stale`, `source`, and `last_error` for each selected candidate;
    - trend-rider relevance, lifecycle, borrowing judgment, and proposed angles;
@@ -57,6 +59,8 @@ Write these file-backed artifacts:
    - CTA / ending direction;
    - SEO seed keywords.
 3. `output/context-brief.md` when the caller has not already created one, containing original user need, project positioning, historical avoidance, chosen topic reason, and section anchors.
+
+The research record must state the `finalize_task_title` result, including selected title, topic, and angle. Apply the Server's exact 30-day duplicate guard and the Skill's 31-90 day semantic review; never claim a temporal check when history lacks reliable timestamps.
 
 ## Candidate And Outline Protocol
 

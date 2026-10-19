@@ -1,5 +1,5 @@
 id: wechat-article
-version: 2.0.7
+version: 2.0.8
 kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
