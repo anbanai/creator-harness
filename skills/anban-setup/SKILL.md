@@ -62,7 +62,7 @@ Codex 在 shell 启动文件或项目环境中设置同名变量。任何已有�
 
 **写作去 AI Skill 可用性校验**：在当前插件根目录检查 `skills/humanizer/SKILL.md`。该 Skill 随插件安装，无需联网或 `git clone`；缺失时提示用户重新安装插件。
 
-**Seednote 种草笔记数据边界**：登录状态检查、扫码登录和退出登录由 Admin 在 Anban 后台维护。Agent 只使用已认证的搜索、详情和用户资料 MCP 工具；不要通过脚本、自定义 HTTP、sidecar 或外部客户端绕过 Anban MCP，也不要尝试管理登录态。
+**Seednote 种草笔记数据边界**：研究只使用选题池、公共趋势、公开网页和用户提供的公开来源。Agent 通过 Anban 提供的公开研究能力获取可核验内容；不要访问登录态、拼接隐藏参数、调用第三方客户端或猜测不可见互动数据。
 
 告知用户：
 
@@ -72,7 +72,7 @@ Codex 在 shell 启动文件或项目环境中设置同名变量。任何已有�
 
 用户重启 Claude Code 或 Codex 后，再次运行本 Skill。预期结果：
 - `list_projects` 调用成功，返回可用项目列表
-- Seednote 研究工具已注入；认证或能力不可用时保留原始错误并联系 Admin 处理后台登录
+- Seednote 研究能力可用；公开来源不可用时保留原始错误并按研究 Skill 的降级规则处理
 - 输出每个项目的 platform、name 和 ID
 
 ## 常见问题
