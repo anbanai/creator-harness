@@ -61,6 +61,16 @@ description = "通过连续对话创建或更新项目，并收集六维账号�
 config_file = "~/.codex/agents/project-creator.toml"
 nickname_candidates = ["Project Creator", "项目创建", "画像访谈"]
 
+[agents.creation-planner]
+description = "通过持续对话制定创作计划，并在确认后创建作品任务"
+config_file = "~/.codex/agents/creation-planner.toml"
+nickname_candidates = ["Creation Planner", "创作计划", "创作助手"]
+
+[agents.postmortem-review]
+description = "复盘已完成作品并形成等待独立数据验证的画像改进候选"
+config_file = "~/.codex/agents/postmortem-review.toml"
+nickname_candidates = ["Postmortem Review", "作品复盘", "复盘助手"]
+
 [agents.wechat-picture]
 description = "微信公众号贴图内容、视觉与发布包全自动创作引擎"
 config_file = "~/.codex/agents/wechat-picture.toml"

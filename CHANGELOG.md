@@ -1,5 +1,9 @@
 # Changelog
 
+## [4.2.70] - 2026-10-20
+
+- Add isolated creation-planning and postmortem-review Assistant presets with restricted tools and Server-owned structured drafts.
+
 ## [4.2.62] - 2026-10-19
 
 - Expose the user-scoped read-only Anban MCP tools to DSH Project Creator sessions while keeping execution-bound capabilities server-restricted.

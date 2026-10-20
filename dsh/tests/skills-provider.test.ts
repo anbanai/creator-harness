@@ -159,6 +159,21 @@ describe('skills provider registration', () => {
     })
   })
 
+  it.each([
+    ['creation-planner', 'anban-creation-planner'],
+    ['postmortem-review', 'anban-postmortem-review'],
+  ])('mounts the isolated %s Skill root', async (presetId, providerName) => {
+    const fake = createContext()
+
+    await apply(fake.context, { presetId, providerName })
+
+    expect(fake.plugin).toHaveBeenCalledWith(skillFilesystem, {
+      providerName,
+      includeDefaultRoots: false,
+      customSkillDirs: [dshHomePath('.agent-presets', presetId, 'skills')],
+    })
+  })
+
   it('awaits the child fiber disposer', async () => {
     const disposal = deferred()
     const dispose = vi.fn(() => disposal.promise)

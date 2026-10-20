@@ -1,0 +1,23 @@
+id: postmortem-review
+version: 1.0.0
+kind: managed
+display_name: 复盘模式
+description: 围绕已完成作品和只读分析证据进行交互式复盘，形成等待独立数据验证的画像改进候选。
+agent:
+  name: postmortem-review
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  dsh_source: agent.dsh.yml
+  skills: [postmortem-review]
+  max_turns: 80
+interaction:
+  user_questions: true
+  capabilities: [ask_user_question, stage_assistant_draft]
+  intents: [review-content]
+bindings: {}
+runtime:
+  profile: postmortem-review
+  adapter: standard
+  max_turns: 80
+surfaces: [plugin]
+features: [interactive-postmortem-review]

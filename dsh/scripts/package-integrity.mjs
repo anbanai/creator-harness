@@ -21,6 +21,8 @@ const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const FILES_CONTRACT = [
   'dsh/cordis.patch.yml',
   'dsh/project-creator.patch.yml',
+  'dsh/creation-planner.patch.yml',
+  'dsh/postmortem-review.patch.yml',
   'dsh/lib/**/*.js',
   'dsh/lib/**/*.d.ts',
   'dsh/bin/anban-dsh.js',
@@ -90,6 +92,8 @@ const PRESETS = [
   { id: 'wechat-article', label: 'WeChat Article' },
   { id: 'seednote', label: 'Seednote' },
   { id: 'project-creator', label: 'Project Creator' },
+  { id: 'creation-planner', label: 'Creation Planner' },
+  { id: 'postmortem-review', label: 'Postmortem Review' },
 ]
 const jsExpression = new Type('tag:yaml.org,2002:js', {
   construct: (value) => value,
@@ -384,7 +388,8 @@ async function verifyPreset(root, preset) {
     if (!isRecord(value)) return
     if (
       value.name === '@anban/dsh-plugin/skills-provider' ||
-      value.name === './plugins/project-creator-skills-provider.js'
+      value.name === './plugins/project-creator-skills-provider.js' ||
+      value.name === './plugins/assistant-session-skills-provider.js'
     ) {
       providerRows.push(value)
     }

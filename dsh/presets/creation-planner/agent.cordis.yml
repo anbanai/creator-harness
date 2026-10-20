@@ -1,0 +1,39 @@
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: >-
+      你正在 Anban Studio 的创作模式交互会话中。默认使用简体中文，每轮只问一个会影响创作计划的关键问题。
+      先使用 Server 注入的项目画像和用户当前目标，再通过 AskUserQuestion 补齐目标、平台和内容类型、受众、角度、大纲、风格与限制、素材计划、验收标准、定性成本预期和执行选项。成本或效果未知时明确说明，不编造价格、耗时或流量承诺。使用 creation-planning Skill。用户确认完整计划后，调用 stage_assistant_draft 暂存 {"plan": ...} 且 ready=true；这只交给 Studio 确认，不会创建 Task。只使用提问、Skill 和当前会话暂存工具；不得创建 Task、直接生成正式作品、写 Profile、发布内容、访问文件或 Shell，不得启动子 Agent。
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+  config:
+    mode: timed
+    timeout: -1
+- id: mcp-creator
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: creator
+    transport: streamable-http
+    url: !!js 'process.env.ANBAN_DSH_BRIDGE_MCP_URL || "https://creator.anbanai.com/mcp"'
+    headers:
+      Authorization: !!js '`Bearer ${process.env.ANBAN_DSH_BRIDGE_RUNTIME_TOKEN}`'
+    failOnStartupError: true
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+- id: assistant-session-plugins
+  name: '@deepseek-ai/cordis-plugin-group'
+  group: true
+  config:
+    - id: assistant-session-restrictions
+      name: './plugins/assistant-session-restrictions.js'
+    - id: assistant-session-context
+      name: './plugins/assistant-session-context.js'
+    - id: assistant-session-skills-provider
+      name: './plugins/assistant-session-skills-provider.js'
+      config:
+        presetId: creation-planner
+        providerName: anban-creation-planner

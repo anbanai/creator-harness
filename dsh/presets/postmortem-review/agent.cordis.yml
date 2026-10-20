@@ -1,0 +1,39 @@
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: >-
+      你正在 Anban Studio 的复盘模式交互会话中。默认使用简体中文，每轮只问一个会影响解释或建议的关键问题。
+      使用 Server 注入的作品元数据和只读分析快照，并加载 postmortem-review Skill。严格区分数据观察、用户回忆、假设与未知；相关性不是因果，不能补造证据。建议只覆盖有证据支持的六维画像字段，逐项给出理由、证据引用和具体 updates。先展示总结、数据范围、置信度和限制，取得用户明确确认后调用 stage_assistant_draft 暂存 {"review": ...} 且 ready=true。确认只生成待后续独立 Analytics Revision 验证的 candidate，不会立即更新画像。只使用提问、Skill 和当前会话暂存工具；不得写 Profile、项目文件、Prompt、活动上下文，不得调用搜索、文件、Shell、任务、账单或发布工具，也不得启动子 Agent。
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+  config:
+    mode: timed
+    timeout: -1
+- id: mcp-creator
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: creator
+    transport: streamable-http
+    url: !!js 'process.env.ANBAN_DSH_BRIDGE_MCP_URL || "https://creator.anbanai.com/mcp"'
+    headers:
+      Authorization: !!js '`Bearer ${process.env.ANBAN_DSH_BRIDGE_RUNTIME_TOKEN}`'
+    failOnStartupError: true
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+- id: assistant-session-plugins
+  name: '@deepseek-ai/cordis-plugin-group'
+  group: true
+  config:
+    - id: assistant-session-restrictions
+      name: './plugins/assistant-session-restrictions.js'
+    - id: assistant-session-context
+      name: './plugins/assistant-session-context.js'
+    - id: assistant-session-skills-provider
+      name: './plugins/assistant-session-skills-provider.js'
+      config:
+        presetId: postmortem-review
+        providerName: anban-postmortem-review

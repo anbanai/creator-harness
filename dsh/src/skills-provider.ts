@@ -12,7 +12,7 @@ export interface Config {
 }
 
 interface ResolvedConfig {
-  presetId: 'wechat-article' | 'seednote' | 'project-creator'
+  presetId: 'wechat-article' | 'seednote' | 'project-creator' | 'creation-planner' | 'postmortem-review'
   providerName: string
 }
 
@@ -59,7 +59,9 @@ function validateConfig(config: Config): ResolvedConfig {
     if (
       presetId.value !== 'wechat-article' &&
       presetId.value !== 'seednote' &&
-      presetId.value !== 'project-creator'
+      presetId.value !== 'project-creator' &&
+      presetId.value !== 'creation-planner' &&
+      presetId.value !== 'postmortem-review'
     ) {
       return invalidConfig()
     }
