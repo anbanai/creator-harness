@@ -1,5 +1,5 @@
 id: seednote
-version: 2.0.6
+version: 2.0.7
 kind: managed
 display_name: 种草笔记
 description: 支持原创、复刻和爆款分析的种草笔记图文创作流程。
@@ -8,7 +8,7 @@ agent:
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   dsh_source: agent.dsh.yml
-  skills: [project-profile-context, portrait-cover-design, humanizer, seednote-research, trending-topics, trend-rider, topic-evaluator, seednote-viral-analysis, seednote-writing, seednote-visual-design, content-tagging]
+  skills: [project-profile-context, portrait-cover-design, humanizer, seednote-research, trending-topics, trend-rider, topic-evaluator, seednote-viral-analysis, seednote-writing, seednote-visual-design, content-tagging, content-reuse]
   max_turns: 20
 channel: seednote
 plan_task_kind: content_generation
@@ -44,6 +44,9 @@ artifacts:
   - {role: tail, path: output/tail.png, mime_type: image/png, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
+  - {role: reuse_brief, path: output/content-reuse-brief.json, mime_type: application/json, required: false}
+  - {role: content_lineage, path: output/content-lineage.json, mime_type: application/json, required: false}
+  - {role: quality_report, path: output/quality-report.json, mime_type: application/json, required: false}
 artifacts_by_task_type:
   viral_analysis:
     - {role: analysis, path: output/source-analysis.md, mime_type: text/markdown, required: true}

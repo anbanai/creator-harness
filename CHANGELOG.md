@@ -1,3 +1,11 @@
+# 4.2.72
+
+- Add content-planning research, semantic text validation and timed script Pack with immutable source evidence and no media/publication authority.
+
+# 4.2.71
+
+- Add task-bound cross-platform content reuse briefs, lineage, and quality evidence to article, note, and video Packs. Preserve runtime-owned Hypit quality reports.
+
 # Changelog
 
 ## [4.2.70] - 2026-10-20
