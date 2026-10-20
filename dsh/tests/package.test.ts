@@ -523,7 +523,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.64',
+      version: '4.2.70',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -540,6 +540,8 @@ describe('DSH package manifest', () => {
       files: [
         'dsh/cordis.patch.yml',
         'dsh/project-creator.patch.yml',
+        'dsh/creation-planner.patch.yml',
+        'dsh/postmortem-review.patch.yml',
         'dsh/lib/**/*.js',
         'dsh/lib/**/*.d.ts',
         'dsh/bin/anban-dsh.js',

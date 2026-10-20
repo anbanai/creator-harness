@@ -1,0 +1,23 @@
+id: creation-planner
+version: 1.0.0
+kind: managed
+display_name: 创作模式
+description: 通过持续对话制定可执行的作品计划，并在用户确认后交给 Server 创建正式创作任务。
+agent:
+  name: creation-planner
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  dsh_source: agent.dsh.yml
+  skills: [creation-planning]
+  max_turns: 80
+interaction:
+  user_questions: true
+  capabilities: [ask_user_question, stage_assistant_draft]
+  intents: [plan-creation]
+bindings: {}
+runtime:
+  profile: creation-planner
+  adapter: standard
+  max_turns: 80
+surfaces: [plugin]
+features: [interactive-creation-planning]
