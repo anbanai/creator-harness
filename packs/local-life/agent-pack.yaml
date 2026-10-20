@@ -1,0 +1,44 @@
+id: local-life
+version: 2.0.3
+kind: managed
+display_name: 素材混剪
+description: 根据门店或线下活动素材批量生成多条短视频变体。
+agent:
+  name: local-life
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [local-life-video, moneyprinter-turbo]
+  max_turns: 120
+runtime:
+  profile: local-life
+  adapter: standard
+  max_turns: 120
+channel: local-life
+bindings:
+  task_kinds: [content_generation, local-life]
+surfaces: [plugin, task]
+features: [video-generation, source-assets, batch-variants]
+billing_operations:
+  content_generation: task.local_life
+  local-life: task.local_life
+artifacts:
+  - {role: batch_manifest, path: output/batch-manifest.json, mime_type: application/json, required: true}
+  - {role: quality_report, path: output/quality-report.json, mime_type: application/json, required: true}
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
+  - {role: final_video, path: output/videos/*.mp4, mime_type: video/mp4, required: true}
+  - {role: script, path: output/script.txt, mime_type: text/plain, required: true}
+  - {role: subtitles, path: output/subtitle.srt, mime_type: application/x-subrip, required: true}
+  - {role: audio, path: output/audio.mp3, mime_type: audio/mpeg, required: true}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
+delivery:
+  - {role: final_video, path: output/videos/*.mp4, mime_type: video/mp4}
+  - {role: batch_manifest, path: output/batch-manifest.json, mime_type: application/json}
+  - {role: quality_report, path: output/quality-report.json, mime_type: application/json}
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json}
+  - {role: script, path: output/script.txt, mime_type: text/plain}
+  - {role: subtitles, path: output/subtitle.srt, mime_type: application/x-subrip}
+  - {role: audio, path: output/audio.mp3, mime_type: audio/mpeg}
+ui:
+  renderer: custom:local-life
+tagging: {enabled: true, profile: generic-content, required_artifact: output/content-tags.json, subject_roles: [final_video], extensions: [presentation_device, funnel_stage]}

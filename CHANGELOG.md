@@ -1004,3 +1004,6 @@ This project follows semantic versioning for the plugin package. Patch releases 
 ### Changed
 
 - Previous Claude Code plugin release.
+# 4.2.65
+
+- Add the disabled-by-default 素材混剪 local-life Agent Pack and shared runtime contracts.

@@ -70,3 +70,8 @@ nickname_candidates = ["Newspic", "公众号贴图", "贴图助手"]
 description = "将 SRT 字幕制作成逐幕白板动画视频并交付文件"
 config_file = "~/.codex/agents/whiteboard-animation.toml"
 nickname_candidates = ["WhiteboardAnimation", "白板动画"]
+
+[agents.local-life]
+description = "根据门店或活动素材批量生成多条短视频变体"
+config_file = "~/.codex/agents/local-life.toml"
+nickname_candidates = ["素材混剪", "LocalLife", "MixVideo"]
