@@ -1,5 +1,5 @@
 id: wechat-article
-version: 2.0.8
+version: 2.0.9
 kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
@@ -10,7 +10,7 @@ agent:
   dsh_source: agent.dsh.yml
   # Keep the standalone interactive publishing skill distributed with the pack;
   # the managed Article Agent itself does not load or invoke it.
-  skills: [project-profile-context, portrait-cover-design, content-writing, humanizer, article-visual-design, article-cover-design, article-research, content-tagging, trending-topics, trend-rider, topic-evaluator, seo-optimization, article-viral-strategy, article-publishing]
+  skills: [project-profile-context, portrait-cover-design, content-writing, humanizer, article-visual-design, article-cover-design, article-research, content-tagging, trending-topics, trend-rider, topic-evaluator, seo-optimization, article-viral-strategy, article-publishing, content-reuse]
   max_turns: 300
 channel: wechat-article
 plan_task_kind: content_generation
@@ -50,6 +50,10 @@ artifacts:
   - {role: other, path: output/draft.json, mime_type: application/json, required: true}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
+  - {role: reuse_brief, path: output/content-reuse-brief.json, mime_type: application/json, required: false}
+  - {role: topic_analysis, path: output/topic-analysis.md, mime_type: text/markdown, required: false}
+  - {role: content_lineage, path: output/content-lineage.json, mime_type: application/json, required: false}
+  - {role: quality_report, path: output/quality-report.json, mime_type: application/json, required: false}
 delivery:
   - {role: final_markdown, path: output/04-article-final.md, mime_type: text/markdown}
   - {role: html, path: output/05-article.html, mime_type: text/html}

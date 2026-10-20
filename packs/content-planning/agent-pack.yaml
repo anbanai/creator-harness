@@ -1,0 +1,58 @@
+id: content-planning
+version: 1.0.0
+kind: managed
+display_name: 内容研究与文本验证
+description: 生成可追溯研究、语义验证文章和视频脚本，禁止媒体生产与发布。
+agent:
+  name: content-planning
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [content-planning-evidence]
+  max_turns: 80
+channel: content-planning
+bindings:
+  task_kinds: [content_research, content_validation, content_script]
+runtime:
+  profile: content-planning
+  adapter: standard
+  max_turns: 80
+surfaces: [plugin, task]
+features: [content-planning]
+billing_operations:
+  content_research: task.content_research
+  content_validation: task.content_validation
+  content_script: task.content_script
+artifacts:
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+artifacts_by_task_type:
+  content_research:
+    - {role: research, path: output/content-research.json, mime_type: application/json, required: true}
+    - {role: evidence, path: output/research-evidence.json, mime_type: application/json, required: true}
+    - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  content_validation:
+    - {role: final_markdown, path: output/validation-article.md, mime_type: text/markdown, required: true}
+    - {role: review, path: output/validation-review.json, mime_type: application/json, required: true}
+    - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  content_script:
+    - {role: script, path: output/video-script.json, mime_type: application/json, required: true}
+    - {role: final_markdown, path: output/video-script.md, mime_type: text/markdown, required: true}
+    - {role: subtitles, path: output/video-subtitles.srt, mime_type: application/x-subrip, required: true}
+    - {role: review, path: output/script-review.json, mime_type: application/json, required: true}
+    - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+delivery_by_task_type:
+  content_research:
+    - {role: research, path: output/content-research.json, mime_type: application/json}
+    - {role: evidence, path: output/research-evidence.json, mime_type: application/json}
+  content_validation:
+    - {role: final_markdown, path: output/validation-article.md, mime_type: text/markdown}
+    - {role: review, path: output/validation-review.json, mime_type: application/json}
+  content_script:
+    - {role: script, path: output/video-script.json, mime_type: application/json}
+    - {role: final_markdown, path: output/video-script.md, mime_type: text/markdown}
+    - {role: subtitles, path: output/video-subtitles.srt, mime_type: application/x-subrip}
+    - {role: review, path: output/script-review.json, mime_type: application/json}
+schemas:
+  task_input: schemas/task-input.json
+  output: schemas/output.json
+ui:
+  renderer: custom:content-planning

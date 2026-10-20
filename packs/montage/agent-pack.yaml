@@ -1,5 +1,5 @@
 id: montage
-version: 2.0.5
+version: 2.0.6
 kind: managed
 display_name: 视频生成
 description: 从素材和业务输入生成最终视频与交付清单。
@@ -7,7 +7,7 @@ agent:
   name: montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [project-profile-context, montage, portrait-cover-design]
+  skills: [project-profile-context, montage, portrait-cover-design, content-reuse]
   max_turns: 180
 runtime:
   profile: montage
@@ -32,6 +32,10 @@ artifacts:
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
+  - {role: reuse_brief, path: output/content-reuse-brief.json, mime_type: application/json, required: false}
+  - {role: topic_analysis, path: output/topic-analysis.md, mime_type: text/markdown, required: false}
+  - {role: content_lineage, path: output/content-lineage.json, mime_type: application/json, required: false}
+  - {role: quality_report, path: output/quality-report.json, mime_type: application/json, required: false}
 delivery:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}

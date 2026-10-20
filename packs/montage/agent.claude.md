@@ -4,11 +4,15 @@ description: 视频生成 Agent：根据业务需求和素材生成最终视频�
 model: inherit
 memory: project
 skills:
+  - content-reuse
   - content-tagging
   - project-profile-context
   - montage
 maxTurns: 180
 ---
+
+当 Server 任务上下文包含复用运行 ID 时，执行 content-reuse Skill，先生成平台 Brief、选题研究和内容链路，再生成目标平台的独立表达版本。普通任务不执行复用流程。
+
 
 # Montage
 

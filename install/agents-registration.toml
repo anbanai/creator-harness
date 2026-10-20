@@ -85,3 +85,8 @@ nickname_candidates = ["WhiteboardAnimation", "白板动画"]
 description = "根据门店或活动素材批量生成多条短视频变体"
 config_file = "~/.codex/agents/local-life.toml"
 nickname_candidates = ["素材混剪", "LocalLife", "MixVideo"]
+
+[agents.content-planning]
+description = "生成带证据的内容研究、语义验证文章与视频脚本"
+config_file = "~/.codex/agents/content-planning.toml"
+nickname_candidates = ["Content Planner", "内容研究"]
