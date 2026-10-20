@@ -70,6 +70,51 @@ describe('WeChat draft lifecycle contract', () => {
     }
   })
 
+  it('rejects legacy subject roles and flat evidence before completion submission', async () => {
+    const output = await mkdtemp(join(tmpdir(), 'anban-completion-tags-legacy-'))
+    const hook = join(root, 'hooks/completion-metadata.sh')
+    try {
+      await mkdir(join(output, 'output'), { recursive: true })
+      await writeFile(
+        join(output, 'output', 'content-tags.json'),
+        JSON.stringify({
+          schema_version: '2.0',
+          taxonomy_version: '2.0',
+          status: 'succeeded',
+          subjects: [{
+            subject_role: 'content',
+            tags: [{
+              dimension: 'domain',
+              value: '茶文化',
+              source_file: 'output/content.md',
+              line_start: 1,
+              line_end: 1,
+              quote: '茶',
+              evidence_kind: 'explicit',
+            }],
+          }],
+        }),
+      )
+      const result = spawnSync('bash', [hook], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          CLAUDE_PROJECT_DIR: output,
+          ANBAN_TASK_ID: 'task-1',
+          ANBAN_EXECUTION_ID: 'execution-1',
+          ANBAN_TASK_TYPE: 'wechat-picture',
+        },
+      })
+      expect(result.status, result.stderr).toBe(0)
+      const metadata = JSON.parse(await readFile(join(output, 'output', 'completion-metadata.json'), 'utf8'))
+      expect(metadata.tagging_status).toBe('failed')
+      expect(metadata.tagging_diagnostic).toBe('tagging_invalid_subjects')
+      expect(metadata.subjects).toEqual([])
+    } finally {
+      await rm(output, { recursive: true, force: true })
+    }
+  })
+
   it('removes the legacy draft tool and fake draft URL from tracked plugin assets', async () => {
 	const legacyTool = new RegExp('(?<![A-Za-z0-9_])' + 'publish' + '_' + 'draft(?![A-Za-z0-9_])', 'u')
 	const legacyURL = new RegExp('(?<![A-Za-z0-9_])' + 'draft' + '_' + 'url(?![A-Za-z0-9_])', 'u')
@@ -159,7 +204,7 @@ describe('WeChat draft lifecycle contract', () => {
     }
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.2.63', async () => {
+  it('keeps both native manifests and the Claude marketplace at 4.2.70', async () => {
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -170,7 +215,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.2.63')
+      expect(version, path).toBe('4.2.70')
     }
   })
 })
