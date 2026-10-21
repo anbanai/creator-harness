@@ -1,3 +1,7 @@
+# 4.2.73
+
+- Let Project Creator use natural language replies alongside structured question cards, and clarify when each format helps.
+
 # 4.2.72
 
 - Add content-planning research, semantic text validation and timed script Pack with immutable source evidence and no media/publication authority.
