@@ -1,3 +1,7 @@
+# 4.2.74
+
+- Clarify the Project Creator interactive contract for `AskUserQuestion`.
+
 # 4.2.73
 
 - Let Project Creator use natural language replies alongside structured question cards, and clarify when each format helps.
