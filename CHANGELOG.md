@@ -1,3 +1,12 @@
+# 4.2.76
+
+- Keep Anban platform knowledge inside Project Creator instructions and ask clients only for high-impact unknowns.
+
+# 4.2.75
+
+- Preserve confirmed profile dimensions during targeted refreshes and keep first-batch directions scoped.
+- Return structured interactive conflict/closure codes for actionable Studio recovery.
+
 # 4.2.74
 
 - Clarify the Project Creator interactive contract for `AskUserQuestion`.
