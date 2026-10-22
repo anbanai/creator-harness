@@ -1,6 +1,6 @@
 # 4.2.81
 
-- Set the Seednote Agent turn budget to 240 turns and align ecommerce budget guidance with its 240-turn Pack limit.
+- Set the Seednote Agent turn budget to 240 turns, align ecommerce guidance with its 240-turn limit, and retain Project Creator Pack version 1.0.6.
 
 # 4.2.77
 
