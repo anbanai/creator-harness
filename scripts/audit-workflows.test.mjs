@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const script = fileURLToPath(new URL('./audit-workflows.mjs', import.meta.url))
+const qualityGate = fileURLToPath(new URL('../hooks/seednote-quality-gate.sh', import.meta.url))
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'harness-audit-'))
   t.after(() => rm(root, { recursive: true, force: true }))
@@ -22,8 +23,79 @@ async function fixture(t) {
 function audit(root) {
   const result = spawnSync(process.execPath, [script, '--root', root], { encoding: 'utf8' })
   assert.equal(result.signal, null)
+  assert.notEqual(result.stdout.trim(), '', result.stderr)
   return { code: result.status, report: JSON.parse(result.stdout) }
 }
+
+function pngWithDimensions(width, height) {
+  const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
+  bytes.writeUInt32BE(width, 16)
+  bytes.writeUInt32BE(height, 20)
+  let crc = 0xffffffff
+  for (const byte of bytes.subarray(12, 29)) {
+    crc ^= byte
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0)
+  }
+  bytes.writeUInt32BE((crc ^ 0xffffffff) >>> 0, 29)
+  return bytes
+}
+
+function corruptPngCRC(bytes) {
+  const corrupted = Buffer.from(bytes)
+  corrupted[32] ^= 0xff
+  return corrupted
+}
+
+async function qualityFixture(t, qualityStatus = 'passed', width = 3, height = 4, corruptCRC = false) {
+  const root = await mkdtemp(join(tmpdir(), 'seednote-quality-gate-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, 'output'), { recursive: true })
+  for (const name of ['content.md', 'request-analysis.json', 'request-analysis.md', 'reference-analysis.json', 'reference-analysis.md', 'image-prompts.md', 'image-review.md']) {
+    await writeFile(join(root, 'output', name), name)
+  }
+  await writeFile(join(root, 'output', 'image-plan.md'), '计划图片数量：2\n\n## cover.png\n\n输出比例：3:4\n\n## image_01.png\n\n输出比例：3:4\n')
+  const cover = pngWithDimensions(width, height)
+  await writeFile(join(root, 'output', 'cover.png'), corruptCRC ? corruptPngCRC(cover) : cover)
+  await writeFile(join(root, 'output', 'image_01.png'), pngWithDimensions(width, height))
+  await writeFile(join(root, 'output', 'reference-usage-summary.json'), JSON.stringify({
+    outputs: [
+      { file_name: 'cover.png', quality_status: qualityStatus },
+      { file_name: 'image_01.png', quality_status: qualityStatus },
+    ],
+  }))
+  return root
+}
+
+function runQualityGate(root) {
+  const result = spawnSync('bash', [qualityGate], {
+    cwd: root,
+    input: JSON.stringify({ agent_type: 'seednote', task_type: 'seednote' }),
+    encoding: 'utf8',
+    env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+  })
+  assert.equal(result.error, undefined)
+  return JSON.parse(result.stdout || '{}')
+}
+
+test('Seednote quality gate accepts only passed quality records', async (t) => {
+  const root = await qualityFixture(t)
+  assert.deepEqual(runQualityGate(root), {})
+})
+
+test('Seednote quality gate rejects the obsolete accepted quality state', async (t) => {
+  const root = await qualityFixture(t, 'accepted')
+  assert.equal(runQualityGate(root).decision, 'block')
+})
+
+test('Seednote quality gate rejects image dimensions that disagree with the plan', async (t) => {
+  const root = await qualityFixture(t, 'passed', 1, 1)
+  assert.equal(runQualityGate(root).decision, 'block')
+})
+
+test('Seednote quality gate rejects a PNG with an invalid chunk CRC', async (t) => {
+  const root = await qualityFixture(t, 'passed', 3, 4, true)
+  assert.equal(runQualityGate(root).decision, 'block')
+})
 test('valid fixture has exact startup accounting', async (t) => {
   const root = await fixture(t)
   const { code, report } = audit(root)

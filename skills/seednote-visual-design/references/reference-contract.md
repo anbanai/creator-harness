@@ -47,6 +47,8 @@ reference-usage-summary.json
 
 `reference-usage-summary.json` 只记录素材选择和内容质量结论：
 
+`outputs[].quality_status` 只能是 `passed`、`failed` 或 `unavailable`；`unavailable` 表示审核没有可靠结果，不能交付。
+
 ```json
 {
   "version": "1.0",
@@ -62,9 +64,7 @@ reference-usage-summary.json
       "warnings": []
     }
   ],
-  `outputs[].quality_status` 只能是 `passed`、`failed` 或 `unavailable`；`unavailable` 表示审核没有可靠结果，不能交付。
-
-"outputs": [
+  "outputs": [
     {
       "file_name": "cover.png",
       "purpose": "封面",

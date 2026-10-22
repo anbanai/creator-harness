@@ -23,6 +23,59 @@ function isFile(filePath) {
   }
 }
 
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngDimensions(filePath) {
+  const bytes = fs.readFileSync(filePath);
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (bytes.length < 33 || !bytes.subarray(0, 8).equals(signature)) return undefined;
+  let offset = 8;
+  let dimensions;
+  let sawEnd = false;
+  while (offset + 12 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const chunkEnd = offset + 12 + length;
+    if (chunkEnd > bytes.length) return undefined;
+    const type = bytes.toString("ascii", offset + 4, offset + 8);
+    const storedCRC = bytes.readUInt32BE(offset + 8 + length);
+    if (crc32(bytes.subarray(offset + 4, offset + 8 + length)) !== storedCRC) return undefined;
+    if (offset === 8 && (type !== "IHDR" || length !== 13)) return undefined;
+    if (type === "IHDR") {
+      if (dimensions) return undefined;
+      const width = bytes.readUInt32BE(offset + 8);
+      const height = bytes.readUInt32BE(offset + 12);
+      if (width <= 0 || height <= 0) return undefined;
+      dimensions = { width, height };
+    }
+    if (type === "IEND") {
+      if (length !== 0 || chunkEnd !== bytes.length) return undefined;
+      sawEnd = true;
+      break;
+    }
+    offset = chunkEnd;
+  }
+  return sawEnd && dimensions ? dimensions : undefined;
+}
+
+function ratioParts(value) {
+  const match = /^([1-9]\d*):([1-9]\d*)$/.exec(String(value || "").trim());
+  return match ? [Number(match[1]), Number(match[2])] : undefined;
+}
+
+function matchesRatio(width, height, ratio) {
+  const parts = ratioParts(ratio);
+  return Boolean(parts && width * parts[1] === height * parts[0]);
+}
+
 let payload = {};
 try {
   payload = JSON.parse(process.env.HOOK_INPUT || "{}");
@@ -111,7 +164,7 @@ if (isFile(planPath)) {
     const contentCandidates = fs.readdirSync(outputDir, { withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.startsWith("image_"))
       .map((entry) => entry.name);
-    const contentPattern = /^image_0[1-3]\.png$/;
+    const contentPattern = /^image_\d{2}\.png$/;
     const invalidContentNames = contentCandidates.filter((name) => !contentPattern.test(name)).sort();
     if (invalidContentNames.length > 0) {
       missing.push(
@@ -120,6 +173,7 @@ if (isFile(planPath)) {
       );
     }
     const contentNames = contentCandidates.filter((name) => contentPattern.test(name)).sort();
+    if (contentNames.length > 3) missing.push(`内容图数量超过合同上限 3 张（当前 ${contentNames.length} 张）`);
     const expectedContentNames = contentNames.map((_, index) => `image_${String(index + 1).padStart(2, "0")}.png`);
     if (JSON.stringify(contentNames) !== JSON.stringify(expectedContentNames)) {
       missing.push(
@@ -128,6 +182,14 @@ if (isFile(planPath)) {
       );
     }
     const imageNames = [...contentNames, ...["cover.png", "tail.png"].filter((name) => isFile(path.join(outputDir, name)))];
+    const plannedRatios = new Map();
+    for (const section of plan.split(/^##\s+/m).slice(1)) {
+      const heading = section.split("\n", 1)[0].trim();
+      if (!/^cover\.png$|^image_\d{2}\.png$|^tail\.png$/.test(heading)) continue;
+      const ratio = /(?:输出比例|图片比例|比例)\s*[:：]\s*([1-9]\d*:[1-9]\d*)/.exec(section)?.[1];
+      if (!ratio) missing.push(`output/image-plan.md 缺少 ${heading} 的输出比例`);
+      else plannedRatios.set(heading, ratio);
+    }
     for (const name of imageNames) {
       const imagePath = path.join(outputDir, name);
       try {
@@ -138,6 +200,13 @@ if (isFile(planPath)) {
         const header = fs.readFileSync(imagePath).subarray(0, 8);
         if (!header.equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
           missing.push(`output/${name}（文件内容不是有效 PNG）`);
+          continue;
+        }
+        const dimensions = pngDimensions(imagePath);
+        const ratio = plannedRatios.get(name);
+        if (!dimensions) missing.push(`output/${name}（PNG 缺少有效 IHDR 尺寸）`);
+        else if (!ratio || !matchesRatio(dimensions.width, dimensions.height, ratio)) {
+          missing.push(`output/${name}（真实尺寸 ${dimensions.width}x${dimensions.height} 不符合计划比例 ${ratio || "missing"}）`);
         }
       } catch (error) {
         missing.push(`output/${name}（图片文件无法读取：${error}）`);
@@ -180,7 +249,7 @@ if (isFile(summaryPath)) {
           filename = filename.trim();
           summaryImageNames.push(filename);
         }
-        if (output.quality_status !== "accepted") {
+        if (output.quality_status !== "passed") {
           missing.push(`${filename} 内容质量状态未通过（quality_status=${output.quality_status || "missing"}）`);
         }
       }
@@ -203,7 +272,7 @@ if (missing.length > 0) {
     `种子笔记机械闸门未通过（${outputDir}），缺失：\n` +
     missing.map((item) => `  - ${item}\n`).join("") +
     "\n请完成 seednote-visual-design 规划、逐图生成和内容质量记录，并将全部产物留在 output/。" +
-    "只有 generate_image 失败才写结构化 output/failure-state.json；analyze_image 不可用只记录 warning。"
+    "生成失败、图片质量失败或 analyze_image 不可用都必须写结构化 output/failure-state.json；保留 warning 与已生成产物，并从对应阶段恢复。"
   );
 }
 JS
