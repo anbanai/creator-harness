@@ -28,6 +28,7 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 - A user-specified topic wins over the pool and must not consume the pool again.
 - A non-empty topic pool wins over Skill-generated candidates.
 - Project keywords guide candidate generation but are not themselves a topic.
+- Treat confirmed long-term positioning and explicit red lines as constraints. Treat ordinary topic or format preferences as ranking signals, never exclusion filters; a first-batch or campaign direction applies only within its stated scope and must be reconsidered at its completion or review condition.
 - History tools are the source of truth for duplication checks.
 - A selected WeChat topic must be recorded to the current task with `finalize_task_title(task_id, title, topic, angle)` as soon as its working title is chosen, before drafting the outline. This makes completed-but-unpublished work and its semantic selection visible to later executions. If the final article title changes later, update the title while passing the same topic and angle before delivery.
 - A duplicate-title rejection requires a materially different topic or reader problem; do not evade it by paraphrasing the title. Treat non-duplicate persistence errors as a failed required capability, not as an empty history result.
