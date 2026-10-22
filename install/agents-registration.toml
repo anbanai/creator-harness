@@ -41,6 +41,11 @@ description = "视频生成（业务需求 + 素材 → 成片与交付清单）
 config_file = "~/.codex/agents/montage.toml"
 nickname_candidates = ["VideoGenerator", "VideoGen", "Montage", "视频生成"]
 
+[agents.video-edit]
+description = "全自动视频剪辑（上传素材 + Brief → 成片、EDL 与质量证据）"
+config_file = "~/.codex/agents/video-edit.toml"
+nickname_candidates = ["VideoEditor", "AutoCut", "视频剪辑"]
+
 [agents.hypit]
 description = "视频复刻（参考拆解 → 内容替换 → 可编辑工程与成片交付）"
 config_file = "~/.codex/agents/hypit.toml"

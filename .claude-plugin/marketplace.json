@@ -1,6 +1,6 @@
 {
   "name": "anbanai",
-  "description": "Official Anban Creator Claude Code plugins for Chinese social content creation, publishing, video generation, video replication, and ecommerce workflows.",
+  "description": "Official Anban Creator Claude Code plugins for Chinese social content creation, publishing, video generation and video replication, video editing, and ecommerce workflows.",
   "owner": {
     "name": "anbanai",
     "email": "hello@anban.ai"
@@ -10,8 +10,8 @@
       "name": "anban",
       "source": "./",
       "displayName": "Anban Creator",
-      "version": "4.2.78",
-      "description": "Anban Creator plugin for WeChat, Seednote, video generation, video replication, ecommerce, and agent-assisted publishing workflows.",
+      "version": "4.2.79",
+      "description": "Anban Creator plugin for WeChat, Seednote, video generation and video replication, video editing, ecommerce, and agent-assisted publishing workflows.",
       "author": {
         "name": "anbanai"
       },
@@ -31,10 +31,12 @@
         "种草笔记",
         "cover-image",
         "video-generation",
+        "video-editing",
         "video-replication",
         "Montage",
         "Hypit",
         "视频生成",
+        "视频剪辑",
         "视频复刻"
       ]
     }

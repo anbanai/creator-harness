@@ -51,6 +51,7 @@ const EXPECTED_SKILL_NAMES = {
     'article-viral-strategy',
     'article-visual-design',
     'content-writing',
+    'content-reuse',
     'humanizer',
     'portrait-cover-design',
     'seo-optimization',
@@ -63,6 +64,7 @@ const EXPECTED_SKILL_NAMES = {
   ],
   seednote: [
     'content-tagging',
+    'content-reuse',
     'humanizer',
     'portrait-cover-design',
     'seednote-research',

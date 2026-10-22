@@ -1,3 +1,8 @@
+# 4.2.79
+
+- Add an independent, fully automatic video-edit Agent Pack backed by the pinned MIT `browser-use/video-use` runtime, including on-demand subtitles and structured editing evidence.
+- Add required content tags and expose video-edit deliverables through task creation, profile defaults, and review surfaces.
+
 # 4.2.77
 
 - Fixed Seednote visual delivery contract drift: `quality_status=passed` is now the only accepted success state, and the completion gate verifies planned image ratios against real PNG dimensions.

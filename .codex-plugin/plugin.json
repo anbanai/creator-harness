@@ -1,7 +1,7 @@
 {
   "name": "anban",
-  "version": "4.2.78",
-  "description": "Anban Creator plugin for OpenAI Codex — WeChat, Seednote, video generation, video replication, ecommerce, and agent-assisted publishing workflows",
+  "version": "4.2.79",
+  "description": "Anban Creator plugin for OpenAI Codex — WeChat, Seednote, video generation and video replication, video editing, ecommerce, and agent-assisted publishing workflows",
   "author": {
     "name": "anbanai",
     "url": "https://github.com/anbanai"
@@ -26,10 +26,12 @@
     "种草笔记",
     "cover-image",
     "video-generation",
+    "video-editing",
     "video-replication",
     "Montage",
     "Hypit",
     "视频生成",
+    "视频剪辑",
     "视频复刻"
   ],
   "skills": "./skills/",
@@ -37,7 +39,7 @@
   "interface": {
     "displayName": "Anban Creator",
     "shortDescription": "Chinese social content creation workflows",
-    "longDescription": "Create WeChat articles, Seednote posts, ecommerce assets, video generation and video replication deliverables, and publishing-ready outputs with shared Anban Skills and native Codex subagents.",
+    "longDescription": "Create WeChat articles, Seednote posts, ecommerce assets, video edits, video generation and video replication deliverables, and publishing-ready outputs with shared Anban Skills and native Codex subagents.",
     "developerName": "anbanai",
     "category": "Productivity",
     "capabilities": [
