@@ -12,7 +12,6 @@ agent:
 runtime:
   profile: moments
   adapter: standard
-  max_turns: 25
 surfaces: [plugin, task]
 features: [reference-images]
 billing_operations:

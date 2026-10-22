@@ -16,7 +16,6 @@ bindings:
 runtime:
   profile: wechat-picture
   adapter: standard
-  max_turns: 60
 surfaces: [plugin, task, plan]
 features: [image-generation, reference-images, wechat-picture]
 billing_operations:

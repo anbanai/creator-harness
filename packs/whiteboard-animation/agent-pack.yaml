@@ -19,7 +19,6 @@ bindings:
 runtime:
   profile: whiteboard-animation
   adapter: standard
-  max_turns: 120
 surfaces: [plugin, task]
 features: [subtitle-to-video, image-generation, source-assets]
 billing_operations:

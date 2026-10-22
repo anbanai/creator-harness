@@ -1,3 +1,7 @@
+# 4.2.79
+
+- Move managed runtime turn budgets into Agent Pack Agent configuration; the Server no longer supplies a turn limit.
+
 # 4.2.77
 
 - Fixed Seednote visual delivery contract drift: `quality_status=passed` is now the only accepted success state, and the completion gate verifies planned image ratios against real PNG dimensions.

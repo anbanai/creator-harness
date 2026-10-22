@@ -17,7 +17,6 @@ interaction:
 runtime:
   profile: project-creator
   adapter: standard
-  max_turns: 120
 surfaces: [plugin]
 features: [interactive-project-creation]
 schemas:

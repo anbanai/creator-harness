@@ -18,6 +18,5 @@ bindings: {}
 runtime:
   profile: postmortem-review
   adapter: standard
-  max_turns: 80
 surfaces: [plugin]
 features: [interactive-postmortem-review]

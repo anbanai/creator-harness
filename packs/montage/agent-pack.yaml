@@ -12,7 +12,6 @@ agent:
 runtime:
   profile: montage
   adapter: openmontage
-  max_turns: 40
 channel: montage
 bindings:
   task_kinds: [montage]

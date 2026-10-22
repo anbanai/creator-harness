@@ -17,7 +17,6 @@ bindings:
 runtime:
   profile: feedback-analysis
   adapter: standard
-  max_turns: 40
 surfaces: [plugin, task]
 features: [feedback-analysis]
 billing_operations:

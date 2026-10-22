@@ -17,7 +17,6 @@ features: [video-replication, source-assets, editable-video]
 runtime:
   profile: hypit
   adapter: standard
-  max_turns: 180
 billing_operations:
   hypit: task.hypit
 artifacts:

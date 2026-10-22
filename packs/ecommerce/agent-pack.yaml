@@ -12,7 +12,6 @@ agent:
 runtime:
   profile: ecommerce
   adapter: standard
-  max_turns: 90
 surfaces: [plugin, task]
 features: [image-generation, product-assets]
 billing_operations:
