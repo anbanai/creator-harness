@@ -42,6 +42,7 @@ const expectedSkillNames = {
     'seo-optimization',
     'article-research',
     'content-tagging',
+    'content-reuse',
     'project-profile-context',
     'topic-evaluator',
     'trend-rider',
@@ -439,11 +440,11 @@ describe('profile-smoke process supervision', () => {
             cwd: root,
             env: { PATH: process.env.PATH },
             label: 'timeout probe',
-            timeoutMs: 500,
+            timeoutMs: 1_500,
           },
         ),
       ).rejects.toThrow(
-        'Profile smoke command "timeout probe" timed out after 500ms',
+        'Profile smoke command "timeout probe" timed out after 1500ms',
       )
       const pids = await Promise.all(
         [parentPidPath, descendantPidPath].map(async (path) =>

@@ -57,6 +57,7 @@ const EXPECTED_SKILL_NAMES = {
     'seo-optimization',
     'article-research',
     'content-tagging',
+    'content-reuse',
     'project-profile-context',
     'topic-evaluator',
     'trend-rider',
@@ -610,7 +611,7 @@ export function requireMountedSkillCatalogs(catalogs, dshHome) {
           ),
       )
     ) {
-      throw new Error('Mounted Skill catalog is invalid')
+      throw new Error(`Mounted Skill catalog is invalid for ${presetId} (providers=${JSON.stringify(providers)}, skills=${JSON.stringify(names)}, expected=${JSON.stringify([...expectedNames].sort())})`)
     }
     counts[presetId] = skills.length
   }

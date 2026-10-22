@@ -1,7 +1,16 @@
-# 4.2.79
+# 4.2.81
 
 - Add an independent, fully automatic video-edit Agent Pack backed by the pinned MIT `browser-use/video-use` runtime, including on-demand subtitles and structured editing evidence.
 - Add required content tags and expose video-edit deliverables through task creation, profile defaults, and review surfaces.
+
+# 4.2.80
+
+- Preserve omitted confirmed profile dimensions on targeted refresh and make workspace busy/expiry states actionable in Studio.
+- Apply scoped direction preferences consistently to article and Seednote topic research.
+
+# 4.2.79
+
+- Update the pinned Humanizer to upstream v3.1.0, refresh generated DSH preset copies, and synchronize plugin package metadata.
 
 # 4.2.77
 
