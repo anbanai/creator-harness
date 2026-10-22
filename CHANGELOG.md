@@ -1,6 +1,6 @@
-# 4.2.80
+# 4.2.81
 
-- Tune Agent Pack turn budgets by workflow complexity: concise budgets for text workflows, larger budgets for image and video workflows.
+- Set the Seednote Agent turn budget to 240 turns and align ecommerce budget guidance with its 240-turn Pack limit.
 
 # 4.2.77
 
