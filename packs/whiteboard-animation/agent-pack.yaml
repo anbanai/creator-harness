@@ -1,5 +1,5 @@
 id: whiteboard-animation
-version: 2.0.4
+version: 2.0.5
 kind: managed
 display_name: 白板动画
 description: 根据 SRT 字幕生成分镜、白板手绘场景和最终动画视频。
@@ -10,7 +10,7 @@ agent:
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   skills: [whiteboard-animation, content-reuse]
-  max_turns: 120
+  max_turns: 240
 channel: whiteboard-animation
 bindings:
   project_platforms: [whiteboard-animation]

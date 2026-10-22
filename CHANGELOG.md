@@ -1,6 +1,6 @@
-# 4.2.79
+# 4.2.80
 
-- Move managed runtime turn budgets into Agent Pack Agent configuration; the Server no longer supplies a turn limit.
+- Tune Agent Pack turn budgets by workflow complexity: concise budgets for text workflows, larger budgets for image and video workflows.
 
 # 4.2.77
 

@@ -1,5 +1,5 @@
 id: wechat-article
-version: 2.0.9
+version: 2.0.10
 kind: managed
 display_name: 微信公众号文章
 description: 从选题研究、写作和视觉设计到文章交付物的完整创作流程。
@@ -11,7 +11,7 @@ agent:
   # Keep the standalone interactive publishing skill distributed with the pack;
   # the managed Article Agent itself does not load or invoke it.
   skills: [project-profile-context, portrait-cover-design, content-writing, humanizer, article-visual-design, article-cover-design, article-research, content-tagging, trending-topics, trend-rider, topic-evaluator, seo-optimization, article-viral-strategy, article-publishing, content-reuse]
-  max_turns: 300
+  max_turns: 180
 channel: wechat-article
 plan_task_kind: content_generation
 bindings:

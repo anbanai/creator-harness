@@ -9,7 +9,7 @@ skills:
   - ecommerce-copywriting
   - ecommerce-visual-design
   - ecommerce-platform-specs
-maxTurns: 120
+maxTurns: 240
 ---
 
 # 电商出图全自动执行引擎

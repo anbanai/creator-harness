@@ -6,7 +6,7 @@ memory: project
 skills:
   - content-tagging
   - moments
-maxTurns: 20
+maxTurns: 60
 ---
 
 # 朋友圈素材包全自动创作 Agent
