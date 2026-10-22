@@ -109,6 +109,8 @@ Phase 4: 配图生成与独立内容审核
 
 ## Phase 3：配图内容规划（升级 schema）
 
+`layout_plan.slots` 中为本篇预期正文图片设置 `image_required=true`。纯文字模式以及仅使用布局模块的 slot 设置为 `false`；`image_required=true` 的 slot 在 URL 缺失或渲染审计未通过时阻塞交付。
+
 > **配图开关守卫**：当 `article_image_mode` 为 `cover_only` 或 `text_only` 时，**Phase 3 整体跳过**——不创建 `image-plan.md`；模板 `image_count.min` **不再生效**，不得据此强制规划配图。节奏规划（Phase 0b）仍创建，所有非 hero slot 的 `image_url=null`。
 
 ### 新 schema：visual_brief + required_entities + must_match_excerpts
@@ -204,7 +206,7 @@ generate_image(
 - `ref_image_path`：仅当封面开启且人物参考未启用时令 `$CONTENT_STYLE_REFERENCE_PATH="output/cover.png"`；封面关闭或人物参考启用时不传，改用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块。
 - `ref_image_path` 只传递"风格语言"，不得复刻封面主体；正文图必须按章节 `visual_brief` / `required_entities` 独立表达。
 - `generate_image` 成功后必须单独调用 `analyze_image` 执行评分卡；页面目标、实体和关系、逐字文字、构图、安全区、布局/阅读顺序、无越界内容且无导流/营销/违规元素全部通过后，才可进入上传。分析传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，继续其他 slot，但该图不得上传或插入 Markdown/HTML，最终 readiness 必须为 `blocked`。
-- `upload_image` 是 Server-owned 原子 MCP capability；Agent 不直接访问微信，返回的 `media_id` 和 `wechat_url` 只是渲染输入。Server 将上传事实持久化到当前 execution 的 `TaskFile`，finalizer 创建草稿前会重新读取并重新校验 `TaskFile`、execution、`WechatURL`、`MediaID` 和 delivered 状态。上传失败只重试上传；readiness 必须为 `blocked`。
+- `upload_image` 是 Server-owned 原子 MCP capability；Server 按任务冻结的交付模式路由。自动模式返回微信 `media_id`/`wechat_url`，手动模式返回独立 `platform_url`/`render_url`。必须把 `render_url` 回填对应 layout slot；不得因缺少 `wechat_url` 漏图，也不得使用 TaskFile 预览或短效签名 URL。手动模式只公开审核选中的正文图片，并提示用户公开访问属性。上传失败、模式 URL 不匹配或 render audit 缺图时 readiness 必须为 `blocked`。Server 在交付检查中重新校验；自动发布 finalizer 还会在产生微信外部副作用前独立复验图片与最终 HTML。
 
 生成、内容质量分析和 CDN 上传始终作为三个独立调用执行：
 
@@ -231,7 +233,7 @@ analyze_image(
 
 ### 步骤 4e：独立上传并立即原子落盘
 
-- 图片通过独立 `analyze_image` 且质量判断通过后，才通过 Server-owned MCP capability 调用 `upload_image`；Agent 不直接访问微信或维护外部事实。上传返回的 `wechat_url` 和 `media_id` 写入记录只是当前渲染输入，Server finalizer 会重新读取当前 execution 的 `TaskFile` 并重新校验后才创建草稿。上传失败时保留已生成图片，只重试上传，不重新生成；readiness 必须为 `blocked`。
+- 图片通过独立 `analyze_image` 且质量判断通过后，才通过 Server-owned MCP capability 调用 `upload_image`；Agent 不直接访问微信或维护外部事实。URL 按冻结模式记录：自动模式为 `wechat_url` 和 `media_id`，手动模式为 `platform_url` 和 `render_url`。Agent 将 `render_url` 回填 layout slot；Server 会校验必需 slot、当前 execution 图片元数据与最终 HTML。上传失败时保留已生成图片，只重试上传，不重新生成；readiness 必须为 `blocked`。
 - **原子写** `output/images.json`：先写临时文件 `output/.images.json.tmp` → `fsync` → `rename` 覆盖 `output/images.json`。绝不要"攒齐所有图再一次性写"——那是丢失窗口。
 - 每条记录必须包含：
   ```json

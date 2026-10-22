@@ -73,26 +73,26 @@ description: 'Use only when the Article workflow enters its visual planning, con
 | MCP 工具 | 说明 |
 |----------|------|
 | `analyze_image` (project_id, task_id, image_url 或 file_path, prompt) | 分析图片可见内容，供 Agent 作质量判断或创作修订 |
-| `upload_image` (project_id, task_id, file_path) | 独立上传已接受图片到微信 CDN，返回 CDN URL 和素材 ID |
+| `upload_image` (project_id, task_id, file_path) | 按任务冻结的交付模式上传已接受图片；自动模式返回微信素材 URL/ID，手动模式返回 Anban 稳定公开 HTTPS URL |
 | `download_image` (project_id, task_id, url, output_path) | 下载公共 HTTPS 图片并登记为持久任务文件 |
 | `compress_image` (task_id, input_path, output_path, max_width?) | 压缩授权任务图并登记新的持久任务文件 |
 
 ### Server-owned 上传边界
 
-`upload_image` 是 Server-owned 的原子 MCP capability。Agent 只能通过带有当前 `project_id`/`task_id` 的 MCP 调用提交本地图像；Agent 不直接访问微信 API，也不维护外部 CDN、`media_id` 或草稿事实。MCP 返回的 URL/媒体 ID 只是当前 Markdown/HTML 和 `images.json` 的渲染输入；Server 会把它们写入当前 execution 作用域的 `TaskFile`，由 finalizer 在创建草稿前重新读取并重新校验路径、execution、`WechatURL`、`MediaID` 和状态。只有 Server finalizer 能创建公众号草稿；上传失败时继续生成核心 HTML，但 readiness 必须为 `blocked`。
+`upload_image` 是 Server-owned 的原子 MCP capability。Agent 只能通过带有当前 `project_id`/`task_id` 的 MCP 调用提交审核通过的图片；Server 按冻结模式路由：自动模式使用 `wechat_url`/`media_id`，手动模式使用独立 `platform_url`/`render_url` 并公开托管审核选中的正文图。只把返回的 `render_url` 回填对应 `images.json` 与 `layout_plan` slot；不得因 `wechat_url` 为空而漏图，也不得在模式间回退。手动 URL 不得使用 TaskFile 预览或短效签名地址。Server 会绑定当前 execution 的 TaskFile 元数据，并在交付时重新校验 URL 类型和最终 HTML；上传失败或 render audit 报告缺图时 readiness 必须为 `blocked`。只有 Server finalizer 能创建公众号草稿。手动模式应在交付提示中说明所选正文图可被公开访问。
 
 ---
 
 ## 规划、生成与持久化
 
-1. 模板与节奏：从文章结构选择 `templates/article/*.yaml`；每个章节映射 slot，写 `output/visual-rhythm-plan.md`，包含 slot_id / section_index / image_size / module / composition_type / chapter_anchor。
+1. 模板与节奏：从文章结构选择 `templates/article/*.yaml`；每个章节映射 slot，写 `output/visual-rhythm-plan.md`，包含 slot_id / section_index / image_size / image_required / module / composition_type / chapter_anchor。正文预期有图的 slot 必须设 `image_required=true`；无图模式设为 false。
 2. 风格：`visual_style`（task > project）优先，三维分析仅补充；`writer` 与 `theme` 不决定图片风格。记录 `$VISUAL_STYLE_SOURCE`。
 3. 封面：模式允许才读取 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)，输出 cover-plan.md / cover-prompt.md / cover-quality.json；审核后独立上传。
 4. 正文规划：`output/image-plan.md` 每图含 visual_brief、required_entities、must_match_excerpts；实体必须来自该章节，不能仅写抽象风格。按 [references/prompt-blueprint.md](references/prompt-blueprint.md) 补齐页面目标、文字白名单、构图地图、主体状态/关系、媒介与光线、跨页变化、页面外禁止项和可观察验收条件。
 5. 逐 slot 生成：先按 [references/prompt-blueprint.md](references/prompt-blueprint.md) 的顺序编译“页面目标 → 文字契约 → 构图地图 → 章节证据 → 艺术指导/光线 → 跨页连续性 → 禁止项 → 输出验收”，再调用 `generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<当页提示词>, image_type="content", output_path="output/img_N.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`。仅当封面可用且未启用人物参考时，可传 `ref_image_path="output/cover.png"`；否则只用文本风格块。
 6. 独立审核：每张生成图都必须单独调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>, prompt=<页面目标/实体与关系/文字白名单/构图/合规检查>)`。可见问题最多共 3 次生成，耗尽标 `quality_status=failed`，继续后续 slot；分析传输/运行时失败、malformed 返回或无法可靠判断时标 `quality_status=unavailable`，记录 warning，继续后续 slot，但该图不得上传或插入 Markdown/HTML。
-7. 接受图片后通过 Server-owned MCP capability 调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>)`；Agent 不直接访问微信。失败仅重试上传一次，仍失败保留本地图和 warning，返回 Agent 继续核心 HTML，但 readiness 必须为 `blocked`。Server finalizer 会重新读取并重新校验当前 execution 的 `TaskFile`、`WechatURL` 与 `MediaID` 后才创建草稿。
-8. 每张立即原子写 `output/images.json`（临时文件 → fsync → rename），包含 slot、章节、实体、原句、最终 prompt、quality_review、file_path、wechat_url、media_id、quality_status。只将已接受且已上传的 CDN 图片按 slot 插回 `output/04-article-final.md`，不得插入失效路径。
+7. 接受图片后通过 Server-owned MCP capability 调用 `upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<生成图>)`；失败仅重试上传一次，仍失败保留本地图和 warning，readiness 必须为 `blocked`。Server 按任务冻结模式验证并持久化对应 URL 类型。
+8. 每张立即原子写 `output/images.json`（临时文件 → fsync → rename），包含 slot、章节、实体、原句、最终 prompt、quality_review、file_path、wechat_url、media_id、platform_url、render_url、quality_status。将 `render_url` 回填对应 rhythm-plan slot；只有审核通过且上传成功的图片可进入最终 HTML。
 
 详见 [references/generation-contract.md](references/generation-contract.md)；仅在上述阶段读取。
 
@@ -109,9 +109,9 @@ description: 'Use only when the Article workflow enters its visual planning, con
 - [ ] **视觉多样性**：3 张以上配图使用 3 种以上不同 `composition_type`（清单模板可豁免，因要求统一构图）
 - [ ] **反同质化**：不得连续 3 张正文图复用同主体/同远近景/同色调重心；正文图不得复刻封面主体
 - [ ] **Prompt 蓝图完整**：每个最终 prompt 都能复原页面目标、当前章节范围、主体状态与关系、构图地图、文字策略/白名单、风格与光线、跨页变化、页面外禁止项和移动端验收
-- [ ] **内容审核闭环**：每个计划内容图都有独立 `analyze_image` 结果，且只有 `quality_status=passed`、已上传并有有效 `wechat_url`/`media_id` 的图片才能进入 `images.json`、Markdown 或 HTML；任一 `failed`、`unavailable` 或上传失败都必须将 readiness 设为 `blocked`
-- [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / `page_goal` / `page_scope` / `subject_states` / `subject_relations` / `camera` / `shot` / `focal_area` / `text_policy` / `visible_text_whitelist` / `text_zone` / `layout_map` / `reading_order` / `out_of_scope` / `quality_review` / `slot_id` / `section_index` / `wechat_url` / `media_id`
-- [ ] **CDN 持久化**：`images.json` 每条都有非空 `wechat_url`（每张图已独立上传到 CDN）；缺 URL 的 slot 只调用 `upload_image` 重传，禁止重新生成
+- [ ] **内容审核闭环**：每个计划内容图都有独立 `analyze_image` 结果，且只有 `quality_status=passed`、已上传并有与冻结模式匹配的 `render_url` 才能进入 HTML；任一 `failed`、`unavailable`、上传失败或缺失 slot 都必须将 readiness 设为 `blocked`
+- [ ] **审计完整性**：`images.json` 每条含 `visual_brief` / `required_entities` / `must_match_excerpts` / `page_goal` / `page_scope` / `subject_states` / `subject_relations` / `camera` / `shot` / `focal_area` / `text_policy` / `visible_text_whitelist` / `text_zone` / `layout_map` / `reading_order` / `out_of_scope` / `quality_review` / `slot_id` / `section_index` / `quality_status`；URL 元数据按冻结模式记录，自动模式为 `wechat_url` + `media_id`，手动模式为 `platform_url` + `render_url`
+- [ ] **图片托管持久化**：每个必需 slot 都有与冻结模式匹配的持久 URL，且最终 HTML 恰好引用一次；缺 URL、无法加载或缺少 slot 时 readiness 必须为 `blocked`
 
 未通过检查时：
 - 单图失败 → 重试或降级标记

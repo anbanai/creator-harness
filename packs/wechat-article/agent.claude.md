@@ -197,8 +197,8 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 仅在正文图片模式开启时按 `article-visual-design` 的 [生成合同]($CLAUDE_PLUGIN_ROOT/skills/article-visual-design/references/generation-contract.md) 执行；封面关闭或人物参考启用时，不传 ref_image_path，只使用文本风格块。
 
 逐图 generate_image → 独立 analyze_image → 审核通过后 upload_image。
-**图片上传边界**：`upload_image` 是 Server-owned 的原子 MCP capability。Agent 不直接访问微信、不维护外部 CDN 或发布事实；返回的 URL/`media_id` 只作为当前 HTML/`images.json` 的渲染输入。Server 将上传事实写入当前 execution 的 `TaskFile`，finalizer 创建草稿前会重新读取并重新校验 execution、路径、`WechatURL`、`MediaID` 和 delivered 状态。只有 finalizer 创建公众号草稿；上传失败继续生成核心 HTML，但 readiness 必须为 `blocked`。
-单图最多 3 次生成，质量耗尽标 quality_status=failed 后继续其余 slot；审核不可用标 quality_status=unavailable，继续其余 slot；这两类图片均不得上传或插入 Markdown/HTML。上传只重试一次。每张立即原子写 `output/images.json`，包含 quality_review / quality_status / wechat_url / media_id，回填 rhythm-plan 的 layout_plan 和最终 Markdown。正文 URL 两两不同且不得复用封面 URL；没有有效 CDN URL 的 slot 保持 null。
+**图片上传边界**：`upload_image` 是 Server-owned 的原子 MCP capability。Server 按任务冻结的交付模式路由：自动模式使用 `wechat_url`/`media_id`，手动模式返回独立且稳定公开的 `platform_url`/`render_url`。Agent 不直接访问微信或维护发布事实；必须将返回的 `render_url` 回填对应 `images.json` 和 rhythm-plan slot，不得因缺少 `wechat_url` 漏图，不得在两种 URL 间回退。Server 将 URL 元数据绑定当前 execution 的 TaskFile，并在交付前重新校验 URL 类型和最终 HTML；只有 finalizer 创建公众号草稿。手动模式在交付提示中说明审核选中的正文图会公开访问；参考图、失败图和中间产物不公开。
+单图最多 3 次生成，质量耗尽标 quality_status=failed 后继续其余 slot；审核不可用标 quality_status=unavailable，继续其余 slot；这两类图片均不得上传或插入 HTML。上传只重试一次。每张立即原子写 `output/images.json`，包含 quality_review / quality_status / wechat_url / media_id / platform_url / render_url。只有审核通过且上传成功、URL 类型符合冻结模式的图才能进入最终 HTML；无 URL 的预期图 slot 必须保持显式缺失，交付 readiness 设为 `blocked`。
 
 最终核对计划与实物、节奏、质量和 URL。视觉失败、质量不足、上传失败均记录结构化 warning，继续生成核心 HTML，并仍然生成 `output/draft.json`，`readiness.status="blocked"`。
 
@@ -223,7 +223,7 @@ render_template(
 
 > **图片单一路径（避免重复 `<img>`）**：`render_template` 按 `layout_plan` 的 slot 自动注入配图 `![alt](image_url)`。若传入的 `markdown`（`04-article-final.md`）里已内联同一张图，服务端**按 URL 去重**——同一 URL 只渲染一个 `<img>`，**无需手动 Edit 清理重复 img**。配图位置以 `layout_plan` 为单一权威路径；`04-article-final.md` 的内联图仅作人工可读 markdown 产物。
 
-把返回的 `html` 字段保存为 `output/05-article.html`，把 `slots_rendered` 写入 `output/final-review.md` 作为渲染审计。
+把返回的 `html` 字段保存为 `output/05-article.html`，把 `slots_rendered` 写入 `output/final-review.md` 作为渲染审计。任一预期图片 slot 为 `missing-image`，或 HTML 中没有对应 `render_url` 时，交付 readiness 必须为 `blocked`，不得报告图片完整。
 
 **产出**：`output/05-article.html`（含 CDN 图片 + 结构化 slot）
 

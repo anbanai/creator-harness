@@ -158,4 +158,4 @@ An image composed for $EFFECTIVE_ASPECT_RATIO as a WeChat article cover. Present
 
 封面图必须通过 Agent 的内容质量判断，并由独立 `upload_image` 获得 `media_id` 后，才可标记为可用；未通过时按创作预算重试，耗尽后写入 `output/failure-state.json`，不得使用失败封面。
 
-**注意**：封面不得复用为正文内容图。正文每张图都必须独立生成并调用 `upload_image` 取得自己的 `wechat_url`；正文有多张图时，唯一 URL 数必须等于图片数。
+**注意**：封面不得复用为正文内容图。正文每张图都必须独立生成并调用 `upload_image` 取得与任务冻结模式匹配的渲染 URL；正文有多张图时，唯一 URL 数必须等于图片数。
