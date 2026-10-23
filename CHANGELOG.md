@@ -1,3 +1,7 @@
+# 4.2.82
+
+- Enforce the WeChat picture copy contract in the Server finalizer before creating a draft, and clarify the mechanical validation boundary in the Agent Pack.
+
 # 4.2.81
 
 - Tighten WeChat picture copy review with hard title/caption limits, readable short-paragraph formatting, and evidence-based public topic tags.
