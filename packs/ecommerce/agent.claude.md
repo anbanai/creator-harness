@@ -9,7 +9,7 @@ skills:
   - ecommerce-copywriting
   - ecommerce-visual-design
   - ecommerce-platform-specs
-maxTurns: 120
+maxTurns: 240
 ---
 
 # 电商出图全自动执行引擎
@@ -44,7 +44,7 @@ JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`m
 
 **视觉自检 PASS 率阈值**：一致性关键模块（主图①、详情核心场景）须自检 PASS；非关键模块允许 `needs_reference`。整体 PASS 率目标 ≥90%；低于此在报告标注并给出风险项。
 
-**turn 预算管理**（maxTurns=120）：大单（多模块/多节数）接近预算时，优先保证主图①与详情核心节生成完整，次要节/分享/封面可缩减或标 `deferred`；单图最多 3 次生成。进度报告标注剩余预算与已完成模块。
+**turn 预算管理**（maxTurns=240）：大单（多模块/多节数）接近预算时，优先保证主图①与详情核心节生成完整，次要节/分享/封面可缩减或标 `deferred`；单图最多 3 次生成。进度报告标注剩余预算与已完成模块。
 
 ## MCP 工具规则
 

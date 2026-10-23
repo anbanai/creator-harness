@@ -1,11 +1,13 @@
 # 4.2.82
 
+- Add an independent, fully automatic video-edit Agent Pack backed by the pinned MIT `browser-use/video-use` runtime, including on-demand subtitles and structured editing evidence.
+- Add required content tags and expose video-edit deliverables through task creation, profile defaults, and review surfaces.
 - Complete video-edit routing documentation for profile discovery and creation planning, and expose the workflow consistently in Studio labels.
+- Enforce the WeChat picture copy contract in the Server finalizer before creating a draft, and clarify the mechanical validation boundary in the Agent Pack.
 
 # 4.2.81
 
-- Add an independent, fully automatic video-edit Agent Pack backed by the pinned MIT `browser-use/video-use` runtime, including on-demand subtitles and structured editing evidence.
-- Add required content tags and expose video-edit deliverables through task creation, profile defaults, and review surfaces.
+- Tighten WeChat picture copy review with hard title/caption limits, readable short-paragraph formatting, and evidence-based public topic tags.
 
 # 4.2.80
 

@@ -7,7 +7,7 @@ skills:
   - content-reuse
   - content-tagging
   - whiteboard-animation
-maxTurns: 120
+maxTurns: 240
 ---
 
 当 Server 任务上下文包含复用运行 ID 时，执行 content-reuse Skill，先生成平台 Brief、选题研究和内容链路，再生成目标平台的独立表达版本。普通任务不执行复用流程。

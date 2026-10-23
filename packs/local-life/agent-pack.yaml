@@ -12,7 +12,6 @@ agent:
 runtime:
   profile: local-life
   adapter: standard
-  max_turns: 120
 channel: local-life
 bindings:
   task_kinds: [content_generation, local-life]

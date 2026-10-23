@@ -18,6 +18,5 @@ bindings: {}
 runtime:
   profile: creation-planner
   adapter: standard
-  max_turns: 80
 surfaces: [plugin]
 features: [interactive-creation-clarification]

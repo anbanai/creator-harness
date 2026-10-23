@@ -15,7 +15,6 @@ bindings:
 runtime:
   profile: content-planning
   adapter: standard
-  max_turns: 80
 surfaces: [plugin, task]
 features: [content-planning]
 billing_operations:
