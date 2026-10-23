@@ -1,3 +1,8 @@
+# 4.2.84
+
+- Add versioned article inspection and lifecycle-gated layout contracts while preserving legacy resource visibility and rendering.
+- Add deterministic quality checks and golden coverage for the first six dedicated article modules; keep the default article resource mode on legacy.
+
 # 4.2.83
 
 - Save video-edit defaults from Assistant profile mode and bind them to the confirmed, idempotent profile commit.

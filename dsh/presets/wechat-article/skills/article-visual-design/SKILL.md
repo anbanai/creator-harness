@@ -85,7 +85,9 @@ description: 'Use only when the Article workflow enters its visual planning, con
 
 ## 规划、生成与持久化
 
-1. 模板与节奏：从文章结构选择 `templates/article/*.yaml`；每个章节映射 slot，写 `output/visual-rhythm-plan.md`，包含 slot_id / section_index / image_size / image_required / module / composition_type / chapter_anchor。正文预期有图的 slot 必须设 `image_required=true`；无图模式设为 false。
+1. 模板与节奏：先调用 `list_resources(category="article_templates", platform="wechat")`，按文章结构选择模板，再调用 `get_resource(category="article_templates", name=...)` 读取完整节奏和模块建议。排除模板 `forbidden_modules`，只对候选模块调用 `list_resources(category="layouts", platform="wechat")` 与 `get_resource(category="layouts", name=...)`；不批量读取目录，也不访问外部 sibling repository。以 Server 返回的 `lifecycle_mode` 为准：`get_resource` 未返回 `module_contract` 时按 legacy contract 使用；仅当兼容 contract 明确返回且启用 mode 为 `compatibility`/`native` 时，才可按该 contract 构造模块。由于 `contract_version` 是整个 `layout_plan` 的开关，只有所有模块都提供同一可用 contract 时才能设置 `anban.layout.v1`；否则整份计划省略该字段并保持旧行为。每个章节映射 slot，写 `output/visual-rhythm-plan.md`，包含 slot_id / section_index / image_size / image_required / module / composition_type / chapter_anchor。正文预期有图的 slot 必须设 `image_required=true`；无图模式设为 false。
+
+模板或布局资源 discovery 调用失败时不得猜选资源或复用未验证 contract；保留已有产物，记录 `article_mcp_call_failed` 与 `resume_from=resource_discovery`，停止资源规划阶段。
 2. 风格：`visual_style`（task > project）优先，三维分析仅补充；`writer` 与 `theme` 不决定图片风格。记录 `$VISUAL_STYLE_SOURCE`。
 3. 封面：模式允许才读取 [article-cover-design/SKILL.md](../article-cover-design/SKILL.md)，输出 cover-plan.md / cover-prompt.md / cover-quality.json；审核后独立上传。
 4. 正文规划：`output/image-plan.md` 每图含 visual_brief、required_entities、must_match_excerpts；实体必须来自该章节，不能仅写抽象风格。按 [references/prompt-blueprint.md](references/prompt-blueprint.md) 补齐页面目标、文字白名单、构图地图、主体状态/关系、媒介与光线、跨页变化、页面外禁止项和可观察验收条件。

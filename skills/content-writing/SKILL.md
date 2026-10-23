@@ -18,7 +18,8 @@ Before writing, read only the minimum necessary context:
 2. `get_project_profile(project_id, scope="wechat", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
 3. `list_resources(category="writers")` to confirm the writer key exists.
 4. `get_resource(category="writers", name="$WRITER", include_raw=true)` for writer metadata, tone rules, structure patterns, title formulas, and raw YAML.
-5. When rendering handoff is needed, use `list_resources(category="article_templates")`, `get_resource(category="article_templates", ...)`, `list_resources(category="layouts")`, and `get_resource(category="layouts", ...)` only for the selected template/modules.
+5. Before visual planning, call `list_resources(category="article_templates", platform="wechat")`, select a template for the article, and call `get_resource(category="article_templates", name=...)`.
+6. Use that template's module recommendations to choose candidates, exclude its `forbidden_modules`, then call `list_resources(category="layouts", platform="wechat")` and `get_resource(category="layouts", name=...)` only for selected modules. Respect the returned `lifecycle_mode`; treat the resource `lifecycle` and nested `module_contract.lifecycle` as separate values. A missing `module_contract` means legacy behavior. A compatibility contract is usable only when `get_resource` returns it under an enabled `compatibility` or `native` mode. Set `layout_plan.contract_version="anban.layout.v1"` only when every module in that plan has the same enabled contract; otherwise omit it and keep the legacy layout contract for the whole plan. Never read the external sibling md2wechat repository at runtime.
 
 ## Configuration Boundaries
 
@@ -47,7 +48,9 @@ The article must satisfy:
 
 ## 公众号文章预检
 
-文章预检 is owned by this Skill and does not depend on MCP validation. Use the `scan-article-marketing.mjs` command declared by the active Agent adapter. The first preflight may pass `--fix` exactly once; every later scan omits `--fix`. Read the generated report, never the scanner source or a general prohibited-word list. The report's `content_hash` must match the current `output/04-article-final.md`. `warning` does not block delivery；`block_publish` does not block Markdown/HTML delivery，但托管 Article 必须把发布包 readiness 写为 `blocked` 并记录稳定 code，由 Server 提供后续恢复动作。
+Semantic article review is owned by this Skill. The Server's read-only `inspect_article` adds deterministic structure, module-contract, URL, HTML-safety, and readiness checks; it does not replace semantic review or `render_template`. Use the `scan-article-marketing.mjs` command declared by the active Agent adapter. The first preflight may pass `--fix` exactly once; every later scan omits `--fix`. Read the generated report, never the scanner source or a general prohibited-word list. The report's `content_hash` must match the current `output/04-article-final.md`. `warning` does not block delivery；`block_publish` does not block Markdown/HTML delivery，但托管 Article 必须把发布包 readiness 写为 `blocked` 并记录稳定 code，由 Server 提供后续恢复动作。
+
+Before HTML rendering, call `inspect_article(target="source")` with the final Markdown, exact `layout_plan`, and evidence paths. Resolve every blocker in the source or plan, then repeat source inspection. After `render_template`, pass its exact returned HTML to `inspect_article(target="rendered")`; after title and digest are final, run `inspect_article(target="delivery")` with that exact HTML and delivery metadata. Preserve all three results' readiness and blockers in `output/final-review.md`. A successful renderer call is not inspection evidence. Keep the human semantic review and image-quality checks even when all deterministic inspections pass.
 
 Required checks:
 
@@ -74,9 +77,11 @@ Report format:
 ## Failure Handling
 
 - Missing writer resource: use project default only if `get_project_profile` provides one; otherwise stop with a clear missing-resource note.
+- Template/layout discovery failure: preserve existing artifacts, record `article_mcp_call_failed` with `resume_from=resource_discovery`, and stop instead of guessing a template or module contract.
 - Missing outline or context brief: create the smallest safe placeholder from available project profile and user prompt, then record the gap in `content-quality-report.md`.
 - Preflight `warning`: record it and continue. Preflight `block_publish`: continue producing Markdown and HTML, write blocked readiness with a stable code, and report the exact rule IDs and redacted evidence. Managed Agents never create the draft.
-- Render handoff failure: keep Markdown artifacts, record the reason, and let the article agent decide whether to retry `render_template` or use the documented fallback.
+- `inspect_article` blockers: correct the Markdown or layout plan and inspect again; do not suppress blockers by omitting evidence or switching renderers.
+- Render or inspection capability failure: keep existing artifacts, record the failed capability and `resume_from` in `output/failure-state.json`, and stop the affected stage. Do not fall back to `convert_markdown` or accept Agent-authored HTML as Server-rendered evidence.
 
 ## 深入参考
 

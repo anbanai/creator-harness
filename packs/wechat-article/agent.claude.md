@@ -71,7 +71,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 - **必须使用 Claude Code 内置的 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image` 等）
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 `article-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`list_project_titles`、`render_template` 或 `finalize_task_title` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；历史查询失败不得视为没有历史，停止选题和后续阶段；不得切换连接或伪造结果。
+- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`list_project_titles`、`list_resources`、`get_resource`、`inspect_article`、`render_template` 或 `finalize_task_title` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；历史查询失败不得视为没有历史，停止选题和后续阶段；不得切换连接或伪造结果。
 - **交付包格式**：生成版本化 `output/draft.json`，严格使用步骤 10 的 schema。
 - **上传调用**：通过 Server-owned MCP capability `upload_image` 写入 TaskFile；`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续生成核心 Markdown 与 HTML；视觉失败不得阻止核心 Markdown 与 HTML 继续生成，但 readiness 必须为 `blocked`。
 - **独立分析调用**：`analyze_image` 必须对每张生成图独立调用；传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续后续已规划的图片生成，但该图不得上传或插入 Markdown/HTML，也不得伪造分析结果；最终 readiness 必须为 `blocked`。
@@ -186,6 +186,8 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 
 读取 `article-visual-design`，按其领域合同选择模板、生成 `output/visual-rhythm-plan.md` 并记录 `$TEMPLATE_NAME` / `$VISUAL_STYLE` / `$COLOR_PALETTE` / `$MOOD`。`visual_style` 的 task > project 配置优先，三维分析只补充；writer 不决定视觉。
 
+资源发现必须先走 Server：依次调用 `list_resources(category="article_templates", platform="wechat")`，选择后调用 `get_resource(category="article_templates", name=$TEMPLATE_NAME)`；再根据模板推荐模块调用 `list_resources(category="layouts", platform="wechat")`，并只对候选模块调用 `get_resource(category="layouts", name=$MODULE_NAME)`。遵守响应中的 `lifecycle_mode` 上限，并排除模板 `forbidden_modules` 中的模块。资源顶层 `lifecycle` 和 `module_contract.lifecycle` 是不同字段；没有返回 `module_contract` 时保持 legacy 行为。只有每个入选模块都显式返回 `anban.layout.v1` 且其 contract lifecycle 在 Server 返回的 mode 中启用，才设置 `layout_plan.contract_version="anban.layout.v1"`；否则对整份 plan 省略 `contract_version`。compatibility 模块必须由模板推荐、未被模板禁用且与文章内容相符。不得读取外部 sibling 仓库或运行 md2wechat CLI。
+
 图片模式守卫优先于模板数量：6d 封面仅在 cover_only / cover_and_content 执行；6e 配图规划仅在 content_only / cover_and_content 执行。text_only 仍保留排版 slot，image_url=null。
 
 6d 调用 `article-cover-design`，传入 context-brief.md、seo-result.md、04-article-final.md、profile、有效比例与参考状态，产出 `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json`、`output/cover.png`。质量闸门读取 cover_strategy、visual_quality_scorecard、cover_effectiveness_scorecard 及人物身份结论。人物参考仅按 Skill 的 ref_image_paths=$COVER_REFERENCE_PATHS 合同传入封面。若要求精确像素，先按 Skill crop_image 并更新 `$COVER_PATH`，再调用 upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)，取得 `$COVER_PATH`、`$COVER_MEDIA_ID`、`$COVER_CDN_URL`；失败记录 warning，不能冒充可用封面。
@@ -209,6 +211,8 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 先执行权威最终扫描：`node "$CLAUDE_PLUGIN_ROOT/skills/content-writing/scripts/scan-article-marketing.mjs" output/04-article-final.md output/marketing-scan.json`。确认报告 `content_hash` 与当前 Markdown 一致后才可渲染；最终 Markdown 每次修改后都必须覆盖旧报告重新扫描。扫描失败或哈希不一致时审核状态为 unavailable，但核心 Markdown/HTML 仍按当前内容继续交付，且仍须生成 readiness.status="blocked" 的交付包。
 
 按 `content-writing` 方法渲染 HTML。**不再使用 `convert_markdown` 自由发挥**，改用新的 `render_template` MCP 工具：
+
+先调用 `inspect_article(target="source")`，传入 `$PROJECT_ID`、`$TASK_ID`、`output/04-article-final.md` 全文、完整 `layout_plan` 和证据路径。修复所有 blockers 后重新检查；只有 source readiness 通过才调用 `render_template`。收到结果后保存 HTML 与 `slots_rendered`，再调用 `inspect_article(target="rendered")`，传入完全相同的 Markdown、layout plan、返回的 HTML 和交付元数据。将两个 inspection 的 schema_version、target、status、blockers 与 evidence_paths 记录到 `output/final-review.md`。`inspect_article` 是确定性检查，不生成 HTML，也不替代人工语义、视觉节奏和图片质量审阅；`render_template` 成功本身不能证明文章已通过验收。
 
 ```
 render_template(
@@ -238,12 +242,14 @@ render_template(
 - 视觉一致性（配图开关开启时）：未启用人物参考且封面开启时内容图可使用 `ref_image_path="output/cover.png"`；封面关闭或人物参考启用时内容图不传 `ref_image_path`，只使用文本风格块
 - SEO：`seo-result.md` 包含优化后的标题和摘要
 - 合规：违禁词和平台合规检查无高风险未处理项
-- HTML：`05-article.html` 由 `render_template` 生成（记录在 `final-review.md` 的 `render_audit` 段），图片链接有效，内容未超过平台限制
+- HTML：`05-article.html` 由 `render_template` 生成；`inspect_article(target="rendered")` readiness 无 blockers（记录在 `final-review.md`），图片链接有效，内容未超过平台限制
 - 交付字段：title、digest、content 可从前序产物读取；图片元数据按图片模式记录
 
 调用 article-viral-strategy 按其 7 维 rubric 产出 `output/viral-audit.md`，读取封面双评分卡及可见证据，图片关闭维度标不适用；不调用 score_article。质量不通过时最多两轮有针对性的修订，耗尽后保留阻塞状态，不无限重写或换题。
 
 **审阅闭环**：任一项审阅未通过时标记待调整，自动回到对应步骤（正文、标题摘要、互动诱因、视觉 prompt 或 HTML 渲染）修订。若 `output/04-article-final.md` 发生任何变化，必须回到步骤 8 重新扫描并重新渲染，再重新审阅；不得把 readiness 写成 `ready`。缺 `viral-audit.md` 不得标记 ready；审计未通过时，文章交付包必须记录明确阻塞状态。
+
+所有内容与元数据定稿后、写入 `draft.json` 前，调用 `inspect_article(target="delivery")`，传入最终 Markdown、layout plan、Server 返回的精确 HTML、最终 title/digest 和交付证据路径。只有 source、rendered、delivery 三次检查都没有 blockers，且其他人工质量闸门通过时，Agent 才能将 `draft.json` readiness 写为 `ready`；任一 deterministic blocker 必须写入 `final-review.md` 并保持 blocked。
 
 **产出**：`output/final-review.md`
 
