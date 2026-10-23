@@ -14,7 +14,6 @@ agent:
 runtime:
   profile: video-edit
   adapter: standard
-  max_turns: 160
 channel: video-edit
 bindings:
   project_platforms: [video-edit]
