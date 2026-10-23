@@ -48,6 +48,7 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 按需读取业务 reference：
 
 - [视频需求](references/video.md)
+- [全自动视频剪辑需求](references/video-edit.md)
 - [种草笔记需求](references/seednote.md)
 - [公众号文章需求](references/wechat-article.md)
 - [公众号图片消息需求](references/wechat-picture.md)

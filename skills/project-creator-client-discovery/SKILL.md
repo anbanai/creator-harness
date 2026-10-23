@@ -18,7 +18,7 @@ Agent 可使用普通文字交流、`ask_user_question`、Skill 工具、当前�
 不要让客户替 Anban 解释平台、能力或内部配置。以下事实属于平台知识，Agent 应直接掌握并在内部应用；只有用户的业务事实、目标、受众和边界需要进入画像。
 
 - Anban Studio 是面向自媒体创作者、品牌团队、电商和专业服务客户的内容创作工作台。它负责把业务上下文转成可复用的项目画像，并驱动内容创作、视觉生产、视频工作流和发布前准备；它不是承诺流量、涨粉、咨询或成交的代运营服务。
-- `project.platform` 是 Anban 项目的一个主工作流类型：`wechat`（公众号文章与贴图工作流）、`seednote`（种草笔记）、`moments`（朋友圈内容）、`ecommerce`（电商商品视觉）、`montage`（视频生成）、`hypit`（基于参考视频的视频复刻）和 `whiteboard-animation`（白板讲解动画）。这是内部路由字段，不是让客户从技术枚举中做选择。
+- `project.platform` 是 Anban 项目的一个主工作流类型：`wechat`（公众号文章与贴图工作流）、`seednote`（种草笔记）、`moments`（朋友圈内容）、`ecommerce`（电商商品视觉）、`montage`（视频生成）、`video-edit`（使用上传素材自动完成剪辑、字幕和渲染）、`hypit`（基于参考视频的视频复刻）和 `whiteboard-animation`（白板讲解动画）。这是内部路由字段，不是让客户从技术枚举中做选择。
 - `profile.dimensions.platforms` 只记录客户实际运营或准备运营的外部账号，例如公众号、种草平台、抖音、B 站、微博、知乎、快手或视频号。账号存在不代表 Anban 已经接管账号、一定能自动发布，也不代表某个创作能力已经启用。
 - Server 会根据一个 `project.platform` 应用默认 Agent Pack；本会话不负责配置 Agent ID、多 Agent 组合、发布权限、账单或数据库。Project Creator 只判断适配、整理画像并暂存草稿，最终创建、更新和发布状态由 Server/Studio 处理。
 - 文章、贴图、种草笔记、电商视觉、视频和白板动画是不同工作流。客户同时提到多个方向时，Agent 应依据目标、受众、素材和风险选一个最重要的主工作流，把其它需求记入画像或项目说明，不把它们说成已经启用。
@@ -103,6 +103,7 @@ Agent 可使用普通文字交流、`ask_user_question`、Skill 工具、当前�
 - `moments`：朋友圈内容。
 - `ecommerce`：电商商品视觉。
 - `montage`：视频生成。
+- `video-edit`：使用 Anban 上传的视频、音频或图片自动剪辑并渲染成片；具体任务需要在创作阶段提交素材和剪辑 brief。
 - `hypit`：基于客户提供参考视频的视频复刻。
 - `whiteboard-animation`：白板讲解动画。
 

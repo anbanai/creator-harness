@@ -1,3 +1,7 @@
+# 4.2.82
+
+- Complete video-edit routing documentation for profile discovery and creation planning, and expose the workflow consistently in Studio labels.
+
 # 4.2.81
 
 - Add an independent, fully automatic video-edit Agent Pack backed by the pinned MIT `browser-use/video-use` runtime, including on-demand subtitles and structured editing evidence.
