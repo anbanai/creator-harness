@@ -57,7 +57,6 @@ const EXPECTED_SKILL_NAMES = {
     'seo-optimization',
     'article-research',
     'content-tagging',
-    'content-reuse',
     'project-profile-context',
     'topic-evaluator',
     'trend-rider',
