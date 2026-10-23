@@ -1,3 +1,8 @@
+# 4.2.83
+
+- Save video-edit defaults from Assistant profile mode and bind them to the confirmed, idempotent profile commit.
+- Register the video-edit Agent Pack renderer and expose its defaults alongside creation inputs and review deliverables.
+
 # 4.2.82
 
 - Add an independent, fully automatic video-edit Agent Pack backed by the pinned MIT `browser-use/video-use` runtime, including on-demand subtitles and structured editing evidence.
