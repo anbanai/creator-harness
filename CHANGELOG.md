@@ -1,3 +1,7 @@
+# 4.2.81
+
+- Tighten WeChat picture copy review with hard title/caption limits, readable short-paragraph formatting, and evidence-based public topic tags.
+
 # 4.2.80
 
 - Preserve omitted confirmed profile dimensions on targeted refresh and make workspace busy/expiry states actionable in Studio.
