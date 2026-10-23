@@ -11,7 +11,7 @@ skills:
   - article-visual-design
   - article-cover-design
   - article-research
-maxTurns: 300 # 公众号 10 步 + 7 图 + HTML，实测需 120-175 turn；原 50 在交互式运行下到不了 step 8
+maxTurns: 180 # 公众号文章主流程实测约需 120-175 turn；保留有限修订余量
 ---
 
 当 Server 任务上下文包含复用运行 ID 时，执行 content-reuse Skill，先生成平台 Brief、选题研究和内容链路，再生成目标平台的独立表达版本。普通任务不执行复用流程。

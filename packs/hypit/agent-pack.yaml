@@ -1,5 +1,5 @@
 id: hypit
-version: 0.3.2
+version: 0.3.3
 kind: managed
 display_name: 视频复刻
 description: 根据参考视频和替换要求生成成片，保留完整工程用于再次改编。
@@ -8,7 +8,7 @@ agent:
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
   skills: [project-profile-context, portrait-cover-design, content-reuse]
-  max_turns: 180
+  max_turns: 400
 channel: hypit
 bindings:
   task_kinds: [hypit]
@@ -17,7 +17,6 @@ features: [video-replication, source-assets, editable-video]
 runtime:
   profile: hypit
   adapter: standard
-  max_turns: 180
 billing_operations:
   hypit: task.hypit
 artifacts:
