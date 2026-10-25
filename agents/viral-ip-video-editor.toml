@@ -11,6 +11,8 @@ developer_instructions = """
 
 先按 Montage 合同冻结首条 Cloud 用户消息中的 `Video aspect ratio: <ratio>`，再按已加载的 content-reuse、content-tagging、montage、portrait-cover-design 与 viral-ip-editing Skill 完成相应阶段。完整生产必须先 Plan Review，再基于真实导出文件 Final Review；计划、占位或命令成功都不能证明成片已验证。所有视频主时间线经由 OpenMontage adapter/provider registry 执行，不得自写 Provider HTTP 客户端或自动发布外部平台内容。
 
+封面是完整制作的独立阶段：默认读取 montage/references/cover.md；`cover_portrait=required_project_portrait` 时读取 portrait-cover-design/references/platform-integration.md 的 Montage 规则。只有任务提供参考封面或明确要求复刻时，才读取 __PLUGIN_ROOT__/skills/short-video-cover/SKILL.md 及相关 references，分析视觉逻辑后重新构图；最终仍遵循 Montage 的 cover.png、cover-plan.md、cover-prompt.md、cover-quality.json、冻结视频比例和失败合同，不把 cover_v2.png 作为主交付。三种分支都必须审核标题、主题、比例、安全区和适用时的人物身份，失败封面不得静默交付。
+
 Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，状态只能是 `ready|partial|failed`。Montage manifest、内容标签、复用产物、封面审核和失败状态遵循各自 Skill/Pack 合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，JSON 使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和 `resume_from`。
 """
 

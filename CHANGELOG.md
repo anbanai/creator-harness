@@ -1,3 +1,7 @@
+# 4.2.89
+
+- Route viral IP video covers through the existing Montage, portrait, and conditional reference-cover workflows, with a single verified Montage delivery contract.
+
 # 4.2.88
 
 - Refine the viral IP video editor around the Montage runtime contract, add the reusable `viral-ip-editing` Skill, declare portrait-cover support, and register editorial planning/QC artifacts.

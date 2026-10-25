@@ -60,6 +60,17 @@ maxTurns: 250
    使用文件证据，Server 拥有的 `content_type`、`platform`、`media_form`、
    `performance` 和 `artifact_role` 不由 Agent 覆盖。
 
+封面是完整制作的独立阶段。默认读取 `montage/references/cover.md` 生成
+普通视频封面；`cover_portrait=required_project_portrait` 时读取
+`portrait-cover-design/references/platform-integration.md` 的 Montage 规则。
+如果任务提供参考封面或明确要求复刻，才读取
+`short-video-cover/SKILL.md` 及其相关 references，先分析参考图的视觉逻辑，
+再为当前标题重新构图。参考封面流程只能作为分析和提示词指导，最终必须
+回到 Montage 的 `cover.png`、`cover-plan.md`、`cover-prompt.md`、
+`cover-quality.json`、冻结视频比例和失败合同；不输出竞争性的
+`cover_v2.png` 主交付。三种分支都要调用图像审核并确认标题、主题、比例、
+安全区及适用时的人物身份，失败封面不能静默交付。
+
 ## 产物与状态
 
 Agent 自有 JSON 产物使用 `schema_version`、`status`、`source`、`data_at`、

@@ -53,6 +53,35 @@ For a plan-only or single-stage request, run only the applicable stages and
 the checks affected by the change. A full production run requires both a plan
 review and a final media review.
 
+## Cover design routing
+
+Cover design is part of a full Montage production. Select exactly one branch
+from the frozen task inputs and record the decision in `output/cover-plan.md`:
+
+1. **Ordinary cover (default):** read
+   `montage/references/cover.md`. Use the frozen `$VIDEO_ASPECT_RATIO`, the
+   final video brief and title, and relevant non-person task assets. Generate
+   with Anban MCP `generate_image`, then independently run `analyze_image`.
+2. **Portrait cover:** when `cover_portrait=required_project_portrait`, read
+   `portrait-cover-design/references/platform-integration.md` and follow its
+   Montage row. Use the frozen project portrait reference and the same frozen
+   video ratio. Do not use an uploaded video frame as an identity reference.
+3. **Reference-cover adaptation:** only when the task includes a reference
+   cover or explicitly asks for cover replication, read
+   `short-video-cover/SKILL.md` and only the relevant references. Analyze the
+   reference with `analyze_image`, extract visual logic, and create a new
+   composition for the current title. Never copy the source image or treat it
+   as a pixel/layout lock. The Montage cover contract remains authoritative:
+   write `cover.png`, `cover-plan.md`, `cover-prompt.md`, and
+   `cover-quality.json` with the frozen video ratio and Montage retry/failure
+   rules; do not emit a competing `cover_v2.png` as the primary delivery.
+
+All branches must verify exact title text as far as the current image
+capability permits, subject/theme fit, aspect ratio, safe zones, identity when
+applicable, and absence of watermarks or unrelated elements. A failed cover is
+a failed or partial Montage delivery according to the Montage contract; never
+silently deliver a prompt, placeholder, or unreviewed image.
+
 ## File outputs
 
 Write the editorial files declared by the Pack under `output/`. Keep source
