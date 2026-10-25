@@ -39,7 +39,7 @@ codex plugin add anban@anbanai
 
 ### 2. Install the subagents
 
-Codex plugins cannot bundle subagents (open limitation — see `../CODEX.md`). The eleven subagents live in `agents/*.toml` and must be copied to `~/.codex/agents/`:
+Codex plugins cannot bundle subagents (open limitation — see `../CODEX.md`). The seventeen subagents live in `agents/*.toml` and must be copied to `~/.codex/agents/`:
 
 ```bash
 bash harness/install/install-subagents.sh
@@ -80,7 +80,7 @@ Expected: Anban Creator skills listed (article, content-writing, seednote, ecomm
 /agents
 ```
 
-Expected: 11 subagents listed (article, seednote, moments, montage, whiteboard-animation, ecommerce, hypit, profile-analysis, feedback-analysis, project-creator, wechat-picture) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
+Expected: 17 subagents listed, including `viral-ip-video-editor` (alongside article, seednote, moments, montage, video-edit, whiteboard-animation, ecommerce, hypit, profile-analysis, feedback-analysis, project-creator, creation-planner, postmortem-review, wechat-picture, local-life, and content-planning) with their nicknames. Hypit reads its canonical Agent instructions and the official Skill in its configured runtime image. Managed execution requires the platform input and native Runtime Profile; it does not use the Montage runtime.
 
 ```
 $anban-setup
@@ -130,7 +130,7 @@ using the article-visual-design skill, generate a 2.35:1 cover for the article a
 
 ### `/agents` shows nothing
 
-- Confirm `~/.codex/agents/*.toml` contains the 11 Anban subagents, including `project-creator.toml`, `profile-analysis.toml`, `feedback-analysis.toml`, and `wechat-picture.toml`.
+- Confirm `~/.codex/agents/*.toml` contains the 17 Anban subagents, including `viral-ip-video-editor.toml`, `project-creator.toml`, `profile-analysis.toml`, `feedback-analysis.toml`, and `wechat-picture.toml`.
 - Confirm `~/.codex/config.toml` contains `[agents.article]` etc.
 - Confirm `[features] multi_agent = true` is in `config.toml`.
 - Fully restart Codex (not just reload).

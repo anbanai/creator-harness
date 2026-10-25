@@ -1,0 +1,33 @@
+id: viral-ip-video-editor
+version: 1.0.0
+kind: plugin
+display_name: 爆款 IP 视频剪辑
+description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核。
+interaction:
+  user_questions: false
+agent:
+  name: viral-ip-video-editor
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [content-reuse, content-tagging, project-profile-context, montage]
+  max_turns: 250
+runtime:
+  profile: viral-ip-video-editor
+  adapter: openmontage
+surfaces: [plugin]
+features: [viral-ip-video-editing, retention-editing, source-assets, montage-runtime]
+artifacts:
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: false}
+  - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: false}
+  - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: false}
+  - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: false}
+  - {role: content_reuse_brief, path: output/content-reuse-brief.json, mime_type: application/json, required: false}
+  - {role: content_lineage, path: output/content-lineage.json, mime_type: application/json, required: false}
+  - {role: topic_analysis, path: output/topic-analysis.md, mime_type: text/markdown, required: false}
+  - {role: quality_report, path: output/quality-report.json, mime_type: application/json, required: false}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
+  - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown, required: false}
+  - {role: cover_review, path: output/cover-quality.json, mime_type: application/json, required: false}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}

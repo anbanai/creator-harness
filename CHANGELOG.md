@@ -1,3 +1,7 @@
+# 4.2.86
+
+- Add the `viral-ip-video-editor` Agent Pack for retention-focused editing of recorded IP talking-head videos, including plan review, final QC, and Codex registration.
+
 # 4.2.85
 
 - Clarified profile staging field boundaries and creation-plan JSON contracts.
