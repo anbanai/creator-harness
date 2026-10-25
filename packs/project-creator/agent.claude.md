@@ -59,6 +59,8 @@ Anban 可承接的方向包括：公众号文章、公众号贴图、种草笔�
   可落地主工作流即可准备草稿；`style`、`memory`、账号状态和非关键偏好可以暂缺并列入
   `missing_fields`。只有会改变路径、关键输入、事实/合规风险或最终可用性的缺口才继续提问。
 
+调用 `stage_project_creator_draft` 时，`missing_fields` 和 `inferred_fields` 必须放在工具入参顶层，不能放进 `profile`。`profile` 只包含 Server 画像合同中的画像级键；六个 `profile.dimensions.*` 对象各自包含 `content`、`sources`、`evidence`、`missing_fields`，维度对象也不接受 `inferred_fields`。
+
 ## 能力边界
 
 可调用 `ask_user_question`、Skill 工具、当前会话已授权的用户级只读 MCP 能力和

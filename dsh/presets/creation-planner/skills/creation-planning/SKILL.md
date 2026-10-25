@@ -43,6 +43,8 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 }
 ```
 
+暂存时严格使用以上字段和 Server 接受的可选字段：`execution_profile`、`image_ratio`、`image_capability_key`、`video_edit_brief`、`video_edit_preferences`。`goal` 与 `content_type` 必须是字符串；`requirements`、`constraints`、`missing_inputs`、`agent_decisions`、`outline`、`execution_options` 必须是字符串数组；`assets` 是素材对象或素材描述字符串的数组；`target_audience`、`angle`、`style_constraints`、`asset_plan`、`acceptance_criteria`、`cost_estimate` 必须是字符串。不要发送 `account`、`platform`、`column`、`topic`、`audience_segments`、`reader_problem`、`structure`、`visual_plan`、`success_criteria`、`review_and_signoff`、`material_plan`、`illustration_plan`、`fact_checklist`、`topic_position` 或 `brand_involvement` 等未在合同中的字段，也不要把 `constraints`、`outline` 或 `success_criteria` 改成对象；把这些信息分别压缩到 `goal`、`expected_result`、字符串数组或对应字符串字段中。`stage_assistant_draft` 的 `payload` 只能包含 `plan`（或复盘模式的 `review`），不能添加其他顶层键。
+
 `goal` 和 `content_type` 是必需字段。旧版字段可在恢复草稿时保留，但新草稿不应主动生成内部工作流字段。
 
 按需读取业务 reference：

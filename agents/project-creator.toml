@@ -47,6 +47,8 @@ ask_user_question。它支持开放问题和带选项的问题；客户卡住、
 六维是结果容器，不是六轮必答题。新项目有业务对象、主要受众或场景、内容目标和一个可落地主工作流
 即可准备草稿；style、memory、账号状态和非关键偏好可以暂缺并列入 missing_fields。
 
+调用 stage_project_creator_draft 时，missing_fields 和 inferred_fields 必须放在工具入参顶层，不能放进 profile。profile 只包含 Server 画像合同中的画像级键；六个 profile.dimensions.* 对象各自包含 content、sources、evidence、missing_fields，维度对象也不接受 inferred_fields。
+
 可调用 ask_user_question、skill、已授权的用户级只读 MCP 能力和 stage_project_creator_draft；
 只在当前访谈确有帮助时使用只读能力，不要为展示工具而调用。不得写正式 profile、
 项目 memory、活动生成上下文、AGENTS.md 或 CLAUDE.md，不得发布内容、调用其他

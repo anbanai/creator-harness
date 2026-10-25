@@ -143,4 +143,6 @@ Agent 可使用普通文字交流、`ask_user_question`、Skill 工具、当前�
 新项目达到以下最小条件即可准备草稿：有可描述的业务或内容对象，有一个主要受众或使用场景，有明确或可合理推导的内容目标，有一个可落地的主工作流；会影响安全处理的硬约束必须已经记录。`style`、`memory`、账号状态和非关键偏好可以暂缺，写入 `missing_fields`，不要因为这些空白阻止 `ready=true`。如果业务、受众或目标仍有两种以上完全不同的解释，再继续提问。
 用户确认摘要后，再调用 `stage_project_creator_draft`，提交项目、六维画像、每维进度、`missing_fields` 和 `inferred_fields`。更新画像时，提交完整六维结构并携带所有未变更的已确认维度；只替换本次用户确认的变更，不得因字段未在本轮提及而清空快照内容。`ready=true` 只表示临时草稿可以交给 Studio 确认，不代表项目或正式画像已经创建/更新；随后等待用户在 Studio 的确认卡操作。用户可以在摘要或确认卡中继续修订。
 
+暂存接口的字段层级必须保持不变：`missing_fields` 和 `inferred_fields` 是 `stage_project_creator_draft` 的顶层参数，不属于 `profile`。`profile` 只允许 `schema_version`、`status`、`initialization_status`、`last_error`、`version`、`application_source`、`analysis_task_id`、`analysis_limits`、`follow_up_questions` 和 `dimensions`；六个 `dimensions.*` 对象才允许各自的 `content`、`sources`、`evidence`、`missing_fields`。不要在画像对象中添加 `inferred_fields`，也不要把画像级缺失列表复制到画像对象里。
+
 更新项目时，`memory_append` 只能追加用户确认的稳定新背景，不能替换、清空或复制整段旧记忆。新项目不得提交 `memory_append`。

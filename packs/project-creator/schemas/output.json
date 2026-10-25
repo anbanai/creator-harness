@@ -17,7 +17,32 @@
     },
     "profile": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "required": ["schema_version", "status", "initialization_status", "dimensions"],
+      "properties": {
+        "schema_version": {"type": "integer", "const": 1},
+        "status": {"type": "string", "enum": ["draft", "confirmed"]},
+        "initialization_status": {"type": "string", "enum": ["not_started", "queued", "running", "ready", "failed"]},
+        "last_error": {"type": "string"},
+        "version": {"type": "integer"},
+        "application_source": {"type": "string", "enum": ["", "system_analysis", "user_confirmation", "user_edit", "user_restore"]},
+        "analysis_task_id": {"type": "string"},
+        "analysis_limits": {"type": "array", "items": {"type": "string"}},
+        "follow_up_questions": {"type": "array", "items": {"type": "string"}},
+        "dimensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "style", "audience", "platforms", "preferences", "memory"],
+          "properties": {
+            "identity": {"$ref": "#/definitions/dimension"},
+            "style": {"$ref": "#/definitions/dimension"},
+            "audience": {"$ref": "#/definitions/dimension"},
+            "platforms": {"$ref": "#/definitions/dimension"},
+            "preferences": {"$ref": "#/definitions/dimension"},
+            "memory": {"$ref": "#/definitions/dimension"}
+          }
+        }
+      }
     },
     "progress": {
       "type": "object",
@@ -35,5 +60,18 @@
     "missing_fields": {"type": "array", "items": {"type": "string"}},
     "inferred_fields": {"type": "array", "items": {"type": "string"}},
     "memory_append": {"type": "string", "maxLength": 65536}
+  },
+  "definitions": {
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content", "sources", "evidence", "missing_fields"],
+      "properties": {
+        "content": {"type": "object", "additionalProperties": true},
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "array", "items": {"type": "string"}},
+        "missing_fields": {"type": "array", "items": {"type": "string"}}
+      }
+    }
   }
 }

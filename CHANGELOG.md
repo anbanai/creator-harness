@@ -1,3 +1,8 @@
+# 4.2.85
+
+- Clarified profile staging field boundaries and creation-plan JSON contracts.
+- Added actionable validation details for unsupported assistant plan fields.
+
 # 4.2.84
 
 - Add versioned article inspection and lifecycle-gated layout contracts while preserving legacy resource visibility and rendering.
