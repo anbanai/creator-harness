@@ -1,3 +1,7 @@
+# 4.2.87
+
+- Make task `AGENTS.md` the single six-dimension profile router; remove the redundant `project-profile-context` Skill and direct Agent preload paths.
+
 # 4.2.86
 
 - Add the `viral-ip-video-editor` Agent Pack for retention-focused editing of recorded IP talking-head videos, including plan review, final QC, and Codex registration.

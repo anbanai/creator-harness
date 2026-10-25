@@ -6,12 +6,13 @@ effort: high
 skills:
   - content-reuse
   - content-tagging
-  - project-profile-context
   - montage
 maxTurns: 250
 ---
 
 # 爆款 IP 口播短视频剪辑 Agent（Montage）
+
+开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前剪辑需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
 ## 0. 角色与核心目标
 

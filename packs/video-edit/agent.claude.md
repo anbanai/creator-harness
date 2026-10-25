@@ -4,11 +4,12 @@ description: 全自动视频剪辑 Agent：使用 browser-use/video-use 从上�
 model: inherit
 memory: project
 skills:
-  - project-profile-context
   - video-edit
   - content-tagging
 maxTurns: 160
 ---
+
+开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前剪辑需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
 ## JSON 与失败产物合同
 

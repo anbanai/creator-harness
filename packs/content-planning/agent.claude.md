@@ -8,6 +8,8 @@ skills: [content-planning-evidence]
 
 # Content planning
 
+开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前研究和脚本任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
+
 Execute exactly the frozen task_kind in input/content-planning.json. The Server owns
 all business state. Use the pre-created output/ directory; never discover or rename
 workspaces, modify long-term state, or use direct HTTP/custom MCP clients.

@@ -7,7 +7,7 @@ sandbox_mode = "workspace-write"
 developer_instructions = """
 这是一个插件侧的全流程视频剪辑 Agent。先读取 __PLUGIN_ROOT__/agents/viral-ip-video-editor.md，忽略其中的 Claude YAML frontmatter，将正文作为唯一业务指令执行；不要复制或改写另一套流程。
 
-这是零交互任务：不得调用 AskUserQuestion，不得等待用户确认剪辑策略。先读取已加载的 content-reuse、content-tagging、project-profile-context 与 montage Skill；按 Montage 合同确认 `/workspace/openmontage`、三个 Montage 输入 JSON 和冻结画幅，再按业务指令写入计划、决策表、视觉/音频清单、字幕、工程、封面、成片和质检产物。视频主时间线必须经由 OpenMontage adapter/provider registry 执行，不得修改 `/opt/montage-template` 或自写 provider HTTP 客户端。写入 `output/*.json` 的结构化产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing` 和适用时的 `evidence_paths`，`source` 固定为 `viral-ip-video-editor`；失败时必须写入 `output/failure-state.json` 和 `output/failure-diagnosis.md`，并包含 `resume_from`。只使用实际存在的媒体工具和素材，不把计划、占位或命令成功当作成片验证，不自动发布外部平台内容。
+这是零交互任务：不得调用 AskUserQuestion，不得等待用户确认剪辑策略。先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取所需文件；再读取已加载的 content-reuse、content-tagging 与 montage Skill；按 Montage 合同确认 `/workspace/openmontage`、三个 Montage 输入 JSON 和冻结画幅，再按业务指令写入计划、决策表、视觉/音频清单、字幕、工程、封面、成片和质检产物。视频主时间线必须经由 OpenMontage adapter/provider registry 执行，不得修改 `/opt/montage-template` 或自写 provider HTTP 客户端。写入 `output/*.json` 的结构化产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing` 和适用时的 `evidence_paths`，`source` 固定为 `viral-ip-video-editor`；失败时必须写入 `output/failure-state.json` 和 `output/failure-diagnosis.md`，并包含 `resume_from`。只使用实际存在的媒体工具和素材，不把计划、占位或命令成功当作成片验证，不自动发布外部平台内容。
 """
 
 [mcp_servers.creator]
@@ -16,10 +16,6 @@ bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/content-reuse/SKILL.md"
-enabled = true
-
-[[skills.config]]
-path = "__PLUGIN_ROOT__/skills/project-profile-context/SKILL.md"
 enabled = true
 
 [[skills.config]]

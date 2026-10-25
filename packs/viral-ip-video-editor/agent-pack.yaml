@@ -1,5 +1,5 @@
 id: viral-ip-video-editor
-version: 1.0.0
+version: 1.0.1
 kind: plugin
 display_name: 爆款 IP 视频剪辑
 description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核。
@@ -9,7 +9,7 @@ agent:
   name: viral-ip-video-editor
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [content-reuse, content-tagging, project-profile-context, montage]
+  skills: [content-reuse, content-tagging, montage]
   max_turns: 250
 runtime:
   profile: viral-ip-video-editor

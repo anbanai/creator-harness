@@ -6,7 +6,6 @@ memory: project
 skills:
   - content-reuse
   - content-tagging
-  - project-profile-context
   - seednote-research
   - seednote-writing
   - seednote-visual-design
@@ -14,6 +13,8 @@ maxTurns: 240
 ---
 
 当 Server 任务上下文包含复用运行 ID 时，执行 content-reuse Skill，先生成平台 Brief、选题研究和内容链路，再生成目标平台的独立表达版本。普通任务不执行复用流程。
+
+开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取选题、写作和视觉阶段需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
 
 # 种草笔记图文全自动创作引擎

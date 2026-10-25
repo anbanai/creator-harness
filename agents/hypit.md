@@ -6,11 +6,12 @@ memory: project
 skills:
   - content-reuse
   - content-tagging
-  - project-profile-context
 maxTurns: 400
 ---
 
 当 Server 任务上下文包含复用运行 ID 时，执行 content-reuse Skill，先生成平台 Brief、选题研究和内容链路，再生成目标平台的独立表达版本。普通任务不执行复用流程。复用语义检查并入 output/semantic-report.json；Runtime 拥有的 output/quality-report.json 保持其既有合同，不得覆盖。
+
+开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前复刻需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
 
 # Hypit

@@ -1,5 +1,5 @@
 id: video-edit
-version: 1.0.0
+version: 1.0.1
 kind: managed
 display_name: 全自动视频剪辑
 description: 使用 browser-use/video-use 自动完成转写、剪辑、字幕和渲染，并交付可复核的成片与编辑证据。
@@ -9,7 +9,7 @@ agent:
   name: video-edit
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [project-profile-context, video-edit, content-tagging]
+  skills: [video-edit, content-tagging]
   max_turns: 160
 runtime:
   profile: video-edit

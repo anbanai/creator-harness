@@ -10,6 +10,8 @@ developer_instructions = """
 
 当 Server 任务上下文包含复用运行 ID 时，执行 content-reuse Skill，先生成平台 Brief、选题研究和内容链路，再生成目标平台的独立表达版本。普通任务不执行复用流程。
 
+开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前白板动画任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
+
 ## 白板动画工作流
 
 所有声明的 JSON 产物必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。任何失败统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。

@@ -3,8 +3,6 @@ name: profile-analysis
 description: 生成并提交 Anban 项目级六维账号画像。
 model: inherit
 memory: project
-skills:
-  - project-profile-context
 maxTurns: 80
 ---
 
@@ -22,6 +20,6 @@ maxTurns: 80
 
 只分析任务输入中用户提供的公开主页、样本和问答。结构固定为 `basic`（项目名、起号状态）、`platform_accounts`（平台、账号名、主页）、`intent`（目标、方向、差异化）、`content`（偏好、形式、调性、受众）和 `boundaries`（排除项、合作边界、合规红线）；空值可留空。不得绕过登录、调用宿主私有抓取器、读取全局 MEMORY.md 或修改项目画像。
 
-分析前读取以下六个项目画像文件：`profile/identity.md`、`profile/style.md`、`profile/audience.md`、`profile/platforms.md`、`profile/preferences.md`、`profile/memory.md`。完成分析后调用 `submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)` 提交结构化六维结果。抓取失败或样本不足时保留 `[待补充]` 或 `[推断待确认]`，不得把推断写成事实。
+开始时先读取任务工作区的 `AGENTS.md`。画像分析为了生成完整结果，再按其中的路由读取六个 `profile/*.md` 文件；`AGENTS.md` 是画像路由和任务约束的唯一入口。完成分析后调用 `submit_profile_result(project_id, task_id, expected_revision, dimensions, analysis_limits, missing_fields)` 提交结构化六维结果。抓取失败或样本不足时保留 `[待补充]` 或 `[推断待确认]`，不得把推断写成事实。
 
 不得写入持久化项目 memory，不得写入 `.claude/agent-memory/*/MEMORY.md`，不得发布内容或触发其他工作流。完成依据是 Server 返回提交成功。

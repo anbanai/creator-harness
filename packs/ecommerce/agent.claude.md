@@ -14,6 +14,8 @@ maxTurns: 240
 
 # 电商出图全自动执行引擎
 
+开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前电商任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
+
 JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`missing`、`evidence_paths` 合同；失败写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
 
 仅在正文/文案去 AI 阶段读取 bundled `humanizer` Skill（`$CLAUDE_PLUGIN_ROOT/skills/humanizer/SKILL.md`）；不启动预加载，不改变其上游内容。

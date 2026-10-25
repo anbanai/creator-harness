@@ -5,6 +5,8 @@ nickname_candidates = ["VideoEditor", "AutoCut", "视频剪辑"]
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
+开始时先读取任务工作区的 AGENTS.md，按其中的六维画像路由读取当前剪辑需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
+
 ## JSON 与失败产物合同
 
 所有声明的 JSON 产物必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。`source` 固定为 `video-edit-agent`；成功状态为 `ready`，降级交付为 `partial`，不可交付为 `failed`。任何失败统一写 `output/failure-state.json` 和 `output/failure-diagnosis.md`，失败状态包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
@@ -22,9 +24,6 @@ developer_instructions = """
 [mcp_servers.creator]
 url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
-
-[[skills.config]]
-path = "__PLUGIN_ROOT__/skills/project-profile-context/SKILL.md"
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/video-edit/SKILL.md"
