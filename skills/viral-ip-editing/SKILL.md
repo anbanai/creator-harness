@@ -1,0 +1,98 @@
+---
+name: viral-ip-editing
+description: Use when making editorial decisions for already-recorded IP talking-head footage, including hook selection, semantic-safe cuts, retention pacing, captions, visual support, sound design, and final editorial QC. Do not use it to run the Montage pipeline or publish media.
+---
+
+# Viral IP Editing
+
+This Skill owns the editorial reasoning for recorded IP talking-head footage.
+The invoking Agent owns stage orchestration and recovery; `montage` owns the
+OpenMontage runtime and delivery contract; Server owns task identity, profile
+snapshots, publication, and external side effects.
+
+## Boundaries
+
+- Preserve the speaker's actual meaning, evidence, conditions, chronology,
+  stance, numbers, names, negations, and disclaimers.
+- Use only source-backed hooks. A hook must be fulfilled by the finished cut;
+  do not manufacture controversy, results, testimony, or a replacement voice.
+- Treat retention as an editorial objective, never as a guaranteed metric.
+- Do not force a fixed cut cadence. Every cut, crop, speed change, B-roll shot,
+  caption emphasis, sound effect, and music change needs a content or
+  comprehension reason.
+- Prefer user-provided or authorized media. Mark unknown rights and generated
+  illustrative media as unresolved; never present generated media as evidence.
+
+## Editorial workflow
+
+1. Inspect the transcript, source timecodes, picture, audio, task brief, and
+   the routed profile files named by the workspace `AGENTS.md`.
+2. Map semantic segments, core value, supporting evidence, repetitions,
+   context dependencies, protected meaning, and two or three credible hook
+   candidates when the source supports them.
+3. Build a timecoded master plan before large edits. Include the promise and
+   payoff, segment order, target duration, cut reasons, visual/audio plan,
+   rights risks, and acceptance checks.
+4. Review the plan as an independent editor. Reject or revise it when the hook
+   is misleading, a reorder breaks reference or causality, a deletion removes
+   a protected qualifier, or a planned asset does not improve understanding.
+5. Create the semantic main cut before decoration. Preserve natural breaths and
+   useful pauses, then check every cut for syllable loss, grammar, room-tone
+   jumps, and audio continuity.
+6. Add reframing, B-roll, graphics, captions, effects, and music only where
+   they support meaning, attention, or emotional timing. Keep the speaker
+   visible for trust-building and key claims.
+7. Review the actual rendered media. Check the first three seconds, promise
+   payoff, semantic continuity, captions, safe areas, frame continuity,
+   intelligibility, loudness measurements, playback, and delivery files.
+8. Repair Blocker/Major defects, render again, and recheck the changed area and
+   its timing/audio neighbors. Do not call a plan or a successful command a
+   verified video.
+
+For a plan-only or single-stage request, run only the applicable stages and
+the checks affected by the change. A full production run requires both a plan
+review and a final media review.
+
+## File outputs
+
+Write the editorial files declared by the Pack under `output/`. Keep source
+timecodes distinct from final timeline timecodes. Agent-owned JSON files use:
+
+- `schema_version`
+- `status`: `ready`, `partial`, or `failed`
+- `source`: `viral-ip-video-editor`
+- `data_at`
+- `missing`
+- `evidence_paths` when applicable
+
+This common shape does not override a delegated contract. In particular,
+`output/montage-project.json`, `output/content-tags.json`, content-reuse
+artifacts, cover artifacts, and `output/failure-state.json` must follow their
+own Skill or Pack schemas.
+
+The minimum editorial evidence for a full production run is:
+
+- `project_brief.md`
+- `transcript.json` or an equivalent timecoded transcript
+- `content_map.md`
+- `edit_master_plan.md`
+- `plan_review.md`
+- `edit_decision_list.json`
+- `visual_plan.json`
+- `sfx_cues.json`
+- `bgm_plan.json`
+- `captions.srt` or the timeline's native caption format
+- `qc_report.md`
+
+Use `output/failure-state.json` and `output/failure-diagnosis.md` for a
+terminal failure. The failure JSON uses the Montage failure contract:
+`version`, `status="recoverable_failure"`, `stage`, `error_code`, a redacted
+non-empty `message`, and `resume_from`.
+
+## Review standard
+
+Block delivery for changed meaning, an unfulfilled or misleading hook,
+missing/invalid media, severe audio-video sync errors, unreadable captions,
+or unresolved material rights/identity risk. Mark Major defects that affect
+comprehension or viewing quality and repair them when the source and tools
+permit. Record Minor issues without hiding them or allowing endless retakes.

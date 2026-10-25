@@ -1,3 +1,7 @@
+# 4.2.88
+
+- Refine the viral IP video editor around the Montage runtime contract, add the reusable `viral-ip-editing` Skill, declare portrait-cover support, and register editorial planning/QC artifacts.
+
 # 4.2.87
 
 - Make task `AGENTS.md` the single six-dimension profile router; remove the redundant `project-profile-context` Skill and direct Agent preload paths.
