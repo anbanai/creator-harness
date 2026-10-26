@@ -1,3 +1,9 @@
+# 4.2.86
+
+- Use saved profile data for later task context regardless of historical draft/confirmed status.
+- Preserve unchanged saved profile fields, source labels, and evidence during profile refreshes.
+- Consume saved Server profile snapshots in article creation and creative planning while preserving source confidence and plan confirmation.
+
 # 4.2.85
 
 - Clarified profile staging field boundaries and creation-plan JSON contracts.
