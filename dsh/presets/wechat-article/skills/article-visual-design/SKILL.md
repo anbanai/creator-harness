@@ -81,6 +81,14 @@ description: 'Use only when the Article workflow enters its visual planning, con
 
 `upload_image` 是 Server-owned 的原子 MCP capability。Agent 只能通过带有当前 `project_id`/`task_id` 的 MCP 调用提交审核通过的图片；Server 按冻结模式路由：自动模式使用 `wechat_url`/`media_id`，手动模式使用独立 `platform_url`/`render_url` 并公开托管审核选中的正文图。只把返回的 `render_url` 回填对应 `images.json` 与 `layout_plan` slot；不得因 `wechat_url` 为空而漏图，也不得在模式间回退。手动 URL 不得使用 TaskFile 预览或短效签名地址。Server 会绑定当前 execution 的 TaskFile 元数据，并在交付时重新校验 URL 类型和最终 HTML；上传失败或 render audit 报告缺图时 readiness 必须为 `blocked`。只有 Server finalizer 能创建公众号草稿。手动模式应在交付提示中说明所选正文图可被公开访问。
 
+### 交付指令优先级
+
+开始视觉与渲染前，必须读取 `get_project_profile` 返回的 `wechat_delivery_instructions`。这段中文指令已经由 Server 根据任务类型、冻结交付设置和贴图的“创建草稿”选择计算完成；不要自行读取凭据、开关或重新判断自动/手动模式。
+
+- 指令要求自动文章时，所有必需图片都必须上传并以微信素材 URL 回填最终 HTML，再交给 Server finalizer 创建草稿。
+- 指令要求手动文章时，所有必需图片都必须上传并以稳定公开的 Anban HTTPS URL 回填最终 HTML，Studio 会一次复制完整文章。
+- 无论哪种文章交付，必需图片缺失、没有匹配 URL 或没有进入最终 HTML，都必须阻断 readiness，不能交付只有文字的文章。
+
 ---
 
 ## 规划、生成与持久化

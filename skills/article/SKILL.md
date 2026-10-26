@@ -54,7 +54,7 @@ description: Use when the user asks to create a complete WeChat Official Account
 **项目选定后，仅对 `$PROJECT_ID` 调用：**
 
 - `get_project_profile(project_id="$PROJECT_ID", scope="wechat", task_id="$TASK_ID")` → 获取账号定位、受众、风格维度。**同时解析视觉维度的权威来源**：`$VISUAL_STYLE_CONFIGURED` = profile 的 `visual_style` 字段、`$VISUAL_STYLE_SOURCE` = `visual_style_source`（task / project）。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层），不传则只拿到 project 级信息。顶层 `writer` 仅用于选择写作风格资源。
-- `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 已有文章标题；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功
+- `list_drafts(project_id="$PROJECT_ID")` 和 `list_published_articles(project_id="$PROJECT_ID")` → 检查 `history_available`。为 `true` 时，`items`（包括真实空列表）是成功查询的历史；为 `false` 时记录响应 `note`，明确该历史不可用且不代表没有历史，并按 `article-research` 的保守降级规则继续。MCP 调用本身报错时按必需能力失败写结构化失败态并停止。
 - 使用 runtime 已预创建的 `output/`；不得创建、发现、移动或重命名该目录
 
 **图像参数合同**：读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时所有图片必须原样使用 `$EFFECTIVE_ASPECT_RATIO=image_ratio`；`image_ratio == "auto"` 时，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
@@ -160,7 +160,7 @@ render_template(
 
 - **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image`、`render_template` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用不可用或失败时，写结构化失败诊断并保留已有产物
+- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles` 或 `render_template` 任一调用本身不可用或返回错误时，写结构化失败诊断并保留已有产物。`list_drafts` 和 `list_published_articles` 成功返回 `history_available=false` 是明确的历史不可用结果，不是调用失败；不得将其当成空历史，按 `article-research` 的保守降级规则继续。
 - **上传调用**：`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续生成核心 Markdown 与 HTML；视觉失败不得阻止核心 Markdown 与 HTML 继续生成，但 readiness 必须为 `blocked`
 - **独立分析调用**：每张生成图都必须独立调用 `analyze_image`；传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续后续已规划的图片生成，但该图不得上传或插入 Markdown/HTML，也不得伪造分析结果；最终 readiness 必须为 `blocked`
 - **执行身份错误不可重试**：`generate_image`、`analyze_image` 或 `upload_image` 返回 `execution_identity_required` / `execution_identity_mismatch` 时，这是运行时身份故障，不是 prompt、比例、供应商或创作质量问题。不得更换 prompt、`image_type` 或工具重复尝试；保留全部已有产物，在 `output/final-review.md` 记录 `execution_identity_unavailable` warning 和 `resume_from=image_generation`，跳过剩余视觉步骤并继续生成核心 HTML 和 blocked 交付包。诊断不得包含令牌、密钥或完整环境变量。`submit_completion_metadata` 的身份错误只影响反馈提交，不得改变服务端文件契约判定

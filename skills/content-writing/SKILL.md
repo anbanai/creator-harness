@@ -29,6 +29,14 @@ Before writing, read only the minimum necessary context:
 - Do not insert image placeholders during body writing; visual planning owns image slots.
 - `render_template` is the only HTML rendering path and the唯一主路径；不得使用 `convert_markdown` 作为兼容或降级方案。
 
+## 公众号交付指令
+
+在渲染前必须读取 `get_project_profile` 返回的 `wechat_delivery_instructions`。这段中文指令已经由 Server 根据任务类型和冻结交付设置计算完成；不要根据 AppID、Secret、布尔字段或自己的猜测重新判断交付方式。
+
+- 自动文章：最终 HTML 必须包含全部必需图片，并使用微信素材 URL；交给 Server finalizer 创建公众号草稿。
+- 手动文章：最终 HTML 必须包含全部必需图片，并使用稳定公开的 Anban HTTPS 图片 URL；Studio 一次复制完整图文供用户粘贴到公众号后台。
+- 任一必需图片没有进入最终 HTML 时，保持交付 blocked/partial，不能退化成只交付 Markdown、纯文本或要求用户重新组装图片。
+
 ## Output Contract
 
 Write these file-backed artifacts:
