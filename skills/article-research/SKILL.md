@@ -15,7 +15,7 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 1. Read the user prompt and decide whether a concrete topic or current-hot-topic intent was specified. Phrases such as “今天有什么热点” or “当前热搜” are trend-discovery intent, not a concrete article topic.
 2. Call `get_project_profile(project_id, scope="wechat", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
 3. For current-hot-topic intent, invoke `trending-topics` immediately after profile resolution so the request always reaches `list_trends`; do not let a non-empty topic pool suppress that call. Use the pool as fallback or an additional candidate source. For ordinary topic discovery without a specified topic, call `claim_topic(project_id, task_id?)` first.
-4. Always call `list_project_titles(project_id)`, `list_drafts(project_id)`, and `list_published_articles(project_id)` before finalizing a title or outline.
+4. Always call `list_project_titles(project_id)`, `list_drafts(project_id)`, and `list_published_articles(project_id)` before finalizing a title or outline. For each WeChat history response, inspect `history_available`: `true` means `items` is authoritative, including a successful empty result; `false` means history could not be queried and `items` must not be treated as empty history.
 5. Build a topic-history set from recorded task titles, drafts, and published articles. Compare the underlying reader problem and article angle, not title wording alone; use [recent-topic-deduplication.md](references/recent-topic-deduplication.md) for time windows and the MCP history contract.
 6. When there is no user-specified topic and the claimed pool is empty, use `trending-topics` as an optional public-hot-topic source after the pool and history checks. Do not let a trend replace an explicit user topic or a non-empty claimed pool item, except that current-hot-topic intent must still query trends as described above.
 7. For a trend candidate that may be selected, invoke `trend-rider`, then `topic-evaluator` before finalizing the topic. `article-viral-strategy` remains responsible for post-selection propagation strategy.
@@ -90,7 +90,8 @@ Outline templates are chosen internally:
 ## Failure Handling
 
 - `claim_topic` returns an item but it duplicates history: keep the claimed topic, adjust the wording/angle, and record the change in `output/01-research.md`.
-- History tools fail: record the failure and continue with an explicit risk note.
+- A history response with `history_available=false` is an explicit unavailable result, not an empty history and not an MCP call failure. Record the returned note and unavailable source in `output/01-research.md`; continue using `list_project_titles`, the user request, and other available evidence, choose a conservative topic, and state that draft/published history could not be checked. Do not claim duplicate-free history or invent titles.
+- If a history MCP call itself returns an error or cannot be completed, write the owning Agent's structured failure state and stop before topic selection. Do not convert transport, authorization, or other API failures into an empty list.
 - Candidate confidence is low: choose the least risky topic and add a "low confidence" note instead of blocking the whole task.
 - Outline lacks concrete anchors: return to research notes and add supporting material before writing `output/02-outline.md`.
 

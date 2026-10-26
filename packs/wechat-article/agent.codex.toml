@@ -13,6 +13,8 @@ developer_instructions = """
 
 开始时先读取任务工作区的 AGENTS.md，按其中的六维画像路由读取选题、写作和视觉阶段需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
+开始视觉或交付步骤前，必须调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取返回的 `wechat_delivery_instructions`。这是 Server 根据任务冻结设置计算出的唯一交付判断，必须遵循；不得根据 AppID、Secret 或其他交付字段自行重新判断。指令要求手动复制时，`output/05-article.html` 必须包含正文和全部必需配图，使用稳定公开的 Anban 图片地址，用户一次复制完整图文；不得只交付文字或要求用户重新组装图片。
+
 ## JSON 与失败产物合同
 
 所有声明的 JSON 产物必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。任何失败统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
@@ -68,7 +70,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 - **必须使用 Codex 内置的 MCP 工具调用服务端接口**（如 list_projects、generate_image 等）
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 article-research / content-writing / seo-optimization Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-- **必需 MCP 能力调用不可用或失败**：list_projects、get_project_profile、list_drafts、list_published_articles、list_project_titles、list_resources、get_resource、inspect_article、render_template 或 finalize_task_title 任一调用不可用或失败时，在 output/failure-state.json 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；历史查询失败不得视为没有历史，停止选题和后续阶段；不得切换连接或伪造结果。
+- **必需 MCP 能力调用不可用或失败**：list_projects、get_project_profile、list_drafts、list_published_articles、list_project_titles、list_resources、get_resource、inspect_article、render_template 或 finalize_task_title 任一调用本身不可用或返回错误时，在 output/failure-state.json 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行。例外：list_drafts 或 list_published_articles 成功返回 history_available=false 是明确的历史不可用结果，不是调用失败；按 article-research 的降级规则记录风险后继续。不得把不可用历史当成空历史、切换连接或伪造结果。
 - **交付包格式**：生成版本化 `output/draft.json`，严格使用步骤 10 的 schema。
 - **上传调用**：通过 Server-owned MCP capability upload_image 写入 TaskFile；upload_image 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 output/final-review.md 记录 article_image_upload_failed warning 和 resume_from=image_generation，保留本地图片并继续生成核心 Markdown 与 HTML；视觉失败不得阻止核心 Markdown 与 HTML 继续生成，但 readiness 必须为 blocked。
 - **独立分析调用**：`analyze_image` 必须对每张生成图独立调用；传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续后续已规划的图片生成，但该图不得上传或插入 Markdown/HTML，也不得伪造分析结果；最终 readiness 必须为 `blocked`。
@@ -93,7 +95,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 
 **项目选定后，仅对 $PROJECT_ID 调用以下 API：**
 - get_project_profile（project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID）→ 获取账号定位、受众、风格维度，**以及任务已解析的视觉风格**。提取并记录 $ACCOUNT_POSITIONING（账号定位）、$ACCOUNT_KEYWORDS（领域关键词）、$ACCOUNT_AUDIENCE（目标受众），以及 $VISUAL_STYLE_CONFIGURED（profile 的 `visual_style` 字段，任务级覆盖解析后的视觉风格描述/关键词）、$VISUAL_STYLE_SOURCE（profile 的 `visual_style_source`：task / project），供步骤 6 视觉风格确定使用；同时记录顶层 writer 仅用于选择写作风格资源
-- list_drafts 和 list_published_articles（project_id=$PROJECT_ID）→ 获取已有文章标题，后续选题避开；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功。
+- list_drafts 和 list_published_articles（project_id=$PROJECT_ID）→ 先检查 history_available。为 true 时用 items 作为已查询历史，包括真实空列表；为 false 时记录响应 note，明确该来源不可用且不代表没有历史，然后依 article-research 的保守降级规则继续。MCP 调用本身报错时按必需能力失败写结构化失败态并停止。
 
 **图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio`，取值为 `$EFFECTIVE_ASPECT_RATIO`。
 
@@ -114,7 +116,7 @@ using the article-research skill 结合账号关键词和用户需求搜索热�
 然后创建 output/context-brief.md，作为后续写作、视觉和最终验收的上下文锚点。必须包含：
 - 用户原始需求：逐字记录用户本次提出的主题、角度、限制和明确偏好
 - 项目定位：$ACCOUNT_POSITIONING、$ACCOUNT_KEYWORDS、$ACCOUNT_AUDIENCE
-- 历史避重：从 list_drafts / list_published_articles 中提取相近标题，说明本篇差异化角度
+- 历史避重：仅从 history_available=true 的 list_drafts / list_published_articles 结果提取相近标题并说明差异化角度；为 false 时记录无法核验该来源，依 article-research 的保守降级规则继续，不得把空 items 当成没有历史。
 - 选题理由：为什么该选题符合账号定位、读者需求和当前上下文
 - 章节锚点：为大纲中每个 ## 章节列出至少 1 个上下文锚点（用户需求 / 账号关键词 / 研究结论 / 历史差异点）
 
