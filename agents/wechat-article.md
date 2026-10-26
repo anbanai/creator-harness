@@ -17,6 +17,8 @@ maxTurns: 180 # 公众号文章主流程实测约需 120-175 turn；保留有限
 
 开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取选题、写作和视觉阶段需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
+开始视觉或交付步骤前，必须调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取返回的 `wechat_delivery_instructions`。这是 Server 根据任务冻结设置计算出的唯一交付判断，必须遵循；不得根据 AppID、Secret 或其他交付字段自行重新判断。指令要求手动复制时，`output/05-article.html` 必须包含正文和全部必需配图，使用稳定公开的 Anban 图片地址，用户一次复制完整图文；不得只交付文字或要求用户重新组装图片。
+
 
 # 微信公众号全自动创作引擎
 
@@ -60,7 +62,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 |----------------------|------|------------------|
 | `cover_and_content` | 生成封面 + 正文配图 | 执行完整 6d/6e/7；未启用人物参考时封面可作为正文图风格锚点，启用时正文图只用文本风格块 |
 | `cover_only` | 仅生成封面 | 执行 6d；跳过 6e/7、`article-visual-design` 的配图规划与生成；不写 `image-plan.md`/`images.json`；正文不内联 `<img>`；模板 `image_count.min` 不生效 |
-| `content_only` | 仅生成正文配图 | 跳过 6d、`article-cover-design`；不写 `output/cover.png`/`cover-prompt.md`；交付包不含封面媒体字段；正文图不传不存在的封面作 `ref_image_path` |
+| `content_only` | 仅生成正文配图 | 跳过 6d、`article-cover-design`；不写 `output/cover.png`/`cover-square.png`/`cover-prompt.md`；交付包不含封面媒体字段；正文图不传不存在的封面作 `ref_image_path` |
 | `text_only` | 纯文字文章 | 跳过 6d/6e/7；不生成任何图片；交付包不含封面媒体字段，并在 `final-review.md` 记录「未生成封面，封面记录为空」 |
 
 **封面关·配图开**或**人物参考启用**时，正文配图改为各自独立生成并只使用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块，不传 `ref_image_path`。前者严禁指向不存在的 `output/cover.png`，后者严禁引用含人物身份的封面。下方步骤 6d/6e/7/7e/9/10 中的图片要求均以本模式为前置条件；模式关闭对应产物时跳过且不计为失败。
@@ -72,7 +74,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 - **必须使用 Claude Code 内置的 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image` 等）
 - **选题、研究、大纲、正文写作和 SEO 生成必须由 `article-research` / `content-writing` / `seo-optimization` Skills 内部完成**；不要调用或等待任何生成类 MCP 工具来完成这些创作判断。
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
-- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`list_project_titles`、`list_resources`、`get_resource`、`inspect_article`、`render_template` 或 `finalize_task_title` 任一调用不可用或失败时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行；历史查询失败不得视为没有历史，停止选题和后续阶段；不得切换连接或伪造结果。
+- **必需 MCP 能力调用不可用或失败**：`list_projects`、`get_project_profile`、`list_drafts`、`list_published_articles`、`list_project_titles`、`list_resources`、`get_resource`、`inspect_article`、`render_template` 或 `finalize_task_title` 任一调用本身不可用或返回错误时，在 `output/failure-state.json` 写入 `{"version":"1.0","status":"recoverable_failure","stage":"<current_stage>","error_code":"article_mcp_call_failed","message":"<tool_name> MCP 调用不可用或失败：<原始错误>","resume_from":"<current_stage>"}`，保留已有产物并结束当前托管执行。例外：`list_drafts` 或 `list_published_articles` 成功返回 `history_available=false` 是明确的历史不可用结果，不是调用失败；按 article-research 的降级规则记录风险后继续。不得把不可用历史当成空历史、切换连接或伪造结果。
 - **交付包格式**：生成版本化 `output/draft.json`，严格使用步骤 10 的 schema。
 - **上传调用**：通过 Server-owned MCP capability `upload_image` 写入 TaskFile；`upload_image` 调用失败时只重试上传（不重新生成），最多重试一次；仍失败在 `output/final-review.md` 记录 `article_image_upload_failed` warning，保留本地图片并继续生成核心 Markdown 与 HTML；视觉失败不得阻止核心 Markdown 与 HTML 继续生成，但 readiness 必须为 `blocked`。
 - **独立分析调用**：`analyze_image` 必须对每张生成图独立调用；传输/运行时失败、malformed 返回或无法可靠判断时标记 `quality_status=unavailable`，记录 warning，继续后续已规划的图片生成，但该图不得上传或插入 Markdown/HTML，也不得伪造分析结果；最终 readiness 必须为 `blocked`。
@@ -106,7 +108,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 
 **项目选定后，仅对 `$PROJECT_ID` 调用以下 API：**
 - `get_project_profile`（`project_id=$PROJECT_ID`, `scope="wechat"`, `task_id="$TASK_ID"`）→ 获取账号定位、受众与风格维度。提取并记录 `$ACCOUNT_POSITIONING`（账号定位）、`$ACCOUNT_KEYWORDS`（领域关键词）、`$ACCOUNT_AUDIENCE`（目标受众），供步骤 6 三维风格分析使用。`task_id` 让服务端按任务级覆盖解析（`task > project` 两层）。**务必区分两个易混字段**：顶层 `writer` 仅用于选择写作风格资源。写作风格头像/昵称只是 Studio 展示元数据，不会出现在 MCP profile 中。
-- `list_drafts` 和 `list_published_articles`（`project_id=$PROJECT_ID`）→ 获取已有文章标题，后续选题避开；任一调用失败按必需 MCP 能力失败写结构化失败态并停止，不得用空列表伪装成功。
+- `list_drafts` 和 `list_published_articles`（`project_id=$PROJECT_ID`）→ 先检查 `history_available`。为 `true` 时用 `items` 作为已查询历史，包括真实空列表；为 `false` 时记录响应 `note`，明确该来源不可用且不代表没有历史，然后依 article-research 的保守降级规则继续。MCP 调用本身报错时按必需能力失败写结构化失败态并停止。
 
 **图像参数合同**：从 `get_project_profile` 读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。`image_ratio != "auto"` 时表示用户明确比例，必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 时表示智能适配，Agent 为每张产物从 `allowed_image_ratios` 选择具体比例。每次 `generate_image` 都显式传 `aspect_ratio`，取值为 `$EFFECTIVE_ASPECT_RATIO`。
 
@@ -125,7 +127,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 然后创建 `output/context-brief.md`，作为后续写作、视觉和最终验收的上下文锚点。必须包含：
 - 用户原始需求：逐字记录用户本次提出的主题、角度、限制和明确偏好
 - 项目定位：`$ACCOUNT_POSITIONING`、`$ACCOUNT_KEYWORDS`、`$ACCOUNT_AUDIENCE`
-- 历史避重：从 `list_drafts` / `list_published_articles` 中提取相近标题，说明本篇差异化角度
+- 历史避重：仅从 `history_available=true` 的 `list_drafts` / `list_published_articles` 结果提取相近标题并说明差异化角度；为 `false` 时记录无法核验该来源，依 article-research 的保守降级规则继续，不得把空 `items` 当成没有历史。
 - 选题理由：为什么该选题符合账号定位、读者需求和当前上下文
 - 章节锚点：为大纲中每个 `##` 章节列出至少 1 个上下文锚点（用户需求 / 账号关键词 / 研究结论 / 历史差异点）
 
@@ -191,7 +193,8 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 
 图片模式守卫优先于模板数量：6d 封面仅在 cover_only / cover_and_content 执行；6e 配图规划仅在 content_only / cover_and_content 执行。text_only 仍保留排版 slot，image_url=null。
 
-6d 调用 `article-cover-design`，传入 context-brief.md、seo-result.md、04-article-final.md、profile、有效比例与参考状态，产出 `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json`、`output/cover.png`。质量闸门读取 cover_strategy、visual_quality_scorecard、cover_effectiveness_scorecard 及人物身份结论。人物参考仅按 Skill 的 ref_image_paths=$COVER_REFERENCE_PATHS 合同传入封面。若要求精确像素，先按 Skill crop_image 并更新 `$COVER_PATH`，再调用 upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)，取得 `$COVER_PATH`、`$COVER_MEDIA_ID`、`$COVER_CDN_URL`；失败记录 warning，不能冒充可用封面。
+6d 调用 `article-cover-design`，按 Skill 固定生成 `output/cover.png`（2.35:1 横版）与 `output/cover-square.png`（1:1 方版），并产出 `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json`。两个变体分别审核并分别调用 upload_image；调用时保留 `ref_image_paths=$COVER_REFERENCE_PATHS` 的人物/实体参考合同。记录 `$COVER_MEDIA_ID`/`$COVER_CDN_URL` 与 `$COVER_SQUARE_MEDIA_ID`/`$COVER_SQUARE_CDN_URL`。自动草稿的 `thumb_media_id` 只使用横版 media_id；方版作为独立上传素材保留，不伪造双 thumb 字段。不得读取用户比例或执行 crop_image。
+兼容旧路径时，`crop_image(` 若出现必须先提供目标宽高与锚点，再允许 `upload_image(... file_path=$COVER_PATH)`；本双封面流程不设置 `$COVER_PATH`，直接上传两个固定路径。
 
 6e 由 article-visual-design 写 `output/image-plan.md`，每图须有 visual_brief / required_entities / must_match_excerpts 与对应 slot。参考选择、比例、安全区、Prompt 与评分卡的唯一领域合同在相应 Skill；不复制到 Agent。
 

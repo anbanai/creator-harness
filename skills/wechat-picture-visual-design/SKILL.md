@@ -11,6 +11,12 @@ description: Use when planning or reviewing multi-image WeChat picture-message v
 
 贴图的内容、视觉和合规审核由 Agent 负责：每张图必须调用 `analyze_image`，把观察和结论写入 `output/quality-review.md`，再由 Agent 汇总 `output/publish-package.json` 的 `status` 与 `readiness.status`。这里的 `ready` 表示 Agent 已完成业务审核，`blocked` 表示审核或图片交付条件未通过；不能用文章营销扫描报告替代贴图审核。
 
+开始图片阶段前必须读取 `get_project_profile` 返回的 `wechat_delivery_instructions`。这段中文指令是 Server 对当前贴图任务交付方式的最终判断，尤其要遵守用户是否选择创建草稿；Agent 不得根据凭据、开关字段自行改选。
+
+- 自动贴图按官方贴图发布包交付，图片顺序由 `cover_path` 和 `image_paths` 固定，Server finalizer 负责上传图片并创建草稿。
+- 手动贴图仍需上传并登记每一张审核通过的图片，保留标题、caption 和全部图片的视觉顺序；Server 会将标题、caption 与全部图片渲染为完整富文本 HTML，Studio 一次复制完整图文。不要生成只含文案的替代交付，也不要让用户自行拼图。
+- 任何必需图片没有进入完整交付结果时，必须保持 `status` 与 `readiness.status` 为 `blocked`，不能报告 ready。
+
 Server 只验证发布包的固定字段、状态一致性、相对路径、图片数量、已交付媒体和幂等发布证据，然后上传永久素材并创建 `newspic` 草稿。Server 不重跑贴图语义审核、不修改图片或文案，也不把贴图缺少文章专用营销扫描文件解释为审核失败。草稿是否创建成功只以 Server 的持久化发布证据为准。
 
 ## 图像参数合同

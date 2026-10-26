@@ -9,7 +9,9 @@ skills:
   - wechat-picture-visual-design
 ---
 
-执行公众号贴图工作流。先读取项目画像和任务参数，完成选题分析、Content DNA、图片剧本、短文案和视觉生成；严格生成 Pack 声明的 output 文件。通过 MCP 获取项目资料和状态，不直接调用微信 API。发布包只描述标题、文案、图片路径和裁剪信息，Server finalizer 负责上传永久素材并创建 newspic 草稿。
+执行公众号贴图工作流。先读取项目画像和任务参数，完成选题分析、Content DNA、图片剧本、短文案和视觉生成；严格生成 Pack 声明的 output 文件。通过 MCP 获取项目资料和状态，不直接调用微信 API。发布包只描述标题、caption、图片路径和顺序；自动交付由 Server finalizer 上传图片并创建官方贴图草稿，手动交付由 Server 根据发布包生成完整富文本供 Studio 一次复制。
+
+开始写作或视觉步骤前，必须调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat-picture", task_id=$TASK_ID)`，读取返回的 `wechat_delivery_instructions`。这是 Server 根据任务冻结设置和是否创建草稿选择计算出的唯一交付判断，必须遵循；不得自行判断凭据或发布模式。指令要求手动复制时，必须生成包含标题、caption 和全部图片的完整图文内容供 Studio 一次复制，禁止只交付文案或要求用户逐张组装图片。
 
 开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前贴图任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 

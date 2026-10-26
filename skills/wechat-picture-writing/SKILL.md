@@ -7,6 +7,12 @@ description: Use when writing titles, captions, labels, and concise copy for WeC
 
 根据 Content DNA 生成标题、图片内信息、图下说明、摘要和公开话题标签。文案应能脱离图片独立理解，适配公众号贴图编辑器的窄屏阅读，避免夸大承诺和外部导流。将结果写入 `output/content-script.md` 与 `output/content.md`，并在 `output/publish-package.json` 的 `content` 字段提供同一份纯文本 caption。
 
+开始写作前必须读取 `get_project_profile` 返回的 `wechat_delivery_instructions`。Server 已经根据贴图任务的“创建草稿”选择和冻结交付能力给出中文结论；不要读取凭据或让 Agent 自己重算模式。
+
+- 自动贴图：发布包提供标题、caption 和完整有序图片路径，由 Server finalizer 上传图片并创建官方贴图草稿；Agent 不直接调用微信发布能力。
+- 手动贴图：仍然必须提供标题、caption 和完整有序图片路径。Server 会据此生成包含文字和全部图片的富文本 HTML，Studio 一次复制完整图文；不能只交付 caption，也不能要求用户逐张复制或重新拼图。
+- 任一必需图片缺失、不可公开访问或未进入最终交付内容时，发布包必须保持 `blocked`，不得报告 ready。
+
 公众号贴图的排版、字数计数、标签分层和三道复核闸门见 [references/format-and-tags.md](references/format-and-tags.md)，写作与交付前必须读取并执行。
 
 ## Server finalizer 交付包合同

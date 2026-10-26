@@ -31,6 +31,37 @@ async function trackedTextFiles(): Promise<Array<[string, string]>> {
 }
 
 describe('WeChat draft lifecycle contract', () => {
+  it('distinguishes unavailable WeChat history from a successfully empty history', async () => {
+    const agentPaths = [
+      'agents/wechat-article.md',
+      'agents/wechat-article.toml',
+      'packs/wechat-article/agent.claude.md',
+      'packs/wechat-article/agent.codex.toml',
+      'packs/wechat-article/agent.dsh.yml',
+      'dsh/presets/wechat-article/agent.cordis.yml',
+    ]
+    for (const path of agentPaths) {
+      const text = await readFile(join(root, path), 'utf8')
+      expect(text, path).toContain('history_available=false')
+      expect(text, path).toContain('明确的历史不可用结果')
+      expect(text, path).toContain('不代表没有历史')
+      expect(text, path).toContain('仅从')
+      expect(text, path).toContain('无法核验该来源')
+      expect(text, path).toContain('MCP 调用本身报错')
+    }
+
+    for (const path of [
+      'skills/article-research/SKILL.md',
+      'dsh/presets/wechat-article/skills/article-research/SKILL.md',
+    ]) {
+      const text = await readFile(join(root, path), 'utf8')
+      expect(text, path).toContain('history_available')
+      expect(text, path).toContain('successful empty result')
+      expect(text, path).toContain('explicit unavailable result')
+      expect(text, path).toContain('stop before topic selection')
+    }
+  })
+
   it('accepts completion tags only when both schema and taxonomy are v2', async () => {
     const output = await mkdtemp(join(tmpdir(), 'anban-completion-tags-'))
     const hook = join(root, 'hooks/completion-metadata.sh')

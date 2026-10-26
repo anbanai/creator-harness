@@ -9,6 +9,7 @@
 # 4.2.88
 
 - Refine the viral IP video editor around the Montage runtime contract, add the reusable `viral-ip-editing` Skill, declare portrait-cover support, and register editorial planning/QC artifacts.
+- Fix WeChat article covers to use the official fixed 2.35:1 and 1:1 dual-cover workflow, upload both variants, and use the wide variant for draft creation.
 
 # 4.2.87
 
