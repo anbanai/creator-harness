@@ -77,8 +77,8 @@ from the frozen task inputs and record the decision in `output/cover-plan.md`:
    image ratio. The Montage cover contract remains authoritative: write
    `cover.png`, `cover-plan.md`, `cover-prompt.md`, `cover-quality.json`, and
    the reference-workflow prompt evidence `cover-prompts.md`. Retry in place at
-   `output/cover.png`; if a provider or helper creates a temporary
-   `output/cover_v2.png`, promote it to `output/cover.png` only after its
+   `output/cover.png`; if a provider or helper creates a temporary v2 cover
+   file, promote it to `output/cover.png` only after its
    independent audit passes, then ensure the delivery manifest and quality
    evidence point to the promoted file. Never leave `cover_v2.png` as a
    competing primary delivery.
