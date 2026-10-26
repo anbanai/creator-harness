@@ -70,7 +70,7 @@ maxTurns: 250
 图片比例 Profile。参考封面流程只能作为分析和提示词指导，最终必须回到
 Montage 的 `cover.png`、`cover-plan.md`、`cover-prompt.md`、
 `cover-prompts.md`、`cover-quality.json`、冻结视频比例和失败合同。重试应覆盖
-`output/cover.png`；若底层产生临时 `output/cover_v2.png`，只有在独立审核通过
+`output/cover.png`；若底层产生临时 v2 封面文件，只有在独立审核通过
 后才提升为 `cover.png`，并同步 delivery manifest 与质量证据，不能留下竞争性的
 `cover_v2.png` 主交付。三种分支都要调用图像审核并确认标题、主题、比例、安全区
 及适用时的人物身份，失败封面不能静默交付。
