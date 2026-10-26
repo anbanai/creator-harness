@@ -22,6 +22,16 @@ snapshots, publication, and external side effects.
   comprehension reason.
 - Prefer user-provided or authorized media. Mark unknown rights and generated
   illustrative media as unresolved; never present generated media as evidence.
+- Treat live-action/video assets and animation/graphic assets as different
+  classes. Live-action video is for real people, products, actions, places,
+  texture, continuity, and evidence-backed visual presence; animation/graphics
+  are for explaining abstractions, relationships, data, process, emphasis, and
+  controlled visual timing. Do not use one class to silently substitute for the
+  other.
+- Treat background music and sound effects as separate sound-design systems.
+  Music shapes the macro emotional arc and perceived energy; effects mark
+  events, interaction, impact, transitions, and micro attention. Neither should
+  compensate for a weak story or unclear speech.
 
 ## Editorial workflow
 
@@ -39,19 +49,78 @@ snapshots, publication, and external side effects.
 5. Create the semantic main cut before decoration. Preserve natural breaths and
    useful pauses, then check every cut for syllable loss, grammar, room-tone
    jumps, and audio continuity.
-6. Add reframing, B-roll, graphics, captions, effects, and music only where
+6. Select or generate the required live-action/video assets, then lock their
+   relation to the spoken edit before building timing-dependent explanatory
+   animation. Use low-cost storyboards or placeholders earlier when they help
+   test the idea; do not spend on final animation before its timing and purpose
+   are known.
+7. Add captions, final animation/graphics, sound effects, and music only where
    they support meaning, attention, or emotional timing. Keep the speaker
    visible for trust-building and key claims.
-7. Review the actual rendered media. Check the first three seconds, promise
+8. Review the actual rendered media. Check the first three seconds, promise
    payoff, semantic continuity, captions, safe areas, frame continuity,
    intelligibility, loudness measurements, playback, and delivery files.
-8. Repair Blocker/Major defects, render again, and recheck the changed area and
+9. Repair Blocker/Major defects, render again, and recheck the changed area and
    its timing/audio neighbors. Do not call a plan or a successful command a
    verified video.
 
 For a plan-only or single-stage request, run only the applicable stages and
 the checks affected by the change. A full production run requires both a plan
 review and a final media review.
+
+## Asset roles and production order
+
+Record the asset class and function for every visual item in `visual_plan.json`.
+At minimum, record `asset_class` (`live_video` or `animation_graphic`),
+`function`, source or generation method, source/target timecodes, rights or
+authenticity status, and whether its timing depends on the locked spoken edit.
+
+- **Live video / B-roll:** use for a real person or product, a physical action,
+  a place, an observable result, texture, atmosphere, or continuity with the
+  speaker. It can carry trust, presence, and evidence only when the source
+  actually supports that claim. Generated video remains illustrative and must
+  not be presented as proof.
+- **Animation / explanatory graphics:** use for concepts that are difficult to
+  show directly: relationships, comparisons, sequences, numbers, mechanisms,
+  maps, diagrams, UI flows, emphasis, or visual metaphors. It should improve
+  comprehension or attention, not add decoration to fill silence, and must not
+  imply real footage or real evidence.
+
+The default production order is: semantic rough cut and spoken timing -> select
+or generate the required live-action/video assets -> integrate and lock their
+coverage and timing -> build final explanatory animation/graphics against that
+locked timing -> captions and final sound mix. This order reduces rework because
+animation duration, labels, entry points, and visual hierarchy can follow the
+actual footage and speech. It is a default, not an absolute ban on parallel
+work: storyboard frames, motion tests, reusable lower-thirds, and other
+timing-independent templates may be prepared earlier, but they remain
+previsualization until the real timing is confirmed.
+
+## Sound-design roles and workflow
+
+Plan `bgm_plan.json` and `sfx_cues.json` separately. They may share the same
+timeline, but they have different narrative jobs, decision criteria, and QC.
+
+- **Background music (macro emotion):** define the intended emotional effect
+  for each section (for example: trust, curiosity, urgency, relief, warmth, or
+  resolve), plus energy curve, tempo/texture, tension and release, entry/exit,
+  repetition, and voice-ducking strategy. Music can support anticipation and
+  continuity across cuts, but it must leave speech intelligible and should be
+  removed or simplified when the topic needs authority, delicacy, or silence.
+- **Sound effects (micro event):** define the triggering visual or spoken event,
+  narrative role (attention, confirmation, impact, transition, interaction, or
+  atmosphere), emotional effect, intensity, duration, sync point, and fade. An
+  effect should make a specific moment clearer or more felt; do not place one on
+  every cut or use loud hits to manufacture excitement.
+
+Use this order for a full mix: lock the clean dialogue and semantic edit; sketch
+the BGM emotional arc early enough to test pacing; lock video and animation
+timing; choose and arrange the final BGM; add SFX against the locked visual
+events; then mix dialogue, BGM, SFX, and room tone together. Review BGM for
+macro emotional continuity and voice masking separately from SFX for sync,
+frequency collisions, transient peaks, and overuse. A change to either audio
+system is a revision to the downstream render and requires the affected review
+and platform-compliance checks.
 
 ## Cover design routing
 

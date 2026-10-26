@@ -1,3 +1,7 @@
+# 4.2.93
+
+- Add the reusable 微信视频号审核 Skill and require its pre-production review gate for the viral IP video editor.
+
 # 4.2.92
 
 - Require the current creation-plan field contract when restoring or staging plans; do not retain undeclared legacy fields.
