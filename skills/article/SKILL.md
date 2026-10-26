@@ -156,7 +156,7 @@ render_template(
 
 ### 六维账号画像
 
-`get_project_profile` 成功返回 `account_profile` 时，按以下链路消费已确认画像：`identity` 用于项目定位和选题，`style` 用于写作、视觉和语气，`audience` 用于受众匹配与表达深度，`platforms` 只用于公众号格式、发布和适配，`preferences` 是全流程硬约束，`memory` 用于复用经验和归因沉淀。画像缺失或未确认时只提示补建画像，不把推断当成诊断结论。
+`get_project_profile` 成功返回 `account_profile` 时，按以下链路消费已保存画像，不受历史 draft/confirmed 状态限制：`identity` 用于项目定位和选题，`style` 用于写作、视觉和语气，`audience` 用于受众匹配与表达深度，`platforms` 只用于公众号格式、发布和适配，`preferences` 是全流程硬约束，`memory` 用于复用经验和归因沉淀。保留原有来源标签、证据和置信度，不把推断升级为事实。画像缺失时只提示补建画像，不把推断当成诊断结论。
 
 - **必须使用 MCP 工具调用服务端接口**（如 `list_projects`、`generate_image`、`render_template` 等）
 - **禁止编写 JavaScript/Node.js/Python 脚本或创建自定义 HTTP 客户端来调用 MCP 接口**
