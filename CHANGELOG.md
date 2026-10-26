@@ -1,3 +1,7 @@
+# 4.2.88
+
+- Fix WeChat article covers to use the official fixed 2.35:1 and 1:1 dual-cover workflow, upload both variants, and use the wide variant for draft creation.
+
 # 4.2.87
 
 - Make task `AGENTS.md` the single six-dimension profile router; remove the redundant `project-profile-context` Skill and direct Agent preload paths.

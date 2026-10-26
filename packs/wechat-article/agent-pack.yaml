@@ -38,7 +38,7 @@ artifacts:
   - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
   - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown, required: false}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
-  - {role: cover_exact, path: output/cover-exact.png, mime_type: image/png, required: false}
+  - {role: cover_square, path: output/cover-square.png, mime_type: image/png, required: false}
   - {role: portrait_failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
   - {role: cover_review, path: output/cover-quality.json, mime_type: application/json, required: false}
   - {role: images, path: output/images.json, mime_type: application/json, required: false}

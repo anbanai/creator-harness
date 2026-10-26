@@ -26,13 +26,12 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 - 人物参考说明见 [references/portrait-reference.md](references/portrait-reference.md)；启用人物封面时以共用调用合同为准。
 - 生成前准备审核、生成后验收时读 [references/quality-gate.md](references/quality-gate.md)。
 - 需要判断场景分支和失败边界时读 [references/examples.md](references/examples.md)。
+- 执行双封面规格或解释微信上传边界时读 [references/wechat-cover-spec.md](references/wechat-cover-spec.md)。
 
 ## 输入合同
 
 先调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取：
 
-- `resolved_profile.image_ratio`
-- `resolved_profile.allowed_image_ratios`
 - `resolved_profile.visual_style`
 - `resolved_profile.project_portrait_reference_path`
 - `resolved_profile.task_reference_path`
@@ -40,13 +39,20 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 同时读取 `output/context-brief.md`、`output/seo-result.md`、digest、`output/04-article-final.md`。不得从 writer YAML 推导视觉风格。
 
-### 图像参数合同：比例与展示派生
+### 图像参数合同：固定双封面例外
 
-- 用户明确比例：当 `resolved_profile.image_ratio != "auto"` 时，原样作为 `$EFFECTIVE_ASPECT_RATIO`。
-- 智能适配：当 `resolved_profile.image_ratio == "auto"` 时，从 `resolved_profile.allowed_image_ratios` 选择具体比例；公众号封面优先选择支持的最宽横向比例，通常为 `16:9`。
-- 每次 `generate_image` 都必须显式传 `aspect_ratio`，取值为 `$EFFECTIVE_ASPECT_RATIO`。`image_type="cover"` 不隐式决定比例或裁剪。
-- 公众号分享卡可能中心裁成 1:1。关键人脸、主体、短文字必须位于“以画面高度为边长”的中心正方形安全区，并避开底部 20%。
-- 默认上传生成结果，不宣称“零裁剪”。只有用户明确要求精确像素成品时，才调用 `crop_image(`，显式提供目标宽高与锚点，并把裁后文件作为 `$COVER_PATH`。
+`resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios` 仍随 Profile 返回并记录到审核上下文，但公众号文章封面不采用“用户明确比例”或“智能适配”分支；它们不能覆盖本 Skill 的固定双封面规则。每次 `generate_image` 都必须显式传 `aspect_ratio`。
+
+每篇文章固定生成两种官方展示比例，不读取、不继承项目或任务的图片比例，不询问用户选择，也不允许模板、人物分支或参考图覆盖：
+
+| 版本 | 比例 | 路径 | 用途 |
+| --- | --- | --- | --- |
+| 横版封面 | `2.35:1` | `output/cover.png` | 公众号文章主封面，作为草稿 `thumb_media_id` 来源 |
+| 方形封面 | `1:1` | `output/cover-square.png` | 方形封面展示素材 |
+
+两张图分别按目标比例独立构图和生成，不从另一张图裁切或拉伸；不得改变比例、按能力范围替换比例或将用户设置作为例外。关键主体和必要文字在两种构图中都须完整可读，并避开底部 20%。`crop_image(` 仅用于其他任务的显式目标宽高与锚点合同，本双封面流程不得调用裁剪来替代任一版本。
+
+`upload_image` 可分别上传两张审核通过的图片，记录各自返回的 `media_id` 与 URL。公众号文章草稿的 `thumb_media_id` 字段只接受一个素材 ID；自动草稿固定引用横版图，方形图上传为独立素材，不得声称它已同时绑定到同一草稿。不得把两个 ID 塞进 `thumb_media_id` 或伪造草稿 API 字段。
 
 ### 人物图与风格图
 
@@ -78,7 +84,7 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 按 `references/art-direction.md` 写出 8 要素视觉导演合同：
 
-1. 比例与展示派生
+1. 固定双比例构图（`2.35:1` 横版与 `1:1` 方版）
 2. 标题策略
 3. 人物或主体
 4. 背景与场景
@@ -110,6 +116,8 @@ description: 'Use for a WeChat Official Account article cover when explicitly re
 
 ### 5. 生成、审核、上传
 
+横版和方版分别生成，各自使用同一已选概念和呈现方式，但按比例重排主体、文字和留白，不复用同一构图坐标。
+
 ```
 generate_image(
   project_id=$PROJECT_ID,
@@ -117,46 +125,52 @@ generate_image(
   prompt=<output/cover-prompt.md 中的最终 prompt>,
   image_type="cover",
   output_path="output/cover.png",
-  aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
+  aspect_ratio="2.35:1",
   ref_image_paths=$COVER_REFERENCE_PATHS
 )
 ```
 
-默认 `$COVER_PATH="output/cover.png"`。仅在用户明确要求目标像素时执行：
+随后独立生成方版：
 
 ```
-crop_image(
+generate_image(
+	project_id=$PROJECT_ID,
   task_id=$TASK_ID,
-  input_path="output/cover.png",
-  output_path="output/cover-exact.png",
-  target_width=<目标宽度>,
-  target_height=<目标高度>,
-  anchor="center"
+	prompt=<按方版重排后的 prompt>,
+	image_type="cover",
+	output_path="output/cover-square.png",
+	aspect_ratio="1:1",
+	ref_image_paths=$COVER_REFERENCE_PATHS
 )
 ```
 
-裁剪后令 `$COVER_PATH="output/cover-exact.png"`，并重新验收安全区。然后独立审核：
+分别调用 `analyze_image` 审核 `output/cover.png` 与 `output/cover-square.png`，并把两份比例、尺寸、审核结果写入 `output/cover-quality.json`。任一变体未通过时，只针对该变体按有界迭代规则重新生成和审核；不得用另一比例替代。
 
 ```
 analyze_image(
   project_id=$PROJECT_ID,
   task_id=$TASK_ID,
-  file_path=$COVER_PATH,
+  file_path="output/cover.png",
   prompt=<references/quality-gate.md 的审核 prompt>
 )
 ```
 
-Agent 必须结合可见内容作最终判断，并把结构化结果写入 `output/cover-quality.json`。全部通过后才调用：
+全部通过后分别上传：
 
 ```
 upload_image(
   project_id=$PROJECT_ID,
   task_id=$TASK_ID,
-  file_path=$COVER_PATH
+	file_path="output/cover.png"
+)
+upload_image(
+	project_id=$PROJECT_ID,
+	task_id=$TASK_ID,
+	file_path="output/cover-square.png"
 )
 ```
 
-上传失败只重试上传，不重新生成。
+Agent 结合可见内容分别作最终判断。将两次上传结果分别记录为 `wide` 与 `square`；横版的路径和 `media_id` 是草稿主封面输入。上传失败只重试对应上传，不重新生成；任一变体未成功上传时封面交付标为 warning/blocked，不得谎报双封面齐备。
 
 ### 6. 有界迭代与失败
 
@@ -168,9 +182,11 @@ upload_image(
 
 封面审核 JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。生成、裁剪、审核或上传失败时保留已有文件并写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`；上传状态仍以 Server 返回为准。
 
-- `output/cover-plan.md` 已记录 8 要素导演合同和参考图角色。
+- `output/cover.png` 与 `output/cover-square.png` 均存在，实际比例分别为 `2.35:1` 与 `1:1`。
+- 两个变体均有独立审核结果和上传记录；横版是草稿主封面素材。
+- `output/cover-plan.md` 已记录 8 要素导演合同、两种比例的构图调整和参考图角色。
 - `output/cover-plan.md` 已记录概念与呈现方式的独立选择；文字策略与呈现方式相符。
-- `output/cover-prompt.md` 已记录最终 prompt、比例来源、裁剪决定、`required_entities` 和参考路径用途。
+- `output/cover-prompt.md` 已记录两种固定比例的最终 prompt、`required_entities` 和参考路径用途；未设置比例选择或裁剪决定。
 - `output/cover-quality.json` 中两个评分卡均通过；人物启用时身份字段也通过。
 - `cover_effectiveness_scorecard.overall_pass=true` 且 `visual_quality_scorecard.overall_pass=true`。仅有旧的 6 维视觉评分全为 high 不得通过。
 - `final-review.md` 与 `viral-audit.md` 读取本次结果；缺 `viral-audit.md` 时质量验收不通过。

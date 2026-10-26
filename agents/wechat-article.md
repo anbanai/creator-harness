@@ -60,7 +60,7 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 |----------------------|------|------------------|
 | `cover_and_content` | 生成封面 + 正文配图 | 执行完整 6d/6e/7；未启用人物参考时封面可作为正文图风格锚点，启用时正文图只用文本风格块 |
 | `cover_only` | 仅生成封面 | 执行 6d；跳过 6e/7、`article-visual-design` 的配图规划与生成；不写 `image-plan.md`/`images.json`；正文不内联 `<img>`；模板 `image_count.min` 不生效 |
-| `content_only` | 仅生成正文配图 | 跳过 6d、`article-cover-design`；不写 `output/cover.png`/`cover-prompt.md`；交付包不含封面媒体字段；正文图不传不存在的封面作 `ref_image_path` |
+| `content_only` | 仅生成正文配图 | 跳过 6d、`article-cover-design`；不写 `output/cover.png`/`cover-square.png`/`cover-prompt.md`；交付包不含封面媒体字段；正文图不传不存在的封面作 `ref_image_path` |
 | `text_only` | 纯文字文章 | 跳过 6d/6e/7；不生成任何图片；交付包不含封面媒体字段，并在 `final-review.md` 记录「未生成封面，封面记录为空」 |
 
 **封面关·配图开**或**人物参考启用**时，正文配图改为各自独立生成并只使用 `$VISUAL_STYLE` / `$COLOR_PALETTE` 文本风格块，不传 `ref_image_path`。前者严禁指向不存在的 `output/cover.png`，后者严禁引用含人物身份的封面。下方步骤 6d/6e/7/7e/9/10 中的图片要求均以本模式为前置条件；模式关闭对应产物时跳过且不计为失败。
@@ -191,7 +191,8 @@ Agent 负责阶段、文件与交付判断；article-research 负责选题，tre
 
 图片模式守卫优先于模板数量：6d 封面仅在 cover_only / cover_and_content 执行；6e 配图规划仅在 content_only / cover_and_content 执行。text_only 仍保留排版 slot，image_url=null。
 
-6d 调用 `article-cover-design`，传入 context-brief.md、seo-result.md、04-article-final.md、profile、有效比例与参考状态，产出 `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json`、`output/cover.png`。质量闸门读取 cover_strategy、visual_quality_scorecard、cover_effectiveness_scorecard 及人物身份结论。人物参考仅按 Skill 的 ref_image_paths=$COVER_REFERENCE_PATHS 合同传入封面。若要求精确像素，先按 Skill crop_image 并更新 `$COVER_PATH`，再调用 upload_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=$COVER_PATH)，取得 `$COVER_PATH`、`$COVER_MEDIA_ID`、`$COVER_CDN_URL`；失败记录 warning，不能冒充可用封面。
+6d 调用 `article-cover-design`，按 Skill 固定生成 `output/cover.png`（2.35:1 横版）与 `output/cover-square.png`（1:1 方版），并产出 `output/cover-plan.md`、`output/cover-prompt.md`、`output/cover-quality.json`。两个变体分别审核并分别调用 upload_image；调用时保留 `ref_image_paths=$COVER_REFERENCE_PATHS` 的人物/实体参考合同。记录 `$COVER_MEDIA_ID`/`$COVER_CDN_URL` 与 `$COVER_SQUARE_MEDIA_ID`/`$COVER_SQUARE_CDN_URL`。自动草稿的 `thumb_media_id` 只使用横版 media_id；方版作为独立上传素材保留，不伪造双 thumb 字段。不得读取用户比例或执行 crop_image。
+兼容旧路径时，`crop_image(` 若出现必须先提供目标宽高与锚点，再允许 `upload_image(... file_path=$COVER_PATH)`；本双封面流程不设置 `$COVER_PATH`，直接上传两个固定路径。
 
 6e 由 article-visual-design 写 `output/image-plan.md`，每图须有 visual_brief / required_entities / must_match_excerpts 与对应 slot。参考选择、比例、安全区、Prompt 与评分卡的唯一领域合同在相应 Skill；不复制到 Agent。
 
