@@ -1,3 +1,7 @@
+# 4.2.92
+
+- Require the current creation-plan field contract when restoring or staging plans; do not retain undeclared legacy fields.
+
 # 4.2.91
 
 - Structure interactive creation around goal, topic, angle, and expression form; inherit confirmed project profile dimensions and use dynamic question choices.
