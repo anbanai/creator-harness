@@ -65,11 +65,15 @@ maxTurns: 250
 `portrait-cover-design/references/platform-integration.md` 的 Montage 规则。
 如果任务提供参考封面或明确要求复刻，才读取
 `short-video-cover/SKILL.md` 及其相关 references，先分析参考图的视觉逻辑，
-再为当前标题重新构图。参考封面流程只能作为分析和提示词指导，最终必须
-回到 Montage 的 `cover.png`、`cover-plan.md`、`cover-prompt.md`、
-`cover-quality.json`、冻结视频比例和失败合同；不输出竞争性的
-`cover_v2.png` 主交付。三种分支都要调用图像审核并确认标题、主题、比例、
-安全区及适用时的人物身份，失败封面不能静默交付。
+再为当前标题重新构图。参考封面分支跳过该 Skill 自己的 Profile 初始化，
+所有 `generate_image` 都使用已经冻结的 `$VIDEO_ASPECT_RATIO`，不再调用第二个
+图片比例 Profile。参考封面流程只能作为分析和提示词指导，最终必须回到
+Montage 的 `cover.png`、`cover-plan.md`、`cover-prompt.md`、
+`cover-prompts.md`、`cover-quality.json`、冻结视频比例和失败合同。重试应覆盖
+`output/cover.png`；若底层产生临时 `output/cover_v2.png`，只有在独立审核通过
+后才提升为 `cover.png`，并同步 delivery manifest 与质量证据，不能留下竞争性的
+`cover_v2.png` 主交付。三种分支都要调用图像审核并确认标题、主题、比例、安全区
+及适用时的人物身份，失败封面不能静默交付。
 
 ## 产物与状态
 

@@ -1,3 +1,7 @@
+# 4.2.90
+
+- Align reference-cover retries with the Montage primary-cover contract, frozen video ratio, and prompt evidence manifest.
+
 # 4.2.89
 
 - Route viral IP video covers through the existing Montage, portrait, and conditional reference-cover workflows, with a single verified Montage delivery contract.

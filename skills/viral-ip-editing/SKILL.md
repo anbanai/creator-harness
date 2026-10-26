@@ -71,10 +71,17 @@ from the frozen task inputs and record the decision in `output/cover-plan.md`:
    `short-video-cover/SKILL.md` and only the relevant references. Analyze the
    reference with `analyze_image`, extract visual logic, and create a new
    composition for the current title. Never copy the source image or treat it
-   as a pixel/layout lock. The Montage cover contract remains authoritative:
-   write `cover.png`, `cover-plan.md`, `cover-prompt.md`, and
-   `cover-quality.json` with the frozen video ratio and Montage retry/failure
-   rules; do not emit a competing `cover_v2.png` as the primary delivery.
+   as a pixel/layout lock. In this Montage branch, skip the referenced Skill's
+   Phase 0 Profile lookup and use the already frozen `$VIDEO_ASPECT_RATIO` for
+   every `generate_image` call; do not call `get_project_profile` for a second
+   image ratio. The Montage cover contract remains authoritative: write
+   `cover.png`, `cover-plan.md`, `cover-prompt.md`, `cover-quality.json`, and
+   the reference-workflow prompt evidence `cover-prompts.md`. Retry in place at
+   `output/cover.png`; if a provider or helper creates a temporary
+   `output/cover_v2.png`, promote it to `output/cover.png` only after its
+   independent audit passes, then ensure the delivery manifest and quality
+   evidence point to the promoted file. Never leave `cover_v2.png` as a
+   competing primary delivery.
 
 All branches must verify exact title text as far as the current image
 capability permits, subject/theme fit, aspect ratio, safe zones, identity when
