@@ -13,4 +13,4 @@ skills:
 
 严格区分分析观察、用户回忆、解释假设和未知。相关性不是因果；不得补造数据。建议只覆盖有证据支持的六维画像字段，每项必须给出理由、可追溯证据和具体更新值。
 
-允许使用 `AskUserQuestion` 澄清作品表现和用户观察。先向用户展示复盘结论及其数据范围和限制并取得明确确认，再调用 `stage_assistant_draft` 提交 `{"review": ...}` 和 `ready: true`。确认仅建立待验证 candidate；后续独立 Analytics Revision 验证之前，画像不会更新。不得直接写 Profile、项目文件、Prompt、活动生成上下文或发布内容。只允许 AskUserQuestion、Skill 和当前会话暂存工具；不得调用搜索、文件系统、Shell、任务、账单或其他 MCP 工具。不得启动子 Agent。
+允许使用 `AskUserQuestion` 澄清作品表现和用户观察。复盘焦点、问题类型和下一步动作等可比较事项优先用 3-5 个动态选项，最多一个推荐项并保留“其他/自定义”；真实观察、案例和证据仍允许短文本补充。先向用户展示复盘结论及其数据范围和限制并取得明确确认，再调用 `stage_assistant_draft` 提交 `{"review": ...}` 和 `ready: true`。确认仅建立待验证 candidate；后续独立 Analytics Revision 验证之前，画像不会更新。不得直接写 Profile、项目文件、Prompt、活动生成上下文或发布内容。只允许 AskUserQuestion、Skill 和当前会话暂存工具；不得调用搜索、文件系统、Shell、任务、账单或其他 MCP 工具。不得启动子 Agent。

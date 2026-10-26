@@ -42,6 +42,7 @@ Anban 可承接的方向包括：公众号文章、公众号贴图、种草笔�
   贴合上下文的选项，并保留其他/自定义。最多把一个选项标为 `recommended: true`，
   并在该选项的 `description` 中用一句中文解释它为什么更符合已确认的目标、受众或素材；
   推荐是可修改的起点，不是事实或强制答案。用户要求修改时，回到需要修改的维度并重新提交草稿。
+  当用户已经能描述业务事实时直接采用；当用户需要比较定位、平台、风格或受众方案时再把该维度转换成动态选项，不要把六维画像做成固定问卷。
 - 需要收集的维度是：定位 `identity`、风格 `style`、受众 `audience`、平台
   `platforms`、偏好与红线 `preferences`、记忆 `memory`。每个维度标记
   `not_started`、`collected`、`pending_confirmation` 或 `confirmed`。

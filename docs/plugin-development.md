@@ -212,7 +212,7 @@ Classify a Skill before editing it:
 - Add Skills under `skills/<name>/SKILL.md`; move long details into direct
   `references/` files.
 - Treat `packs/*/agent.dsh.yml` as a Pack source and `dsh/presets/` as generated
-  output. Only Article and Seednote currently declare `dsh_source`; do not edit
+  output. Packs with a DSH Agent adapter declare `dsh_source`; do not edit
   generated Presets by hand.
 - Keep DSH credentials in the official credential adapter, configure only
   `ANBAN_API_KEY`, and keep the MCP endpoint fixed at

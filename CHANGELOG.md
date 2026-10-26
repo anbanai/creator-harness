@@ -1,3 +1,9 @@
+# 4.2.91
+
+- Structure interactive creation around goal, topic, angle, and expression form; inherit confirmed project profile dimensions and use dynamic question choices.
+- Add source labels for inherited profile context and per-creation overrides, and require the core creation decisions before a plan is ready.
+- Keep profile and postmortem interviews context-driven while favoring selectable options for comparable decisions.
+
 # 4.2.90
 
 - Align reference-cover retries with the Montage primary-cover contract, frozen video ratio, and prompt evidence manifest.
