@@ -96,6 +96,11 @@ work: storyboard frames, motion tests, reusable lower-thirds, and other
 timing-independent templates may be prepared earlier, but they remain
 previsualization until the real timing is confirmed.
 
+For an opening that needs visual support, identify one clear focal point in the
+first moment (for example, the speaker's expression, a relevant object, or a
+meaningful contrast) so the eye knows where to land. Use it only when it helps
+the hook; avoid unrelated highlights or several competing focal points.
+
 ## Sound-design roles and workflow
 
 Plan `bgm_plan.json` and `sfx_cues.json` separately. They may share the same
@@ -107,6 +112,15 @@ timeline, but they have different narrative jobs, decision criteria, and QC.
   repetition, and voice-ducking strategy. Music can support anticipation and
   continuity across cuts, but it must leave speech intelligible and should be
   removed or simplified when the topic needs authority, delicacy, or silence.
+- **Optional beat map:** when the edit intentionally uses a music-led reveal or
+  transition, analyze the actual candidate track before locking timing-dependent
+  animation. Record its estimated BPM, meter or phrase boundaries, and only a
+  few useful downbeats/hits with timestamps in `bgm_plan.json`; verify automated
+  estimates by listening when possible, since half/double-time readings are
+  common. Use those anchors where they strengthen meaning or emotional release.
+  Do not force every cut, caption, or sound effect onto a beat, and do not delay
+  speech or essential context to chase synchronization. If no reliable analyzer
+  is available, mark anchors by listening or omit the beat map.
 - **Sound effects (micro event):** define the triggering visual or spoken event,
   narrative role (attention, confirmation, impact, transition, interaction, or
   atmosphere), emotional effect, intensity, duration, sync point, and fade. An
@@ -114,13 +128,24 @@ timeline, but they have different narrative jobs, decision criteria, and QC.
   every cut or use loud hits to manufacture excitement.
 
 Use this order for a full mix: lock the clean dialogue and semantic edit; sketch
-the BGM emotional arc early enough to test pacing; lock video and animation
-timing; choose and arrange the final BGM; add SFX against the locked visual
-events; then mix dialogue, BGM, SFX, and room tone together. Review BGM for
-macro emotional continuity and voice masking separately from SFX for sync,
-frequency collisions, transient peaks, and overuse. A change to either audio
-system is a revision to the downstream render and requires the affected review
-and platform-compliance checks.
+the BGM emotional arc early enough to test pacing; if beat-led timing is part of
+the concept, select and map the candidate track before finalizing dependent
+visual timing; lock video and animation timing; arrange the final BGM; add SFX
+against the locked visual events; then mix dialogue, BGM, SFX, and room tone
+together. Review BGM for macro emotional continuity and voice masking separately
+from SFX for sync, frequency collisions, transient peaks, and overuse. A change
+to either audio system is a revision to the downstream render and requires the
+affected review and platform-compliance checks.
+
+For a strong music hit, a caption or graphic may reveal a thought in two stages
+(setup, then completion) when the sentence remains easy to understand. Keep the
+full meaning visible long enough to read, and never withhold a negation,
+qualification, safety note, or compliance-relevant information for suspense.
+
+Close by delivering the promised value. When the topic supports genuine
+discussion, an optional ending question may invite a specific answer grounded
+in the viewer's experience or judgment. Avoid generic engagement bait or a
+question that exists only to solicit comments.
 
 ## Cover design routing
 

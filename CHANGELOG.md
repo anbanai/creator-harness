@@ -1,3 +1,7 @@
+# 4.2.94
+
+- Refine the viral IP video editing workflow with optional music beat anchors, clearer opening focal points, semantically motivated transitions, staged reveals that preserve meaning, and genuine audience questions.
+
 # 4.2.93
 
 - Add the reusable 微信视频号审核 Skill and require its pre-production review gate for the viral IP video editor.
