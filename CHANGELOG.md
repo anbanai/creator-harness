@@ -1,3 +1,7 @@
+# 4.2.95
+
+- Add a fact-grounded process and category explainer mode to the viral IP video editor.
+
 # 4.2.94
 
 - Align video review Skill routing, viral IP workspace and cover failure contracts, and generated Agent Pack catalog.
