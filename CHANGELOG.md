@@ -1,3 +1,7 @@
+# 4.2.94
+
+- Align video review Skill routing, viral IP workspace and cover failure contracts, and generated Agent Pack catalog.
+
 # 4.2.93
 
 - Add the reusable 微信视频号审核 Skill and require its pre-production review gate for the viral IP video editor.
