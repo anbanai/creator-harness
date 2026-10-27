@@ -51,6 +51,9 @@ artifacts:
   - {role: cover_review, path: output/cover-quality.json, mime_type: application/json, required: false}
   - {role: cover_reference_analysis, path: output/reference-analysis.md, mime_type: text/markdown, required: false}
   - {role: cover_reference_input, path: output/input-manifest.md, mime_type: text/markdown, required: false}
+  - {role: cover_reference_image, path: output/reference-cover.png, mime_type: image/png, required: false}
+  - {role: cover_reference_compressed_image, path: output/reference-cover-compressed.png, mime_type: image/png, required: false}
+  - {role: cover_candidate, path: output/cover_v2.png, mime_type: image/png, required: false}
   - {role: cover_reference_review, path: output/cover-review.md, mime_type: text/markdown, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
