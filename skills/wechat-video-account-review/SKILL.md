@@ -1,6 +1,6 @@
 ---
 name: wechat-video-account-review
-description: Review WeChat Channels video plans, scripts, visuals, audio, captions, covers, and finished exports against the official common-violations guide, with a blocking pre-production gate.
+description: Use when reviewing a WeChat Channels video plan or finished export for platform violations and pre-production risks.
 ---
 
 # 微信视频号审核
