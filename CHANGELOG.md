@@ -1,3 +1,7 @@
+# 4.2.96
+
+- Require the viral IP video editor to declare and use the `short-video-cover` Skill for cover workflows across Claude and Codex surfaces.
+
 # 4.2.95
 
 - Add a fact-grounded process and category explainer mode to the viral IP video editor.

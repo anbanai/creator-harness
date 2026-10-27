@@ -8,6 +8,7 @@ skills:
   - content-tagging
   - montage
   - portrait-cover-design
+  - short-video-cover
   - viral-ip-editing
   - wechat-video-account-review
 maxTurns: 250
@@ -33,7 +34,7 @@ Skill 依赖按以下边界使用：
 - 在 Plan Review、重大修订复审和 Final Review 三个节点显式加载并调用 `wechat-video-account-review` Skill（`skills/wechat-video-account-review/SKILL.md`），检查脚本、Hook、标题、字幕、封面、CTA、联系方式、外链、素材权利和平台风险；不能把本 Agent 中的清单文字当作已经完成 Skill 调用。
 - 使用 `montage` 生成 `output/montage-project.json`、运行 OpenMontage、生成封面并写 `output/delivery-manifest.json`。稳定交付文件完成后再执行 `content-tagging`；标签只使用文件证据，Server 所有的字段不由 Agent 覆盖。
 
-封面是完整制作的独立阶段，不是最终交付时的附加文件：Plan Review 先审核封面标题、主题、比例、安全区和人物使用条件；主视频通过 OpenMontage pipeline 生成候选成片后，再按 Montage 合同生成并独立审核封面。默认读取 `montage/references/cover.md`；选择 `cover_portrait=required_project_portrait` 时读取 `portrait-cover-design/references/platform-integration.md` 的 Montage 规则；只有明确提供参考封面或要求复刻时才读取 `short-video-cover` 及其 references。所有封面生成使用已冻结的 `$VIDEO_ASPECT_RATIO`，临时版本只有在独立审核通过后才能提升为 `output/cover.png`，并同步 delivery manifest 与质量证据，失败封面不得静默交付。
+封面是完整制作的独立阶段，不是最终交付时的附加文件：Plan Review 先审核封面标题、主题、比例、安全区和人物使用条件；主视频通过 OpenMontage pipeline 生成候选成片后，再按 Montage 合同生成并独立审核封面。封面阶段必须显式加载并使用 `short-video-cover` Skill 作为短视频封面设计依赖：普通封面仍读取 `montage/references/cover.md`，人物封面仍按 `portrait-cover-design/references/platform-integration.md` 的 Montage 规则；只有明确提供参考封面或要求复刻时，才完整读取 `short-video-cover` 的相关 references，分析视觉逻辑后重新构图。所有封面生成使用已冻结的 `$VIDEO_ASPECT_RATIO`，临时版本只有在独立审核通过后才能提升为 `output/cover.png`，并同步 delivery manifest 与质量证据，失败封面不得静默交付。
 
 Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，状态只能是 `ready|partial|failed`。Montage manifest、视频号审核、内容标签、复用产物、封面审核和失败状态遵循各自合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和可恢复的 `resume_from`。若临时产生 `v2` 封面文件，只有独立审核通过后才能提升为正式封面。
 
@@ -230,7 +231,7 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 
 封面在主视频候选成片生成后、Final Review 前执行。先根据 Plan Review 已通过的标题、主题和平台比例选择唯一封面分支，再调用 `montage` Skill 的封面流程；不得用视频首帧或未经审核的临时图替代封面。
 
-1. 普通封面读取 `montage/references/cover.md`；人物封面读取 `portrait-cover-design/references/platform-integration.md` 的 Montage 规则；参考封面复刻只在任务明确要求时读取 `short-video-cover` 的相关 references。
+1. 所有分支先显式加载 `short-video-cover` Skill；普通封面读取 `montage/references/cover.md`，人物封面读取 `portrait-cover-design/references/platform-integration.md` 的 Montage 规则，参考封面复刻在任务明确要求时再读取 `short-video-cover` 的相关 references。
 2. 所有分支使用冻结的 `$VIDEO_ASPECT_RATIO`，生成 `output/cover.png`、`output/cover-plan.md`、`output/cover-prompt.md` 和 `output/cover-quality.json`；参考封面分支适用时另写 `output/cover-prompts.md`。
 3. 独立检查标题可读性、主题匹配、比例、安全区、人物身份（适用时）、水印和无关元素。未通过时修复并重新审核；失败时同时写 Montage 失败产物，不能静默交付。
 
