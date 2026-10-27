@@ -35,7 +35,7 @@ Skill 依赖按以下边界使用：
 
 封面是完整制作的独立阶段，不是最终交付时的附加文件：Plan Review 先审核封面标题、主题、比例、安全区和人物使用条件；主视频通过 OpenMontage pipeline 生成候选成片后，再按 Montage 合同生成并独立审核封面。默认读取 `montage/references/cover.md`；选择 `cover_portrait=required_project_portrait` 时读取 `portrait-cover-design/references/platform-integration.md` 的 Montage 规则；只有明确提供参考封面或要求复刻时才读取 `short-video-cover` 及其 references。所有封面生成使用已冻结的 `$VIDEO_ASPECT_RATIO`，临时版本只有在独立审核通过后才能提升为 `output/cover.png`，并同步 delivery manifest 与质量证据，失败封面不得静默交付。
 
-Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，状态只能是 `ready|partial|failed`。Montage manifest、视频号审核、内容标签、复用产物、封面审核和失败状态遵循各自合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和可恢复的 `resume_from`。
+Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，状态只能是 `ready|partial|failed`。Montage manifest、视频号审核、内容标签、复用产物、封面审核和失败状态遵循各自合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和可恢复的 `resume_from`。若临时产生 `v2` 封面文件，只有独立审核通过后才能提升为正式封面。
 
 # 真人 IP 短视频剪辑规范
 
@@ -88,11 +88,11 @@ Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`d
 
 `viral-ip-editing` 负责“应该怎样剪”，`montage` 负责“怎样在 OpenMontage 中执行并交付”。主 Agent 不自行实现渲染器，也不把 OpenMontage 当作最后一步的文件导出器；必须把已通过审核的编辑决策完整交给 adapter，再由 OpenMontage 的 pipeline、checkpoint 和 provider registry 执行。
 
-1. 以 `/workspace/openmontage` 为唯一 OpenMontage CWD，读取 `montage-input.json`、`montage-tool-policy.json`、`montage-pipeline-defaults.json`，并调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="montage")`。所有正式文件和可恢复产物通过 Runtime 预创建的 `output/` 写入；不创建 `projects/<project-id>/`、不回退到仓库 checkout，也不修改 `/opt/montage-template`。
+1. 以 `/workspace/openmontage` 为唯一 OpenMontage 工作目录，读取 `montage-input.json`、`montage-tool-policy.json`、`montage-pipeline-defaults.json`，并调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="montage")`。所有正式文件和可恢复产物通过 Runtime 预创建的 `output/` 写入；不创建 `projects/<project-id>/`、不回退到仓库 checkout，也不修改 `/opt/montage-template`。
 2. 按 `任务输入 -> 项目默认 -> 服务端默认` 选择 `pipeline_key`，再在 OpenMontage registry 调用 `provider_menu_summary()` 或等价能力检查；把所选管线的 required/optional tools 与真实 provider capability envelope 对照。不能满足必需能力、预算或安全约束时，写失败产物并停止，不改用未注册的 Provider。
 3. 将编辑计划转译为 OpenMontage 的声明式项目/时间线输入，不改变语义，也不额外发明 Adapter 字段：`edit_decision_list.json` 的源时间段、成片顺序、剪辑操作和理由进入所选管线声明的 timeline/project data；`visual_plan.json` 进入已声明的画面、B-roll、字幕和动效资产/轨道；`captions.srt`、`sfx_cues.json`、`bgm_plan.json` 进入对应字幕与音频轨道；`edit_master_plan.md`、Plan Review 结论、素材哈希、`revision_id` 和验收条件进入 brief、preferences/limits 或 checkpoint/decision log 的对应字段。完整证据仍保留在 `output/`。
 4. 生成 `output/montage-project.json` 时只使用 Montage Skill 声明的稳定字段（包括 `task_id`、`project_id`、`brief`、`pipeline_key`、`assets`、`preferences`、`limits`、`tool_policy`、`pipeline_defaults`、`env_keys`、冻结的 `video_aspect_ratio`、`approval_policy` 和 `output_dir`），并让 adapter 将其映射到当前 OpenMontage project/render data。不得绕过 adapter 直接调用 Provider，也不得把密码或环境变量 secret 写入 manifest、日志或反馈。
-5. 在 OpenMontage 的任务副本中运行上游 pipeline，并保留 checkpoint、timeline、decision log、字幕、音频和 run log。若所选 pipeline 的声明式输入无法表达任何已审核的关键编辑决策，或 pipeline 失败/部分产物不能形成可验证交付，使用 Montage 的 `failure-state.json` 与 `failure-diagnosis.md` 合同停止，`resume_from` 指向可恢复的交接或管线阶段；不得静默丢弃计划后继续渲染。
+5. 在 OpenMontage 的任务副本中运行上游 pipeline，并保留 checkpoint、timeline、decision log、字幕、音频和 run log。若所选 pipeline 的声明式输入无法表达任何已审核的关键编辑决策，或 pipeline 失败/部分产物不能形成可验证交付，使用 Montage 的 `output/failure-state.json` 与 `output/failure-diagnosis.md` 合同停止，`resume_from` 指向可恢复的交接或管线阶段；不得静默丢弃计划后继续渲染。
 6. 每轮渲染沿用同一 `project_id` 并递增 `revision_id`，同步更新计划、项目数据、渲染记录、审核证据和 delivery manifest。仅当实际导出文件完成 Final Review 并通过受影响范围复检后，才将该修订作为正式 `output/final.mp4` 交付；封面遵循 Montage 的独立生成和审核合同。
 
 ## 4. 全流程与质量关卡
