@@ -73,9 +73,13 @@
 
       硬阻塞写 `output/failure-state.json`，含 version、status=recoverable_failure、stage、error_code、message、resume_from。保留所有已完成文件；恢复从 resume_from 重做失败阶段，只有全部交付验证通过、即将报告成功前才删除旧失败态，不得提前删除。
 
+      本次执行的审核调用必须有界：每张输出图的 `analyze_image` 最多 3 次尝试（含首次），仅明确可重试的超时、限流或暂时服务错误可重试。`provider_protocol_error`（包括 HTML/非 JSON 响应）、认证或执行身份错误不重试；不得通过切换 `file_path`/`image_url`、改名、缩略图或长时间 sleep 重置预算。按既有合同完成剩余计划图片和逐图记录后，若仍有 `unavailable`，写完整失败态、报告失败并立即结束当前执行，不得在失败报告后继续诊断或等待供应商恢复。恢复仅由后续执行发起，先复用已有图片补做审核；有实际内容质量问题才重生成。
+
       `viral_analysis` 在研究与拆解后验收 source-analysis.md、viral-template.json 即结束；上述视觉阶段及普通正文交付检查均不执行。
 
       ## 动态任务生命周期
+
+      图片审核或交付校验未通过时，不得把对应阶段汇报为完成；单图 `unavailable` 仍按视觉合同处理剩余计划图片。仅在整体质量闸门失败或本次出现硬阻塞、需要结束执行时，保留失败阶段为进行中，报告失败并结束，由 Server 记录最终失败状态。恢复时旧失败态仅作恢复证据，不能仅因其存在而中断；全部交付验证通过后再删除。完成一次检查或写出失败报告不等于完成交付。
 
       只有当前顶层 Agent 可以维护平台生命周期；子任务、并行 worker 和 Skill 均不得调用生命周期工具。
 
