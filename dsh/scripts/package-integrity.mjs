@@ -1222,7 +1222,7 @@ async function installPackedRuntime(sandboxRoot, tarball, manifest) {
   })
   if (installed.status !== 0) {
     fail(
-      `offline runtime install exited ${installed.status ?? 1}${commandFailureDiagnostic(installed.stderr)}`,
+      `offline runtime install exited ${installed.status ?? 1}${commandFailureDiagnostic(`${installed.stderr}\n${installed.stdout}`)}`,
     )
   }
   return runtimeRoot

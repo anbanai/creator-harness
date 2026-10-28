@@ -1,3 +1,7 @@
+# 4.2.99
+
+- Integrate Auto-Editor 29.3.1 audio-based dead-air detection in the viral IP video editor runtime and preserve reviewed source/composition time mapping in its edit decision list.
+
 # 4.2.98
 
 - Bound Seednote image-review retries, stop after a recorded recoverable failure, and keep delivery stages active until the quality gate passes. Recovery reuses existing images before regeneration.

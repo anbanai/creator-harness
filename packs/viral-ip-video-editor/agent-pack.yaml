@@ -1,5 +1,5 @@
 id: viral-ip-video-editor
-version: 1.0.8
+version: 1.0.9
 kind: plugin
 display_name: 爆款 IP 视频剪辑
 description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核。
@@ -15,7 +15,7 @@ runtime:
   profile: viral-ip-video-editor
   adapter: openmontage
 surfaces: [plugin]
-features: [viral-ip-video-editing, retention-editing, source-assets, montage-runtime]
+features: [viral-ip-video-editing, retention-editing, source-assets, montage-runtime, audio-silence-detection]
 artifacts:
   - {role: project_brief, path: output/project_brief.md, mime_type: text/markdown, required: false}
   - {role: transcript, path: output/transcript.json, mime_type: application/json, required: false}
@@ -31,6 +31,7 @@ artifacts:
   - {role: wechat_video_account_review_final, path: output/wechat-video-account-review-final-*.md, mime_type: text/markdown, required: false}
   - {role: wechat_video_account_review_final_json, path: output/wechat-video-account-review-final-*.json, mime_type: application/json, required: false}
   - {role: edit_decision_list, path: output/edit_decision_list.json, mime_type: application/json, required: false}
+  - {role: auto_editor_silence_cuts, path: output/auto-editor-silence-cuts.xml, mime_type: application/xml, required: false}
   - {role: visual_plan, path: output/visual_plan.json, mime_type: application/json, required: false}
   - {role: sfx_cues, path: output/sfx_cues.json, mime_type: application/json, required: false}
   - {role: bgm_plan, path: output/bgm_plan.json, mime_type: application/json, required: false}
