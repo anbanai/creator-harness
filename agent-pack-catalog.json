@@ -3342,7 +3342,8 @@
           "portrait-cover-design",
           "short-video-cover",
           "viral-ip-editing",
-          "wechat-video-account-review"
+          "wechat-video-account-review",
+          "auto-editor"
         ],
         "max_turns": 250
       },
@@ -3611,7 +3612,7 @@
         }
       ],
       "ui": {},
-      "digest": "88121c3999cb63f2d81cd278e35b30ab9497bde5fb40c0bbee63eab67e0df6a7"
+      "digest": "d19651b7708cd35e2badee010c723180631beb4e01ff5e8df9f6c07c47ee8f1b"
     },
     {
       "id": "wechat-article",
