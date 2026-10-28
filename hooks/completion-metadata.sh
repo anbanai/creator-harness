@@ -5,6 +5,7 @@ output="$workspace/output"; mkdir -p "$output"
 node - "$output" "${ANBAN_TASK_ID:-}" "${ANBAN_EXECUTION_ID:-}" "${ANBAN_TASK_TYPE:-}" <<'JS'
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const [output,taskId,executionId,taskType]=process.argv.slice(2), out=path.join(output,'completion-metadata.json');
+if(taskType==='seednote'&&fs.lstatSync(path.join(output,'failure-state.json'),{throwIfNoEntry:false}))process.exit(0);
 const hash=v=>crypto.createHash('sha256').update(v).digest('hex');
 const files=fs.readdirSync(output,{withFileTypes:true}).filter(e=>e.isFile()&&e.name!=='completion-metadata.json').map(e=>e.name).sort();
 const artifacts=files.map(name=>({file:`output/${name}`,sha256:hash(fs.readFileSync(path.join(output,name)))}));

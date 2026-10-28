@@ -1,3 +1,8 @@
+# 4.2.98
+
+- Bound Seednote image-review retries, stop after a recorded recoverable failure, and keep delivery stages active until the quality gate passes. Recovery reuses existing images before regeneration.
+- Skip successful completion metadata while a Seednote failure record remains.
+
 # 4.2.97
 
 - Add an evidence-aware engagement framework for WeChat picture-message copy: map one content task to scene empathy, grounded lists, reasoned reframing, or everyday-detail empathy without promising reach or manufacturing interaction.
