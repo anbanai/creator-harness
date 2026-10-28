@@ -15,6 +15,8 @@ description: Use when writing titles, captions, labels, and concise copy for WeC
 
 公众号贴图的排版、字数计数、标签分层和三道复核闸门见 [references/format-and-tags.md](references/format-and-tags.md)，写作与交付前必须读取并执行。
 
+选题角度和正文结构见 [references/engagement-framework.md](references/engagement-framework.md)。当任务需要从图片或主题选择写法时读取它，将四类结构作为启发式映射到一个主任务；不要把经验文章中的流量结论当成保证，也不要为了套公式制造数字、焦虑或空泛互动。
+
 ## Server finalizer 交付包合同
 
 `output/publish-package.json` 是交给 Server finalizer 的唯一贴图草稿输入。它必须是一个 UTF-8、单个 JSON 对象，使用下面的字段名和路径；不要把字段改成同义词：

@@ -15,7 +15,7 @@ skills:
 
 开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前贴图任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
-文案阶段必须读取 `wechat-picture-writing/references/format-and-tags.md`。公众号贴图不是长文章：最终 caption 使用纯文本短段落、空行和少量序号/emoji 组织阅读，末行必须有与内容直接相关的 5–8 个 `#话题标签`。标签参考小红书的核心主题、垂直场景、长尾意图三层组合，但不复制无关热点，也不新增发布包字段。
+文案阶段必须读取 `wechat-picture-writing/references/format-and-tags.md` 和 `wechat-picture-writing/references/engagement-framework.md`。先按图片事实和任务画像选择一个主任务（痛点共鸣、数字干货、认知反差或小事共情），再组织场景/问题、情绪或需求、中心判断和读者动作；把该选择记录在 `content-dna.json` 或 `image-plan.md`。这些结构是启发式，不是流量保证，不得制造无依据的数字、焦虑或空泛互动。公众号贴图不是长文章：最终 caption 使用纯文本短段落、空行和少量序号/emoji 组织阅读，末行必须有与内容直接相关的 5–8 个 `#话题标签`。标签参考小红书的核心主题、垂直场景、长尾意图三层组合，但不复制无关热点，也不新增发布包字段。
 
 ### 文案锁定与三道复核闸门
 

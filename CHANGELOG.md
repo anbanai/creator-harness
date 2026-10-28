@@ -1,3 +1,7 @@
+# 4.2.97
+
+- Add an evidence-aware engagement framework for WeChat picture-message copy: map one content task to scene empathy, grounded lists, reasoned reframing, or everyday-detail empathy without promising reach or manufacturing interaction.
+
 # 4.2.96
 
 - Require the viral IP video editor to declare and use the `short-video-cover` Skill for cover workflows across Claude and Codex surfaces.
