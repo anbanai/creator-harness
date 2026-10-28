@@ -1,0 +1,37 @@
+id: auto-video-editor
+version: 1.0.1
+kind: plugin
+display_name: AI 自动口播剪辑
+description: 按固定口播工作流自动完成静音粗剪、语义精剪、动效素材包装和音效 BGM 收尾，并保留可复核的剪辑证据。
+interaction:
+  user_questions: false
+agent:
+  name: auto-video-editor
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [video-edit, content-tagging]
+  max_turns: 220
+bindings: {}
+runtime:
+  profile: auto-video-editor
+  adapter: standard
+surfaces: [plugin]
+features: [automatic-video-editing, talking-head, broll-packaging, sound-design]
+artifacts:
+  - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: false}
+  - {role: edit_decision_list, path: output/edit-decision-list.json, mime_type: application/json, required: false}
+  - {role: edit_decision_list_legacy, path: output/edit_decision_list.json, mime_type: application/json, required: false}
+  - {role: edit_strategy, path: output/edit-strategy.md, mime_type: text/markdown, required: false}
+  - {role: edit_strategy_legacy, path: output/edit_strategy.md, mime_type: text/markdown, required: false}
+  - {role: transcript, path: output/transcript.json, mime_type: application/json, required: false}
+  - {role: visual_plan, path: output/visual_plan.json, mime_type: application/json, required: false}
+  - {role: sfx_cues, path: output/sfx_cues.json, mime_type: application/json, required: false}
+  - {role: bgm_plan, path: output/bgm_plan.json, mime_type: application/json, required: false}
+  - {role: subtitles, path: output/subtitles.srt, mime_type: application/x-subrip, required: false}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: false}
+  - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: false}
+  - {role: quality_evidence_legacy, path: output/quality_evidence.json, mime_type: application/json, required: false}
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: false}
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}

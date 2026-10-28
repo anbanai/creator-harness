@@ -1,3 +1,7 @@
+# 4.2.99
+
+- Add the `auto-video-editor` Agent Pack for zero-interaction talking-head workflows: audio-threshold rough cuts, transcript-aware semantic editing, B-roll/motion packaging, and final sound design review.
+
 # 4.2.98
 
 - Bound Seednote image-review retries, stop after a recorded recoverable failure, and keep delivery stages active until the quality gate passes. Recovery reuses existing images before regeneration.
