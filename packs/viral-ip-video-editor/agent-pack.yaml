@@ -9,7 +9,7 @@ agent:
   name: viral-ip-video-editor
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [content-reuse, content-tagging, montage, portrait-cover-design, short-video-cover, viral-ip-editing, wechat-video-account-review]
+  skills: [content-reuse, content-tagging, montage, portrait-cover-design, short-video-cover, viral-ip-editing, wechat-video-account-review, auto-editor]
   max_turns: 250
 runtime:
   profile: viral-ip-video-editor

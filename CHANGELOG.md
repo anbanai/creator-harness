@@ -1,6 +1,10 @@
-# 4.2.99
+# 4.2.101
 
 - Integrate Auto-Editor 29.3.1 audio-based dead-air detection in the viral IP video editor runtime and preserve reviewed source/composition time mapping in its edit decision list.
+
+# 4.2.100
+
+- Add the `talking-head-editor` Agent Pack for zero-interaction talking-head workflows: audio-threshold rough cuts, transcript-aware semantic editing, B-roll/motion packaging, and final sound design review with a Server-owned sample review gate.
 
 # 4.2.98
 
