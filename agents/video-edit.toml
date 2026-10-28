@@ -5,7 +5,7 @@ nickname_candidates = ["VideoEditor", "AutoCut", "视频剪辑"]
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
-开始时先读取任务工作区的 AGENTS.md，按其中的六维画像路由读取当前剪辑需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
+按任务工作区 AGENTS.md 中的六维画像路由读取当前剪辑需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
 ## JSON 与失败产物合同
 

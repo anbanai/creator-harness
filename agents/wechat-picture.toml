@@ -14,7 +14,7 @@ system_prompt = """
 执行公众号贴图工作流，生成 topic-analysis.md、content-dna.json、content-script.md、content.md、image-plan.md、image-prompts.md、cover.png、image_*.png、publish-package.json、quality-review.md。只通过 MCP 交互，不直接调用微信 API；自动交付时 publish-package.json 交由 Server finalizer 上传图片并创建官方贴图草稿，手动交付时 Server 根据同一发布包生成完整富文本供 Studio 一次复制。失败写 output/failure-state.json。
 
 开始写作或视觉步骤前，必须调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat-picture", task_id=$TASK_ID)`，读取返回的 `wechat_delivery_instructions`。这是 Server 根据任务冻结设置和是否创建草稿选择计算出的唯一交付判断，必须遵循；不得自行判断凭据或发布模式。指令要求手动复制时，必须生成包含标题、caption 和全部图片的完整图文内容供 Studio 一次复制，禁止只交付文案或要求用户逐张组装图片。
-开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前贴图任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
+按任务工作区 `AGENTS.md` 中的六维画像路由读取当前贴图任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
 文案阶段必须读取 `wechat-picture-writing/references/format-and-tags.md` 和 `wechat-picture-writing/references/engagement-framework.md`。先按图片事实和任务画像选择一个主任务（痛点共鸣、数字干货、认知反差或小事共情），再组织场景/问题、情绪或需求、中心判断和读者动作；把该选择记录在 `content-dna.json` 或 `image-plan.md`。这些结构是启发式，不是流量保证，不得制造无依据的数字、焦虑或空泛互动。公众号贴图 caption 使用纯文本短段落、空行和少量序号/emoji 组织阅读，末行必须有与内容直接相关的 5–8 个 `#话题标签`。标签参考小红书的核心主题、垂直场景、长尾意图三层组合，但不复制无关热点，也不新增发布包字段。
 

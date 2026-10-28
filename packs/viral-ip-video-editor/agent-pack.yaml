@@ -1,5 +1,5 @@
 id: viral-ip-video-editor
-version: 1.0.8
+version: 1.0.11
 kind: plugin
 display_name: 爆款 IP 视频剪辑
 description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核。
@@ -22,6 +22,8 @@ artifacts:
   - {role: content_map, path: output/content_map.md, mime_type: text/markdown, required: false}
   - {role: edit_master_plan, path: output/edit_master_plan.md, mime_type: text/markdown, required: false}
   - {role: plan_review, path: output/plan_review.md, mime_type: text/markdown, required: false}
+  - {role: editing_reference_profile, path: output/editing_reference_profile.md, mime_type: text/markdown, required: false}
+  - {role: lookdev_review, path: output/lookdev_review.md, mime_type: text/markdown, required: false}
   - {role: wechat_video_account_review, path: output/wechat-video-account-review.md, mime_type: text/markdown, required: false}
   - {role: wechat_video_account_review_json, path: output/wechat-video-account-review.json, mime_type: application/json, required: false}
   - {role: wechat_video_account_review_plan, path: output/wechat-video-account-review-plan.md, mime_type: text/markdown, required: false}

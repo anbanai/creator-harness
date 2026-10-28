@@ -1,3 +1,7 @@
+# 4.2.99
+
+- Remove redundant Codex Agent instructions to manually read task `AGENTS.md`; keep profile routing and Claude's explicit read requirements.
+
 # 4.2.98
 
 - Bound Seednote image-review retries, stop after a recorded recoverable failure, and keep delivery stages active until the quality gate passes. Recovery reuses existing images before regeneration.

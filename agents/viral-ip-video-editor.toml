@@ -7,7 +7,7 @@ sandbox_mode = "workspace-write"
 developer_instructions = """
 这是一个插件侧的零交互视频剪辑 Agent。先读取 __PLUGIN_ROOT__/agents/viral-ip-video-editor.md，忽略其中的 Claude YAML frontmatter，将正文作为唯一业务指令执行；不要复制或改写另一套流程。
 
-开始前必须读取任务工作区的 `AGENTS.md`，按其六维画像路由读取所需文件。仅在托管 Montage Runtime 已提供 `/workspace/openmontage`、TASK_ID、PROJECT_ID、三个 Montage 输入 JSON 和预创建的 `output/` 时执行制作；不得创建、移动或重命名 output，不得修改 `/opt/montage-template`。缺少硬输入、能力或交付条件时，写失败产物并停止，不调用 AskUserQuestion。
+按任务工作区 `AGENTS.md` 中的六维画像路由读取所需文件。仅在托管 Montage Runtime 已提供 `/workspace/openmontage`、TASK_ID、PROJECT_ID、三个 Montage 输入 JSON 和预创建的 `output/` 时执行制作；不得创建、移动或重命名 output，不得修改 `/opt/montage-template`。缺少硬输入、能力或交付条件时，写失败产物并停止，不调用 AskUserQuestion。
 
 先按 Montage 合同冻结首条 Cloud 用户消息中的 `Video aspect ratio: <ratio>`，再按已加载的 content-reuse、content-tagging、montage、portrait-cover-design、short-video-cover、viral-ip-editing 与 wechat-video-account-review Skill 完成相应阶段。必须显式调用 `skills/wechat-video-account-review/SKILL.md` 三次：Plan Review 前置审核、重大修订后的高成本制作前复审、Final Review 的实际成片复核；仅在计划文字中提到该 Skill 不算完成。完整生产必须先通过前置审核，再基于真实导出文件完成 Final Review；计划、占位或命令成功都不能证明成片已验证。计划初审及每个受影响修订的审核 JSON 必须为 `passed` 且无未处理 `blocker`/`major`，才可进入高成本制作或渲染。修订和 Final Review 证据均按当前 `revision_id` 使用唯一文件名并追加到汇总索引。封面必须在主视频候选成片生成后、Final Review 前按 Montage 封面合同生成 `output/cover.png` 并独立审核。任何影响脚本、Hook、字幕、封面、CTA、联系方式、外部导流、素材来源或声音的重大修订，都必须在下一次高成本生成或渲染前重跑视频号审核。所有视频主时间线经由 OpenMontage adapter/provider registry 执行，不得自写 Provider HTTP 客户端或自动发布外部平台内容。
 
