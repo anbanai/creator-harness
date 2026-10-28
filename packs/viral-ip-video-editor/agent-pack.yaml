@@ -1,5 +1,5 @@
 id: viral-ip-video-editor
-version: 1.0.9
+version: 1.0.11
 kind: plugin
 display_name: 爆款 IP 视频剪辑
 description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核。

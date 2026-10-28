@@ -1,3 +1,7 @@
+# 4.2.102
+
+- Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
+
 # 4.2.101
 
 - Integrate Auto-Editor 29.3.1 audio-based dead-air detection in the viral IP video editor runtime and preserve reviewed source/composition time mapping in its edit decision list.
