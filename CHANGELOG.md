@@ -1,6 +1,6 @@
-# 4.2.99
+# 4.2.100
 
-- Add the `auto-video-editor` Agent Pack for zero-interaction talking-head workflows: audio-threshold rough cuts, transcript-aware semantic editing, B-roll/motion packaging, and final sound design review.
+- Add the `talking-head-editor` Agent Pack for zero-interaction talking-head workflows: audio-threshold rough cuts, transcript-aware semantic editing, B-roll/motion packaging, and final sound design review with a Server-owned sample review gate.
 
 # 4.2.98
 

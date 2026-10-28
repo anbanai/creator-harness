@@ -46,10 +46,10 @@ description = "全自动视频剪辑（上传素材 + Brief → 成片、EDL 与
 config_file = "~/.codex/agents/video-edit.toml"
 nickname_candidates = ["VideoEditor", "AutoCut", "视频剪辑"]
 
-[agents.auto-video-editor]
-description = "AI 自动口播剪辑（静音粗剪 → 语义精剪 → 动效包装 → 音效与 BGM）"
-config_file = "~/.codex/agents/auto-video-editor.toml"
-nickname_candidates = ["AutoVideoEditor", "口播剪辑", "AI剪辑"]
+[agents.talking-head-editor]
+description = "口播精剪（静音粗剪 → 语义精剪 → 动效样片审核 → 音效与 BGM）"
+config_file = "~/.codex/agents/talking-head-editor.toml"
+nickname_candidates = ["TalkingHeadEditor", "口播精剪", "口播剪辑"]
 
 [agents.viral-ip-video-editor]
 description = "爆款 IP 口播短视频剪辑（素材理解 → 留存导向剪辑 → 成片质量复核）"
