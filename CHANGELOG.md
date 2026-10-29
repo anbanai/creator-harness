@@ -1,4 +1,6 @@
-# 4.2.102
+# 4.2.103
+
+- Harden the talking-head-editor contract: add explicit motion-review stages, pin Auto-Editor/HyperFrames runtime versions, require content-tagging as a read-only dependency, and record independent media, subtitle, audio, and visual verification evidence.
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
 

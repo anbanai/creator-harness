@@ -21,16 +21,17 @@ path = "__PLUGIN_ROOT__/skills/video-use/SKILL.md"
 name = "erduo-broll-loop-engineering"
 path = "__PLUGIN_ROOT__/skills/erduo-broll-loop-engineering/SKILL.md"
 
+[[skills.config]]
+name = "content-tagging"
+path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
+
 developer_instructions = """
 先读取 __PLUGIN_ROOT__/agents/talking-head-editor.md 的正文，将其作为唯一业务指令执行；忽略其中的 Claude YAML frontmatter，不复制或改写另一套流程。
 
-全自动执行契约：这是零交互托管任务，不调用 AskUserQuestion，不在文本中向用户提问或等待选择。开始业务执行前调用 set_task_progress_plan 声明 2-7 个稳定的 snake_case 阶段；使用 update_task_progress 报告阶段开始和完成，并在阶段 metadata 中保留 anban_stage_id。缺少能力、密钥、素材或授权时写入结构化失败诊断并停止，不降级为 video-edit。
+Codex 是零交互托管任务：不调用 AskUserQuestion，不调用 Claude TaskCreate/TaskUpdate。存在 TASK_ID 且 MCP 工具可用时调用 set_task_progress_plan/update_task_progress；不可用时继续执行并写 output/progress-state.json 记录降级，不伪造 execution_id。运行时已创建 output/，只验证它存在，不自行创建或改名。
 
-这是一个面向已录制真人口播视频的 managed Agent。执行固定流程：录制预检，auto-editor 粗剪，video-use 语义精剪，erduo-broll-loop-engineering 动效样片，Server 审核闸门，音效/BGM，最终复核。保留原素材只读，不重新拍摄、不合成虚构真人、不自动发布。
+必须预检镜像内 auto-editor 29.3.1 与 HyperFrames 0.8.214。video-use 只允许使用已注册 MCP 能力和 Server 注入凭据；缺失时写 failure-state/failure-diagnosis 并停止，不得改用本地 ASR、uvx/npx 或 video-edit。content-tagging 只读加载，用于最终的 output/content-tags.json。
 
-开始前读取任务工作区 AGENTS.md 并按画像路由读取所需文件。优先使用托管 talking-head-editor 上下文、任务输入和预创建 output；缺少托管输入时只诊断缺项。不得调用 AskUserQuestion，不得接受任意宿主路径或临时 URL，不得自写 Provider HTTP 客户端，不得把密钥写入命令、文件、日志或反馈。
+按正文合同执行：样片阶段交付 output/rough-cut.mp4、output/semantic-cut.mp4、output/transcript.json、output/edit-decision-list.json、output/edit-strategy.md、output/visual-plan.json、output/motion-sample.mp4、output/motion-review.json、output/motion-source-manifest.json 后等待 Server 审核；approve 后才生成 final.mp4、sfx-cues.json、bgm-plan.json、audio-source-manifest.json、content-tags.json、delivery-manifest.json 和 quality-evidence.json。所有路径使用连字符文件名。
 
-只使用 auto-editor、video-use、erduo-broll-loop-engineering 三个 Skill。粗剪和精剪连续执行；动效阶段生成 motion-sample.mp4 后等待 Server 审核，approve 后才加入音效/BGM，revise 只修复反馈镜头。必须保留版本、阈值、候选、accepted/rejected 区间、转录和来源/授权证据；不得降级为 video-edit。
-
-输出和恢复遵循正文合同：edit_decision_list、transcript、edit_strategy、visual_plan、sfx_cues、bgm_plan、质量证据均写入 output/；失败同时写 output/failure-state.json 与 output/failure-diagnosis.md，恢复读取已有证据并从 resume_from 继续。所有 JSON 证据包含 schema_version、status、source、data_at、missing，适用时包含 evidence_paths。命令成功或文件存在不等于质量通过，不保证播放量、完播率或平台推荐。
-"""
+所有 Agent JSON 证据都必须声明 schema_version、status、source、data_at、missing，适用时声明 evidence_paths。失败必须同时写 output/failure-state.json 和 output/failure-diagnosis.md，并包含 version、status="recoverable_failure"、stage、error_code、message、resume_from。"""
