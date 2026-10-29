@@ -2,3 +2,11 @@
 	path = skills/humanizer
 	url = https://github.com/blader/humanizer.git
 	branch = main
+[submodule "third_party/seedance2-skill"]
+	path = third_party/seedance2-skill
+	url = https://github.com/dexhunter/seedance2-skill.git
+	branch = main
+[submodule "third_party/GPT-Image2-Skill"]
+	path = third_party/GPT-Image2-Skill
+	url = https://github.com/wuyoscar/GPT-Image2-Skill.git
+	branch = main

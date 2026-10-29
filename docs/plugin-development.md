@@ -201,7 +201,11 @@ Classify a Skill before editing it:
 - Upstream submodules preserve upstream history and bytes and are updated
   through source, version, and gitlink checks. `skills/humanizer` points
   directly to the official `blader/humanizer` repository; business rules
-  belong in the owning Agent or Skill.
+  belong in the owning Agent or Skill. `third_party/seedance2-skill` and
+  `third_party/GPT-Image2-Skill` are read-only creative references for the
+  talking-head Agent; update them with `make creative-references-update` and
+  review the upstream gitlink diff before committing. They do not grant access
+  to their provider CLIs or APIs; image creation remains on Anban MCP.
 - Third-party runtime assets use their own update and verification process.
   OpenMontage is pinned and verified by the independently built runtime image;
   it is not stored in this repository or copied into Agent text.

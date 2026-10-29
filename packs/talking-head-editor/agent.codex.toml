@@ -32,6 +32,8 @@ path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
 developer_instructions = """
 先读取 __PLUGIN_ROOT__/agents/talking-head-editor.md 的正文，将其作为唯一业务指令执行；忽略其中的 Claude YAML frontmatter，不复制或改写另一套流程。
 
+视觉规划阶段只读参考 __PLUGIN_ROOT__/third_party/seedance2-skill/zh/SKILL.md 与 __PLUGIN_ROOT__/third_party/GPT-Image2-Skill/skills/gpt-image/SKILL.md 中相关方法。图片只能通过 creator MCP generate_image 生成；不得运行上游 CLI/API 或请求 OPENAI_API_KEY。Seedance2 是提示词指南，不是已接入的视频生成工具；只有 MCP 工具列表中确实存在视频生成能力时才能调用。
+
 Codex 是零交互托管任务：不调用 AskUserQuestion，不调用 Claude TaskCreate/TaskUpdate。存在 TASK_ID 且 MCP 工具可用时调用 set_task_progress_plan/update_task_progress；不可用时继续执行并写 output/progress-state.json 记录降级，不伪造 execution_id。运行时已创建 output/，只验证它存在，不自行创建或改名。
 
 执行前确认 auto-editor、hyperframes 和镜像内 video-use helper 可执行，并记录实际观察到的版本；版本不同本身不是失败，缺少必需命令/helper、运行失败或不兼容才是阻塞。video-use 使用镜像内 ANBAN_VIDEO_USE_ROOT helpers 和 Server 注入的 ELEVENLABS_API_KEY，不得要求 MCP 转写能力、打印/复制凭据、创建自有 HTTP 客户端或临时联网安装替代运行时。缺少 helper、凭据或上游服务失败时写 failure-state/failure-diagnosis 并停止。talking-head-sound-design 仅使用内置 CC0 SFX 与本地 FFmpeg，不联网获取音效或音乐；content-tagging 只读加载，用于最终的 output/content-tags.json。

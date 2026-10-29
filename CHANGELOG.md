@@ -1,3 +1,7 @@
+# 4.2.106
+
+- Add read-only Seedance 2 and GPT-Image upstream references to the talking-head workflow while routing generated images exclusively through Anban MCP; add official-source checks and explicit upstream update targets.
+
 # 4.2.105
 
 - Correct the managed talking-head transcription credential mapping, use the installed video-use helpers, and make Agent runtime checks capability-based while retaining reproducible image pins. Verify normalized multi-source audio assembly before accepting a rough cut.

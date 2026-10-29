@@ -191,6 +191,8 @@ claude --verbose --agent anban:seednote 降噪耳机种草笔记
 | 本地 skill | 上游/参考 | 本地改造 | 批量更新提示 |
 |------------|-----------|----------|--------------|
 | `humanizer` | [blader/humanizer](https://github.com/blader/humanizer) v2.8.2（MIT），以 `skills/humanizer` 嵌套 submodule 固定官方提交 | 不做 Anban 改编；官方仓库直接进入共享 Skill 树，Seednote/Article/电商约束归各业务 workflow；Codex 从递归初始化的本地 clone 安装 | 运行 `make humanizer-update` 手动推进上游 gitlink；审阅上游 diff、跑契约测试并升级两个 manifest 版本 |
+| `seedance2-skill` | [dexhunter/seedance2-skill](https://github.com/dexhunter/seedance2-skill)（MIT），位于 `third_party/seedance2-skill` | talking-head 只读引用中文提示词方法；不是托管视频生成运行时 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
+| `GPT-Image2-Skill` | [wuyoscar/GPT-Image2-Skill](https://github.com/wuyoscar/GPT-Image2-Skill)（MIT），位于 `third_party/GPT-Image2-Skill` | talking-head 只读引用提示词/Gallery 方法；禁止使用其 CLI/API，图像一律通过 Anban MCP `generate_image` 生成 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
 | `moments` | 内容拆解方法参考 [Caihui0127/caihui-moments-skill](https://github.com/Caihui0127/caihui-moments-skill) 的公开框架 | 产出 Anban 朋友圈图文素材包；不默认使用“彩卉”人设，不复制私有素材，不把参考 repo 作为运行时依赖 | 更新时只同步公开方法层；保持文本、语义比例配图和不伪造案例/数据红线 |
 | `article*`、`seednote*`、`ecommerce*`、`portrait-pose-variants`、`anban-setup`、`writers`、`article-research`、`seo-optimization`、`content-writing`、`short-video-cover` | Anban 原创业务 workflow；结构模式参考 [anthropics/skills](https://github.com/anthropics/skills)、[anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official)、[obra/superpowers](https://github.com/obra/superpowers) 和 [affaan-m/ecc](https://github.com/affaan-m/ecc) | 使用标准 `SKILL.md` + 一层 `references/`；案例是 Anban 场景原创，不复制外部措辞或业务流程 | 从 Anban 产品、MCP、server contract 更新；宿主差异放进薄适配器，不复制 Skill |
 
