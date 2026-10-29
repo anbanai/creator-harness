@@ -1,3 +1,7 @@
+# 4.2.103
+
+- Register interactive creation and postmortem Skill providers independently so shared patch loading preserves both presets' Skills.
+
 # 4.2.102
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
