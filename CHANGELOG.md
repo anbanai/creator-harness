@@ -1,4 +1,6 @@
-# 4.2.103
+# 4.2.104
+
+- Add an offline, measured talking-head SFX pass using a pinned subset of CC0 assets; record per-cue provenance and pre/post mix loudness and true peak.
 
 - Harden the talking-head-editor contract: add explicit motion-review stages, pin Auto-Editor/HyperFrames runtime versions, require content-tagging as a read-only dependency, and record independent media, subtitle, audio, and visual verification evidence.
 

@@ -7,6 +7,7 @@ skills:
   - auto-editor
   - video-use
   - erduo-broll-loop-engineering
+  - talking-head-sound-design
   - content-tagging
 maxTurns: 220
 ---
@@ -37,7 +38,7 @@ maxTurns: 220
 2. **语义精剪：** 使用 video-use 的托管转写和上下文能力，输出连字符文件名 `output/edit-decision-list.json`、`output/transcript.json` 和 `output/edit-strategy.md`。字幕和 transcript 逐字对齐口播，只允许标点、大小写和分句调整，不润色、不压缩原话；字幕时间段首尾相接，不重叠，不在同一帧生成双行。保持原意、顺序、限定条件、数字、因果和自然强调。疑似有意为之的句子默认保留；只有确认是同一 take 的重复收尾且删除一处不损失信息时才删除，并记录保留哪一次及证据。
 3. **动效样片：** 只使用 HyperFrames `0.8.214` 和可审计的镜头卡 JSON，不使用 Shotcraft 或 Remotion 作为运行时。每个视觉项记录 `function`、源/目标时间码、来源或生成方式、权利状态和口播时序依赖。不得添加改变事实主张的新文字或副标题；原片没有的事实性陈述一律禁止，装饰性标签也必须明确为编辑标注并在 `visual_plan.json` 记录依据。渲染前执行 HyperFrames lint；按 `erduo-broll-loop-engineering/references/hyperframes-lint.md` 修复后再渲染。
 4. **审美复核：** 独立复核最多运行 10 分钟，固定检查开篇、信息卡、转场和结尾各至少一帧并记录帧号/时间码。超时或能力不可用时降级为本 Agent 自查，`motion-review.json` 写入 `aesthetic_review: "degraded"` 和原因，不得无限等待。
-5. **声音和最终复核：** 仅在 `approve` 后加入有授权的用户音效/BGM。`audio-source-manifest.json` 为每个声音源记录 `id`、用途、相对路径或 Server/provider 标识、字节哈希（可得时）、时间范围、音量/ducking、授权状态（`verified|user_asserted|unknown|not_applicable`）和归属；任何 `unknown` 来源阻塞最终交付。用 `ffmpeg` `ebur128` 在干净母版渲染前和最终渲染后各测一次 integrated LUFS、true peak 和测量范围，写入 `quality-evidence.json`，不得假设渲染链路不会改变响度。最终完整解码并检查音画同步、字幕可读性、首 3 秒、语义连续性、遮挡、爆音和人声清晰度。
+5. **声音和最终复核：** 仅在 `approve` 后生成 `output/final-picture.mp4`，并使用 `talking-head-sound-design` 从已批准视觉计划挑选少量有明确叙事作用的 SFX，混音到 `output/final.mp4`。声音 Skill 只使用镜像内 CC0 资产，不联网下载音效或音乐；无合适事件时记录空 cue 和原因，不伪造音效。BGM 只使用用户提供且授权清楚的曲目，本次 SFX renderer 不处理 BGM。`audio-source-manifest.json` 为每个声音源记录 `id`、用途、相对路径或 Server/provider 标识、字节哈希、时间范围、音量/ducking、授权状态（`verified|user_asserted|unknown|not_applicable`）和归属；任何 `unknown` 来源阻塞最终交付。用 `ffmpeg` `ebur128` 在干净母版和最终渲染后分别测量 integrated LUFS、true peak 和测量范围，写入 `quality-evidence.json`，不得假设渲染链路不会改变响度。最终完整解码并检查音画同步、字幕可读性、首 3 秒、语义连续性、遮挡、爆音和人声清晰度。
 
 ## 恢复和失败
 
