@@ -5,7 +5,7 @@ description: Use when a semantically locked talking-head timeline needs sentence
 
 # Erduo B-roll Loop Engineering
 
-Route the motion package through the pinned HyperFrames `0.8.214` CLI and auditable shot-card JSON. HyperFrames is the only motion runtime for this workflow; do not substitute Shotcraft, Remotion, or an unpinned `npx` invocation. Split work by shot only where the managed runtime supports it, then run the bounded aesthetic review before assembly. Every visual item records its purpose, source and target timecodes, source or generation method, rights state, and dependency on spoken timing.
+Route the motion package through the available HyperFrames CLI and auditable shot-card JSON. HyperFrames is the only motion runtime for this workflow; do not substitute Shotcraft, Remotion, or an ad hoc runtime installation. Confirm the CLI works and record its observed version; an exact version match is not a workflow requirement. Split work by shot only where the managed runtime supports it, then run the bounded aesthetic review before assembly. Every visual item records its purpose, source and target timecodes, source or generation method, rights state, and dependency on spoken timing.
 
 The first deliverable is a review sample. Do not add sound effects or BGM before the sample is approved by the Server review gate. Do not force unused assets into a timeline or add factual claims that are absent from the source. If an asset's purpose is unclear, leave it for review and record the uncertainty. Missing runtime dependencies are blocking failures; do not silently use `video-edit` as a fallback.
 

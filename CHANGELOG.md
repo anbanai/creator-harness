@@ -1,8 +1,12 @@
+# 4.2.105
+
+- Correct the managed talking-head transcription credential mapping, use the installed video-use helpers, and make Agent runtime checks capability-based while retaining reproducible image pins. Verify normalized multi-source audio assembly before accepting a rough cut.
+
 # 4.2.104
 
 - Add an offline, measured talking-head SFX pass using a pinned subset of CC0 assets; record per-cue provenance and pre/post mix loudness and true peak.
 
-- Harden the talking-head-editor contract: add explicit motion-review stages, pin Auto-Editor/HyperFrames runtime versions, require content-tagging as a read-only dependency, and record independent media, subtitle, audio, and visual verification evidence.
+- Harden the talking-head-editor contract: add explicit motion-review stages, declare Auto-Editor/HyperFrames image runtime versions, require content-tagging as a read-only dependency, and record independent media, subtitle, audio, and visual verification evidence.
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
 

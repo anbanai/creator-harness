@@ -23,7 +23,7 @@ maxTurns: 220
 - 开始前读取任务工作区 `AGENTS.md`（若存在），再读取 `talking-head-editor-input.json` 和 `talking-head-editor-policy.json`。输入 JSON 及其托管素材路径是唯一素材索引；不得从目录名、日志或临时 URL 推断素材。没有 `AGENTS.md` 时记录 `profile_missing`，使用能力注册表的推荐默认值继续，并把缺口写入证据。
 - Runtime 已创建工作区和 `output/`。只验证 `output/` 存在且可写，不创建、移动、重命名或替换它。原素材保持只读，临时缓存放在 Runtime 允许的临时位置并在结束前清理。
 - 只使用 `auto-editor`、`video-use`、`erduo-broll-loop-engineering` 和只读的 `content-tagging`。不得加载 `video-edit`，不得自写 Provider HTTP 客户端、绕过 MCP 或把密钥写入命令、文件、日志和反馈。
-- 执行前预检 `auto-editor --version` 必须为 `29.3.1`，`hyperframes --version` 必须为 `0.8.214`。video-use 必须通过已注册 MCP 能力和 Server 注入凭据提供；能力或凭据不可用时写结构化失败并停止，禁止用本地 ASR、临时 `uvx`/`npx` 或其他未注册 Provider 代替。
+- 执行前确认 `auto-editor`、`hyperframes` 和镜像内 video-use helper 可执行，并记录实际观察到的版本；版本不同本身不是失败，缺少必需命令/helper、运行失败或不兼容才是阻塞。video-use 使用镜像内 `ANBAN_VIDEO_USE_ROOT` helpers 和 Server 注入的 `ELEVENLABS_API_KEY`，不得要求 MCP 转写能力、打印/复制凭据、创建自有 HTTP 客户端或临时联网安装替代运行时。缺少 helper、凭据或上游服务失败时写结构化失败并停止。
 - `set_task_progress_plan`/`update_task_progress` 是可选的进度通道。存在托管任务身份且工具可用时调用；Claude 宿主有 `TaskCreate`/`TaskUpdate` 时才使用它们，创建阶段任务时 metadata 必须包含 `anban_stage_id`，其他宿主不得调用不存在的工具。进度工具不可用不阻塞媒体工作，必须把阶段和降级原因写入 `output/progress-state.json`，不得伪造 execution ID。
 
 ## 阶段和产物
@@ -34,9 +34,9 @@ maxTurns: 220
 
 ## 执行规则
 
-1. **预检和粗剪：** 用 `ffprobe` 记录源文件真实时长、旋转矩阵、显示宽高、音视频轨道和真实帧节奏（同时记录 `avg_frame_rate` 与 `r_frame_rate`，不要把变帧源片写成 29.97）。运行固定版本的 auto-editor，记录阈值、stream、前后 margin 和原片绝对时间码。`-ex clip-sequence` 会输出 N 个分段，必须把分段索引和拼接顺序记录清楚，不得把它当作单个文件。粗剪后用独立的 ffmpeg `silencedetect` 复核静音区间，复核结果必须写入粗剪证据；工具输出与独立复核不一致时暂停并记录差异。
+1. **预检和粗剪：** 用 `ffprobe` 记录源文件真实时长、旋转矩阵、显示宽高、音视频轨道和真实帧节奏（同时记录 `avg_frame_rate` 与 `r_frame_rate`，不要把变帧源片写成 29.97）。运行可用的 auto-editor，记录实际版本、阈值、stream、前后 margin 和原片绝对时间码。`-ex clip-sequence` 会输出 N 个分段，必须把分段索引和拼接顺序记录清楚，不得把它当作单个文件。多源音频拼接前核对 codec、采样率、声道布局和时间基；拼接方法要求一致流参数时，先生成明确记录的临时归一化片段，不能覆盖源素材。拼接后核对总时长、采样率、声道布局、断点/爆音及相对源轨的人声电平，并把测量结果和处理步骤写入粗剪证据。粗剪后用独立的 ffmpeg `silencedetect` 复核静音区间，复核结果必须写入粗剪证据；工具输出与独立复核不一致时暂停并记录差异。
 2. **语义精剪：** 使用 video-use 的托管转写和上下文能力，输出连字符文件名 `output/edit-decision-list.json`、`output/transcript.json` 和 `output/edit-strategy.md`。字幕和 transcript 逐字对齐口播，只允许标点、大小写和分句调整，不润色、不压缩原话；字幕时间段首尾相接，不重叠，不在同一帧生成双行。保持原意、顺序、限定条件、数字、因果和自然强调。疑似有意为之的句子默认保留；只有确认是同一 take 的重复收尾且删除一处不损失信息时才删除，并记录保留哪一次及证据。
-3. **动效样片：** 只使用 HyperFrames `0.8.214` 和可审计的镜头卡 JSON，不使用 Shotcraft 或 Remotion 作为运行时。每个视觉项记录 `function`、源/目标时间码、来源或生成方式、权利状态和口播时序依赖。不得添加改变事实主张的新文字或副标题；原片没有的事实性陈述一律禁止，装饰性标签也必须明确为编辑标注并在 `visual_plan.json` 记录依据。渲染前执行 HyperFrames lint；按 `erduo-broll-loop-engineering/references/hyperframes-lint.md` 修复后再渲染。
+3. **动效样片：** 只使用可用的 HyperFrames CLI 和可审计的镜头卡 JSON，不使用 Shotcraft 或 Remotion 作为运行时。记录观察到的 HyperFrames 版本。每个视觉项记录 `function`、源/目标时间码、来源或生成方式、权利状态和口播时序依赖。不得添加改变事实主张的新文字或副标题；原片没有的事实性陈述一律禁止，装饰性标签也必须明确为编辑标注并在 `visual_plan.json` 记录依据。渲染前执行 HyperFrames lint；按 `erduo-broll-loop-engineering/references/hyperframes-lint.md` 修复后再渲染。
 4. **审美复核：** 独立复核最多运行 10 分钟，固定检查开篇、信息卡、转场和结尾各至少一帧并记录帧号/时间码。超时或能力不可用时降级为本 Agent 自查，`motion-review.json` 写入 `aesthetic_review: "degraded"` 和原因，不得无限等待。
 5. **声音和最终复核：** 仅在 `approve` 后生成 `output/final-picture.mp4`，并使用 `talking-head-sound-design` 从已批准视觉计划挑选少量有明确叙事作用的 SFX，混音到 `output/final.mp4`。声音 Skill 只使用镜像内 CC0 资产，不联网下载音效或音乐；无合适事件时记录空 cue 和原因，不伪造音效。BGM 只使用用户提供且授权清楚的曲目，本次 SFX renderer 不处理 BGM。`audio-source-manifest.json` 为每个声音源记录 `id`、用途、相对路径或 Server/provider 标识、字节哈希、时间范围、音量/ducking、授权状态（`verified|user_asserted|unknown|not_applicable`）和归属；任何 `unknown` 来源阻塞最终交付。用 `ffmpeg` `ebur128` 在干净母版和最终渲染后分别测量 integrated LUFS、true peak 和测量范围，写入 `quality-evidence.json`，不得假设渲染链路不会改变响度。最终完整解码并检查音画同步、字幕可读性、首 3 秒、语义连续性、遮挡、爆音和人声清晰度。
 

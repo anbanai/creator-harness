@@ -120,7 +120,7 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 
 1. 读取用户请求、项目说明、`AGENT_GUIDE.md`、`PROJECT_CONTEXT.md`、管线定义、品牌规范和已有项目约定。
 2. 查找源视频、独立音频、字幕、图片、品牌素材、B-roll、工程文件、模板和自动化脚本。
-3. 检查实际存在的媒体探测、转录、图像/视频生成、剪辑、混音、合成和播放能力及版本。完整制作必须确认 `auto-editor --version` 为 `29.3.1`；死区检测前读取 `skills/auto-editor/SKILL.md`，遵循其阈值、留白、证据和失败约束。缺失或版本不匹配时按 `resume_from=silence_detection` 写 `status="recoverable_failure"`，不得静默回退到 FFmpeg 静音阈值或手工猜测剪点。
+3. 检查实际存在的媒体探测、转录、图像/视频生成、剪辑、混音、合成和播放能力，并记录关键工具的实际版本。死区检测前读取 `skills/auto-editor/SKILL.md`，遵循其阈值、留白、证据和失败约束。Auto-Editor 缺失、无法执行、输出不兼容，或其结果不能可靠映射到源素材时间基准时，按 `resume_from=silence_detection` 写 `status="recoverable_failure"`；单纯版本与构建镜像预期不同不构成失败，不得静默回退到 FFmpeg 静音阈值或手工猜测剪点。
 4. 获取时长、分辨率、帧率、旋转/显示矩阵、音轨、编码、音画同步等信息；检查损坏、空文件、缺失素材和技术异常。
 5. 确认或推断发布平台、目标时长、观众、账号风格、画幅、品牌、语言和交付格式；将推断记录为假设。
 6. 建立隔离工作区，按需划分 `artifacts/`、`assets/`、`project/`、`renders/`、`exports/`、`qc/` 和 `reports/`。
