@@ -1,8 +1,12 @@
-# 4.2.103
+# 4.2.105
 
 - Register interactive creation and postmortem Skill providers independently so shared patch loading preserves both presets' Skills.
 
-# 4.2.102
+# 4.2.104
+
+- Add an offline, measured talking-head SFX pass using a pinned subset of CC0 assets; record per-cue provenance and pre/post mix loudness and true peak.
+
+- Harden the talking-head-editor contract: add explicit motion-review stages, pin Auto-Editor/HyperFrames runtime versions, require content-tagging as a read-only dependency, and record independent media, subtitle, audio, and visual verification evidence.
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
 

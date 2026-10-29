@@ -5,6 +5,8 @@ description: Use when a semantically locked talking-head timeline needs sentence
 
 # Erduo B-roll Loop Engineering
 
-Route the motion package through the installed HyperFrames/Remotion workflow and Shotcraft shot cards. Split work by shot where the runtime supports parallel agents, then run the independent aesthetic review before assembly. Every visual item records its purpose, source and target timecodes, source or generation method, rights state, and dependency on spoken timing.
+Route the motion package through the pinned HyperFrames `0.8.214` CLI and auditable shot-card JSON. HyperFrames is the only motion runtime for this workflow; do not substitute Shotcraft, Remotion, or an unpinned `npx` invocation. Split work by shot only where the managed runtime supports it, then run the bounded aesthetic review before assembly. Every visual item records its purpose, source and target timecodes, source or generation method, rights state, and dependency on spoken timing.
 
-The first deliverable is a review sample. Do not add sound effects or BGM before the sample is approved by the Server review gate. Do not force unused assets into a timeline. If an asset's purpose is unclear, leave it for review and record the uncertainty. Missing runtime dependencies are blocking failures; do not silently use `video-edit` as a fallback.
+The first deliverable is a review sample. Do not add sound effects or BGM before the sample is approved by the Server review gate. Do not force unused assets into a timeline or add factual claims that are absent from the source. If an asset's purpose is unclear, leave it for review and record the uncertainty. Missing runtime dependencies are blocking failures; do not silently use `video-edit` as a fallback.
+
+Run HyperFrames lint before each sample render and use the fixed remediation table in [references/hyperframes-lint.md](references/hyperframes-lint.md). The independent aesthetic review has a 10-minute limit and checks fixed opening, card, transition, and ending frames; on timeout write `aesthetic_review: "degraded"` and continue with a self-review marked as such.
