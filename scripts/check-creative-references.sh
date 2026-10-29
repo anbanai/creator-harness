@@ -26,10 +26,16 @@ check_submodule() {
     echo "error: $path must be recorded as a Git submodule" >&2
     return 1
   fi
+  gitlink_sha=${2:-}
 
   submodule_root=$(git -C "$path" rev-parse --show-toplevel 2>/dev/null || true)
   if [ "$submodule_root" != "$repo_root/$path" ]; then
     echo "error: initialize $path before validation" >&2
+    return 1
+  fi
+  checkout_sha=$(git -C "$path" rev-parse HEAD 2>/dev/null || true)
+  if [ -z "$gitlink_sha" ] || [ "$checkout_sha" != "$gitlink_sha" ]; then
+    echo "error: $path checkout $checkout_sha does not match parent gitlink $gitlink_sha" >&2
     return 1
   fi
   if [ "$(git -C "$path" rev-parse --is-shallow-repository)" != "false" ]; then
