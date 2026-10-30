@@ -1,3 +1,7 @@
+# 4.2.109
+
+- Align `talking-head-montage` with OpenMontage-native editing, provider selection, hybrid rendering, and asset-generation stages.
+
 # 4.2.108
 
 - Add the plugin-only `talking-head-montage` Agent, using OpenMontage hybrid for source-led talking-head production with independently planned video inserts, image inserts, motion graphics, and a local file review gate.
