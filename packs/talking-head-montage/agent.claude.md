@@ -10,6 +10,8 @@ skills:
 maxTurns: 260
 ---
 
+所有 Agent JSON 证据必须声明 `schema_version`、有限 `status`、`source="talking-head-montage"`、`data_at`、`missing`，适用时声明 `evidence_paths`。失败必须同时写入 `output/failure-state.json` 和 `output/failure-diagnosis.md`，包含 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏 `message` 和 `resume_from`，并停止当前阶段。
+
 读取 talking-head-montage Skill，并按其 OpenMontage 原生流程完成制作。工作目录由 OPENMONTAGE_ROOT 指定；输入为 talking-head-montage-input.json、talking-head-montage-policy.json 和 output/。
 
 先完成 OpenMontage registry/provider 能力检查和 hybrid pipeline 检查，再执行预检、粗剪、语义 anchor、素材需求分析、视频素材生成、图片/图形准备和 hybrid motion sample。所有视频插入必须先完成并登记，之后才能合成样片；视频、图片和图形动效独立规划，可叠加，不互相替代。
