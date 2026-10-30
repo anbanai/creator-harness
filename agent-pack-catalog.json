@@ -3257,7 +3257,7 @@
           "funnel_stage"
         ]
       },
-      "digest": "d1b0b099ffccc35a415f643c10f28a33c31a653615ad7cf956a16d8bbbb669ba"
+      "digest": "75be78b786ec5dd361acb63a29fb68527fbaf69e4d4ee7e9092a9860b5283297"
     },
     {
       "id": "talking-head-montage",
@@ -3581,7 +3581,7 @@
       "ui": {
         "renderer": "custom:talking-head-montage"
       },
-      "digest": "1adc9980160ce0bb9fdf115221ec636f142650509ee5c3e2779b36a543ac838c"
+      "digest": "2480370e7fff8a7a03d8825f0d308452412615a555dfac0656cd16987cfa54e1"
     },
     {
       "id": "video-edit",

@@ -48,9 +48,16 @@ OM_PYTHON=python3
 3. 素材需求分析：阅读完整语义内容，按表达任务独立决定 video_insert、image_insert、motion_graphic，可以单独使用或叠加。记录口播源时间段、成片时间段、画面任务、对象/动作/过程/空间/变化、时长、画幅、镜头运动、安全区、事实边界、真实性要求和权利要求。输出 asset-requirements.json、visual-plan-draft.json 和 asset-source-policy.json。
 4. 视频素材生成：再次读取 provider_menu_summary()，使用注册的 OpenMontage video_selector。根据实际能力选择 text-to-video、image-to-video、reference-to-video 或授权 stock video；对象一致性需要时优先使用参考素材。全部 video_insert 先生成，再进入合成。记录 Provider、模型、参数、提示词、输出哈希、用途时间码、权利状态和技术审核，输出 generated-video-manifest.json、generated-video-review.json 和 asset-source-manifest.json。生成视频默认静音，除非素材计划明确需要环境声。
 5. 图片与图形：视频素材完成后，使用 OpenMontage 的 asset/composition 阶段准备图片和图形。不得遮挡人物脸部、手部、产品或关键动作；不得让生成素材冒充真实证据。输出完整 visual-plan.json 和 motion-source-manifest.json，登记原始人物视频、生成视频、用户视频、图片和图形的来源、用途、时间范围、哈希、权利状态和生成方法。
-6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。计划了视频插入时，不得用静态占位片代替样片。
+6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。字幕遵循下方判断与排版规则。计划了视频插入时，不得用静态占位片代替样片。
 7. 本地审核与恢复：生成样片后停止，直到 output/review-decision.json 同时满足 source=local-file-review、status=approve、非空 revision_id 和 data_at。revise 时读取 feedback，递增 revision，只重新执行受影响的 OpenMontage 阶段，保留已验证产物。没有批准不得生成最终视频、SFX 或 BGM。
 8. 声音与最终交付：批准后加载 talking-head-sound-design，只使用其本地 CC0 音效；BGM 只使用授权的本地或 OpenMontage 音乐。原始人物人声保持主导，生成视频音频默认静音。用 FFmpeg ebur128 测量干净母版和最终混音的 LUFS、true peak 和测量范围，完成音画同步、字幕可读性、首三秒、语义连续性、遮挡、爆音和人声清晰度检查。加载 content-tagging 生成有证据的 content-tags.json。
+
+## 字幕判断与排版
+
+- 按语义片段决定是否显示字幕。如果画面中的图文、图表或素材已经准确、清晰且足够完整地表达了同一段口播的核心信息，就省略该段字幕，避免重复呈现；例如信息卡已经完整写出结论时，不再叠加逐字重复的底部字幕。
+- 画面文字若只是标题、标签、关键词或部分摘要，或口播还补充了条件、细节、因果、限定或自然强调，仍需保留对应字幕。用户明确要求字幕或输入包含无障碍字幕要求时，不因画面重复而省略。字幕取舍不改变 transcript 和音轨，transcript 仍完整保留口播。
+- 每个字幕时间段最多显示一行。长句按自然语义切成连续的单行段落，不换行、不叠行、不同时显示两行；不得靠过度缩小字体来容纳长句。
+- 字幕框宽度不超过画面可用宽度的 80%，并按实际画幅和安全区确认文字完整可读。默认把字幕放在画面高度约 75%–82% 的位置（从顶部计），为底部至少留出 12% 安全区；避开人物脸部、手部、关键物件、信息卡和平台常见底部遮挡区，必要时在安全范围内上移。不得把字幕压在画面最底部。
 
 ## 产物合同
 

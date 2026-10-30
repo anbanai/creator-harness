@@ -1,6 +1,7 @@
 # 4.2.112
 
 - Preload the short-video-cover Skill for the talking-head editor and Montage Agent Packs.
+- Improve talking-head captions: keep each cue to one line, omit captions when visible material already communicates the full spoken point, and keep Montage captions within a narrower, higher safe area.
 
 # 4.2.111
 
