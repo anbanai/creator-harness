@@ -42,10 +42,12 @@ OM_PYTHON=python3
 
 1. 预检与粗剪：用 ffprobe 记录时长、旋转、显示宽高、音视频流、avg_frame_rate、r_frame_rate、时间基和音频布局。使用 OpenMontage 的 silence/transcript 阶段生成粗剪候选，再用 FFmpeg silencedetect 独立复核。静音只是候选证据，不直接决定删除。输出 rough-cut.mp4、transcript.json、edit-decision-list.json 和 edit-strategy.md。
 2. 语义 anchor：使用 OpenMontage transcript、scene 和 edit 阶段，保持原意、顺序、否定、数字、条件、因果和不确定语句。EDL 必须同时记录源片和成片时间码。输出 semantic-cut.mp4，更新 transcript、EDL 和 strategy。
-3. 素材需求分析：阅读完整语义内容，按表达任务独立决定 video_insert、image_insert、motion_graphic，可以单独使用或叠加。记录口播源时间段、成片时间段、画面任务、对象/动作/过程/空间/变化、时长、画幅、镜头运动、安全区、事实边界、真实性要求和权利要求。输出 asset-requirements.json、visual-plan-draft.json 和 asset-source-policy.json。
+3. 素材需求分析：阅读完整语义内容，先为每段确定表达目的、主视觉概念和预期视觉变化，再按表达任务决定 video_insert、image_insert、motion_graphic，可以单独使用或叠加；不要默认把信息放进静态卡片。可按内容和已注册能力选择实拍/生成 B-roll、关键词动势与逐层揭示、动画图表/路线/关系图、形状遮罩与擦除揭示、前后对照/分屏、跟随主体的标注、前中后景层次与视差、连续匹配转场、图片局部推拉/重构图、真人动作与图形合成等形式。过程、变化、对比、空间关系等信息优先评估动态表达；每段不必堆叠多种效果，也不设固定形式配额。信息卡只在内容适合结构化阅读时使用，应按内容收紧尺寸并逐项揭示，避免少量文字落在大面积空白面板中；避免相邻段落重复同一种贴图和轻微平移动效。
+
+   让真人素材承担可信度和情绪，其他画面承担解释、证据或强调；建立统一的字体、色彩、层级和动势系统，同时让主要信息段有节奏变化。茶叶等物件主题可将叶片形态、制作/冲泡过程、产区空间关系或前后变化设计为具体视觉动作；不得把缺少来源的推演画成真实证据。记录口播源时间段、成片时间段、画面任务、对象/动作/过程/空间/变化、视觉概念、主次层级、构图、文字、颜色、运动/揭示/退出方式、时长、画幅、镜头运动、安全区、事实边界、真实性要求和权利要求。输出 asset-requirements.json、visual-plan-draft.json 和 asset-source-policy.json。
 4. 视频素材生成：再次读取 provider_menu_summary()，使用注册的 OpenMontage video_selector。根据实际能力选择 text-to-video、image-to-video、reference-to-video 或授权 stock video；对象一致性需要时优先使用参考素材。全部 video_insert 先生成，再进入合成。记录 Provider、模型、参数、提示词、输出哈希、用途时间码、权利状态和技术审核，输出 generated-video-manifest.json、generated-video-review.json 和 asset-source-manifest.json。生成视频默认静音，除非素材计划明确需要环境声。
-5. 图片与图形：视频素材完成后，使用 OpenMontage 的 asset/composition 阶段准备图片和图形。不得遮挡人物脸部、手部、产品或关键动作；不得让生成素材冒充真实证据。输出完整 visual-plan.json 和 motion-source-manifest.json，登记原始人物视频、生成视频、用户视频、图片和图形的来源、用途、时间范围、哈希、权利状态和生成方法。
-6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。计划了视频插入时，不得用静态占位片代替样片。
+5. 图片与图形：视频素材完成后，使用 OpenMontage 的 asset/composition 阶段准备图片和图形；按 visual-plan 把字、图、实拍和图形组织成明确的前后层级与入场/变化/退出节奏，不把所有信息塞进同一张大卡片。不得遮挡人物脸部、手部、产品或关键动作；不得让生成素材冒充真实证据。输出完整 visual-plan.json 和 motion-source-manifest.json，登记原始人物视频、生成视频、用户视频、图片和图形的来源、用途、时间范围、哈希、权利状态和生成方法。
+6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级、节奏和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。计划了视频插入时，不得用静态占位片代替样片。审查前 3 秒的吸引点、主要信息段的视觉焦点与变化、表达形式是否服务口播、卡片是否紧凑，以及相邻段是否重复同一种处理；发现大面积空白卡片、连续贴图或只有装饰性平移/淡入淡出时，修订 visual-plan 并重渲。风格保持统一，但不要牺牲内容所需的形式变化。
 7. 本地审核与恢复：生成样片后停止，直到 output/review-decision.json 同时满足 source=local-file-review、status=approve、非空 revision_id 和 data_at。revise 时读取 feedback，递增 revision，只重新执行受影响的 OpenMontage 阶段，保留已验证产物。没有批准不得生成最终视频、SFX 或 BGM。
 8. 声音与最终交付：批准后加载 talking-head-sound-design，只使用其本地 CC0 音效；BGM 只使用授权的本地或 OpenMontage 音乐。原始人物人声保持主导，生成视频音频默认静音。用 FFmpeg ebur128 测量干净母版和最终混音的 LUFS、true peak 和测量范围，完成音画同步、字幕可读性、首三秒、语义连续性、遮挡、爆音和人声清晰度检查。加载 content-tagging 生成有证据的 content-tags.json。
 

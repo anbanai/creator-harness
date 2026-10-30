@@ -1,3 +1,7 @@
+# 4.2.112
+
+- Expand talking-head visual direction with content-led motion graphics, kinetic typography, progressive reveals, varied compositions, and stronger sample review against repetitive or oversized static cards.
+
 # 4.2.111
 
 - Align talking-head Montage Codex instructions with the local OpenMontage boundary and shared evidence contract; synchronize Agent Pack versions and generated catalog.

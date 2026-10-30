@@ -2916,7 +2916,7 @@
     {
       "id": "talking-head-editor",
       "channel": "talking-head-editor",
-      "version": "2.0.6",
+      "version": "2.0.7",
       "kind": "managed",
       "display_name": "口播精剪",
       "description": "按固定口播工作流自动完成静音粗剪、语义精剪、动效素材包装和音效 BGM 收尾，并保留可复核的剪辑证据。",
@@ -3202,11 +3202,11 @@
           "funnel_stage"
         ]
       },
-      "digest": "68d1946519304d91f9b9a8e9d09175b5dc51b9dcd7e9426a6d7fdc1fe27979f8"
+      "digest": "94c8a18bcb13e31cd0f2081d5fc81c71e89913f9fe94579109dbfab581767478"
     },
     {
       "id": "talking-head-montage",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "kind": "plugin",
       "display_name": "口播 Montage 制作",
       "description": "以 OpenMontage hybrid 为主引擎，完成真人口播、生成视频素材、图片素材和图形动效的本地制作与文件审核。",
@@ -3471,7 +3471,7 @@
       "ui": {
         "renderer": "custom:talking-head-montage"
       },
-      "digest": "e2c8cf69cfcd92a5bc8782ad2970ac84cf74b1bc8a4542e0cbac5a3ddc1f32bb"
+      "digest": "dd3c49fb91bcb9b046b50af19461ae687503c12ab29e926456551e7c09e185d3"
     },
     {
       "id": "video-edit",
