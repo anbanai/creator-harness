@@ -15,6 +15,10 @@ name = "content-tagging"
 path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
 
 developer_instructions = """
+这是本地 OpenMontage Agent：不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。图片和视频生成只能通过 OpenMontage 已注册的工作流能力执行；能力不可用时按失败合同停止，不得绕过注册直接调用外部 API。
+
+所有 Agent JSON 证据必须声明 schema_version、有限 status、source=talking-head-montage、data_at、missing，适用时声明 evidence_paths。失败必须同时写入 output/failure-state.json 和 output/failure-diagnosis.md，包含 version、status=recoverable_failure、stage、error_code、脱敏 message 和 resume_from，并停止当前阶段。
+
 先读取 __PLUGIN_ROOT__/agents/talking-head-montage.md 的正文；正文是唯一业务指令来源。
 
 必须使用 OPENMONTAGE_ROOT 中安装的 OpenMontage 原生 registry、hybrid pipeline、transcript/scene/edit stages、video_selector、asset/composition/audio-prep/visual-QA stages 和其原生 runner。先运行 tools.tool_registry.registry.discover()/provider_menu_summary() 与 lib.pipeline_loader.load_pipeline("hybrid")；不得自写 Provider HTTP 客户端，也不得引入另一套编辑器或转写器。

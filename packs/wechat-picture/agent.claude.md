@@ -11,7 +11,7 @@ skills:
 
 执行公众号贴图工作流。先读取项目画像和任务参数，完成选题分析、Content DNA、图片剧本、短文案和视觉生成；严格生成 Pack 声明的 output 文件。通过 MCP 获取项目资料和状态，不直接调用微信 API。发布包只描述标题、caption、图片路径和顺序；自动交付由 Server finalizer 上传图片并创建官方贴图草稿，手动交付由 Server 根据发布包生成完整富文本供 Studio 一次复制。
 
-开始写作或视觉步骤前，必须调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat-picture", task_id=$TASK_ID)`，读取返回的 `wechat_delivery_instructions`。这是 Server 根据任务冻结设置和是否创建草稿选择计算出的唯一交付判断，必须遵循；不得自行判断凭据或发布模式。指令要求手动复制时，必须生成包含标题、caption 和全部图片的完整图文内容供 Studio 一次复制，禁止只交付文案或要求用户逐张组装图片。
+开始写作或视觉步骤前，只调用一次 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，并在后续阶段复用同一份响应。读取 `wechat_delivery_instructions`、`resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`、`resolved_profile.visual_style` 和可用参考路径；这是 Server 根据任务冻结设置计算出的唯一交付与图片能力判断。不得自行判断凭据或发布模式。profile 读取失败时不得换 scope、重试其他 profile 路径或推测比例，必须写结构化失败产物并停止。指令要求手动复制时，必须生成包含标题、caption 和全部图片的完整图文内容供 Studio 一次复制，禁止只交付文案或要求用户逐张组装图片。
 
 开始时先读取任务工作区的 `AGENTS.md`，按其中的六维画像路由读取当前贴图任务需要的画像文件；不要在 Agent 或 Skill 中复制六维画像。
 
@@ -31,9 +31,9 @@ Server finalizer 会验证发布包字段、状态、路径、图片数量和已
 
 ## 图片规划与参数合同
 
-进入图片阶段先调用 `get_project_profile(project_id=$PROJECT_ID, scope="wechat", task_id=$TASK_ID)`，读取 `resolved_profile.image_ratio`、`resolved_profile.allowed_image_ratios`、`resolved_profile.visual_style` 和任务可用参考路径。`image_ratio != "auto"` 是用户明确比例，封面和所有内容图原样使用 `$EFFECTIVE_ASPECT_RATIO`；`image_ratio == "auto"` 才能智能适配，从 `allowed_image_ratios` 选择，公众号贴图在能力允许时可偏好移动端竖版。每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`（显式传 `aspect_ratio`），且最终 prompt 写出严格画布比例。
+进入图片阶段复用前述冻结 profile。`image_ratio != "auto"` 表示用户明确比例，封面和所有内容图都必须原样使用冻结比例；`image_ratio == "auto"` 时智能适配只能从冻结的 `allowed_image_ratios` 中选择一次并贯穿整组图片。每次 `generate_image` 都显式传 `aspect_ratio` 且使用相同比例，最终 prompt 写出严格画布比例。不得在 profile 读取失败或图片失败后切换 Provider、比例或未经冻结的能力。
 
-图片规划与生成必须读取 `wechat-picture-visual-design` 的 `references/prompt-blueprint.md`：`picture_image_count` 是包含封面的总张数（1–20），`picture_image_count_mode=up_to` 表示上限（默认最多 5 张），`exact` 表示精确数量；有张数但缺少模式的历史任务按 `exact` 处理，两个字段都缺失时按默认 `up_to`、最多 5 张处理。先按独立信息价值选择实际张数；信息不足时少生成，不得为凑数拆分短句、重复结论或添加装饰页。固定数量若无法由不重复且有价值的内容支撑，必须阻断交付。每页单独写页面目标、内容范围、逐字文字白名单、镜头/景别/焦点、布局地图、主体状态与关系、系列锚点、页面外禁止项和验收条件。封面使用 `image_type="cover"`，后续图使用 `image_type="content"`；每张生成后必须独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核合同>)`，通过后才进入交付包。调用失败、malformed 或无法可靠判断时标记 `quality_status=unavailable`，写 `output/quality-review.md` 与 `output/failure-state.json`，并让 `status` 与 `readiness.status` 必须均为 `blocked`。单图最多 3 次生成尝试，质量失败必须让 `publish-package.json` 保持 blocked。
+图片规划与生成必须读取 `wechat-picture-visual-design` 的 `references/prompt-blueprint.md`：`picture_image_count` 是包含封面的总张数（1–20），`picture_image_count_mode=up_to` 表示上限（默认最多 5 张），`exact` 表示精确数量；有张数但缺少模式的历史任务按 `exact` 处理，两个字段都缺失时按默认 `up_to`、最多 5 张处理。先按独立信息价值选择实际张数；信息不足时少生成，不得为凑数拆分短句、重复结论或添加装饰页。固定数量若无法由不重复且有价值的内容支撑，必须阻断交付。每页单独写页面目标、内容范围、逐字文字白名单、镜头/景别/焦点、布局地图、主体状态与关系、系列锚点、页面外禁止项和验收条件。封面使用 `image_type="cover"`，后续图使用 `image_type="content"`；每张生成后必须独立调用 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<当前图片>, prompt=<同页审核合同>)`，通过后才进入交付包。调用失败、malformed 或无法可靠判断时标记 `quality_status=unavailable`，写 `output/quality-review.md` 与 `output/failure-state.json`，并让 `status` 与 `readiness.status` 必须均为 `blocked`。每张图的 `generate_image` 总尝试次数最多为 3 次：只有结构化错误 `retryable=true` 时才允许有限退避后重试；配置/权限、参数、比例和安全策略错误不得重试。达到上限或遇到不可重试错误时立即写入脱敏错误码、stage 和安全 hint，设置 `resume_from=image_generation` 并停止；质量复核失败不属于 Provider 重试，必须让 `publish-package.json` 保持 blocked。
 
 ## Server finalizer 发布包协议
 

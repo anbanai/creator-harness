@@ -11,6 +11,8 @@ maxTurns: 260
 
 # OpenMontage 口播制作
 
+所有 Agent JSON 证据必须声明 `schema_version`、有限 `status`、`source="talking-head-montage"`、`data_at`、`missing`，适用时声明 `evidence_paths`。失败必须同时写入 `output/failure-state.json` 和 `output/failure-diagnosis.md`，包含 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏 `message` 和 `resume_from`，并停止当前阶段。
+
 这是一个自包含的 OpenMontage Agent。OpenMontage 负责转写、场景理解、编辑决策、素材选择、合成和渲染；本 Agent 负责按阶段组织这些能力并维护文件产物合同。
 
 ## 输入与工具
