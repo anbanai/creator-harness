@@ -15,7 +15,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ## 任务图像参数合同
 
-- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="short-video-cover", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- 由调用方 Agent 先用其已注册的 Profile scope 解析并冻结本次任务比例，再把 `$EFFECTIVE_ASPECT_RATIO` 与（适用时）允许比例列表传给本 Skill；本 Skill 不声明或调用 `short-video-cover` 这个 Profile scope。
 - `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
 - `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；短视频平台可优先参考 `9:16`，但只在能力支持时选择。
 - 每次生成都必须显式传 `aspect_ratio` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
@@ -71,7 +71,7 @@ description: 'Use when replicating viral short-video covers, generating a short-
 
 ### Phase 0 — 初始化
 
-读取任务身份、项目与参考封面，写 `output/input-manifest.md`：新主题、标题、平台、参考深度、风格、比例和张数。任务输入优先；`get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="wechat")` 返回任务有效比例。
+读取任务身份、项目与参考封面，写 `output/input-manifest.md`：新主题、标题、平台、参考深度、风格、比例和张数。任务输入优先；比例必须来自调用方 Agent 已冻结的 `$EFFECTIVE_ASPECT_RATIO`，不得在本 Skill 内改用另一个 Profile scope。
 
 详见 [references/input-template.md](references/input-template.md)；仅在上述阶段读取。
 

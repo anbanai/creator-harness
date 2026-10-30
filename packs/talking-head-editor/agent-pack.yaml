@@ -1,5 +1,5 @@
 id: talking-head-editor
-version: 2.0.6
+version: 2.0.7
 kind: managed
 display_name: 口播精剪
 description: 按固定口播工作流自动完成静音粗剪、语义精剪、动效素材包装和音效 BGM 收尾，并保留可复核的剪辑证据。
@@ -9,7 +9,7 @@ agent:
   name: talking-head-editor
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [auto-editor, video-use, erduo-broll-loop-engineering, talking-head-sound-design, content-tagging]
+  skills: [auto-editor, video-use, erduo-broll-loop-engineering, talking-head-sound-design, content-tagging, short-video-cover]
   max_turns: 220
 channel: talking-head-editor
 bindings:
@@ -40,6 +40,15 @@ artifacts:
   - {role: subtitles, path: output/subtitles.srt, mime_type: application/x-subrip, required: false}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}
+  - {role: cover_reference_input, path: output/input-manifest.md, mime_type: text/markdown, required: false}
+  - {role: cover_reference_image, path: output/reference-cover.png, mime_type: image/png, required: false}
+  - {role: cover_reference_compressed_image, path: output/reference-cover-compressed.png, mime_type: image/png, required: false}
+  - {role: cover_reference_analysis, path: output/reference-analysis.md, mime_type: text/markdown, required: false}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
+  - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
+  - {role: cover_reference_prompts, path: output/cover-prompts.md, mime_type: text/markdown, required: false}
+  - {role: cover_review, path: output/cover-review.md, mime_type: text/markdown, required: false}
+  - {role: cover_candidate, path: output/cover_v2.png, mime_type: image/png, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}

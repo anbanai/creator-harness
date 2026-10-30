@@ -1,5 +1,5 @@
 id: talking-head-montage
-version: 1.0.1
+version: 1.0.2
 kind: plugin
 display_name: 口播 Montage 制作
 description: 以 OpenMontage hybrid 为主引擎，完成真人口播、生成视频素材、图片素材和图形动效的本地制作与文件审核。
@@ -9,7 +9,7 @@ agent:
   name: talking-head-montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [talking-head-sound-design, content-tagging]
+  skills: [talking-head-sound-design, content-tagging, short-video-cover]
   max_turns: 260
 runtime:
   profile: talking-head-montage
@@ -41,6 +41,15 @@ artifacts:
   - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}
+  - {role: cover_reference_input, path: output/input-manifest.md, mime_type: text/markdown, required: false}
+  - {role: cover_reference_image, path: output/reference-cover.png, mime_type: image/png, required: false}
+  - {role: cover_reference_compressed_image, path: output/reference-cover-compressed.png, mime_type: image/png, required: false}
+  - {role: cover_reference_analysis, path: output/reference-analysis.md, mime_type: text/markdown, required: false}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
+  - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
+  - {role: cover_reference_prompts, path: output/cover-prompts.md, mime_type: text/markdown, required: false}
+  - {role: cover_review, path: output/cover-review.md, mime_type: text/markdown, required: false}
+  - {role: cover_candidate, path: output/cover_v2.png, mime_type: image/png, required: false}
   - {role: review_decision, path: output/review-decision.json, mime_type: application/json, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}

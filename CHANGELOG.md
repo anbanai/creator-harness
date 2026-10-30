@@ -1,3 +1,7 @@
+# 4.2.112
+
+- Preload the short-video-cover Skill for the talking-head editor and Montage Agent Packs.
+
 # 4.2.111
 
 - Align talking-head Montage Codex instructions with the local OpenMontage boundary and shared evidence contract; synchronize Agent Pack versions and generated catalog.

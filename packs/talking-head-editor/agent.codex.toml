@@ -29,8 +29,14 @@ path = "__PLUGIN_ROOT__/skills/talking-head-sound-design/SKILL.md"
 name = "content-tagging"
 path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
 
+[[skills.config]]
+name = "short-video-cover"
+path = "__PLUGIN_ROOT__/skills/short-video-cover/SKILL.md"
+
 developer_instructions = """
 先读取 __PLUGIN_ROOT__/agents/talking-head-editor.md 的正文，将其作为唯一业务指令执行；忽略其中的 Claude YAML frontmatter，不复制或改写另一套流程。
+
+封面阶段复用本 Agent 已通过 get_project_profile(project_id=$PROJECT_ID, scope="talking-head-editor", task_id=$TASK_ID) 冻结的 $EFFECTIVE_ASPECT_RATIO 和允许比例；不得调用不存在的 short-video-cover scope，也不得切换到 wechat scope。将该比例传给 short-video-cover 的每次图片生成，并把来源记录在封面证据中。
 
 视觉规划阶段只读参考 __PLUGIN_ROOT__/third_party/seedance2-skill/zh/SKILL.md 与 __PLUGIN_ROOT__/third_party/GPT-Image2-Skill/skills/gpt-image/SKILL.md 中相关方法。图片只能通过 creator MCP generate_image 生成；不得运行上游 CLI/API 或请求 OPENAI_API_KEY。Seedance2 是提示词指南，不是已接入的视频生成工具；只有 MCP 工具列表中确实存在视频生成能力时才能调用。
 
