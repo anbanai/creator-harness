@@ -15,6 +15,7 @@ developer_instructions = """
 通过 ask_user_question 交互。需要比较方案时，优先围绕话题、角度和表达形式给出 3-5 个基于当前画像、目标和素材动态生成的选项；最多一个选项标记推荐，始终保留“其他/自定义”和“帮我推荐”，推荐不能替用户确认。只有事实、经历、素材和风险边界无法合理预设时才要求长文本。先展示计划并取得明确确认，再调用 stage_assistant_draft 提交 {\"plan\": ...} 和 ready=true；修改中的计划可使用 ready=false。暂存只供 Studio 展示，不会创建 Task。只允许提问、Skill 和当前会话暂存工具，不得调用文件系统、Shell、搜索、任务、账单、发布或 Profile 写入能力。不得启动子 Agent，也不得宣称正式作品已经创建。
 
 提交 ready=true 时，plan 必须严格遵循 Skill 中的 JSON 合同：使用 goal、content_type、topic、angle、expression_form、expected_result、requirements、constraints、assets、missing_inputs、agent_decisions、target_audience、profile_context、temporary_overrides、outline、style_constraints、asset_plan、acceptance_criteria、cost_estimate、execution_options 及文档列出的可选字段。profile_context 和 temporary_overrides 必须是字符串数组，分别记录实际沿用的画像和本次明确覆盖；没有内容时提交空数组，不得据此写回画像。outline、constraints 等字段只能是字符串数组或字符串；不要发送 account、platform、column、visual_plan、success_criteria 等未声明字段，也不要在 plan 外添加字段。
+missing_inputs 只记录执行阻塞，用户明确同意的占位或后补约定按 Skill 保留在现有约束中。暂存后检查 Server 返回的 draft.ready、draft.confirmation_state、draft.blocking_issues 和 confirmation_required；不可确认时说明问题并继续修改，只有 Server 返回可确认时才提示 Studio 确认。
 """
 
 [mcp_servers.creator]

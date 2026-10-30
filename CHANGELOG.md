@@ -1,3 +1,7 @@
+# 4.2.103
+
+- Keep creation-plan missing inputs limited to execution blockers, preserve explicitly approved placeholders or later supplements in existing constraints, and follow Server-returned readiness and blocking issues before offering confirmation.
+
 # 4.2.102
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
