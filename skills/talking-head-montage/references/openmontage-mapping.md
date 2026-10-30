@@ -1,30 +1,37 @@
-# OpenMontage Mapping
+# OpenMontage Native Mapping
 
-Use OpenMontage `hybrid` as the primary pipeline for this workflow. It keeps source footage as the anchor while allowing generated or selected support assets. Use the upstream `talking-head` stages for transcript, subtitle, silence, face, reframe, and speaker-specific composition guidance when those stages are available in the installed revision.
+Read this reference when translating evidence files into the installed OpenMontage project format.
 
-## Stable Mapping
+## Capability and pipeline probes
 
-| Anban artifact | OpenMontage concept | Rule |
+Run from OPENMONTAGE_ROOT with the configured OpenMontage Python environment:
+
+~~~bash
+python -c 'from tools.tool_registry import registry; registry.discover(); print(registry.provider_menu_summary())'
+python -c 'from lib.pipeline_loader import load_pipeline; print(load_pipeline("hybrid"))'
+~~~
+
+Use returned registry data, not a hard-coded provider list. If the checkout exposes a different Python executable, use OPENMONTAGE_VENV/bin/python. Discover the render entry point from that checkout's own --help or project metadata and record it.
+
+## Evidence mapping
+
+| Evidence | OpenMontage input or stage | Required relationship |
 | --- | --- | --- |
-| `transcript.json` | `script` / transcript artifact | Preserve word timing and source timecodes. |
-| `edit-decision-list.json` | `edit_decisions` | Keep source and composition time mappings. |
-| `asset-requirements.json` | `scene_plan` support needs | Declare all three asset classes independently. |
-| `generated-video-manifest.json` | `asset_manifest` video selects | Generate before final support composition. |
-| `visual-plan.json` | hybrid `scene_plan` and support map | Reference only verified local files. |
-| `motion-sample.mp4` | hybrid compose preview | Must contain source and planned support media. |
-| `final.mp4` | hybrid compose output | Keep dialogue primary and generated clip audio muted by default. |
+| transcript.json | transcript/script stage | Preserve word timing and source timecodes. |
+| edit-decision-list.json | edit/timeline stage | Preserve source-to-sequence mappings and reasons. |
+| asset-requirements.json | scene/support planning | Declare video_insert, image_insert, and motion_graphic independently. |
+| generated-video-manifest.json | video_selector results | Complete before hybrid composition. |
+| visual-plan.json | hybrid scene/track plan | Reference only verified local assets. |
+| motion-sample.mp4 | hybrid preview render | Include the source speaker and all planned support classes. |
+| final.mp4 | hybrid final render | Preserve dialogue priority and explicit audio decisions. |
 
-## Video Selector Contract
+## Provider selection
 
-Use the installed registry's `video_selector` capability. The operation is selected per requirement:
+video_selector chooses an operation from the registry for each requirement:
 
-- `text_to_video` for a described action or environment without a visual reference.
-- `image_to_video` when a still establishes the tea, product, utensil, or scene identity.
-- `reference_to_video` when continuity across generated inserts matters.
-- `stock_video`/search when a real-world observation is required and an authorized source is available.
+- text_to_video for described motion or a setting without a reference.
+- image_to_video when a still establishes object or scene identity.
+- reference_to_video when continuity across shots matters.
+- stock_video when the plan requires an authorized real-world source.
 
-Record the selected provider and model from the actual registry result. Do not hardcode a provider or call its HTTP API directly. A generated insert is a visual treatment and must not be presented as documentary evidence of a real event.
-
-## Tea IP Example
-
-For a tea presenter, derive requirements from the transcript rather than from a fixed shot list. A sentence about a named tea may need a stable leaf or liquor detail, a sentence about preparation may need a visible pour or steeping action, and a sentence about origin may need a landscape or process insert. These may share one time window with the presenter, a still, and a diagram, provided the visual plan defines the hierarchy and safe zones.
+Record the selected provider/model and parameters in the generated-video manifest. A generated clip is a visual treatment, not evidence that a real event occurred.

@@ -1,6 +1,10 @@
-# 4.2.109
+# 4.2.110
 
 - Keep creation-plan missing inputs limited to execution blockers, preserve explicitly approved placeholders or later supplements in existing constraints, and follow Server-returned readiness and blocking issues before offering confirmation.
+
+# 4.2.109
+
+- Align `talking-head-montage` with OpenMontage-native editing, provider selection, hybrid rendering, and asset-generation stages.
 
 # 4.2.108
 
