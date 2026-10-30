@@ -1,3 +1,7 @@
+# 4.2.110
+
+- Make `talking-head-montage` a self-contained OpenMontage Agent; remove the circular same-name Skill dependency.
+
 # 4.2.109
 
 - Align `talking-head-montage` with OpenMontage-native editing, provider selection, hybrid rendering, and asset-generation stages.

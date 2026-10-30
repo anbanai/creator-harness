@@ -3213,7 +3213,6 @@
       "agent": {
         "name": "talking-head-montage",
         "skills": [
-          "talking-head-montage",
           "talking-head-sound-design",
           "content-tagging"
         ],
@@ -3472,7 +3471,7 @@
       "ui": {
         "renderer": "custom:talking-head-montage"
       },
-      "digest": "5a42a7f5560c7437f28c8ab3c5744ec0991cd909b1d1759b44167bbee72041f7"
+      "digest": "db4f0c93fe03d5b2035a969e7624e9fcc4979b89eb39ff2438b9117c6fb6e04d"
     },
     {
       "id": "video-edit",

@@ -9,7 +9,7 @@ agent:
   name: talking-head-montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [talking-head-montage, talking-head-sound-design, content-tagging]
+  skills: [talking-head-sound-design, content-tagging]
   max_turns: 260
 runtime:
   profile: talking-head-montage

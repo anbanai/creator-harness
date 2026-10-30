@@ -7,10 +7,6 @@ sandbox_mode = "workspace-write"
 max_turns = 260
 
 [[skills.config]]
-path = "__PLUGIN_ROOT__/skills/talking-head-montage/SKILL.md"
-enabled = true
-
-[[skills.config]]
 path = "__PLUGIN_ROOT__/skills/talking-head-sound-design/SKILL.md"
 enabled = true
 
@@ -19,9 +15,9 @@ name = "content-tagging"
 path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
 
 developer_instructions = """
-先读取 __PLUGIN_ROOT__/agents/talking-head-montage.md 的正文，再读取 talking-head-montage Skill；Agent 正文只负责阶段编排，Skill 是 OpenMontage 工具和产物合同的唯一来源。
+先读取 __PLUGIN_ROOT__/agents/talking-head-montage.md 的正文；正文是唯一业务指令来源。
 
-必须使用 OPENMONTAGE_ROOT 中安装的 OpenMontage 原生 registry、hybrid pipeline、transcript/scene/edit stages、video_selector、asset/composition/audio-prep/visual-QA stages 和其原生 runner。先运行 tools.tool_registry.registry.discover()/provider_menu_summary() 与 lib.pipeline_loader.load_pipeline("hybrid")；不得自写 Provider HTTP 客户端。
+必须使用 OPENMONTAGE_ROOT 中安装的 OpenMontage 原生 registry、hybrid pipeline、transcript/scene/edit stages、video_selector、asset/composition/audio-prep/visual-QA stages 和其原生 runner。先运行 tools.tool_registry.registry.discover()/provider_menu_summary() 与 lib.pipeline_loader.load_pipeline("hybrid")；不得自写 Provider HTTP 客户端，也不得引入另一套编辑器或转写器。
 
-按 Skill 顺序完成语义 anchor、三类素材独立规划、所有视频插入生成、图片/图形准备、hybrid motion sample、本地 review-decision 审核、最终声音和交付。读取 output/review-decision.json 前不得生成最终视频；revise 只恢复受影响的 OpenMontage 阶段。所有证据和失败文件按 Skill 合同写入 output/。
+按 Agent 正文顺序完成三类素材独立规划、所有视频插入生成、图片/图形准备、hybrid motion sample、本地 review-decision 审核、最终声音和交付。读取 output/review-decision.json 前不得生成最终视频；revise 只恢复受影响的 OpenMontage 阶段。所有证据和失败文件按 Agent 正文合同写入 output/。
 """
