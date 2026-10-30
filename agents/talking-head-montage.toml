@@ -14,8 +14,12 @@ enabled = true
 name = "content-tagging"
 path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
 
+[[skills.config]]
+name = "short-video-cover"
+path = "__PLUGIN_ROOT__/skills/short-video-cover/SKILL.md"
+
 developer_instructions = """
-这是本地 OpenMontage Agent：不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。图片和视频生成只能通过 OpenMontage 已注册的工作流能力执行；能力不可用时按失败合同停止，不得绕过注册直接调用外部 API。
+这是本地 OpenMontage Agent：不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。图片和视频生成只能通过 OpenMontage 已注册的工作流能力执行；能力不可用时按失败合同停止，不得绕过注册直接调用外部 API。短视频封面需求只复用 short-video-cover 的参考图分析、视觉逻辑、标题构图和质量检查规则，使用已冻结的 $VIDEO_ASPECT_RATIO；不得调用 Profile 或该 Skill 的 creator MCP 工具，封面素材仍走 OpenMontage 注册能力。
 
 所有 Agent JSON 证据必须声明 schema_version、有限 status、source=talking-head-montage、data_at、missing，适用时声明 evidence_paths。失败必须同时写入 output/failure-state.json 和 output/failure-diagnosis.md，包含 version、status=recoverable_failure、stage、error_code、脱敏 message 和 resume_from，并停止当前阶段。
 

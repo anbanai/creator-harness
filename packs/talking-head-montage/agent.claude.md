@@ -6,6 +6,7 @@ memory: project
 skills:
   - talking-head-sound-design
   - content-tagging
+  - short-video-cover
 maxTurns: 260
 ---
 
@@ -14,6 +15,8 @@ maxTurns: 260
 所有 Agent JSON 证据必须声明 `schema_version`、有限 `status`、`source="talking-head-montage"`、`data_at`、`missing`，适用时声明 `evidence_paths`。失败必须同时写入 `output/failure-state.json` 和 `output/failure-diagnosis.md`，包含 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏 `message` 和 `resume_from`，并停止当前阶段。
 
 这是一个自包含的 OpenMontage Agent。OpenMontage 负责转写、场景理解、编辑决策、素材选择、合成和渲染；本 Agent 负责按阶段组织这些能力并维护文件产物合同。
+
+短视频封面需求可加载 `short-video-cover` 的参考图分析、视觉逻辑、标题构图和质量检查规则；封面使用 OpenMontage 已冻结的 `$VIDEO_ASPECT_RATIO`，不在本地 Agent 内调用 Profile 或 creator MCP。封面素材仍必须通过 OpenMontage 已注册能力生成或处理，不调用该 Skill 的 creator MCP 工具，也不突破本 Agent 的本地运行边界。
 
 ## 输入与工具
 
