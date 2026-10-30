@@ -1,5 +1,5 @@
 id: talking-head-editor
-version: 2.0.2
+version: 2.0.5
 kind: managed
 display_name: 口播精剪
 description: 按固定口播工作流自动完成静音粗剪、语义精剪、动效素材包装和音效 BGM 收尾，并保留可复核的剪辑证据。
@@ -9,7 +9,7 @@ agent:
   name: talking-head-editor
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [auto-editor, video-use, erduo-broll-loop-engineering]
+  skills: [auto-editor, video-use, erduo-broll-loop-engineering, talking-head-sound-design, content-tagging]
   max_turns: 220
 channel: talking-head-editor
 bindings:
@@ -23,6 +23,7 @@ billing_operations:
   talking_head_editor: task.talking_head_editor
 artifacts:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
+  - {role: final_picture, path: output/final-picture.mp4, mime_type: video/mp4, required: false}
   - {role: edit_decision_list, path: output/edit-decision-list.json, mime_type: application/json, required: true}
   - {role: transcript, path: output/transcript.json, mime_type: application/json, required: true}
   - {role: edit_strategy, path: output/edit-strategy.md, mime_type: text/markdown, required: true}
@@ -31,17 +32,33 @@ artifacts:
   - {role: bgm_plan, path: output/bgm-plan.json, mime_type: application/json, required: true}
   - {role: audio_source_manifest, path: output/audio-source-manifest.json, mime_type: application/json, required: true}
   - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
-  - {role: motion_sample, path: output/motion-sample.mp4, mime_type: video/mp4, required: false}
-  - {role: motion_review, path: output/motion-review.json, mime_type: application/json, required: false}
-  - {role: motion_source_manifest, path: output/motion-source-manifest.json, mime_type: application/json, required: false}
-  - {role: rough_cut, path: output/rough-cut.mp4, mime_type: video/mp4, required: false}
-  - {role: semantic_cut, path: output/semantic-cut.mp4, mime_type: video/mp4, required: false}
+  - {role: motion_sample, path: output/motion-sample.mp4, mime_type: video/mp4, required: true}
+  - {role: motion_review, path: output/motion-review.json, mime_type: application/json, required: true}
+  - {role: motion_source_manifest, path: output/motion-source-manifest.json, mime_type: application/json, required: true}
+  - {role: rough_cut, path: output/rough-cut.mp4, mime_type: video/mp4, required: true}
+  - {role: semantic_cut, path: output/semantic-cut.mp4, mime_type: video/mp4, required: true}
   - {role: subtitles, path: output/subtitles.srt, mime_type: application/x-subrip, required: false}
-  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: false}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
+artifact_stages:
+  - id: motion_review
+    trigger: output/motion-sample.mp4
+    required:
+      - output/rough-cut.mp4
+      - output/transcript.json
+      - output/edit-decision-list.json
+      - output/edit-strategy.md
+      - output/semantic-cut.mp4
+      - output/motion-sample.mp4
+      - output/visual-plan.json
+      - output/motion-review.json
+      - output/motion-source-manifest.json
+  - id: final_delivery
+    trigger: output/final.mp4
+    terminal: true
 delivery:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
   - {role: rough_cut, path: output/rough-cut.mp4, mime_type: video/mp4}

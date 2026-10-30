@@ -1,8 +1,28 @@
-# 4.2.103
+# 4.2.109
 
 - Keep creation-plan missing inputs limited to execution blockers, preserve explicitly approved placeholders or later supplements in existing constraints, and follow Server-returned readiness and blocking issues before offering confirmation.
 
-# 4.2.102
+# 4.2.108
+
+- Add the plugin-only `talking-head-montage` Agent, using OpenMontage hybrid for source-led talking-head production with independently planned video inserts, image inserts, motion graphics, and a local file review gate.
+
+# 4.2.107
+
+- Harden talking-head delivery with measured CC0 motion-graphics SFX selection, per-cue audibility evidence, bounded aesthetic frame review, video timecode tagging, and role-aware artifact size limits.
+
+# 4.2.106
+
+- Add read-only Seedance 2 and GPT-Image upstream references to the talking-head workflow while routing generated images exclusively through Anban MCP; add official-source checks and explicit upstream update targets.
+
+# 4.2.105
+
+- Correct the managed talking-head transcription credential mapping, use the installed video-use helpers, and make Agent runtime checks capability-based while retaining reproducible image pins. Verify normalized multi-source audio assembly before accepting a rough cut.
+
+# 4.2.104
+
+- Add an offline, measured talking-head SFX pass using a pinned subset of CC0 assets; record per-cue provenance and pre/post mix loudness and true peak.
+
+- Harden the talking-head-editor contract: add explicit motion-review stages, declare Auto-Editor/HyperFrames image runtime versions, require content-tagging as a read-only dependency, and record independent media, subtitle, audio, and visual verification evidence.
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
 

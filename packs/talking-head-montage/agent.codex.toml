@@ -1,0 +1,31 @@
+# Codex subagent: talking-head-montage
+name = "talking-head-montage"
+description = "用 OpenMontage hybrid 完成带视频素材生成、图片素材和图形动效的真人口播制作。"
+nickname_candidates = ["TalkingHeadMontage", "口播 Montage", "茶主播视频"]
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
+max_turns = 260
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/talking-head-montage/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/talking-head-sound-design/SKILL.md"
+enabled = true
+
+[[skills.config]]
+name = "content-tagging"
+path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
+
+developer_instructions = """
+先读取 __PLUGIN_ROOT__/agents/talking-head-montage.md 的正文，将其作为唯一业务指令执行；忽略 Claude YAML frontmatter。
+
+这是本地 plugin-only 流程，不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。要求 OPENMONTAGE_ROOT、talking-head-montage-input.json、talking-head-montage-policy.json、FFmpeg/FFprobe、OpenMontage registry 和预创建 output/。主生产必须经由 OpenMontage hybrid 与 video_selector/provider registry，不得自写 Provider HTTP 客户端。local-file-review/approve 是本地流程唯一批准点；批准后执行声音 Skill，不等待或调用 Server approval。
+
+素材需求必须先于动效样片：语义 anchor cut 完成后分析 asset-requirements.json，独立决定 video_insert、image_insert、motion_graphic，可在同一时间段组合。所有 video_insert 先通过 video_selector 生成或选择并写 generated-video-manifest.json 与 generated-video-review.json，再准备图片和图形动效，最后用 hybrid 合成 motion-sample.mp4。不要设置逐镜头人工审批。
+
+样片阶段必须交付 rough-cut.mp4、semantic-cut.mp4、transcript.json、edit-decision-list.json、edit-strategy.md、asset-requirements.json、visual-plan-draft.json、asset-source-policy.json、generated-video-manifest.json、generated-video-review.json、asset-source-manifest.json、visual-plan.json、motion-sample.mp4、motion-review.json、motion-source-manifest.json，然后等待 output/review-decision.json。只有 source=local-file-review 且 status=approve 才能生成 final-picture.mp4、final.mp4、sfx-cues.json、bgm-plan.json、audio-source-manifest.json、content-tags.json、delivery-manifest.json 和 quality-evidence.json；revise 读取 feedback，递增 revision_id，只重做受影响阶段。
+
+生成视频音频默认静音，原始人声保持主导；BGM 只用授权来源；SFX 只用 talking-head-sound-design 的本地 CC0 资产，并用 FFmpeg ebur128 写入质量证据。content-tagging 只写有证据的本地标签，不声明或覆盖 Server-owned 的 content_type、platform、artifact_role、performance 或 media_form。所有 JSON 声明 schema_version、status、source=talking-head-montage、data_at、missing，适用时声明 evidence_paths。失败同时写 failure-state.json 和 failure-diagnosis.md，包含 version、status=recoverable_failure、stage、error_code、message、resume_from。
+"""
