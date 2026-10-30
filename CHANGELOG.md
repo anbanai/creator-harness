@@ -1,6 +1,10 @@
-# 4.2.112
+# 4.2.113
 
 - Expand talking-head visual direction with content-led motion graphics, kinetic typography, progressive reveals, varied compositions, and stronger sample review against repetitive or oversized static cards.
+
+# 4.2.112
+
+- Improve talking-head captions: keep each cue to one line, omit captions when visible material already communicates the full spoken point, and keep Montage captions within a narrower, higher safe area.
 
 # 4.2.111
 
