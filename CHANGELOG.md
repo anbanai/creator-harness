@@ -1,3 +1,7 @@
+# 4.2.111
+
+- Align talking-head Montage Codex instructions with the local OpenMontage boundary and shared evidence contract; synchronize Agent Pack versions and generated catalog.
+
 # 4.2.110
 
 - Make `talking-head-montage` a self-contained OpenMontage Agent; remove the circular same-name Skill dependency.
