@@ -1,3 +1,7 @@
+# 4.2.107
+
+- Harden talking-head delivery with measured CC0 motion-graphics SFX selection, per-cue audibility evidence, bounded aesthetic frame review, video timecode tagging, and role-aware artifact size limits.
+
 # 4.2.106
 
 - Add read-only Seedance 2 and GPT-Image upstream references to the talking-head workflow while routing generated images exclusively through Anban MCP; add official-source checks and explicit upstream update targets.

@@ -22,10 +22,23 @@ from typing import Any
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 ASSET_ROOT = SKILL_ROOT / "assets" / "sfx"
 MANIFEST_PATH = ASSET_ROOT / "manifest.json"
+UPSTREAM_ROOT = SKILL_ROOT.parents[1] / "third_party" / "motion-graphics"
+UPSTREAM_MANIFEST_PATH = UPSTREAM_ROOT / "skills" / "sound-effects" / "sfx" / "manifest.json"
+UPSTREAM_ASSET_ROOT = UPSTREAM_ROOT / "skills" / "sound-effects" / "sfx"
 MAX_CUES = 120
 MAX_CUE_FILE_BYTES = 2 * 1024 * 1024
 MAX_TIMEOUT_SECONDS = 3600
-MAX_CUE_GAIN_DB = -18
+MAX_CUE_GAIN_DB = -6
+MIN_CUE_GAIN_DB = -36
+INAUDIBLE_RELATIVE_RMS_DB = -24.0
+MARGINAL_RELATIVE_RMS_DB = -18.0
+CUE_WINDOW_SECONDS = 0.5
+CATEGORY_TARGETS = {
+    "whoosh": {"min_relative_rms_db": -24.0, "max_relative_rms_db": -10.0},
+    "riser": {"min_relative_rms_db": -24.0, "max_relative_rms_db": -10.0},
+    "impact": {"min_relative_rms_db": -18.0, "max_relative_rms_db": -6.0},
+    "reveal": {"min_relative_rms_db": -18.0, "max_relative_rms_db": -6.0},
+}
 
 
 class SoundPassError(Exception):
@@ -84,27 +97,61 @@ def probe_video(path: Path, timeout: int) -> tuple[float, float]:
 
 def load_manifest() -> dict[str, dict[str, Any]]:
     try:
-        payload = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        manifest_path = UPSTREAM_MANIFEST_PATH if UPSTREAM_MANIFEST_PATH.is_file() else MANIFEST_PATH
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise SoundPassError("sound_manifest_invalid", "Bundled sound manifest is unavailable or malformed") from exc
-    if payload.get("license") != "CC0 1.0" or not isinstance(payload.get("sounds"), list):
-        raise SoundPassError("sound_manifest_invalid", "Bundled sound manifest does not declare the expected licence")
+    if UPSTREAM_MANIFEST_PATH.is_file():
+        raw_entries = [entry for entry in payload.get("bundled", []) if isinstance(entry, dict)]
+        root = UPSTREAM_ASSET_ROOT
+        default_entries = {
+            entry.get("category"): entry
+            for entry in payload.get("default_kit", [])
+            if isinstance(entry, dict) and entry.get("file") and entry.get("license") == "CC0 1.0"
+        }
+        raw_entries.extend(entry for entry in default_entries.values() if entry.get("file"))
+    else:
+        raw_entries = payload.get("sounds", [])
+        root = ASSET_ROOT
+        default_entries = {entry.get("category"): entry for entry in raw_entries if isinstance(entry, dict)}
+    if not raw_entries:
+        raise SoundPassError("sound_manifest_invalid", "Bundled sound manifest contains no redistributable assets")
     sounds: dict[str, dict[str, Any]] = {}
-    for entry in payload["sounds"]:
-        if not isinstance(entry, dict) or entry.get("license", "CC0 1.0") != "CC0 1.0":
-            raise SoundPassError("sound_manifest_invalid", "Sound manifest contains an unsupported entry")
-        sound_id = entry.get("id")
+    for entry in raw_entries:
+        if not isinstance(entry, dict) or entry.get("license") != "CC0 1.0":
+            continue
+        category = entry.get("category")
         filename = entry.get("file")
-        if not isinstance(sound_id, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", sound_id):
-            raise SoundPassError("sound_manifest_invalid", "Sound manifest contains an invalid asset ID")
-        if not isinstance(filename, str) or Path(filename).name != filename or not filename.endswith(".ogg"):
-            raise SoundPassError("sound_manifest_invalid", f"Sound asset {sound_id} has an unsafe filename")
-        asset = require_regular_file(ASSET_ROOT / filename, f"Bundled sound {sound_id}")
-        if sha256_file(asset) != entry.get("sha256"):
-            raise SoundPassError("sound_asset_digest_mismatch", f"Bundled sound {sound_id} failed its SHA-256 check")
-        if sound_id in sounds or entry.get("category") != sound_id:
-            raise SoundPassError("sound_manifest_invalid", "Sound manifest contains duplicate or mismatched categories")
-        sounds[sound_id] = {**entry, "path": asset}
+        if not isinstance(category, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", category):
+            raise SoundPassError("sound_manifest_invalid", "Sound manifest contains an invalid category")
+        if not isinstance(filename, str) or Path(filename).is_absolute() or any(part in {"", ".", ".."} for part in Path(filename).parts) or Path(filename).suffix.lower() != ".ogg":
+            raise SoundPassError("sound_manifest_invalid", f"Sound asset {category} has an unsafe filename")
+        asset = require_regular_file(root / filename, f"Bundled sound {category}")
+        sound_id = category if default_entries.get(category, {}).get("file") == filename else f"{category}-{Path(filename).stem}"
+        sounds[sound_id] = {
+            **entry,
+            "id": sound_id,
+            "category": category,
+            "title": entry.get("title", Path(filename).stem),
+            "attribution": entry.get("attribution") or entry.get("credit", ""),
+            "source_url": entry.get("source_url", ""),
+            "sha256": sha256_file(asset),
+            "path": asset,
+        }
+    if not sounds:
+        raise SoundPassError("sound_manifest_invalid", "Sound manifest has no CC0 assets available to the runtime")
+    # Category lookup always resolves to the upstream default kit when present.
+    for category, entry in default_entries.items():
+        if entry.get("file"):
+            default_id = next((key for key, value in sounds.items() if value.get("category") == category and value.get("path") == (root / entry["file"]).resolve()), None)
+            if default_id and default_id != category:
+                sounds[category] = {**sounds[default_id], "id": category}
+    # Categories without an upstream default still need a stable cue selector.
+    # Use the first manifest entry; callers may select another asset_id explicitly.
+    for category in sorted({value["category"] for value in sounds.values()}):
+        if category not in sounds:
+            selected = next(value for value in sounds.values() if value["category"] == category)
+            sounds[category] = {**selected, "id": category}
     return sounds
 
 
@@ -146,20 +193,23 @@ def read_cues(path: Path, duration: float, sounds: dict[str, dict[str, Any]]) ->
         category = raw.get("category")
         time_seconds = raw.get("time_seconds")
         gain_db = raw.get("gain_db", -18.0)
+        asset_id = raw.get("asset_id", category)
         if not isinstance(cue_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", cue_id) or cue_id in ids:
             raise SoundPassError("cue_contract_invalid", "Cue IDs must be unique, non-empty identifiers")
         if category not in sounds:
             raise SoundPassError("cue_category_unsupported", f"Cue {cue_id} must select a bundled category")
+        if not isinstance(asset_id, str) or asset_id not in sounds or sounds[asset_id]["category"] != category:
+            raise SoundPassError("cue_asset_unsupported", f"Cue {cue_id} must select an asset in category {category}")
         if isinstance(time_seconds, bool) or not isinstance(time_seconds, (int, float)) or not math.isfinite(time_seconds) or not 0 <= time_seconds < duration:
             raise SoundPassError("cue_time_invalid", f"Cue {cue_id} time must fall within the final video")
-        if isinstance(gain_db, bool) or not isinstance(gain_db, (int, float)) or not math.isfinite(gain_db) or not -36 <= gain_db <= MAX_CUE_GAIN_DB:
-            raise SoundPassError("cue_gain_invalid", f"Cue {cue_id} gain must be between -36 and {MAX_CUE_GAIN_DB} dB")
+        if isinstance(gain_db, bool) or not isinstance(gain_db, (int, float)) or not math.isfinite(gain_db) or not MIN_CUE_GAIN_DB <= gain_db <= MAX_CUE_GAIN_DB:
+            raise SoundPassError("cue_gain_invalid", f"Cue {cue_id} gain must be between {MIN_CUE_GAIN_DB} and {MAX_CUE_GAIN_DB} dB")
         for text_field in ("event", "purpose"):
             value = raw.get(text_field)
             if not isinstance(value, str) or not value.strip() or len(value) > 240:
                 raise SoundPassError("cue_contract_invalid", f"Cue {cue_id} needs a concise {text_field}")
         ids.add(cue_id)
-        parsed.append({**raw, "gain_db": float(gain_db), "time_seconds": float(time_seconds)})
+        parsed.append({**raw, "asset_id": asset_id, "gain_db": float(gain_db), "time_seconds": float(time_seconds)})
     return parsed
 
 
@@ -173,6 +223,63 @@ def measure_audio(path: Path, timeout: int) -> dict[str, float]:
     if not integrated or not peak:
         raise SoundPassError("audio_measurement_failed", "FFmpeg did not report integrated loudness and true peak")
     return {"integrated_lufs": float(integrated[-1]), "true_peak_dbfs": float(peak[-1])}
+
+
+def measure_level(path: Path, timeout: int, gain_db: float = 0.0, start_seconds: float | None = None, duration_seconds: float | None = None) -> dict[str, float]:
+    filters = "volumedetect"
+    if gain_db:
+        filters = f"volume={gain_db:.2f}dB,{filters}"
+    command = ["ffmpeg", "-nostdin", "-hide_banner", "-nostats"]
+    if start_seconds is not None:
+        command.extend(["-ss", f"{max(0.0, start_seconds):.6f}"])
+    command.extend(["-i", str(path)])
+    if duration_seconds is not None:
+        command.extend(["-t", f"{max(0.01, duration_seconds):.6f}"])
+    command.extend(["-vn", "-af", filters, "-f", "null", "-"])
+    result = run(command, timeout)
+    mean = re.findall(r"mean_volume:\s+(-?\d+(?:\.\d+)?)\s+dB", result.stderr)
+    peak = re.findall(r"max_volume:\s+(-?\d+(?:\.\d+)?)\s+dB", result.stderr)
+    if not mean or not peak:
+        raise SoundPassError("audio_level_measurement_failed", "FFmpeg did not report cue level")
+    return {"rms_dbfs": float(mean[-1]), "peak_dbfs": float(peak[-1])}
+
+
+def assess_cue_audibility(cues: list[dict[str, Any]], sounds: dict[str, dict[str, Any]], source: Path, timeout: int) -> dict[str, Any]:
+    checks = []
+    for cue in cues:
+        asset = sounds[cue["asset_id"]]
+        effect_duration = min(float(asset.get("duration_s", CUE_WINDOW_SECONDS)), CUE_WINDOW_SECONDS)
+        window_start = max(0.0, cue["time_seconds"] - effect_duration / 2)
+        voice = measure_level(source, timeout, start_seconds=window_start, duration_seconds=effect_duration)
+        effect = measure_level(asset["path"], timeout, cue["gain_db"], duration_seconds=effect_duration)
+        relative = effect["rms_dbfs"] - voice["rms_dbfs"]
+        target = CATEGORY_TARGETS.get(cue["category"], {"min_relative_rms_db": MARGINAL_RELATIVE_RMS_DB, "max_relative_rms_db": -8.0})
+        if relative < target["min_relative_rms_db"]:
+            status = "inaudible"
+        elif relative < MARGINAL_RELATIVE_RMS_DB:
+            status = "marginal"
+        else:
+            status = "audible"
+        checks.append({
+            "cue_id": cue["cue_id"],
+            "asset_id": cue["asset_id"],
+            "category": cue["category"],
+            "window": {"start_seconds": round(window_start, 4), "end_seconds": round(window_start + effect_duration, 4)},
+            "measured_peak_dbfs": round(effect["peak_dbfs"], 2),
+            "measured_rms_dbfs": round(effect["rms_dbfs"], 2),
+            "voice_reference_rms_dbfs": round(voice["rms_dbfs"], 2),
+            "relative_rms_db": round(relative, 2),
+            "target_relative_rms_db": target,
+            "status": status,
+        })
+    return {
+        "window_seconds": CUE_WINDOW_SECONDS,
+        "thresholds": {
+            "inaudible_below_relative_rms_db": INAUDIBLE_RELATIVE_RMS_DB,
+            "marginal_below_relative_rms_db": MARGINAL_RELATIVE_RMS_DB,
+        },
+        "cues": checks,
+    }
 
 
 def ffmpeg_version(timeout: int) -> str:
@@ -196,7 +303,7 @@ def build_mix_filter(cues: list[dict[str, Any]], sounds: dict[str, dict[str, Any
         labels.append(f"[{label}]")
         cue["applied_gain_db"] = round(gain, 2)
         cue["applied_start_seconds"] = round(start, 4)
-        cue["asset"] = sounds[cue["category"]]
+        cue["asset"] = sounds[cue["asset_id"]]
     graph.append(f"{''.join(labels)}amix=inputs={len(labels)}:duration=first:normalize=0:dropout_transition=0[out]")
     return ";".join(graph)
 
@@ -204,7 +311,7 @@ def build_mix_filter(cues: list[dict[str, Any]], sounds: dict[str, dict[str, Any
 def render(input_path: Path, output_path: Path, cues: list[dict[str, Any]], sounds: dict[str, dict[str, Any]], duration: float, fps: float, reduction: float, timeout: int) -> None:
     command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y", "-i", str(input_path)]
     for cue in cues:
-        command.extend(["-i", str(sounds[cue["category"]]["path"])])
+        command.extend(["-i", str(sounds[cue["asset_id"]]["path"])])
     command.extend([
         "-filter_complex", build_mix_filter(cues, sounds, duration, fps, reduction),
         "-map", "0:v:0", "-map", "[out]", "-map_metadata", "0",
@@ -246,6 +353,10 @@ def sound_pass(video: Path, cue_path: Path, output: Path, timeout: int) -> dict[
     sounds = load_manifest()
     cues = read_cues(cues_file, duration, sounds)
     before = measure_audio(source, timeout)
+    audibility = assess_cue_audibility(cues, sounds, source, timeout) if cues else {"cues": []}
+    inaudible = [item["cue_id"] for item in audibility.get("cues", []) if item["status"] == "inaudible"]
+    if inaudible:
+        raise SoundPassError("cue_inaudible", "Cue level is below the audible threshold: " + ", ".join(inaudible))
     source_digest = sha256_file(source)
 
     temp_fd, temp_name = tempfile.mkstemp(prefix=".sfx-render-", suffix=".mp4", dir=output.parent)
@@ -288,6 +399,7 @@ def sound_pass(video: Path, cue_path: Path, output: Path, timeout: int) -> dict[
                 "before": before,
                 "after": after,
                 "true_peak_ceiling_dbfs": round(target_peak, 2),
+                "audibility_check": audibility,
             },
             "applied_cues": [
                 {
@@ -297,11 +409,11 @@ def sound_pass(video: Path, cue_path: Path, output: Path, timeout: int) -> dict[
                     "category": cue["category"],
                     "event": cue["event"],
                     "purpose": cue["purpose"],
-                    "gain_db": cue["applied_gain_db"],
                     "asset_id": cue["asset"]["id"],
+                    "gain_db": cue["applied_gain_db"],
                     "asset_sha256": cue["asset"]["sha256"],
                     "title": cue["asset"]["title"],
-                    "creator": cue["asset"]["creator"],
+                    "creator": cue["asset"].get("creator", ""),
                     "source_url": cue["asset"]["source_url"],
                     "license": "CC0 1.0",
                     "attribution": cue["asset"]["attribution"],

@@ -10,3 +10,7 @@
 	path = third_party/GPT-Image2-Skill
 	url = https://github.com/wuyoscar/GPT-Image2-Skill.git
 	branch = main
+[submodule "third_party/motion-graphics"]
+	path = third_party/motion-graphics
+	url = https://github.com/Barty-Bart/motion-graphics.git
+	branch = main

@@ -36,7 +36,7 @@ developer_instructions = """
 
 Codex 是零交互托管任务：不调用 AskUserQuestion，不调用 Claude TaskCreate/TaskUpdate。存在 TASK_ID 且 MCP 工具可用时调用 set_task_progress_plan/update_task_progress；不可用时继续执行并写 output/progress-state.json 记录降级，不伪造 execution_id。运行时已创建 output/，只验证它存在，不自行创建或改名。
 
-执行前确认 auto-editor、hyperframes 和镜像内 video-use helper 可执行，并记录实际观察到的版本；版本不同本身不是失败，缺少必需命令/helper、运行失败或不兼容才是阻塞。video-use 使用镜像内 ANBAN_VIDEO_USE_ROOT helpers 和 Server 注入的 ELEVENLABS_API_KEY，不得要求 MCP 转写能力、打印/复制凭据、创建自有 HTTP 客户端或临时联网安装替代运行时。缺少 helper、凭据或上游服务失败时写 failure-state/failure-diagnosis 并停止。talking-head-sound-design 仅使用内置 CC0 SFX 与本地 FFmpeg，不联网获取音效或音乐；content-tagging 只读加载，用于最终的 output/content-tags.json。
+执行前确认 auto-editor、hyperframes 和镜像内 video-use helper 可执行，并记录实际观察到的版本；版本不同本身不是失败，缺少必需命令/helper、运行失败或不兼容才是阻塞。video-use 使用镜像内 ANBAN_VIDEO_USE_ROOT helpers 和 Server 注入的 ELEVENLABS_API_KEY，不得要求 MCP 转写能力、打印/复制凭据、创建自有 HTTP 客户端或临时联网安装替代运行时。缺少 helper、凭据或上游服务失败时写 failure-state/failure-diagnosis 并停止。talking-head-sound-design 读取只读 motion-graphics 的 CC0 bundled manifest，使用本地 FFmpeg，禁止 Mixkit/runtime 下载和音乐流程；每个 cue 必须有 audibility_check，inaudible 不能交付；content-tagging 只读加载，用于最终的 output/content-tags.json，视频证据使用 start_seconds/end_seconds 而不是行号。
 
 按正文合同执行：样片阶段交付 output/rough-cut.mp4、output/semantic-cut.mp4、output/transcript.json、output/edit-decision-list.json、output/edit-strategy.md、output/visual-plan.json、output/motion-sample.mp4、output/motion-review.json、output/motion-source-manifest.json 后等待 Server 审核；approve 后先生成 output/final-picture.mp4，再运行声音 Skill 输出 output/final.mp4 与含渲染量测的 sfx-cues.json，随后写 bgm-plan.json、audio-source-manifest.json、content-tags.json、delivery-manifest.json 和 quality-evidence.json。所有路径使用连字符文件名。
 
