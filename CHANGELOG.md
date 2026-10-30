@@ -1,3 +1,7 @@
+# 4.2.108
+
+- Add the plugin-only `talking-head-montage` Agent, using OpenMontage hybrid for source-led talking-head production with independently planned video inserts, image inserts, motion graphics, and a local file review gate.
+
 # 4.2.107
 
 - Harden talking-head delivery with measured CC0 motion-graphics SFX selection, per-cue audibility evidence, bounded aesthetic frame review, video timecode tagging, and role-aware artifact size limits.

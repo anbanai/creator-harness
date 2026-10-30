@@ -51,6 +51,11 @@ description = "口播精剪（静音粗剪 → 语义精剪 → 动效样片审�
 config_file = "~/.codex/agents/talking-head-editor.toml"
 nickname_candidates = ["TalkingHeadEditor", "口播精剪", "口播剪辑"]
 
+[agents.talking-head-montage]
+description = "口播 Montage 制作（语义精剪 → 视频素材生成 → 图片/动效 → 本地样片审核 → 成片）"
+config_file = "~/.codex/agents/talking-head-montage.toml"
+nickname_candidates = ["TalkingHeadMontage", "口播 Montage", "茶主播视频"]
+
 [agents.viral-ip-video-editor]
 description = "爆款 IP 口播短视频剪辑（素材理解 → 留存导向剪辑 → 成片质量复核）"
 config_file = "~/.codex/agents/viral-ip-video-editor.toml"
