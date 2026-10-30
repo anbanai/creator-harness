@@ -1,3 +1,7 @@
+# 4.2.112
+
+- Improve talking-head captions: keep each cue to one line, omit captions when visible material already communicates the full spoken point, and keep Montage captions within a narrower, higher safe area.
+
 # 4.2.111
 
 - Align talking-head Montage Codex instructions with the local OpenMontage boundary and shared evidence contract; synchronize Agent Pack versions and generated catalog.

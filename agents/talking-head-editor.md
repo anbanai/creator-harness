@@ -36,12 +36,19 @@ maxTurns: 220
 ## 执行规则
 
 1. **预检和粗剪：** 用 `ffprobe` 记录源文件真实时长、旋转矩阵、显示宽高、音视频轨道和真实帧节奏（同时记录 `avg_frame_rate` 与 `r_frame_rate`，不要把变帧源片写成 29.97）。运行可用的 auto-editor，记录实际版本、阈值、stream、前后 margin 和原片绝对时间码。`-ex clip-sequence` 会输出 N 个分段，必须把分段索引和拼接顺序记录清楚，不得把它当作单个文件。多源音频拼接前核对 codec、采样率、声道布局和时间基；拼接方法要求一致流参数时，先生成明确记录的临时归一化片段，不能覆盖源素材。拼接后核对总时长、采样率、声道布局、断点/爆音及相对源轨的人声电平，并把测量结果和处理步骤写入粗剪证据。粗剪后用独立的 ffmpeg `silencedetect` 复核静音区间，复核结果必须写入粗剪证据；工具输出与独立复核不一致时暂停并记录差异。
-2. **语义精剪：** 使用 video-use 的托管转写和上下文能力，输出连字符文件名 `output/edit-decision-list.json`、`output/transcript.json` 和 `output/edit-strategy.md`。字幕和 transcript 逐字对齐口播，只允许标点、大小写和分句调整，不润色、不压缩原话；字幕时间段首尾相接，不重叠，不在同一帧生成双行。保持原意、顺序、限定条件、数字、因果和自然强调。疑似有意为之的句子默认保留；只有确认是同一 take 的重复收尾且删除一处不损失信息时才删除，并记录保留哪一次及证据。
+2. **语义精剪：** 使用 video-use 的托管转写和上下文能力，输出连字符文件名 `output/edit-decision-list.json`、`output/transcript.json` 和 `output/edit-strategy.md`。transcript 逐字对齐口播，只允许标点、大小写和分句调整，不润色、不压缩原话；按下方字幕规则单独决定字幕呈现。字幕时间段不得重叠，允许为省略的片段留空；每个时间段最多一行，不在同一帧生成双行。保持原意、顺序、限定条件、数字、因果和自然强调。疑似有意为之的句子默认保留；只有确认是同一 take 的重复收尾且删除一处不损失信息时才删除，并记录保留哪一次及证据。
 3. **动效样片：** 进入视觉步骤前调用 `get_project_profile(project_id=$PROJECT_ID, scope="talking-head-editor", task_id=$TASK_ID)`，读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。非 `auto` 的用户/任务比例必须原样作为 `$EFFECTIVE_ASPECT_RATIO`；为 `auto` 时仅从允许列表选择与成片方向匹配的具体比例，并把来源和选择写入 `visual-plan.json`。画像调用失败、比例缺失或无可用具体比例时写失败产物并停止，不把 `auto` 传给图像 MCP。随后按每个口播信息点的表达目标选择媒介：静态信息、物件细节或概念说明优先用有辨识度的图片；过程、变化、空间关系或需要引导注意力时用图片加克制动效；只有现有 HyperFrames 图形动画能更清楚表达时才用纯动效。围绕 visual plan 中每个有独立表达价值的 slot 生成足量且彼此有差异的素材，不为凑数重复同一画面；能用图形表达的不要堆说明文字，图内文字限必要关键词，精确说明交由字幕或 HyperFrames 文字层。需要新增图片时，只能调用 Anban MCP `generate_image(project_id=$PROJECT_ID, task_id=$TASK_ID, prompt=<当前 slot 的最终提示词>, image_type="content", output_path="output/visual-<slot-id>.png", aspect_ratio=$EFFECTIVE_ASPECT_RATIO)`；比例必须来自上述解析并与成片一致。只有当前任务登记且确有必要的图片才能作为 `ref_image_paths`。生成后用可用的 Anban `analyze_image` MCP 对照该 slot 的目标、事实边界和画面可用性复核；失败按视觉计划记录，不得改走上游 CLI 或第三方 API。
 
    Seedance2 只提供镜头、节奏、参考素材角色和时间分段的提示词方法，不代表托管环境已接入 Seedance 或视频生成能力；除非当前 Anban MCP 工具列表确实包含可调用的视频生成工具，否则不生成式合成视频，只用 MCP 图片加现有 HyperFrames 工作流。GPT-Image 上游的 Gallery/提示词结构可用于构图与视觉表达参考，但所有生成仍由 `generate_image` 完成。记录每项的 `function`、源/目标时间码、静态图片/图片加动效/纯动效类型、素材来源或生成方式、权利状态和口播时序依赖。不得添加改变事实主张的新文字或副标题；原片没有的事实性陈述一律禁止，装饰性标签也必须明确为编辑标注并在 `visual_plan.json` 记录依据。渲染前执行 HyperFrames lint；按 `erduo-broll-loop-engineering/references/hyperframes-lint.md` 修复后再渲染。
 4. **审美复核：** 独立复核最多运行 10 分钟。用 ffmpeg 从 `motion-sample.mp4` 抽取开篇、信息卡、转场和结尾四组代表帧，记录每帧时间码、帧号、抽帧文件的 SHA-256 和抽帧参数；对每张代表帧调用已注册的 `analyze_image(project_id=$PROJECT_ID, task_id=$TASK_ID, file_path=<任务相对路径>, prompt=<只评价画面层级、信息密度、节奏、遮挡、视觉连续性和情绪匹配的复核提示>)`。不要把临时帧上传为业务交付物；分析结果、帧哈希、通过判据和风险写入 `motion-review.json`。超时或能力不可用时降级为本 Agent 自查，`aesthetic_review: "degraded"` 必须写明具体原因、受影响风险和未完成的判断，不得无限等待或把降级自查描述为独立通过。
 5. **声音和最终复核：** 仅在 `approve` 后生成 `output/final-picture.mp4`，并使用 `talking-head-sound-design` 从已批准视觉计划挑选少量有明确叙事作用的 SFX，混音到 `output/final.mp4`。声音 Skill 只使用镜像内 CC0 资产，不联网下载音效或音乐；无合适事件时记录空 cue 和原因，不伪造音效。BGM 只使用用户提供且授权清楚的曲目，本次 SFX renderer 不处理 BGM。`audio-source-manifest.json` 为每个声音源记录 `id`、用途、相对路径或 Server/provider 标识、字节哈希、时间范围、音量/ducking、授权状态（`verified|user_asserted|unknown|not_applicable`）和归属；任何 `unknown` 来源阻塞最终交付。用 `ffmpeg` `ebur128` 在干净母版和最终渲染后分别测量 integrated LUFS、true peak 和测量范围，写入 `quality-evidence.json`，不得假设渲染链路不会改变响度。最终完整解码并检查音画同步、字幕可读性、首 3 秒、语义连续性、遮挡、爆音和人声清晰度。
+
+## 字幕判断与排版
+
+- 按语义片段决定是否显示字幕。如果画面中的图文、图表或素材已经准确、清晰且足够完整地表达了同一段口播的核心信息，就省略该段字幕，避免重复呈现；例如信息卡已经完整写出结论时，不再叠加逐字重复的底部字幕。
+- 画面文字若只是标题、标签、关键词或部分摘要，或口播还补充了条件、细节、因果、限定或自然强调，仍需保留对应字幕。用户明确要求字幕或输入包含无障碍字幕要求时，不因画面重复而省略。
+- 字幕取舍不改变 transcript 和音轨：transcript 仍完整保留口播，字幕可只覆盖需要补充的信息片段。只要有烧录字幕，就输出与成片时间轴一致的 `output/subtitles.srt`；整片无需字幕时不生成空文件，并记录省略原因。
+- 烧录字幕严格单行显示：禁止字幕换行、上下叠行或同一时刻出现两行。过长内容按自然语义切成连续的单行字幕段；不得为塞进一行而缩小到难以阅读，也不得改写或删减原话。
 
 ## 恢复和失败
 
