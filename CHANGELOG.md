@@ -5,6 +5,7 @@
 # 4.2.110
 
 - Make `talking-head-montage` a self-contained OpenMontage Agent; remove the circular same-name Skill dependency.
+- Keep creation-plan missing inputs limited to execution blockers, preserve explicitly approved placeholders or later supplements in existing constraints, and follow Server-returned readiness and blocking issues before offering confirmation.
 
 # 4.2.109
 

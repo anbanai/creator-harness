@@ -25,7 +25,7 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 3. 按业务 reference 一次询问一个会改变结果的关键问题。可由上下文合理推导的字段直接记录；需要用户比较时优先使用 3-5 个动态选项，并保留“其他/自定义”和“帮我推荐”。
 4. 用户未指定的生产细节记录为交给内容 Agent 自主决定，不要继续追问标题、细节大纲、正文措辞、镜头脚本、配图提示词或内部 Prompt。
 5. 先展示完整需求摘要并请用户修改或确认。确认后调用 `stage_assistant_draft`，提交 `{"plan": ...}` 和 `ready: true`；此前可暂存 `ready: false`。
-6. 提交后等待 Studio 确认卡。不要声称作品任务已创建；只有 Studio 确认响应才是创建结果。
+6. 读取暂存结果中的权威 `draft`：`ready: true` 只是申请确认资格，实际以 Server 返回的 `draft.ready`、`draft.confirmation_state`、`draft.blocking_issues` 和 `confirmation_required` 为准。若返回不可确认或阻塞问题，说明问题并继续澄清、修改后重新暂存；不要把暂存成功说成已经可以确认。只有 Server 返回可确认的草稿时才提示用户在 Studio 确认。不要声称作品任务已创建；只有 Studio 确认响应才是创建结果。
 
 ## 草稿合同
 
@@ -55,6 +55,11 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 
 `profile_context` 列出本次实际沿用的项目画像摘要，`temporary_overrides` 列出用户明确指定的本次覆盖；ready 草稿必须同时携带二者，不适用时使用空数组。不得把临时覆盖写入 Profile，也不要为了填充来源说明而重新询问画像。
 
+`missing_inputs` 只记录缺失后无法执行本次作品的必要输入；存在此类输入时提交 `ready: false` 并继续澄清。用户已明确同意占位或后补的素材、明确不属于本次交付的内容，以及执行 Agent 可以完成的研究，按含义保留在已有 `requirements`、`constraints` 或 `temporary_overrides` 中，不放入 `missing_inputs`，也不新增字段。不得从沉默或模糊措辞推断用户同意延后补充。
+
+- 用户明确说“门店照片后补，先用占位图完成初稿”：将该约定记录在 `requirements` 或 `constraints`；如无其他执行阻塞，`missing_inputs` 使用空数组。
+- 用户要求“按我提供的视频剪辑”，但尚未提供视频且没有同意替代方案：将“待提供本次剪辑的源视频”保留在 `missing_inputs`，草稿不可确认。
+
 按需读取业务 reference：
 
 - [视频需求](references/video.md)
@@ -69,6 +74,7 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 - 计划中的每个关键决定都来自用户确认或明确标记为待确认。
 - 话题、角度和表达形式均已明确；已经在项目画像确认的六维信息没有被重复询问。
 - 目标、期望结果、必要输入和限制能被后续作品任务直接使用。
+- `missing_inputs` 只含执行阻塞；用户明确同意的后补或占位约定保留在现有约束中；暂存后的可确认结论与 Server 返回的有效状态和阻塞问题一致。
 - 用户确认前不把草稿标为 ready；用户确认后仍不宣称 Task 已创建。
 - 需求澄清不会修改画像，不提前生成内容，不选择内部工作流。
 - 只调用 AskUserQuestion、Skill 和当前会话的 `stage_assistant_draft`；不调用文件、Shell、搜索、任务、发布、账单或 profile 写入能力。
