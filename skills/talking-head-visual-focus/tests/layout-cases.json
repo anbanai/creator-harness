@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "skill": "talking-head-visual-focus",
+  "description": "State-machine and collision cases used to review a visual plan. Each case states the input condition, the required outcome, and the condition that makes it fail.",
+  "coordinate_system": "normalized top-left origin, x right, y down",
+  "cases": [
+    {
+      "id": "single_asset",
+      "given": "one image_insert while the speaker is in frame",
+      "expect": {
+        "focus_role": "primary",
+        "anchor": { "x": 0.5, "y": 0.618 },
+        "head_safe": true
+      },
+      "fail_if": "anchor.y outside 0.56-0.68 without safe_area_decision, or head_box overlap"
+    },
+    {
+      "id": "second_asset_promotes",
+      "given": "a second asset starts while the first is still primary",
+      "expect": {
+        "new_asset": { "focus_role": "primary", "scale_tier": "L" },
+        "old_asset": { "focus_role": "secondary_1", "anchor": { "x": 0.5, "y": 0.28 }, "scale_tier": "M" },
+        "same_frame_demotion": true
+      },
+      "fail_if": "old asset keeps primary scale or contrast in the new asset's first frame"
+    },
+    {
+      "id": "third_asset_promotes",
+      "given": "a third asset starts while two assets are already visible",
+      "expect": {
+        "third": "primary",
+        "previous_primary": "secondary_1",
+        "first_asset": "secondary_2",
+        "width_gap_primary_vs_secondary": ">= 0.14"
+      },
+      "fail_if": "three assets share equal width, contrast, or motion intensity"
+    },
+    {
+      "id": "over_capacity_demotes",
+      "given": "a fourth asset starts and the frame cannot hold four legible items",
+      "expect": {
+        "kept": ["primary", "secondary_1", "secondary_2"],
+        "oldest": "exiting",
+        "reason_recorded": true
+      },
+      "fail_if": "all four shrink below readable size, or the oldest keeps a secondary slot without a reason"
+    },
+    {
+      "id": "head_collision_shifts",
+      "given": "the default primary anchor overlaps head_box",
+      "expect": {
+        "resolution_order": ["shift_anchor", "lateral_anchor", "shrink", "recrop", "defer"],
+        "head_safe": true,
+        "collision_targets": ["head_box"]
+      },
+      "fail_if": "asset partially overlaps the head, or the plan keeps 0.618 without a reason"
+    },
+    {
+      "id": "head_in_motion_path",
+      "given": "start and end frames are clear but the entrance path sweeps across the head",
+      "expect": { "head_safe_on_all_sampled_frames": true, "sampled_frames": ">= 3" },
+      "fail_if": "only the first and last frames were checked"
+    },
+    {
+      "id": "caption_collision",
+      "given": "the primary would overlap the 0.75-0.82 caption band",
+      "expect": { "caption_band_clear": true, "primary_moved": "up_or_lateral" },
+      "fail_if": "asset overlaps captions, or captions were moved into the bottom 12% safe area"
+    },
+    {
+      "id": "fullframe_avatar",
+      "given": "a generated clip covers the full frame while the speaker keeps talking",
+      "expect": {
+        "speaker_inset": {
+          "shape": "circle",
+          "center": { "x": 0.16, "y": 0.14 },
+          "diameter": 0.16,
+          "ring_width": "0.02-0.04",
+          "sync": "same timecode source crop",
+          "stable_per_segment": true
+        },
+        "avoids_asset_key_content": true
+      },
+      "fail_if": "speaker disappears, inset uses a still frame, inset jumps corners mid-segment, or covers the asset's title/labels"
+    },
+    {
+      "id": "fullframe_no_corner",
+      "given": "all four inset corners would cover the asset's key subject or text",
+      "expect": { "fullframe_abandoned": true, "fallback": "non_fullscreen_primary_secondary" },
+      "fail_if": "full-frame presentation kept with the avatar covering content, or speaker dropped entirely"
+    }
+  ]
+}
