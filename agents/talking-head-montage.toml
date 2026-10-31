@@ -18,6 +18,10 @@ path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
 name = "short-video-cover"
 path = "__PLUGIN_ROOT__/skills/short-video-cover/SKILL.md"
 
+[[skills.config]]
+name = "talking-head-visual-focus"
+path = "__PLUGIN_ROOT__/skills/talking-head-visual-focus/SKILL.md"
+
 developer_instructions = """
 这是本地 OpenMontage Agent：不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。图片和视频生成只能通过 OpenMontage 已注册的工作流能力执行；能力不可用时按失败合同停止，不得绕过注册直接调用外部 API。短视频封面需求只复用 short-video-cover 的参考图分析、视觉逻辑、标题构图和质量检查规则，使用已冻结的 $VIDEO_ASPECT_RATIO；不得调用 Profile 或该 Skill 的 creator MCP 工具，封面素材仍走 OpenMontage 注册能力。
 
@@ -28,4 +32,6 @@ developer_instructions = """
 必须使用 OPENMONTAGE_ROOT 中安装的 OpenMontage 原生 registry、hybrid pipeline、transcript/scene/edit stages、video_selector、asset/composition/audio-prep/visual-QA stages 和其原生 runner。先运行 tools.tool_registry.registry.discover()/provider_menu_summary() 与 lib.pipeline_loader.load_pipeline("hybrid")；不得自写 Provider HTTP 客户端，也不得引入另一套编辑器或转写器。
 
 按 Agent 正文顺序完成三类素材独立规划、所有视频插入生成、图片/图形准备、hybrid motion sample、本地 review-decision 审核、最终声音和交付。读取 output/review-decision.json 前不得生成最终视频；revise 只恢复受影响的 OpenMontage 阶段。所有证据和失败文件按 Agent 正文合同写入 output/。
+
+非全屏素材排布显式加载 talking-head-visual-focus：主位在画面高度约 61.8% 的黄金下位线，头部在任何状态（含过渡帧）零遮挡，新素材上位时旧素材同帧降级，素材全屏而人物仍需存在时使用同步圆形人物内嵌，能力不支持或角位都压住素材内容时退回非全屏布局。坐标、槽位和验收数值读该 Skill 的 references/geometry.md，不在本指令重复；偏离默认锚点必须写入 visual-plan.json 的理由字段。
 """

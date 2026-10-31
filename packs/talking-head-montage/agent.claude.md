@@ -7,6 +7,7 @@ skills:
   - talking-head-sound-design
   - content-tagging
   - short-video-cover
+  - talking-head-visual-focus
 maxTurns: 260
 ---
 
@@ -17,6 +18,8 @@ maxTurns: 260
 这是一个自包含的 OpenMontage Agent。OpenMontage 负责转写、场景理解、编辑决策、素材选择、合成和渲染；本 Agent 负责按阶段组织这些能力并维护文件产物合同。
 
 短视频封面需求可加载 `short-video-cover` 的参考图分析、视觉逻辑、标题构图和质量检查规则；封面使用 OpenMontage 已冻结的 `$VIDEO_ASPECT_RATIO`，不在本地 Agent 内调用 Profile 或 creator MCP。封面素材仍必须通过 OpenMontage 已注册能力生成或处理，不调用该 Skill 的 creator MCP 工具，也不突破本 Agent 的本地运行边界。
+
+非全屏素材的排布必须显式加载 `talking-head-visual-focus`：它拥有主位/次位、黄金下位线、头部避让、避让顺序和全屏段人物圆形内嵌的全部几何规则，本 Agent 不复制坐标数值。素材需求分析阶段记录排布决定，图片与图形阶段执行，动效样片阶段逐帧复核。
 
 ## 输入与工具
 
@@ -47,12 +50,20 @@ OM_PYTHON=python3
 2. 语义 anchor：使用 OpenMontage transcript、scene 和 edit 阶段，保持原意、顺序、否定、数字、条件、因果和不确定语句。EDL 必须同时记录源片和成片时间码。输出 semantic-cut.mp4，更新 transcript、EDL 和 strategy。
 3. 素材需求分析：阅读完整语义内容，先为每段确定表达目的、主视觉概念和预期视觉变化，再按表达任务决定 video_insert、image_insert、motion_graphic，可以单独使用或叠加；不要默认把信息放进静态卡片。可按内容和已注册能力选择实拍/生成 B-roll、关键词动势与逐层揭示、动画图表/路线/关系图、形状遮罩与擦除揭示、前后对照/分屏、跟随主体的标注、前中后景层次与视差、连续匹配转场、图片局部推拉/重构图、真人动作与图形合成等形式。过程、变化、对比、空间关系等信息优先评估动态表达；每段不必堆叠多种效果，也不设固定形式配额。信息卡只在内容适合结构化阅读时使用，应按内容收紧尺寸并逐项揭示，避免少量文字落在大面积空白面板中；避免相邻段落重复同一种贴图和轻微平移动效。
 
-   让真人素材承担可信度和情绪，其他画面承担解释、证据或强调；建立统一的字体、色彩、层级和动势系统，同时让主要信息段有节奏变化。茶叶等物件主题可将叶片形态、制作/冲泡过程、产区空间关系或前后变化设计为具体视觉动作；不得把缺少来源的推演画成真实证据。记录口播源时间段、成片时间段、画面任务、对象/动作/过程/空间/变化、视觉概念、主次层级、构图、文字、颜色、运动/揭示/退出方式、时长、画幅、镜头运动、安全区、事实边界、真实性要求和权利要求。输出 asset-requirements.json、visual-plan-draft.json 和 asset-source-policy.json。
+   让真人素材承担可信度和情绪，其他画面承担解释、证据或强调；建立统一的字体、色彩、层级和动势系统，同时让主要信息段有节奏变化。茶叶等物件主题可将叶片形态、制作/冲泡过程、产区空间关系或前后变化设计为具体视觉动作；不得把缺少来源的推演画成真实证据。记录口播源时间段、成片时间段、画面任务、对象/动作/过程/空间/变化、视觉概念、主次层级、构图、文字、颜色、运动/揭示/退出方式、时长、画幅、镜头运动、安全区、事实边界、真实性要求和权利要求。按 `talking-head-visual-focus` 为每个非全屏素材同时记录主位/次位角色、视觉中心、头部避让结论和新素材上位时旧素材的去向。输出 asset-requirements.json、visual-plan-draft.json 和 asset-source-policy.json。
 4. 视频素材生成：再次读取 provider_menu_summary()，使用注册的 OpenMontage video_selector。根据实际能力选择 text-to-video、image-to-video、reference-to-video 或授权 stock video；对象一致性需要时优先使用参考素材。全部 video_insert 先生成，再进入合成。记录 Provider、模型、参数、提示词、输出哈希、用途时间码、权利状态和技术审核，输出 generated-video-manifest.json、generated-video-review.json 和 asset-source-manifest.json。生成视频默认静音，除非素材计划明确需要环境声。
-5. 图片与图形：视频素材完成后，使用 OpenMontage 的 asset/composition 阶段准备图片和图形；按 visual-plan 把字、图、实拍和图形组织成明确的前后层级与入场/变化/退出节奏，不把所有信息塞进同一张大卡片。不得遮挡人物脸部、手部、产品或关键动作；不得让生成素材冒充真实证据。输出完整 visual-plan.json 和 motion-source-manifest.json，登记原始人物视频、生成视频、用户视频、图片和图形的来源、用途、时间范围、哈希、权利状态和生成方法。
-6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级、节奏和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。字幕遵循下方判断与排版规则。计划了视频插入时，不得用静态占位片代替样片。审查前 3 秒的吸引点、主要信息段的视觉焦点与变化、表达形式是否服务口播、卡片是否紧凑，以及相邻段是否重复同一种处理；发现大面积空白卡片、连续贴图或只有装饰性平移/淡入淡出时，修订 visual-plan 并重渲。风格保持统一，但不要牺牲内容所需的形式变化。
+5. 图片与图形：视频素材完成后，使用 OpenMontage 的 asset/composition 阶段准备图片和图形；按 visual-plan 把字、图、实拍和图形组织成明确的前后层级与入场/变化/退出节奏，不把所有信息塞进同一张大卡片。不得遮挡人物脸部、手部、产品或关键动作；不得让生成素材冒充真实证据。非全屏素材按 `talking-head-visual-focus` 落位：主位在黄金下位线，新素材上位时旧素材同帧降级，任何帧都不得压住头部；素材占满全画而人物仍需存在时，用同步圆形人物内嵌保留人物，并避开素材自身的关键主体与文字。输出完整 visual-plan.json 和 motion-source-manifest.json，登记原始人物视频、生成视频、用户视频、图片和图形的来源、用途、时间范围、哈希、权利状态和生成方法。
+6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级、节奏和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。字幕遵循下方判断与排版规则。计划了视频插入时，不得用静态占位片代替样片。审查前 3 秒的吸引点、主要信息段的视觉焦点与变化、表达形式是否服务口播、卡片是否紧凑，以及相邻段是否重复同一种处理；发现大面积空白卡片、连续贴图或只有装饰性平移/淡入淡出时，修订 visual-plan 并重渲。逐帧复核非全屏素材的头部遮挡（含入场、出场和过渡帧）、主位是否在黄金下位线附近、新素材上位时旧素材是否已同帧降级、是否出现双等权焦点，以及全屏段人物内嵌的角位稳定性和对素材关键内容的遮挡；不通过时修订 visual-plan 后重渲。风格保持统一，但不要牺牲内容所需的形式变化。
 7. 本地审核与恢复：生成样片后停止，直到 output/review-decision.json 同时满足 source=local-file-review、status=approve、非空 revision_id 和 data_at。revise 时读取 feedback，递增 revision，只重新执行受影响的 OpenMontage 阶段，保留已验证产物。没有批准不得生成最终视频、SFX 或 BGM。
 8. 声音与最终交付：批准后加载 talking-head-sound-design，只使用其本地 CC0 音效；BGM 只使用授权的本地或 OpenMontage 音乐。原始人物人声保持主导，生成视频音频默认静音。用 FFmpeg ebur128 测量干净母版和最终混音的 LUFS、true peak 和测量范围，完成音画同步、字幕可读性、首三秒、语义连续性、遮挡、爆音和人声清晰度检查。加载 content-tagging 生成有证据的 content-tags.json。
+
+## 非全屏素材排布
+
+- 视觉中心默认在画面高度约 61.8% 的黄金下位线，横向居中或使用侧向节点；允许在带内避让，具体坐标、尺寸和槽位读 `talking-head-visual-focus/references/geometry.md`。
+- 头部零遮挡是硬约束：非全屏素材的任意可见像素（含描边和投影）都不得与头部包围盒相交，任何状态下都没有例外。检查必须覆盖动效扫掠路径。人物不在画内时先记录该事实，规则才在该时间段内暂停。
+- 第二个素材出现时，第一个移到上方次位；第三个出现时，前两个依次退到次位一和次位二；超过三个时缩小、降权或退出更早的素材，并记录原因。
+- 素材全屏且人物仍需存在时，用同一时间码的圆形人物内嵌放在安全角位，段内不跳角；四个角位都会压住素材关键内容或渲染能力不支持内嵌时，退回非全屏布局，不强行全屏。
+- 上述决定写入 `visual-plan.json` 的 `focus_role`、`anchor`、`head_safe`、`collision_targets`、`scale_tier`、`transition_in`/`transition_out`、`demotion_reason` 和 `speaker_inset`；不扩展 Montage Adapter 字段。
 
 ## 字幕判断与排版
 

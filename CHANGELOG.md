@@ -1,3 +1,8 @@
+# 4.2.114
+
+- Add the shared `talking-head-visual-focus` Skill and wire it into both talking-head Agents: non-fullscreen material anchors on the lower golden line, the newest material takes the primary slot while earlier material demotes in the same frame, and the speaker's head stays uncovered on every frame including entrance, exit, and transition.
+- Keep the speaker present with a synchronized circular inset when material goes full-frame, and fall back to the non-fullscreen layout when no corner clears the asset's own content.
+
 # 4.2.113
 
 - Expand talking-head visual direction with content-led motion graphics, kinetic typography, progressive reveals, varied compositions, and stronger sample review against repetitive or oversized static cards.

@@ -1,5 +1,5 @@
 id: talking-head-montage
-version: 1.0.2
+version: 1.0.3
 kind: plugin
 display_name: 口播 Montage 制作
 description: 以 OpenMontage hybrid 为主引擎，完成真人口播、生成视频素材、图片素材和图形动效的本地制作与文件审核。
@@ -9,7 +9,7 @@ agent:
   name: talking-head-montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [talking-head-sound-design, content-tagging, short-video-cover]
+  skills: [talking-head-sound-design, content-tagging, short-video-cover, talking-head-visual-focus]
   max_turns: 260
 runtime:
   profile: talking-head-montage

@@ -9,6 +9,7 @@ skills:
   - montage
   - portrait-cover-design
   - short-video-cover
+  - talking-head-visual-focus
   - viral-ip-editing
   - wechat-video-account-review
 maxTurns: 250
@@ -31,6 +32,7 @@ Skill 依赖按以下边界使用：
 
 - 运行控制同时包含非空 `reuse_run_id` 和 `asset_id` 时先执行 `content-reuse`，保留其 Brief、链路和质量节点；普通任务跳过。
 - 使用 `viral-ip-editing` 完成转录校对、语义分段、真实 Hook、剪辑方案、视听计划和成片复核。
+- 使用 `talking-head-visual-focus` 决定每个非全屏素材的视觉中心、主位与次位轮换、头部避让，以及全屏段的人物圆形内嵌。该 Skill 是这些几何规则的唯一来源，本 Agent 不复制坐标。任何非全屏 `video_insert`、`image_insert` 或 `motion_graphic` 写入 `visual_plan.json` 前都必须先按它排布；全屏素材是否需要人物内嵌也由它判定。
 - 在 Plan Review、重大修订复审和 Final Review 三个节点显式加载并调用 `wechat-video-account-review` Skill（`skills/wechat-video-account-review/SKILL.md`），检查脚本、Hook、标题、字幕、封面、CTA、联系方式、外链、素材权利和平台风险；不能把本 Agent 中的清单文字当作已经完成 Skill 调用。
 - 使用 `montage` 生成 `output/montage-project.json`、运行 OpenMontage、生成封面并写 `output/delivery-manifest.json`。稳定交付文件完成后再执行 `content-tagging`；标签只使用文件证据，Server 所有的字段不由 Agent 覆盖。
 
@@ -160,6 +162,8 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 
 逐段说明真人露出、B-roll/生成视频与动画/解释性图形的不同用途和时长，分别标记 `asset_class=live_video` 或 `animation_graphic`；先规划视频素材覆盖，再规划依赖实际时序的解释性动画。制定字幕和安全区；分别列出 BGM 的段落情绪/能量曲线与 SFX 的触发事件/情绪作用/同步点。记录版权、真实性和工具风险。列出操作依赖、失败替代方案、预期产物和本片的验收条件。
 
+非全屏素材在计划阶段就要定主次。每个非全屏 `video_insert`、`image_insert` 和 `motion_graphic` 都写出主位或次位角色、视觉中心、头部避让结论，以及新素材出现时旧素材退到哪里。默认视觉中心在画面高度约 61.8% 的下位线；新素材先上位，旧素材同帧降级，不得并列同权重。素材占满全画时，按 `talking-head-visual-focus` 判定是否用圆形人物内嵌保留人物。几何数值、角位、尺寸和验收细节读该 Skill 的 `references/geometry.md`，不在本文件重复定义。
+
 ## 8. 阶段 D：Plan Review
 
 以审片导演视角逐项检查，并记录到 `plan_review.md`：
@@ -173,7 +177,8 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 7. BGM 是否有明确的宏观情绪目标和能量变化，并为人声让位？SFX 是否只服务具体事件、情绪节点或交互反馈且不过密？
 8. 目标时长、画幅、工具、素材覆盖、授权要求是否可执行？
 9. 验收标准是否可验证？
-10. 微信视频号审核是否已覆盖脚本、标题、字幕、封面、CTA、联系方式/二维码、外部平台引导、素材权利、营销主张、危险内容和制作缺陷？
+10. 非全屏素材的主次是否成立：任一时刻只有一个主焦点，主位在黄金下位线附近，新素材出现时旧素材已同帧降级，且所有入场、出场和过渡帧都不遮挡头部；全屏段是否已按 `talking-head-visual-focus` 决定人物内嵌并避开素材关键内容？
+11. 微信视频号审核是否已覆盖脚本、标题、字幕、封面、CTA、联系方式/二维码、外部平台引导、素材权利、营销主张、危险内容和制作缺陷？
 
 完成 Plan Review 节点的 `wechat-video-account-review` Skill 调用后，将独立结果写入 `output/wechat-video-account-review-plan.md` 与 `output/wechat-video-account-review-plan.json`，并更新 `output/wechat-video-account-review.md/json` 汇总索引；把结论和证据路径写入 `plan_review.md`。状态为 `needs_revision`、`blocked` 或 `unavailable` 时不得进入高成本生成；修复后重新调用该 Skill，并写入带当前 `revision_id` 的 `output/wechat-video-account-review-revision-<revision_id>.md/json`。该修订 JSON 必须为 `passed` 且没有未处理的 `blocker` 或 `major`，否则不得进入高成本生成；不得只修改计划文字而保留旧结论或覆盖任何前置/修订证据。
 
@@ -198,6 +203,8 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 ### 10.1 镜头与构图
 
 自然直接切换为默认。推拉、重构图、特写、速度变化和复杂转场都要有表达理由。保护人物脸部、重要物体和动作；避免裁头、脸部变形、跟踪抖动、构图跳动和主体遮挡。闪白、故障、旋转等强烈效果谨慎使用。J-cut/L-cut、定格、分屏和速度变化都须复核音画连续性与语义。
+
+非全屏素材按 `talking-head-visual-focus` 排布：主位落在黄金下位线，人物头部零遮挡（含入场、出场和过渡帧），新素材上位时旧素材同步降级；素材占满全画而人物仍需存在时，使用同步圆形人物内嵌。偏离默认锚点、缩小、延后或退出的决定写入 `visual_plan.json` 的对应字段和理由。
 
 ### 10.2 B-roll 与 AI 视频
 
@@ -278,7 +285,7 @@ Final Review 必须基于实际导出的成片和可检查证据，不能只看�
 
 ### 13.2 画面与字幕
 
-检查生成素材是否匹配口播并有适当标注；构图、镜头、转场是否自然；字幕是否准确、同步、易读且不遮挡；动效是否适量统一；是否有黑帧、冻结帧、闪烁、缺失素材或意外空白。对银发目标观众，检查手机尺寸缩放后的最小文字和图表仍可读。
+检查生成素材是否匹配口播并有适当标注；构图、镜头、转场是否自然；字幕是否准确、同步、易读且不遮挡；动效是否适量统一；是否有黑帧、冻结帧、闪烁、缺失素材或意外空白。对银发目标观众，检查手机尺寸缩放后的最小文字和图表仍可读。非全屏素材逐帧复核头部遮挡、主次层级、黄金下位线位置和全屏段人物内嵌角位稳定性；任一帧出现头部遮挡或双等权焦点即按 Major 修复。
 
 ### 13.3 声音与技术
 
@@ -322,7 +329,7 @@ Hook、结构兑现、节奏、视觉、字幕、声音和技术质量可以按 
 - `wechat-video-account-review-plan.md/json`、`wechat-video-account-review-revision-<revision_id>.md/json`、`wechat-video-account-review-final-<revision_id>.md/json`：分阶段平台审核证据（完整制作强制）。
 - `wechat-video-account-review.md/json`：计划、全部修订和最终审核索引，不替代分阶段证据。
 - `edit_decision_list.json`：源片范围、目标顺序、操作和理由。
-- `visual_plan.json`：B-roll、生成素材、字幕和动效计划。
+- `visual_plan.json`：B-roll、生成素材、字幕和动效计划；非全屏素材的 `focus_role`、`anchor`、`head_safe`、`scale_tier`、过渡和全屏段 `speaker_inset` 也记录在这里。
 - `sfx_cues.json`、`bgm_plan.json`：分开的声音设计清单。
 - 字幕文件和可编辑时间线/工程（工具支持时）。
 - `final.mp4`：仅在实际渲染并通过本片相应 QC 后生成/提升为正式版本。
