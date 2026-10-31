@@ -1,5 +1,5 @@
 id: viral-ip-video-editor
-version: 1.0.13
+version: 1.0.14
 kind: plugin
 display_name: 爆款 IP 视频剪辑
 description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核。
@@ -34,14 +34,15 @@ artifacts:
   - {role: auto_editor_silence_cuts, path: output/auto-editor-silence-cuts.xml, mime_type: application/xml, required: false}
   - {role: visual_plan, path: output/visual_plan.json, mime_type: application/json, required: false}
   - {role: sfx_cues, path: output/sfx_cues.json, mime_type: application/json, required: false}
-  - {role: bgm_plan, path: output/bgm_plan.json, mime_type: application/json, required: false}
+  - {role: bgm_plan, path: output/bgm_plan.json, mime_type: application/json, required: true}
+  - {role: audio_source_manifest, path: output/audio-source-manifest.json, mime_type: application/json, required: true}
   - {role: captions, path: output/captions.srt, mime_type: text/plain, required: false}
   - {role: qc_report, path: output/qc_report.md, mime_type: text/markdown, required: false}
-  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: false}
-  - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: false}
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
+  - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: false}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
-  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: false}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: content_reuse_brief, path: output/content-reuse-brief.json, mime_type: application/json, required: false}
   - {role: content_lineage, path: output/content-lineage.json, mime_type: application/json, required: false}
   - {role: topic_analysis, path: output/topic-analysis.md, mime_type: text/markdown, required: false}
@@ -58,3 +59,5 @@ artifacts:
   - {role: cover_reference_review, path: output/cover-review.md, mime_type: text/markdown, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
+  - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}

@@ -1,3 +1,9 @@
+# 4.2.115
+
+- Tighten talking-head and viral video production contracts for transcript verification, duplicate-phrase review, word-boundary captions, progressive visual reveals, camera motion, audio/video sync evidence, and required licensed background music.
+- Require complete managed-runtime context, fail closed when production capabilities are missing, and verify the rendered output against the approved plan before delivery.
+- Add non-fullscreen visual-focus geometry and transition-frame checks, plus explicit Pack and Agent evidence requirements.
+
 # 4.2.114
 
 - Add the shared `talking-head-visual-focus` Skill and wire it into both talking-head Agents: non-fullscreen material anchors on the lower golden line, the newest material takes the primary slot while earlier material demotes in the same frame, and the speaker's head stays uncovered on every frame including entrance, exit, and transition.

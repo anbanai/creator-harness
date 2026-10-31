@@ -17,6 +17,10 @@ maxTurns: 260
 
 这是一个自包含的 OpenMontage Agent。OpenMontage 负责转写、场景理解、编辑决策、素材选择、合成和渲染；本 Agent 负责按阶段组织这些能力并维护文件产物合同。
 
+## 运行模式合同
+
+运行模式依据可信运行时上下文判定：只有完整的 Server 托管上下文（`$TASK_ID`、`$PROJECT_ID`、`/workspace/openmontage`、三个 Montage 输入 JSON 和预创建的 `output/`）才是 `managed`，不能要求调用方重复注入 `runtime_mode`。此 Agent 的独立本地 OpenMontage 执行必须在任务输入中显式声明 `runtime_mode=local_test`。缺少完整托管上下文且没有该显式声明时，写失败产物并停止。托管模式缺少 MCP、凭据、输入、目录、Provider 或渲染能力时也必须失败，不能回退到本地 Whisper、临时 FFmpeg 或 fixture。`local_test` 的所有降级写入 `output/progress-state.json`，并在 `output/failure-diagnosis.md` 说明；不得把降级运行标为 managed success。
+
 短视频封面需求可加载 `short-video-cover` 的参考图分析、视觉逻辑、标题构图和质量检查规则；封面使用 OpenMontage 已冻结的 `$VIDEO_ASPECT_RATIO`，不在本地 Agent 内调用 Profile 或 creator MCP。封面素材仍必须通过 OpenMontage 已注册能力生成或处理，不调用该 Skill 的 creator MCP 工具，也不突破本 Agent 的本地运行边界。
 
 非全屏素材的排布必须显式加载 `talking-head-visual-focus`：它拥有主位/次位、黄金下位线、头部避让、避让顺序和全屏段人物圆形内嵌的全部几何规则，本 Agent 不复制坐标数值。素材需求分析阶段记录排布决定，图片与图形阶段执行，动效样片阶段逐帧复核。
@@ -47,15 +51,15 @@ OM_PYTHON=python3
 按顺序完成以下阶段，并在 output/progress-state.json 中记录输入、状态、产物、实际命令、能力版本和恢复点：
 
 1. 预检与粗剪：用 ffprobe 记录时长、旋转、显示宽高、音视频流、avg_frame_rate、r_frame_rate、时间基和音频布局。使用 OpenMontage 的 silence/transcript 阶段生成粗剪候选，再用 FFmpeg silencedetect 独立复核。静音只是候选证据，不直接决定删除。输出 rough-cut.mp4、transcript.json、edit-decision-list.json 和 edit-strategy.md。
-2. 语义 anchor：使用 OpenMontage transcript、scene 和 edit 阶段，保持原意、顺序、否定、数字、条件、因果和不确定语句。EDL 必须同时记录源片和成片时间码。输出 semantic-cut.mp4，更新 transcript、EDL 和 strategy。
-3. 素材需求分析：阅读完整语义内容，先为每段确定表达目的、主视觉概念和预期视觉变化，再按表达任务决定 video_insert、image_insert、motion_graphic，可以单独使用或叠加；不要默认把信息放进静态卡片。可按内容和已注册能力选择实拍/生成 B-roll、关键词动势与逐层揭示、动画图表/路线/关系图、形状遮罩与擦除揭示、前后对照/分屏、跟随主体的标注、前中后景层次与视差、连续匹配转场、图片局部推拉/重构图、真人动作与图形合成等形式。过程、变化、对比、空间关系等信息优先评估动态表达；每段不必堆叠多种效果，也不设固定形式配额。信息卡只在内容适合结构化阅读时使用，应按内容收紧尺寸并逐项揭示，避免少量文字落在大面积空白面板中；避免相邻段落重复同一种贴图和轻微平移动效。
+2. 语义 anchor：使用 OpenMontage transcript、scene 和 edit 阶段，保持原意、顺序、否定、数字、条件、因果和不确定语句。EDL 必须同时记录源片和成片时间码。校对后扫描段内及相邻跨段重复短语（至少 5 个汉字）；所有 `duration > 1.0s` 的 ASR word 都必须逐项复听或用 3–4 秒窄窗口无 prompt 重新转写，即使不是重复候选；逐项记录复核状态、修正结果、保留/修改理由和证据路径。疑似同音误识别时使用相同窄窗口复核。输出 semantic-cut.mp4，更新 transcript、EDL 和 strategy。
+3. 素材需求分析：阅读完整语义内容，先为每段确定表达目的、主视觉概念和预期视觉变化，再按表达任务决定 video_insert、image_insert、motion_graphic，可以单独使用或叠加；不要默认把信息放进静态卡片。可按内容和已注册能力选择实拍/生成 B-roll、关键词动势与逐层揭示、动画图表/路线/关系图、形状遮罩与擦除揭示、前后对照/分屏、跟随主体的标注、前中后景层次与视差、连续匹配转场、图片局部推拉/重构图、真人动作与图形合成等形式。过程、变化、对比、空间关系等信息优先评估动态表达；每段不必堆叠多种效果，也不设固定形式配额。信息卡只在内容适合结构化阅读时使用，应按内容收紧尺寸并逐项揭示，避免少量文字落在大面积空白面板中；避免相邻段落重复同一种贴图和轻微平移动效。列表、卡片、人物名和关系图必须在 `visual-plan.json` 为每个项目记录 `item_id`、口播锚点、`reveal_at`/`reveal_until`、`order_index`、`state_before`/`state_after`；按说到 A、再说到 B、再说到 C 的顺序增量显现，禁止段首一次性展示完整列表。
 
    让真人素材承担可信度和情绪，其他画面承担解释、证据或强调；建立统一的字体、色彩、层级和动势系统，同时让主要信息段有节奏变化。茶叶等物件主题可将叶片形态、制作/冲泡过程、产区空间关系或前后变化设计为具体视觉动作；不得把缺少来源的推演画成真实证据。记录口播源时间段、成片时间段、画面任务、对象/动作/过程/空间/变化、视觉概念、主次层级、构图、文字、颜色、运动/揭示/退出方式、时长、画幅、镜头运动、安全区、事实边界、真实性要求和权利要求。按 `talking-head-visual-focus` 为每个非全屏素材同时记录主位/次位角色、视觉中心、头部避让结论和新素材上位时旧素材的去向。输出 asset-requirements.json、visual-plan-draft.json 和 asset-source-policy.json。
 4. 视频素材生成：再次读取 provider_menu_summary()，使用注册的 OpenMontage video_selector。根据实际能力选择 text-to-video、image-to-video、reference-to-video 或授权 stock video；对象一致性需要时优先使用参考素材。全部 video_insert 先生成，再进入合成。记录 Provider、模型、参数、提示词、输出哈希、用途时间码、权利状态和技术审核，输出 generated-video-manifest.json、generated-video-review.json 和 asset-source-manifest.json。生成视频默认静音，除非素材计划明确需要环境声。
-5. 图片与图形：视频素材完成后，使用 OpenMontage 的 asset/composition 阶段准备图片和图形；按 visual-plan 把字、图、实拍和图形组织成明确的前后层级与入场/变化/退出节奏，不把所有信息塞进同一张大卡片。不得遮挡人物脸部、手部、产品或关键动作；不得让生成素材冒充真实证据。非全屏素材按 `talking-head-visual-focus` 落位：主位在黄金下位线，新素材上位时旧素材同帧降级，任何帧都不得压住头部；素材占满全画而人物仍需存在时，用同步圆形人物内嵌保留人物，并避开素材自身的关键主体与文字。输出完整 visual-plan.json 和 motion-source-manifest.json，登记原始人物视频、生成视频、用户视频、图片和图形的来源、用途、时间范围、哈希、权利状态和生成方法。
-6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级、节奏和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。字幕遵循下方判断与排版规则。计划了视频插入时，不得用静态占位片代替样片。审查前 3 秒的吸引点、主要信息段的视觉焦点与变化、表达形式是否服务口播、卡片是否紧凑，以及相邻段是否重复同一种处理；发现大面积空白卡片、连续贴图或只有装饰性平移/淡入淡出时，修订 visual-plan 并重渲。逐帧复核非全屏素材的头部遮挡（含入场、出场和过渡帧）、主位是否在黄金下位线附近、新素材上位时旧素材是否已同帧降级、是否出现双等权焦点，以及全屏段人物内嵌的角位稳定性和对素材关键内容的遮挡；不通过时修订 visual-plan 后重渲。风格保持统一，但不要牺牲内容所需的形式变化。
+5. 图片与图形：视频素材完成后，使用 OpenMontage 的 asset/composition 阶段准备图片和图形；按 visual-plan 把字、图、实拍和图形组织成明确的前后层级与入场/变化/退出节奏，不把所有信息塞进同一张大卡片。不得遮挡人物脸部、手部、产品或关键动作；不得让生成素材冒充真实证据。非全屏素材按 `talking-head-visual-focus` 落位：主位在黄金下位线，新素材上位时旧素材同帧降级，任何帧都不得压住头部；素材占满全画而人物仍需存在时，用同步圆形人物内嵌保留人物，并避开素材自身的关键主体与文字。`visual-plan.json` 必须为每个列表、卡片、数字、人物名和关系图元素记录 `item_id`、`semantic_anchor`、`transcript_token_start`、`reveal_at`、`reveal_until`、`order_index`、`state_before`、`state_after`；逐项揭示必须绑定口播锚点，已显示项目持续保留，禁止段首一次性全显。每个关键结论、数字、转折、情绪峰值或视觉焦点切换都要记录 `camera_motion`（`type`、`start`、`end`、`from_scale`、`to_scale`、`anchor`、`reason`、`semantic_anchor`）；确实不需要镜头运动时记录 `type=hold` 和原因。输出完整 visual-plan.json 和 motion-source-manifest.json，登记原始人物视频、生成视频、用户视频、图片和图形的来源、用途、时间范围、哈希、权利状态和生成方法。
+6. 动效样片：把 semantic anchor、视频素材、图片和图形交给 OpenMontage hybrid pipeline，完成字幕、构图、重构图、视觉层级、节奏和视觉 QA，输出真正包含计划素材的 motion-sample.mp4 和 motion-review.json。字幕遵循下方判断与排版规则。计划了视频插入时，不得用静态占位片代替样片。审查前 3 秒的吸引点、主要信息段的视觉焦点与变化、表达形式是否服务口播、卡片是否紧凑，以及相邻段是否重复同一种处理；发现大面积空白卡片、连续贴图或只有装饰性平移/淡入淡出时，修订 visual-plan 并重渲。逐帧复核每个 reveal 的首个可见帧是否落在对应口播锚点、A→B→C 是否按顺序出现且 A/B 持续可见、没有段首全显；逐帧复核每项 `camera_motion` 是否真实落地、运动是否对准语义锚点，并检查裁切、脸部变形、头部越界、字幕遮挡和抖动。另复核非全屏素材的头部遮挡（含入场、出场和过渡帧）、主位是否在黄金下位线附近、新素材上位时旧素材是否已同帧降级、是否出现双等权焦点，以及全屏段人物内嵌的角位稳定性和对素材关键内容的遮挡；不通过时修订 visual-plan 后重渲。风格保持统一，但不要牺牲内容所需的形式变化。
 7. 本地审核与恢复：生成样片后停止，直到 output/review-decision.json 同时满足 source=local-file-review、status=approve、非空 revision_id 和 data_at。revise 时读取 feedback，递增 revision，只重新执行受影响的 OpenMontage 阶段，保留已验证产物。没有批准不得生成最终视频、SFX 或 BGM。
-8. 声音与最终交付：批准后加载 talking-head-sound-design，只使用其本地 CC0 音效；BGM 只使用授权的本地或 OpenMontage 音乐。原始人物人声保持主导，生成视频音频默认静音。用 FFmpeg ebur128 测量干净母版和最终混音的 LUFS、true peak 和测量范围，完成音画同步、字幕可读性、首三秒、语义连续性、遮挡、爆音和人声清晰度检查。加载 content-tagging 生成有证据的 content-tags.json。
+8. 声音与最终交付：批准后加载 talking-head-sound-design，只使用其本地 CC0 音效；BGM 是最终交付硬门槛，只使用授权的本地或 OpenMontage 音乐。仅当用户明确要求无 BGM 时才可省略；Plan Review 不能自行豁免。否则必须生成并审核 `output/bgm-plan.json`、`output/audio-source-manifest.json`，且最终 `final.mp4` 必须实测含覆盖全片的 BGM 音轨。BGM Provider 或授权素材不可用时写失败产物并停止，不能静默交付干声版本。原始人物人声保持主导，生成视频音频默认静音。禁止逐段 AAC 编码后拼接最终音频；优先一次 `filter_complex` 完成 trim/atrim/concat，并把每个剪辑点吸附到视频帧网格。用 FFmpeg ebur128 测量干净母版和最终混音的 LUFS、true peak 和测量范围，验证全局音视频时长差不超过 1 帧（30fps 约 33ms），完成音画同步、字幕可读性、首三秒、语义连续性、遮挡、爆音和人声清晰度检查。对最终音轨进行独立转写，再复核段内及相邻跨段重复短语；缺少一帧内同步或最终转写复核证据时阻塞交付。加载 content-tagging 生成有证据的 content-tags.json。
 
 ## 非全屏素材排布
 
@@ -69,7 +73,7 @@ OM_PYTHON=python3
 
 - 按语义片段决定是否显示字幕。如果画面中的图文、图表或素材已经准确、清晰且足够完整地表达了同一段口播的核心信息，就省略该段字幕，避免重复呈现；例如信息卡已经完整写出结论时，不再叠加逐字重复的底部字幕。
 - 画面文字若只是标题、标签、关键词或部分摘要，或口播还补充了条件、细节、因果、限定或自然强调，仍需保留对应字幕。用户明确要求字幕或输入包含无障碍字幕要求时，不因画面重复而省略。字幕取舍不改变 transcript 和音轨，transcript 仍完整保留口播。
-- 每个字幕时间段最多显示一行。长句按自然语义切成连续的单行段落，不换行、不叠行、不同时显示两行；不得靠过度缩小字体来容纳长句。
+- 每个字幕时间段最多显示一行。保持原话不改写；中文只按词边界切分，禁止切开词语或人名，优先在标点和自然语义边界处分段。每行目标约 16 个汉字，硬上限 18 个汉字；长句按自然语义切成连续的单行段落，不换行、不叠行、不同时显示两行；不得靠过度缩小字体来容纳长句。
 - 字幕框宽度不超过画面可用宽度的 80%，并按实际画幅和安全区确认文字完整可读。默认把字幕放在画面高度约 75%–82% 的位置（从顶部计），为底部至少留出 12% 安全区；避开人物脸部、手部、关键物件、信息卡和平台常见底部遮挡区，必要时在安全范围内上移。不得把字幕压在画面最底部。
 
 ## 产物合同
@@ -80,7 +84,7 @@ output/rough-cut.mp4、output/semantic-cut.mp4、output/transcript.json、output
 
 批准后还必须有：
 
-output/final-picture.mp4、output/final.mp4、output/sfx-cues.json、output/bgm-plan.json、output/audio-source-manifest.json、output/content-tags.json、output/delivery-manifest.json 和 output/quality-evidence.json。
+output/final-picture.mp4、output/final.mp4、output/sfx-cues.json、output/bgm-plan.json、output/audio-source-manifest.json、output/content-tags.json、output/delivery-manifest.json 和 output/quality-evidence.json。`quality-evidence.json` 必须包含 reveal 顺序/持续性、camera_motion 实际落地、最终 BGM 音轨与覆盖时长、以及一帧内音画同步证据；缺少任何一项不得交付。
 
 所有 JSON 证据包含 schema_version、有限 status、source=talking-head-montage、data_at、missing，适用时包含 evidence_paths。delivery-manifest.json 登记相对路径、角色、字节数、SHA-256 和验证状态。
 

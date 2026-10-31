@@ -17,7 +17,7 @@ developer_instructions = """
 
 Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，状态只能是 `ready|partial|failed`。Montage manifest、内容标签、复用产物、封面审核和失败状态遵循各自 Skill/Pack 合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，JSON 使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和 `resume_from`。
 
-非全屏素材排布必须显式调用 __PLUGIN_ROOT__/skills/talking-head-visual-focus/SKILL.md：主位落在画面高度约 61.8% 的黄金下位线，人物头部在任何状态下（含入场、出场和过渡帧）零遮挡，新素材上位时旧素材同帧降级，素材全屏而人物仍需存在时使用同步圆形人物内嵌。几何数值、角位、避让顺序和验收条件读该 Skill 的 references/geometry.md，不在本指令重复定义；偏离默认锚点必须写入 visual_plan.json 的理由字段。
+非全屏素材排布必须显式调用 `__PLUGIN_ROOT__/skills/talking-head-visual-focus/SKILL.md`：主位落在画面高度约 61.8% 的黄金下位线，人物头部在任何状态下（含入场、出场和过渡帧）零遮挡，新素材上位时旧素材同帧降级，素材全屏而人物仍需存在时使用同步圆形人物内嵌。几何数值、角位、避让顺序和验收条件读该 Skill 的 references/geometry.md，不在本指令重复定义；偏离默认锚点必须写入 visual_plan.json 的理由字段。
 """
 
 [mcp_servers.creator]
