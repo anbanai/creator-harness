@@ -110,3 +110,8 @@ nickname_candidates = ["素材混剪", "LocalLife", "MixVideo"]
 description = "生成带证据的内容研究、语义验证文章与视频脚本"
 config_file = "~/.codex/agents/content-planning.toml"
 nickname_candidates = ["Content Planner", "内容研究"]
+
+[agents.topic-radar]
+description = "基于冻结证据生成选题摘要和短视频脚本"
+config_file = "~/.codex/agents/topic-radar.toml"
+nickname_candidates = ["Topic Radar", "选题雷达"]

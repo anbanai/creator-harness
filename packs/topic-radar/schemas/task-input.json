@@ -1,0 +1,309 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ]
+    },
+    "task_id": {
+      "type": "string"
+    },
+    "execution_id": {
+      "type": "string"
+    },
+    "task_kind": {
+      "type": "string",
+      "enum": [
+        "topic_digest",
+        "topic_script"
+      ]
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "snapshot_id": {
+          "type": "string"
+        },
+        "snapshot_hash": {
+          "type": "string"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "project_id": {
+          "type": "string"
+        },
+        "subscription_id": {
+          "type": "string"
+        },
+        "digest_id": {
+          "type": "string"
+        },
+        "suggestion_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "snapshot_hash",
+        "captured_at"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "type": "string"
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "aspect_ratio": {
+          "type": "string"
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "introduction": {
+            "type": "string"
+          },
+          "source_summary": {
+            "type": "string"
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "platform": {
+                  "type": "string"
+                },
+                "ref_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "rank": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "hot": {
+                  "type": "number"
+                },
+                "fetched_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "freshness": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          },
+          "scores": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "video_fit": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "introduction",
+          "source_summary",
+          "source_refs",
+          "scores",
+          "video_fit"
+        ]
+      }
+    },
+    "selected_topic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "introduction": {
+          "type": "string"
+        },
+        "source_summary": {
+          "type": "string"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "platform": {
+                "type": "string"
+              },
+              "ref_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "rank": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "hot": {
+                "type": "number"
+              },
+              "fetched_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "freshness": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        },
+        "scores": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "video_fit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "introduction",
+        "source_summary",
+        "source_refs",
+        "scores",
+        "video_fit"
+      ]
+    },
+    "source_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "ref_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hot": {
+            "type": "number"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "freshness": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      }
+    },
+    "accepted_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "execution_id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "content_sha256": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "execution_id",
+          "path",
+          "content_sha256"
+        ]
+      }
+    },
+    "frozen_context": {
+      "type": "object",
+      "description": "Complete Server-frozen subscription, project/profile, performance, sources and unavailable fields; never replace with live data.",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_id",
+    "execution_id",
+    "task_kind",
+    "snapshot",
+    "source_records"
+  ]
+}

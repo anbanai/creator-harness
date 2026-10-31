@@ -1,3 +1,7 @@
+# 4.2.116
+
+- Add the managed Topic Radar Pack for frozen-context topic digests and source-attributed short-video scripts.
+
 # 4.2.113
 
 - Expand talking-head visual direction with content-led motion graphics, kinetic typography, progressive reveals, varied compositions, and stronger sample review against repetitive or oversized static cards.
