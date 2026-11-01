@@ -1,6 +1,6 @@
 ---
 name: viral-ip-editing
-description: Use when making editorial decisions for already-recorded IP talking-head footage, including hook selection, semantic-safe cuts, retention pacing, captions, visual support, sound design, and final editorial QC. Do not use it to run the Montage pipeline or publish media.
+description: Use when making editorial decisions for already-recorded IP talking-head footage, including hook selection, semantic-safe cuts, retention pacing, caption and visual planning, per-chapter music planning, and final editorial QC. Defer subtitle craft to video-subtitle-design and music craft to video-bgm-design. Do not use it to run the Montage pipeline or publish media.
 ---
 
 # Viral IP Editing
@@ -28,11 +28,20 @@ snapshots, publication, and external side effects.
   are for explaining abstractions, relationships, data, process, emphasis, and
   controlled visual timing. Do not use one class to silently substitute for the
   other.
-- Treat background music and sound effects as separate sound-design systems.
-  Music shapes the macro emotional arc and perceived energy; effects mark
-  events, interaction, impact, transitions, and micro attention. Neither should
-  compensate for a weak story or unclear speech.
-- The default full-production contract includes BGM through final delivery. If the user has not explicitly disabled music, the plan must select an authorized track and the final mix must contain it. A missing provider or asset is a failure, not permission to silently deliver a dry mix.
+- Treat subtitles, background music, and sound effects as three separate
+  systems. Subtitles are a reading layer, music is the macro emotional arc, and
+  effects mark events. None of them should compensate for a weak story or
+  unclear speech.
+- Editorial owns the *decision* and the *chapter structure*, not the craft
+  rules: subtitle segmentation/style/timing belong to `video-subtitle-design`;
+  track selection, per-chapter switching, licensing, and mixing belong to
+  `video-bgm-design`. This Skill only decides whether and where they serve the
+  edit, and records those decisions in the plan.
+- A full production run delivers subtitles and background music, and the music
+  may change between chapters. When a chapter changes emotion or purpose, plan
+  the switch here and let the BGM Skill choose the track and the transition.
+  A missing authorized track or missing subtitles is a failure, not permission
+  to silently deliver without them.
 
 ## Editorial workflow
 
@@ -55,9 +64,10 @@ snapshots, publication, and external side effects.
    animation. Use low-cost storyboards or placeholders earlier when they help
    test the idea; do not spend on final animation before its timing and purpose
    are known.
-7. Add captions, final animation/graphics, sound effects, and music only where
-   they support meaning, attention, or emotional timing. Keep the speaker
-   visible for trust-building and key claims.
+7. Plan subtitles, final animation/graphics, sound effects, and per-chapter
+   music only where they support meaning, attention, or emotional timing; then
+   hand the craft to `video-subtitle-design` and `video-bgm-design`. Keep the
+   speaker visible for trust-building and key claims.
 8. Review the actual rendered media. Check the first three seconds, promise
    payoff, semantic continuity, captions, safe areas, frame continuity,
    intelligibility, loudness measurements, playback, and delivery files.
@@ -109,47 +119,43 @@ The final audio/video duration difference must be no more than one video frame (
 
 Audit duplicate phrases after transcript correction and again from an independent transcription of the final audio. Review punctuation-stripped repeated substrings of at least five Chinese characters within and across segments. Every ASR word whose duration is greater than 1.0 seconds must be reviewed one by one by listening again or by an unprompted narrow-window re-transcription, whether or not it is a duplicate candidate. Record each word's review status, corrected text when applicable, keep/modify decision, rationale, and evidence path. Use a 3–4 second narrow re-transcription window for suspected homophones and record whether each duplicate candidate was intentionally retained or cut.
 
-### Caption segmentation contract
+### Subtitles are a delegated deliverable
 
-Keep the spoken wording unchanged. Split Chinese captions only at word boundaries;
-never cut a word or name across caption segments. Prefer punctuation and natural
-semantic boundaries, then balance reading time and screen space. Each caption is
-one line, targets about 16 Chinese characters, and has a hard maximum of 18
-Chinese characters (shorter segments are preferred when the speaker pauses).
-Screen text may replace a spoken caption only when it completely and accurately
-covers the same core information; a title, label, keyword, or partial summary
-does not justify omitting the spoken line. User-requested or accessibility
-captions always remain.
+Editorial decides *whether a segment needs a spoken caption and whether screen
+text already carries it completely*; the craft rules live in
+`video-subtitle-design`, which owns segmentation, reading speed, per-chapter
+style mapping, safe areas, emphasis, and QC. Do not duplicate its segmentation, CPS, font-size, or style rules here, and
+do not let this Skill override that Skill's QC gate.
+
+Editorial must record, per segment, one of: `required`,
+`replaceable_by_screen_text`, or `omitted_accessibility_required`, with the
+reason. A title, label, keyword, or partial summary never justifies omitting a
+spoken caption. User-requested or accessibility captions always remain.
 
 ## Sound-design roles and workflow
 
-Plan `bgm_plan.json` and `sfx_cues.json` separately. They may share the same
-timeline, but they have different narrative jobs, decision criteria, and QC.
+Keep three things separate: what the edit needs emotionally (this Skill), the
+subtitle layer (`video-subtitle-design`), and the audio craft
+(`video-bgm-design` for music, the sound-effect Skill for SFX).
 
-- **Background music (macro emotion):** define the intended emotional effect
-  for each section (for example: trust, curiosity, urgency, relief, warmth, or
-  resolve), plus energy curve, tempo/texture, tension and release, entry/exit,
-  repetition, and voice-ducking strategy. Music can support anticipation and
-  continuity across cuts, but it must leave speech intelligible. Unless the
-  user explicitly requests no BGM, choose an authorized local/OpenMontage track,
-  record it in `audio-source-manifest.json`, and verify it is present in the
-  final mix. BGM may be skipped only when the user explicitly requests silence;
-  an Agent or Plan Review cannot waive the requirement. `skipped_no_cues`
-  applies only to SFX.
+- **Background music (macro emotion, per chapter):** decide the emotional job of
+  each chapter and whether the music should continue across chapters, change, or
+  drop out for a beat. A change of emotion, purpose, energy, or scene is a valid
+  reason to switch tracks; a switch inside one chapter is usually a defect.
+  Hand the decision to `video-bgm-design` with the chapter map, and require that
+  Skill's plan, licensing evidence, transition rules, and QC. Do not select
+  tracks, set ducking values, or write licensing terms here.
 - **Sound effects (micro event):** define the triggering visual or spoken event,
   narrative role (attention, confirmation, impact, transition, interaction, or
   atmosphere), emotional effect, intensity, duration, sync point, and fade. An
   effect should make a specific moment clearer or more felt; do not place one on
   every cut or use loud hits to manufacture excitement.
 
-Use this order for a full mix: lock the clean dialogue and semantic edit; sketch
-the BGM emotional arc early enough to test pacing; lock video and animation
-timing; choose and arrange the final BGM; add SFX against the locked visual
-events; then mix dialogue, BGM, SFX, and room tone together. Review BGM for
-macro emotional continuity and voice masking separately from SFX for sync,
-frequency collisions, transient peaks, and overuse. A change to either audio
-system is a revision to the downstream render and requires the affected review
-and platform-compliance checks.
+Production order: lock the clean dialogue and semantic edit; fix the chapter
+map and its emotional arc; hand subtitles and music to their Skills; add SFX
+against the locked visual events; then review the combined result. Any change
+to subtitles, music, or SFX is a revision that requires the affected review and
+platform-compliance checks.
 
 ## Cover design routing
 
@@ -214,9 +220,9 @@ The minimum editorial evidence for a full production run is:
 - `edit_decision_list.json`
 - `visual_plan.json` with per-item reveal timing and camera-motion evidence
 - `sfx_cues.json`
-- `bgm_plan.json` with status, selected track, coverage, and voice-ducking evidence
-- `audio-source-manifest.json`
-- `captions.srt` or the timeline's native caption format
+- `audio-source-manifest.json` for the SFX actually used
+- `bgm-plan.json` and `bgm-qc.json` from `video-bgm-design` (per-chapter tracks, licensing, transition and loudness evidence)
+- `captions.srt`, `caption-plan.md`, `caption-style.json`, and `caption-qc.json` from `video-subtitle-design`
 - `qc_report.md`
 
 Use `output/failure-state.json` and `output/failure-diagnosis.md` for a
@@ -227,9 +233,9 @@ non-empty `message`, and `resume_from`.
 ## Review standard
 
 Block delivery for changed meaning, an unfulfilled or misleading hook,
-missing/invalid media, severe audio-video sync errors, unreadable captions,
-a missing required BGM track, a one-shot full-list reveal where speech calls
-for incremental reveal, absent planned camera motion, or unresolved material
-rights/identity risk. Mark Major defects that affect comprehension or viewing
+missing/invalid media, severe audio-video sync errors, subtitles that fail the
+caption Skill's QC, a missing required BGM track or an unlicensed track, a
+one-shot full-list reveal where speech calls for incremental reveal, absent
+planned camera motion, or unresolved material rights/identity risk. Mark Major defects that affect comprehension or viewing
 quality and repair them when the source and tools permit. Record Minor issues
 without hiding them or allowing endless retakes.

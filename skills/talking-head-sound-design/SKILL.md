@@ -1,11 +1,11 @@
 ---
 name: talking-head-sound-design
-description: Use when an approved talking-head motion sample needs restrained, event-synced sound effects from the bundled CC0 library and measured audio verification.
+description: Use when an approved talking-head motion sample needs restrained, event-synced sound effects from the bundled CC0 library and measured audio verification. Covers sound effects only — background music is owned by the parent Agent's dedicated BGM stage and video-bgm-design.
 ---
 
 # Talking-head Sound Design
 
-Add sound effects to the approved final picture while preserving its dialogue track. The bundled manifest is read from the read-only `third_party/motion-graphics` reference when present; only its CC0 bundled files are eligible. Mixkit/runtime-download entries and music are out of scope. The parent Agent owns BGM selection and final delivery; this Skill must never interpret an SFX skip or missing SFX cue as permission to omit the required BGM pass.
+Add sound effects to the approved final picture while preserving its dialogue track. The bundled manifest is read from the read-only `third_party/motion-graphics` reference when present; only its CC0 bundled files are eligible. Mixkit/runtime-download entries and all music tracks are out of scope. Background music is out of scope: the parent Agent runs a separate BGM stage through `video-bgm-design`, which owns per-chapter track selection, switching, licensing, and ducking. This Skill must never treat an SFX skip or a missing SFX cue as permission to omit that BGM stage, and it must never mix music into the final mix.
 
 ## Workflow
 
@@ -15,4 +15,4 @@ Add sound effects to the approved final picture while preserving its dialogue tr
 4. Record every asset actually used in `output/audio-source-manifest.json`, including asset ID, source URL, CC0 1.0, SHA-256, cue time, gain and attribution. Preserve the measured before/after integrated LUFS and true peak values in `output/quality-evidence.json`.
 5. Require the renderer's per-cue `audibility_check`. Any `inaudible` cue is a failure requiring a gain correction or removal; `marginal` cues remain a warning and cannot be described as verified by measurement alone. Keep SFX below dialogue and enforce the configured relative ceiling; if an effect is inaudible, replace or remove it before repeatedly increasing gain. Review the generated cue report and listen to its listed verification points when audio monitoring is available. If listening is unavailable, mark it as unverified; measurements do not establish subjective quality.
 
-Do not apply music beat-grid alignment without a user-provided, authorized music track. Never claim the result sounds good based only on measurements. Keep the source video unchanged.
+Do not apply music beat-grid alignment; the music layer is handled by the BGM stage. Never claim the result sounds good based only on measurements. Keep the source video unchanged.

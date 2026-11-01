@@ -1,3 +1,11 @@
+# 4.2.117
+
+- Add two dedicated Skills that own video subtitles and background music as first-class systems: `video-subtitle-design` (caption strategy, segmentation, reading-speed timing, per-chapter style mapping, safe areas, emphasis, QC) and `video-bgm-design` (emotional arc, per-chapter/per-scene track switching, selection, licensing, multi-track transitions, ducking, loudness QC).
+- Wire both Skills into the `talking-head-montage` and `viral-ip-video-editor` Packs. Subtitles and BGM are again mandatory deliverables, now produced through those workflows instead of ad-hoc rules: `captions.srt`, `caption-plan.md`, `caption-style.json`, `caption-qc.json`, `bgm-plan.json`, and `bgm-qc.json`.
+- Allow and require a different music track per chapter or scene: each switch needs a reason, a transition decision from the BGM Skill's table, and per-track licensing evidence. A music track is still a hard delivery gate.
+- Make the cover the mandatory final production step: generate and independently audit `cover.png` only after `final.mp4` passes Final Review, and gate the final delivery manifest on it.
+- Delegate rather than duplicate: `viral-ip-editing` now only decides whether subtitles/music serve the edit and records the chapter map; `talking-head-sound-design` stays SFX-only; `montage` enforces the Pack-declared caption/BGM/cover artifacts; `wechat-video-account-review` covers captions, music, and covers again.
+
 # 4.2.116
 
 - Add the managed Topic Radar Pack for frozen-context topic digests and source-attributed short-video scripts.
