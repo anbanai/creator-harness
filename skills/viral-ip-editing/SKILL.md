@@ -113,6 +113,30 @@ Every list, card, comparison, relationship map, numbered sequence, or named-pers
 
 For content-bearing camera changes, record `camera_motion.type` (`push_in`, `pull_out`, `punch_in`, `reframe`, `pan`, `tilt`, `snap_to_anchor`, or `hold`), `start`, `end`, scale or anchor when relevant, `reason`, and a spoken `semantic_anchor`. Use push/punch to emphasize a conclusion, number, emotional peak, reaction, or key object; use pull-out for release or transition; use reframe/snap for a genuine focus change. Do not add motion merely to increase variety. If a section truly needs no motion, record that editorial reason. Final Review must verify the motion exists in the rendered frames, the reveal order and first visible frame are correct, and no crop, face distortion, subtitle collision, or tracking shake was introduced.
 
+## Asset ledger and visual rhythm
+
+Create `asset-ledger.json` before final animation and keep it synchronized with
+`visual_plan.json`. Every visual segment records `asset_id`, source path or
+generation reference, source SHA-256, `reuse_group`, `semantic_role`,
+`visual_function`, `shot_type`, `composition_fingerprint`, `reuse_count`,
+`reuse_distance`, `reuse_reason` when reused, `camera_motion`,
+`transition_in`, `transition_out`, `static_hold_duration`, and
+`visual_change_type`.
+
+The same asset may return only when its semantic job, crop, motion, scale, or
+layer changes materially. A tiny pan, zoom, or color tweak is not a new
+composition. Adjacent identical asset/fingerprint pairs are blockers;
+short-distance reuse without a reason is Major. Before final render, review
+asset reuse rate, composition reuse rate, longest static hold, visual-change
+density, and repeated transition patterns.
+
+Transitions need a content, spatial, action, or emotional reason. Prefer hard
+cuts, match cuts, J/L cuts, short motivated push/pull moves, and necessary
+shape reveals. Do not chain the same dissolve, slight pan, or card template.
+Every reframe or stretch binds to a semantic anchor and records crop limits,
+face-distortion checks, tracking stability, and the reason it improves
+comprehension.
+
 ## Audio and timing hard gates
 
 The final audio/video duration difference must be no more than one video frame (about 33 ms at 30 fps), all edit boundaries must snap to the video frame grid, and each cut's measured correlation offset must be at most one sample where the runtime exposes that measurement. In addition, verify sync at every segment's start and end, every 30 seconds inside longer continuous segments, and at checkpoints spanning the beginning, middle, and end of the full video. Record source and composition timestamps, the observable sync anchor and measurement method, measured offset, and maximum absolute offset in final quality evidence; every observable anchor must be within one video frame. Matching total duration or frame-aligned cuts alone cannot detect gradual drift. Repair and re-render out-of-tolerance sections; if a checkpoint or threshold cannot be measured, report the missing evidence and block delivery. Prefer a single `filter_complex` for `trim`/`atrim`/`concat` with `tpad` plus `trim` for exact frame counts; do not repeatedly AAC-encode segments before joining.
@@ -219,6 +243,7 @@ The minimum editorial evidence for a full production run is:
 - `plan_review.md`
 - `edit_decision_list.json`
 - `visual_plan.json` with per-item reveal timing and camera-motion evidence
+- `asset-ledger.json` with reuse distance and composition fingerprints
 - `sfx_cues.json`
 - `audio-source-manifest.json` for the SFX actually used
 - `bgm-plan.json` and `bgm-qc.json` from `video-bgm-design` (per-chapter tracks, licensing, transition and loudness evidence)

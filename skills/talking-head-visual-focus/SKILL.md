@@ -28,6 +28,16 @@ description: Use when placing non-fullscreen video, image, or motion-graphic mat
 4. **层级必须可读。** 主位与次位在尺寸、对比、动效和叠放顺序上至少两项明显不同。两个等权焦点等于没有焦点。
 5. **有理由才偏离。** 任何偏离默认锚点、降级、隐藏或退出，都写入视觉计划的理由字段；不写理由的偏离视为缺陷。
 
+## 布局模式
+
+每个视觉段必须先声明一个布局模式，再应用几何规则：
+
+- `speaker_overlay`：真人是主焦点，素材作为解释层叠加；遵守头部、字幕、产品和平台 UI 的安全区。
+- `graphic_lead`：图形或实拍素材承担主要信息，全画幅或近全画幅呈现；不强行套用黄金下位线，但必须避开平台 UI、素材自身关键文字和主体。
+- `full_frame_with_speaker_inset`：素材全画幅承载信息，真人用同一时间码的圆形内嵌保留可信度；内嵌角位在段内固定，且不得遮挡素材关键内容。
+
+`graphic_lead` 不是装饰性铺满画面：它必须绑定语义锚点、内容功能和退出点。`full_frame_with_speaker_inset` 只有在至少一个角位通过关键内容碰撞检查时才可使用；否则退回 `speaker_overlay` 或非全屏主次布局。布局模式、切换原因和碰撞结果写入 `visual_plan.json` 的 `layout_mode`、`semantic_anchor`、`transition_reason` 和 `speaker_inset`。
+
 ## 焦点状态机
 
 按时间顺序处理同一段画面内的素材：
@@ -74,6 +84,7 @@ description: Use when placing non-fullscreen video, image, or motion-graphic mat
 - `anchor`：归一化 `{x, y}`
 - `head_safe` 与 `collision_targets`：本次避让的实际依据
 - `transition_in` / `transition_out`
+- `layout_mode`：`speaker_overlay` / `graphic_lead` / `full_frame_with_speaker_inset`
 - 需要时 `demotion_reason`、`safe_area_decision`
 - 全屏段额外记录 `speaker_inset`：模式、角位、直径、描边、稳定起点
 
@@ -85,3 +96,4 @@ description: Use when placing non-fullscreen video, image, or motion-graphic mat
 - [ ] 三个以上素材时，画面没有退化成等权拼贴。
 - [ ] 全屏段的圆形人物内嵌角位稳定，且没有压住素材的关键内容。
 - [ ] 所有偏离默认锚点的决定都有文字理由。
+- [ ] 每段布局模式与口播功能匹配；图形主导段没有被安全区规则压成大面积空白。

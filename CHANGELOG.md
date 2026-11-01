@@ -1,3 +1,11 @@
+# 4.2.119
+
+- Make the talking-head and viral IP video Agents fully automatic: motion samples use Agent-generated review evidence and bounded self-revision, while missing inputs, unverifiable rights/facts, unavailable capabilities, and unresolved defects produce recoverable failure artifacts instead of waiting for user approval.
+
+# 4.2.118
+
+- Add the shared `talking-head-composition` and `video-production-qc` Skills to the talking-head video Packs. Final renders now require a single EDL-backed composition plan, an explicit permanent dialogue bed, asset reuse evidence, deterministic media gates, and complete listening evidence before Final Review, cover generation, or delivery.
+
 # 4.2.117
 
 - Add two dedicated Skills that own video subtitles and background music as first-class systems: `video-subtitle-design` (caption strategy, segmentation, reading-speed timing, per-chapter style mapping, safe areas, emphasis, QC) and `video-bgm-design` (emotional arc, per-chapter/per-scene track switching, selection, licensing, multi-track transitions, ducking, loudness QC).

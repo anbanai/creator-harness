@@ -88,6 +88,25 @@
       "given": "all four inset corners would cover the asset's key subject or text",
       "expect": { "fullframe_abandoned": true, "fallback": "non_fullscreen_primary_secondary" },
       "fail_if": "full-frame presentation kept with the avatar covering content, or speaker dropped entirely"
+    },
+    {
+      "id": "graphic_lead",
+      "given": "a graphic or live-action insert carries the main explanation",
+      "expect": {
+        "layout_mode": "graphic_lead",
+        "semantic_anchor_required": true,
+        "full_frame_allowed": true
+      },
+      "fail_if": "the graphic is forced into a lower overlay leaving unexplained empty space, or key labels are covered"
+    },
+    {
+      "id": "speaker_overlay",
+      "given": "the speaker remains the main trust and emotion carrier",
+      "expect": {
+        "layout_mode": "speaker_overlay",
+        "head_safe": true
+      },
+      "fail_if": "an overlay becomes an equal-focus card without a semantic reason"
     }
   ]
 }

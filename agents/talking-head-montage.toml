@@ -7,6 +7,10 @@ sandbox_mode = "workspace-write"
 max_turns = 260
 
 [[skills.config]]
+name = "talking-head-composition"
+path = "__PLUGIN_ROOT__/skills/talking-head-composition/SKILL.md"
+
+[[skills.config]]
 path = "__PLUGIN_ROOT__/skills/talking-head-sound-design/SKILL.md"
 enabled = true
 
@@ -27,11 +31,19 @@ name = "video-bgm-design"
 path = "__PLUGIN_ROOT__/skills/video-bgm-design/SKILL.md"
 
 [[skills.config]]
+name = "video-production-qc"
+path = "__PLUGIN_ROOT__/skills/video-production-qc/SKILL.md"
+
+[[skills.config]]
 name = "video-subtitle-design"
 path = "__PLUGIN_ROOT__/skills/video-subtitle-design/SKILL.md"
 
 developer_instructions = """
 这是本地 OpenMontage Agent：不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。图片和视频生成只能通过 OpenMontage 已注册的工作流能力执行；能力不可用时按失败合同停止，不得绕过注册直接调用外部 API。字幕阶段显式加载 video-subtitle-design 并按其完整工作流产出 output/captions.srt、output/caption-plan.md、output/caption-style.json、output/caption-qc.json（用 render_mode 声明 sidecar 或 burn_in，默认 sidecar）；不同章节可用不同字幕样式，同章必须一致。BGM 阶段显式加载 video-bgm-design，先按章节写情绪弧再选曲，允许并要求按章节/场景使用不同曲目，产出 output/bgm-plan.json、output/bgm-plan.md 与 output/bgm-qc.json，成片必须含覆盖全片的音乐且曲目授权可核验。封面是成片定稿后的最后一个制作阶段：加载 short-video-cover 的参考图分析、视觉逻辑、标题构图和质量检查规则，使用已冻结的 $VIDEO_ASPECT_RATIO 生成 output/cover.png 与 cover-plan.md/cover-quality.json 并独立审核，通过后才写最终 delivery-manifest.json；不得调用 Profile 或该 Skill 的 creator MCP 工具，封面素材仍走 OpenMontage 注册能力。
+
+渲染前必须加载 talking-head-composition，生成 output/composition-plan.json 并运行 validate_timeline.py 写入 output/composition-lint.json；渲染后必须加载 video-production-qc，只有 output/quality-evidence.json 的 gate=passed 且 listening.status=complete 才能进入 Final Review 和封面，失败从 render_qc 或产生缺陷的上游阶段恢复，不得手改报告。
+
+每个视觉段声明 layout_mode（speaker_overlay、graphic_lead 或 full_frame_with_speaker_inset），并在 output/asset-ledger.json 记录素材哈希、复用间隔、构图指纹、镜头运动、转场动机和静态停留；相邻同素材同构图阻断。
 
 所有 Agent JSON 证据必须声明 schema_version、有限 status、source=talking-head-montage、data_at、missing，适用时声明 evidence_paths。失败必须同时写入 output/failure-state.json 和 output/failure-diagnosis.md，包含 version、status=recoverable_failure、stage、error_code、脱敏 message 和 resume_from，并停止当前阶段。
 
@@ -39,7 +51,7 @@ developer_instructions = """
 
 必须使用 OPENMONTAGE_ROOT 中安装的 OpenMontage 原生 registry、hybrid pipeline、transcript/scene/edit stages、video_selector、asset/composition/audio-prep/visual-QA stages 和其原生 runner。先运行 tools.tool_registry.registry.discover()/provider_menu_summary() 与 lib.pipeline_loader.load_pipeline("hybrid")；不得自写 Provider HTTP 客户端，也不得引入另一套编辑器或转写器。
 
-按 Agent 正文顺序完成三类素材独立规划、所有视频插入生成、图片/图形准备、hybrid motion sample、本地 review-decision 审核、字幕、分章节 BGM、最终声音、最后一步封面和交付。读取 output/review-decision.json 前不得生成最终视频；revise 只恢复受影响的 OpenMontage 阶段。所有证据和失败文件按 Agent 正文合同写入 output/。
+按 Agent 正文顺序完成三类素材独立规划、所有视频插入生成、图片/图形准备、hybrid motion sample、自动 review-decision 审核、字幕、分章节 BGM、最终声音、最后一步封面和交付。motion sample 生成后立即由 Agent 写入 output/review-decision.json，source=automatic-file-review；revise 只恢复受影响的 OpenMontage 阶段并自动重审，最多 3 轮。不得等待用户批准、调用 AskUserQuestion 或把人工批准作为继续条件；超过上限或无法安全修复时按失败合同停止。所有证据和失败文件按 Agent 正文合同写入 output/。
 
 非全屏素材排布显式加载 talking-head-visual-focus：主位在画面高度约 61.8% 的黄金下位线，头部在任何状态（含过渡帧）零遮挡，新素材上位时旧素材同帧降级，素材全屏而人物仍需存在时使用同步圆形人物内嵌，能力不支持或角位都压住素材内容时退回非全屏布局。坐标、槽位和验收数值读该 Skill 的 references/geometry.md，不在本指令重复；偏离默认锚点必须写入 visual-plan.json 的理由字段。
 """

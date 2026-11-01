@@ -1,5 +1,5 @@
 id: talking-head-montage
-version: 1.2.0
+version: 1.2.2
 kind: plugin
 display_name: 口播 Montage 制作
 description: 以 OpenMontage hybrid 为主引擎，完成真人口播、生成视频素材、图片素材、图形动效、字幕与分章节 BGM 的本地制作与文件审核，并在流程最后一步生成封面。
@@ -9,14 +9,14 @@ agent:
   name: talking-head-montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [talking-head-sound-design, content-tagging, short-video-cover, talking-head-visual-focus, video-bgm-design, video-subtitle-design]
+  skills: [talking-head-composition, talking-head-sound-design, content-tagging, short-video-cover, talking-head-visual-focus, video-bgm-design, video-production-qc, video-subtitle-design]
   max_turns: 260
 runtime:
   profile: talking-head-montage
   adapter: openmontage
 bindings: {}
 surfaces: [plugin]
-features: [talking-head, generated-video-inserts, image-inserts, motion-graphics, local-review-gate]
+features: [talking-head, generated-video-inserts, image-inserts, motion-graphics, automatic-review-loop]
 artifacts:
   - {role: rough_cut, path: output/rough-cut.mp4, mime_type: video/mp4, required: true}
   - {role: semantic_cut, path: output/semantic-cut.mp4, mime_type: video/mp4, required: true}
@@ -30,6 +30,9 @@ artifacts:
   - {role: generated_video_review, path: output/generated-video-review.json, mime_type: application/json, required: true}
   - {role: asset_source_manifest, path: output/asset-source-manifest.json, mime_type: application/json, required: true}
   - {role: visual_plan, path: output/visual-plan.json, mime_type: application/json, required: true}
+  - {role: asset_ledger, path: output/asset-ledger.json, mime_type: application/json, required: true}
+  - {role: composition_plan, path: output/composition-plan.json, mime_type: application/json, required: true}
+  - {role: composition_lint, path: output/composition-lint.json, mime_type: application/json, required: true}
   - {role: motion_sample, path: output/motion-sample.mp4, mime_type: video/mp4, required: true}
   - {role: motion_review, path: output/motion-review.json, mime_type: application/json, required: true}
   - {role: motion_source_manifest, path: output/motion-source-manifest.json, mime_type: application/json, required: true}
@@ -47,6 +50,7 @@ artifacts:
   - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}
+  - {role: sync_evidence, path: output/sync-evidence.json, mime_type: application/json, required: true}
   - {role: cover_reference_input, path: output/input-manifest.md, mime_type: text/markdown, required: false}
   - {role: cover_reference_image, path: output/reference-cover.png, mime_type: image/png, required: false}
   - {role: cover_reference_compressed_image, path: output/reference-cover-compressed.png, mime_type: image/png, required: false}
@@ -76,7 +80,10 @@ artifact_stages:
       - output/generated-video-manifest.json
       - output/generated-video-review.json
       - output/asset-source-manifest.json
+      - output/asset-ledger.json
       - output/visual-plan.json
+      - output/composition-plan.json
+      - output/composition-lint.json
       - output/motion-sample.mp4
       - output/motion-review.json
       - output/motion-source-manifest.json

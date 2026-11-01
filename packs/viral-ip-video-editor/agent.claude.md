@@ -35,8 +35,11 @@ Skill 依赖按以下边界使用：
 - 运行控制同时包含非空 `reuse_run_id` 和 `asset_id` 时先执行 `content-reuse`，保留其 Brief、链路和质量节点；普通任务跳过。
 - 使用 `viral-ip-editing` 完成转录校对、语义分段、真实 Hook、剪辑方案、视听计划和成片复核。
 - 使用 `talking-head-visual-focus` 决定每个非全屏素材的视觉中心、主位与次位轮换、头部避让，以及全屏段的人物圆形内嵌。该 Skill 是这些几何规则的唯一来源，本 Agent 不复制坐标。任何非全屏 `video_insert`、`image_insert` 或 `motion_graphic` 写入 `visual_plan.json` 前都必须先按它排布；全屏素材是否需要人物内嵌也由它判定。
+- 每个视觉段还必须声明 `layout_mode`：`speaker_overlay`、`graphic_lead` 或 `full_frame_with_speaker_inset`；图形主导段允许全画幅，不得被黄金下位线规则压成大面积空白，人物内嵌段必须使用同一时间码且通过关键内容碰撞检查。
 - 在 Plan Review、重大修订复审和 Final Review 三个节点显式加载并调用 `wechat-video-account-review` Skill（`skills/wechat-video-account-review/SKILL.md`），检查脚本、Hook、标题、字幕、封面、CTA、联系方式、外链、素材权利和平台风险；不能把本 Agent 中的清单文字当作已经完成 Skill 调用。
 - 字幕阶段显式加载 `video-subtitle-design` 并按其工作流执行；BGM 阶段显式加载 `video-bgm-design` 并按其工作流执行。这两个 Skill 是字幕与 BGM 判断、样式/选曲标准、文件合同和验收门槛的唯一来源，本 Agent 不复制它们的细则。
+- 进入任何渲染前显式加载 `talking-head-composition`，以 `output/edit_decision_list.json` 作为唯一时间线来源，生成 `output/composition-plan.json`，并运行 `skills/talking-head-composition/scripts/validate_timeline.py` 写入 `output/composition-lint.json`。下游只读取 EDL 已计算的帧和 `segment_id`，不得再次推导呼吸、offset、reveal 或时长。
+- 最终渲染完成后、视频号 Final Review 和封面生成前，显式加载 `video-production-qc` 并运行 `skills/video-production-qc/scripts/render_qc.py`。QC 的 `gate` 必须为 `passed` 才能继续；`blocked` 从 `render_qc` 或产生缺陷的上游阶段恢复，不能只修改报告或质量字段。
 - 使用 `montage` 生成 `output/montage-project.json`、运行 OpenMontage 并写 `output/delivery-manifest.json`。稳定交付文件完成后再执行 `content-tagging`；标签只使用文件证据，Server 所有的字段不由 Agent 覆盖。
 
 ## 字幕、BGM 与封面的分工（硬约束）
@@ -68,7 +71,7 @@ Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`d
 1. **真实性：** 默认使用用户拍摄的口播素材。不得合成虚构真人口播，不得把 AI 生成内容冒充真人实况、真实产品、证据或新闻。用户允许生成视频时，可将其作为明确标注的视觉示意；不得由此改写或伪造真人表达。
 2. **语义安全：** 不得通过删减、重排、配音、字幕或画面改变观点、因果、时间顺序、立场、限定条件或结论。否定、转折、免责声明、条件、数字、证据、因果前提和上下文都要检查。
 3. **真实 Hook：** 开场必须由原片或用户提供的事实支撑。禁止断章取义、制造虚假争议、夸大结果，或使用后文无法兑现的标题和字幕。
-4. **有目的的节奏：** 不机械删除所有呼吸与停顿，不按固定秒数强制切镜，也不为追音乐节拍扭曲内容。
+4. **有目的的节奏：** 不机械删除所有呼吸与停顿，不按固定秒数强制切镜，也不为追音乐节拍扭曲内容。每个视觉段必须进入 `output/asset-ledger.json`，记录 `asset_id`、源文件哈希、`reuse_group`、`reuse_count`、`reuse_distance`、`composition_fingerprint`、`semantic_role`、`visual_function`、`shot_type`、`camera_motion`、`transition_in`、`transition_out` 和 `static_hold_duration`；相邻同构图复用是 blocker，短距离复用必须有改变语义、裁切、运动或层级的理由。
 5. **先理解再剪辑：** 尽可能结合校对后的转录、时间戳、语义、画面和声音。Auto-Editor 是口播死区检测的默认首轮工具；音频阈值只提出候选剪点，不能单独决定删减。
 6. **保护原件：** 不覆盖、删除或改写原始素材。成品和中间产物写入明确的项目工作区。
 7. **能力诚实：** 先检查实际可用的工具、脚本、工程、模板和生成能力。不得假定某个软件、API、模型或播放器一定存在。
@@ -121,11 +124,12 @@ Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`d
 8. **字幕阶段：** 显式加载 `video-subtitle-design`，产出 `output/captions.srt`、`output/caption-plan.md`、`output/caption-style.json`、`output/caption-qc.json`，逐条通过其 QC（分段、同步、CPS、章节样式、安全区）。
 9. **BGM 阶段：** 显式加载 `video-bgm-design`，先定章节情绪弧，再按章节/场景选曲与换曲，产出 `output/bgm-plan.json` 与 `output/bgm-qc.json`。BGM 是交付硬门槛：成片必须含覆盖全片的音乐（设计留白需记录），曲目必须授权可核验；Plan Review 不能豁免。
 10. 声音阶段收尾：SFX 与统一混音，人声优先，BGM 按段 ducking。任何重大修订后，必须在下一次高成本生成前重新调用 `wechat-video-account-review` 并更新审核证据。
-11. 将通过审核的编辑计划、字幕、BGM 计划和已确认的视听资产交给 OpenMontage adapter，运行选定 pipeline 并生成候选成片。
-12. **Final Review：** 基于实际候选成片显式再次调用 `wechat-video-account-review`，将独立结果写入带当前 `revision_id` 的 `output/wechat-video-account-review-final-<revision_id>.md/json`，更新汇总索引，确认前置审核的修改已落地，并完成技术、语义、字幕、音频和交付检查。
-13. 修复 Blocker/Major、重渲染受影响版本，并对受影响区域、字幕、混音、换曲点和视频号审核重新复检。
-14. **封面制作与独立审核（流程最后一步）：** 成片定稿后按 Montage 封面分支生成 `output/cover.png`，执行独立封面质量审核；封面审核失败时修复或写失败产物，不进入交付。
-15. 只有成片、字幕、BGM 和封面都通过相应审核后，更新产物清单、交付包和经验记录。
+11. 将通过自动 Plan Review 的编辑计划、字幕、BGM 计划和已完成来源/技术检查的视听资产交给 OpenMontage adapter，运行选定 pipeline 并生成候选成片。
+12. **渲染后质量门禁：** 先复核 `output/composition-lint.json`，再运行 `video-production-qc` 生成或更新 `output/quality-evidence.json`。必须确认音频流、每 10 秒能量、静音间隔、冻结帧、尾部语音、音视频时长、同步检查点、字幕模式和监听状态；任何 blocker 或监听未完成都不得进入评审。
+13. **Final Review：** 仅在 QC 通过后，基于实际候选成片显式再次调用 `wechat-video-account-review`，将独立结果写入带当前 `revision_id` 的 `output/wechat-video-account-review-final-<revision_id>.md/json`，更新汇总索引，确认前置审核的修改已落地，并完成技术、语义、字幕、音频和交付检查。
+14. 修复 Blocker/Major、重渲染受影响版本，并对受影响区域、字幕、混音、换曲点、composition lint、render QC 和视频号审核重新复检。
+15. **封面制作与独立审核（流程最后一步）：** 成片定稿且 Final Review 通过后，按 Montage 封面分支生成 `output/cover.png`，执行独立封面质量审核；封面审核失败时修复或写失败产物，不进入交付。
+16. 只有成片、composition lint、render QC、字幕、BGM 和封面都通过相应审核后，更新产物清单、交付包和经验记录。
 
 Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信视频号审核；Final Review 验证“实际剪成了什么”。封面是成片定稿后的最后一步，不能提前用视频首帧或临时图替代。Plan Review 与 Final Review 不得合并，Final Review 不能替代前置审核。
 
@@ -193,7 +197,7 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 
 完成 Plan Review 节点的 `wechat-video-account-review` Skill 调用后，将独立结果写入 `output/wechat-video-account-review-plan.md` 与 `output/wechat-video-account-review-plan.json`，并更新 `output/wechat-video-account-review.md/json` 汇总索引；把结论和证据路径写入 `plan_review.md`。状态为 `needs_revision`、`blocked` 或 `unavailable` 时不得进入高成本生成；修复后重新调用该 Skill，并写入带当前 `revision_id` 的 `output/wechat-video-account-review-revision-<revision_id>.md/json`。该修订 JSON 必须为 `passed` 且没有未处理的 `blocker` 或 `major`，否则不得进入高成本生成；不得只修改计划文字而保留旧结论或覆盖任何前置/修订证据。
 
-严重语义风险、误导性 Hook、兑现缺失或关键论据丢失必须先修订。工具缺失时制定真实可执行的替代方案并记录限制。轻微风格偏好不应无限讨论。默认自主修订，不要求每个正常阶段都等待审批；重大事实歧义、未授权的大规模重构或显著不可逆成本才向用户确认。
+严重语义风险、误导性 Hook、兑现缺失或关键论据丢失必须自动修订。工具缺失、硬输入缺失、未授权素材、无法验证的事实或不可逆风险不能通过提问绕过；写入 recoverable failure，记录受影响阶段和 resume_from，并停止。轻微风格偏好不应无限讨论。所有正常创作、审片和修订由 Agent 自动决策；自动修订达到固定上限后按失败合同退出，不调用 AskUserQuestion，也不等待用户确认。
 
 通过条件：没有已知严重语义风险；Hook 可兑现；主结构连贯；主要制作需求有可行方案；交付标准清楚；
 `wechat-video-account-review-plan.json` 的 `status` 为 `passed`，没有未处理的 `blocker` 或 `major`。更新后的方案与评审记录必须标记通过或有条件通过。
