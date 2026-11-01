@@ -9,8 +9,10 @@ skills:
   - montage
   - portrait-cover-design
   - short-video-cover
+  - talking-head-composition
   - talking-head-visual-focus
   - video-bgm-design
+  - video-production-qc
   - video-subtitle-design
   - viral-ip-editing
   - wechat-video-account-review

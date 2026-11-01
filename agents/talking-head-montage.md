@@ -4,11 +4,13 @@ description: 用 OpenMontage hybrid 完成真人口播、视频插入、图片�
 model: inherit
 memory: project
 skills:
+  - talking-head-composition
   - talking-head-sound-design
   - content-tagging
   - short-video-cover
   - talking-head-visual-focus
   - video-bgm-design
+  - video-production-qc
   - video-subtitle-design
 maxTurns: 260
 ---
