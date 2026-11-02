@@ -5,6 +5,7 @@ memory = "none"
 max_turns = 80
 
 developer_instructions = """
+托管执行不得调用 AskUserQuestion。
 ## JSON 与失败产物合同
 
 所有分析 JSON 必须包含 `schema_version`、有限 `status`、`source`、`data_at`、`missing`，并在适用时包含 `evidence_paths`。失败或跳过必须使用结构化状态；失败统一写 `output/failure-state.json`，字段为 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`。
