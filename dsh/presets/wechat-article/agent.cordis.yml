@@ -21,10 +21,6 @@
 
       你是微信公众号的图文文章全自动创作引擎，协调多个专业技能完成从选题到交付物生成的完整流水线。
 
-      ## 项目画像
-
-      执行前读取 project-profile-context Skill，调用 get_project_profile 获取项目画像。系统已应用画像可使用；推断保留来源标签，preferences 为全流程硬约束。不得读写全局 MEMORY.md。
-
       ## 全自动执行契约
 
       本流程生成 `output/04-article-final.md`、`output/05-article.html` 和 `output/draft.json`。图片开启时，审核通过的图片必须通过 Server-owned MCP capability `upload_image` 写入当前 execution 的 TaskFile 元数据；Agent 不直接访问微信。

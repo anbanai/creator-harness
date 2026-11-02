@@ -1,652 +1,70 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": [
-    "project_id",
-    "platform",
-    "agent_ids",
-    "profile_url",
-    "platform_accounts",
-    "profile_setup",
-    "answers",
-    "samples",
-    "current_profile",
-    "expected_revision"
-  ],
+  "required": ["project_id", "profile_url", "answers", "samples"],
   "additionalProperties": false,
   "properties": {
-    "project_id": {
-      "type": "string"
-    },
-    "platform": {
-      "type": "string",
-      "description": "Legacy primary context. The selected creation Agents are authoritative in agent_ids."
-    },
-    "agent_ids": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "enum": [
-          "wechat-article",
-          "wechat-picture",
-          "seednote",
-          "montage",
-          "hypit",
-          "whiteboard-animation"
-        ]
-      }
-    },
-    "profile_url": {
-      "type": "string",
-      "description": "Legacy primary homepage URL; prefer platform_accounts."
-    },
-    "platform_accounts": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "platform",
-          "profile_url",
-          "source"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "platform": {
-            "type": "string",
-            "enum": [
-              "wechat",
-              "seednote",
-              "douyin",
-              "bilibili",
-              "weibo",
-              "zhihu",
-              "kuaishou",
-              "channels"
-            ]
-          },
-          "account_name": {
-            "type": "string"
-          },
-          "profile_url": {
-            "type": "string"
-          },
-          "follower_range": {
-            "type": "string"
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "[用户确认]",
-              "[用户编辑]",
-              "[链接分析]",
-              "[推断待确认]",
-              "[待补充]"
-            ]
-          }
-        }
-      }
-    },
-    "profile_setup": {
+    "project_id": { "type": "string" },
+    "profile_url": { "type": "string", "description": "Optional legacy project homepage; Server accepts empty or validates an absolute HTTP(S) URL." },
+    "answers": {
       "type": "object",
-      "required": [
-        "account_status",
-        "platform_accounts",
-        "answers",
-        "samples"
-      ],
+      "required": ["basic", "platform_accounts", "intent", "content", "boundaries"],
       "additionalProperties": false,
       "properties": {
-        "account_status": {
-          "type": "string",
-          "enum": [
-            "new",
-            "existing"
-          ]
+        "basic": {
+          "type": "object",
+          "required": ["project_name", "account_status"],
+          "additionalProperties": false,
+          "properties": {
+            "project_name": { "type": "string" },
+            "account_status": { "type": "string", "enum": ["", "new", "existing"] }
+          }
         },
         "platform_accounts": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "platform",
-              "profile_url",
-              "source"
-            ],
+            "required": ["platform", "account_name", "profile_url"],
             "additionalProperties": false,
             "properties": {
-              "platform": {
-                "type": "string",
-                "enum": [
-                  "wechat",
-                  "seednote",
-                  "douyin",
-                  "bilibili",
-                  "weibo",
-                  "zhihu",
-                  "kuaishou",
-                  "channels"
-                ]
-              },
-              "account_name": {
-                "type": "string"
-              },
-              "profile_url": {
-                "type": "string"
-              },
-              "follower_range": {
-                "type": "string"
-              },
-              "source": {
-                "type": "string",
-                "enum": [
-                  "[用户确认]",
-                  "[用户编辑]",
-                  "[链接分析]",
-                  "[推断待确认]",
-                  "[待补充]"
-                ]
-              }
+              "platform": { "type": "string", "enum": ["xiaohongshu", "douyin", "bilibili", "video_account", "wechat_official_account", "weibo", "zhihu"] },
+              "account_name": { "type": "string" },
+              "profile_url": { "type": "string", "description": "Optional; non-empty values must be absolute HTTP(S) URLs." }
             }
           }
-        },
-        "answers": {
-          "type": "object",
-          "required": [
-            "intent",
-            "content",
-            "boundaries"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "intent": {
-              "type": "object",
-              "properties": {
-                "goals": {
-                  "type": "string"
-                },
-                "direction": {
-                  "type": "string"
-                },
-                "differentiation": {
-                  "type": "string"
-                },
-                "strengths": {
-                  "type": "string"
-                },
-                "resources": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
-            "content": {
-              "type": "object",
-              "properties": {
-                "preferences": {
-                  "type": "string"
-                },
-                "favorites": {
-                  "type": "string"
-                },
-                "formats": {
-                  "type": "string"
-                },
-                "tone": {
-                  "type": "string"
-                },
-                "audience": {
-                  "type": "string"
-                },
-                "reference_accounts": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            },
-            "boundaries": {
-              "type": "object",
-              "properties": {
-                "exclusions": {
-                  "type": "string"
-                },
-                "collaboration": {
-                  "type": "string"
-                },
-                "compliance": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          }
-        },
-        "samples": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "answers": {
-      "type": "object",
-      "required": [
-        "basic",
-        "intent",
-        "content",
-        "boundaries"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "basic": {
-          "type": "object",
-          "properties": {
-            "account_status": {
-              "type": "string"
-            },
-            "platform": {
-              "type": "string"
-            },
-            "project_name": {
-              "type": "string"
-            },
-            "platform_accounts": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "platform",
-                  "profile_url",
-                  "source"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "platform": {
-                    "type": "string",
-                    "enum": [
-                      "wechat",
-                      "seednote",
-                      "douyin",
-                      "bilibili",
-                      "weibo",
-                      "zhihu",
-                      "kuaishou",
-                      "channels"
-                    ]
-                  },
-                  "account_name": {
-                    "type": "string"
-                  },
-                  "profile_url": {
-                    "type": "string"
-                  },
-                  "follower_range": {
-                    "type": "string"
-                  },
-                  "source": {
-                    "type": "string",
-                    "enum": [
-                      "[用户确认]",
-                      "[用户编辑]",
-                      "[链接分析]",
-                      "[推断待确认]",
-                      "[待补充]"
-                    ]
-                  }
-                }
-              }
-            }
-          },
-          "additionalProperties": false
         },
         "intent": {
           "type": "object",
+          "required": ["goals", "direction", "differentiation"],
+          "additionalProperties": false,
           "properties": {
-            "goals": {
-              "type": "string"
-            },
-            "direction": {
-              "type": "string"
-            },
-            "differentiation": {
-              "type": "string"
-            },
-            "strengths": {
-              "type": "string"
-            },
-            "resources": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+            "goals": { "type": "string" },
+            "direction": { "type": "string" },
+            "differentiation": { "type": "string" }
+          }
         },
         "content": {
           "type": "object",
+          "required": ["preferences", "formats", "tone", "audience"],
+          "additionalProperties": false,
           "properties": {
-            "preferences": {
-              "type": "string"
-            },
-            "favorites": {
-              "type": "string"
-            },
-            "formats": {
-              "type": "string"
-            },
-            "tone": {
-              "type": "string"
-            },
-            "audience": {
-              "type": "string"
-            },
-            "reference_accounts": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
+            "preferences": { "type": "string" },
+            "formats": { "type": "string" },
+            "tone": { "type": "string" },
+            "audience": { "type": "string" }
+          }
         },
         "boundaries": {
           "type": "object",
-          "properties": {
-            "exclusions": {
-              "type": "string"
-            },
-            "collaboration": {
-              "type": "string"
-            },
-            "compliance": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
-    "samples": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "current_profile": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "schema_version",
-            "status",
-            "initialization_status",
-            "version",
-            "dimensions",
-            "analysis_limits",
-            "follow_up_questions"
-          ],
+          "required": ["exclusions", "collaboration", "compliance"],
           "additionalProperties": false,
           "properties": {
-            "schema_version": {
-              "type": "integer",
-              "enum": [
-                1
-              ]
-            },
-            "status": {
-              "type": "string"
-            },
-            "initialization_status": {
-              "type": "string"
-            },
-            "last_error": {
-              "type": "string"
-            },
-            "version": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "analysis_task_id": {
-              "type": "string"
-            },
-            "application_source": {
-              "type": "string"
-            },
-            "dimensions": {
-              "type": "object",
-              "required": [
-                "identity",
-                "style",
-                "audience",
-                "platforms",
-                "preferences",
-                "memory"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "identity": {
-                  "type": "object",
-                  "required": [
-                    "content",
-                    "sources",
-                    "evidence",
-                    "missing_fields"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "content": {
-                      "type": "object",
-                      "additionalProperties": true
-                    },
-                    "sources": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "evidence": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "missing_fields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "style": {
-                  "type": "object",
-                  "required": [
-                    "content",
-                    "sources",
-                    "evidence",
-                    "missing_fields"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "content": {
-                      "type": "object",
-                      "additionalProperties": true
-                    },
-                    "sources": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "evidence": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "missing_fields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "audience": {
-                  "type": "object",
-                  "required": [
-                    "content",
-                    "sources",
-                    "evidence",
-                    "missing_fields"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "content": {
-                      "type": "object",
-                      "additionalProperties": true
-                    },
-                    "sources": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "evidence": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "missing_fields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "platforms": {
-                  "type": "object",
-                  "required": [
-                    "content",
-                    "sources",
-                    "evidence",
-                    "missing_fields"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "content": {
-                      "type": "object",
-                      "additionalProperties": true
-                    },
-                    "sources": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "evidence": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "missing_fields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "preferences": {
-                  "type": "object",
-                  "required": [
-                    "content",
-                    "sources",
-                    "evidence",
-                    "missing_fields"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "content": {
-                      "type": "object",
-                      "additionalProperties": true
-                    },
-                    "sources": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "evidence": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "missing_fields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "memory": {
-                  "type": "object",
-                  "required": [
-                    "content",
-                    "sources",
-                    "evidence",
-                    "missing_fields"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "content": {
-                      "type": "object",
-                      "additionalProperties": true
-                    },
-                    "sources": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "evidence": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "missing_fields": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "analysis_limits": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "follow_up_questions": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
+            "exclusions": { "type": "string" },
+            "collaboration": { "type": "string" },
+            "compliance": { "type": "string" }
           }
-        },
-        {
-          "type": "null"
         }
-      ]
+      }
     },
-    "expected_revision": {
-      "type": "integer",
-      "minimum": 0
-    }
+    "samples": { "type": "array", "items": { "type": "string" } }
   }
 }

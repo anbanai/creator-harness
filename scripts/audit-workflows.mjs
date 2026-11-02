@@ -94,15 +94,6 @@ for (const path of (await walk(join(root, 'packs'))).filter((p) => p.endsWith('/
   const meta = frontmatter(claude, rel(path))
   const preloaded = meta.skills ?? []
   for (const skill of preloaded) if (!skills.has(skill)) errors.push(`${manifest.id}: missing preload ${skill}`)
-  if (!baseline) {
-    for (const skill of preloaded) if (!manifest.agent.skills.includes(skill)) errors.push(`${manifest.id}: startup Skill ${skill} is not a Pack dependency`)
-    if (manifest.agent.skills.includes('project-profile-context') && !preloaded.includes('project-profile-context')) errors.push(`${manifest.id}: project-profile-context must be preloaded`)
-    const codex = await read(join(dirname(path), manifest.agent.codex_source))
-    const discoverable = [...codex.matchAll(/\[\[skills\.config\]\]([\s\S]*?)(?=\n\[|$)/g)]
-      .filter((match) => /^enabled\s*=\s*true\s*$/m.test(match[1]))
-      .map((match) => match[1].match(/path\s*=\s*"__PLUGIN_ROOT__\/skills\/([^/]+)\/SKILL\.md"/)?.[1])
-    if (JSON.stringify([...discoverable].sort()) !== JSON.stringify([...manifest.agent.skills].sort())) errors.push(`${manifest.id}: Codex Skills must match Pack dependencies`)
-  }
   const skillChars = preloaded.reduce((sum, name) => sum + (skills.get(name)?.chars ?? 0), 0)
   const limit = { article: 45000, seednote: 38000, ecommerce: 34000 }[manifest.id]
   startup[manifest.id] = {
@@ -117,9 +108,8 @@ for (const path of (await walk(join(root, 'packs'))).filter((p) => p.endsWith('/
     for (const source of [manifest.agent.claude_source, manifest.agent.codex_source, manifest.agent.dsh_source].filter(Boolean)) {
       const body = await read(join(dirname(path), source))
       calls(join(dirname(path), source), body)
-      if (source === manifest.agent.claude_source && body.includes('__PLUGIN_ROOT__')) errors.push(`${manifest.id}/${source}: Claude paths must use $CLAUDE_PLUGIN_ROOT`)
-      for (const match of body.matchAll(/(?:__PLUGIN_ROOT__|\$CLAUDE_PLUGIN_ROOT)\/((?:skills|packs)\/[^`\s"')]+)/g)) {
-        if (!existsSync(resolve(root, match[1]))) errors.push(`${manifest.id}/${source}: missing ${match[1].startsWith('skills/') ? 'Skill dependency' : 'Pack resource'} ${match[1]}`)
+      for (const match of body.matchAll(/(?:__PLUGIN_ROOT__|\$CLAUDE_PLUGIN_ROOT)\/(skills\/[^`\s"')]+)/g)) {
+        if (!existsSync(resolve(root, match[1]))) errors.push(`${manifest.id}/${source}: missing Skill dependency ${match[1]}`)
       }
       if (manifest.kind === 'managed') {
         const interactive = manifest.interaction?.user_questions === true

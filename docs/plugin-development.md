@@ -61,24 +61,14 @@ Skills are discovered automatically. Supporting files are read only when needed;
 keep self-authored `SKILL.md` entrypoints under 500 lines and link directly to
 one-level references.
 
-Agent Pack `agent.skills` is the canonical distributed dependency set; Codex
-enabled `[[skills.config]]` declarations must match it. Claude frontmatter
-`skills:` is the startup subset and injects every listed Skill's complete content.
-Each startup Skill must belong to the Pack. A distributed capability outside that
-subset uses the host's native Skill invocation before its domain work; it is not
-another custom phase loader. Already injected Skills use progressive disclosure
-only for their supporting `references/`, and are not re-read as phase entrypoints.
-Declare only specialized capabilities the Agent actually uses, and avoid an
-umbrella Skill that duplicates its end-to-end workflow.
-
-`project-profile-context` must be injected at Claude startup for all six creation
-Packs and discoverable in their Codex bindings; preference hard constraints cannot
-wait until production. Seednote also injects `seednote-writing` at startup. Keep
-its full startup prompt within 38,000 UTF-16 characters by moving bulky examples
-and guidance into direct references, not by deferring those mandatory rules.
-The vendored `humanizer` is an explicit exception: Article, Seednote, Ecommerce
-and Moments distribute it but read its unchanged upstream entrypoint only at the
-rewrite stage. The workflow audit accounts for this deferred cost separately.
+Agent frontmatter `skills:` declares startup dependencies and injects each
+declared top-level Skill's complete content when the Agent starts. The matching
+Agent Pack `agent.skills` list is the canonical dependency set; generated Claude
+frontmatter and Codex `[[skills.config]]` declarations must match it. Declare only
+specialized capabilities that the Agent actually uses. Do not preload an umbrella
+Skill that duplicates the Agent's end-to-end workflow. Progressive disclosure
+applies to supporting `references/`, not to top-level Skills already declared by
+the Agent, and Agent bodies must not describe a second phase-loading mechanism.
 
 Every distributed top-level Skill must have an Agent owner or be an explicit
 user entrypoint. Delete obsolete aliases and orphan Skills instead of retaining
