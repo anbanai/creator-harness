@@ -1,5 +1,7 @@
 # 4.2.123
 
+- Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
+
 - Bundle the ecommerce upstream SOP as the read-only git submodule `third_party/ecommerce-visual-copywriting-skill` (MIT, pinned commit) so the workflow reuses its evidence ledger, conversion-driver, Style Lock, Storyboard/execution-card, on-image copy, compliance and five-part quality gate instead of copying rule text into Anban Skills.
 - Add thin Anban stage adapters for product analysis, copywriting, visual design and platform compliance, plus KV1 product-identification and in-image text verification for generated assets.
 - Add the required `output/quality-gate.md` artifact (Gate A before generation, Gate B before delivery) with five-dimension scoring, rewrite rounds, mechanical checks and disclosed gaps; Agent Packs and the runtime completion hook now enforce it.
@@ -15,10 +17,6 @@
 - Rename the user-facing ecommerce workflow to “电商设计” while continuing to recognize “电商出图” as an entry phrase; enable the workflow for all accounts.
 - Add a dedicated talking-head explainer workflow for raw-source assessment, evidence-aware explanations, semantic masters with platform variant plans, retention experiments, and independent validation.
 - Upgrade the `viral-ip-video-editor` and `talking-head-montage` Agent Packs to 1.3.0; explainer artifacts apply only to explainer tasks and are optional for other tasks.
-
-# 4.2.120
-
-- Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
 
 # 4.2.119
 
