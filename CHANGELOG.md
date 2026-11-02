@@ -1,3 +1,9 @@
+# 4.2.127
+
+- Move the pinned upstream Skill submodules (`seedance2-skill`, `GPT-Image2-Skill`, `motion-graphics`, `ecommerce-visual-copywriting-skill`) from `third_party/` to `skills/<repo>` so upstream Skills ship in the same tree as authored Skills, like `skills/humanizer`.
+- Keep upstream bytes read-only and exempt from Anban Skill lint: `scripts/audit-workflows.mjs` and the `server/agent` Skill contracts skip upstream submodule directories instead of special-casing `humanizer`.
+- Update Agent, Skill, install and update-script path references plus the ecommerce runtime image check to the new `skills/` locations.
+
 # 4.2.126
 
 - Keep the creation-planner and postmortem-review presets on distinct Skills provider plugin IDs so loading both assistant presets no longer collides on `assistant-session-skills-provider`.

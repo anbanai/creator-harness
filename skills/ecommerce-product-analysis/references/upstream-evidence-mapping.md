@@ -1,6 +1,6 @@
 # 上游证据与命名映射（Anban 适配）
 
-> 上游来源：`third_party/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。本文件只做 Anban 映射，不复制上游规则正文；证据状态、来源四分法与命名规则以上游为准。
+> 上游来源：`skills/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。本文件只做 Anban 映射，不复制上游规则正文；证据状态、来源四分法与命名规则以上游为准。
 
 ## 读取顺序
 

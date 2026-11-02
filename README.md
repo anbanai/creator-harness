@@ -62,7 +62,7 @@ git submodule update --init --recursive harness
 如果单独 clone `anbanai/creator-harness`，请在该仓库中运行
 `git submodule update --init --recursive`。确认
 `skills/humanizer/SKILL.md` 与
-`third_party/ecommerce-visual-copywriting-skill/SKILL.md` 都存在后，再从 Anban Writer 根目录注册并安装：
+`skills/ecommerce-visual-copywriting-skill/SKILL.md` 都存在后，再从 Anban Writer 根目录注册并安装：
 
 ```bash
 claude plugin marketplace add ./harness
@@ -187,14 +187,16 @@ claude --verbose --agent anban:seednote 降噪耳机种草笔记
 
 这张表记录哪些 skill 直接内置、改编或结构参考了开源 skill，方便后续让 AI 批量对齐上游。未在“上游/参考”中标为 copy 的内容，默认按 Anban 原创业务 workflow 维护。
 
+上游仓库以 submodule 形式直接挂在 `skills/<上游仓库名>`，与 Anban 自建 Skill 同级分发；其 Markdown 保持上游字节，不参与 Anban 的 Skill lint、命名、行数与契约检查（`scripts/audit-workflows.mjs` 与 `server/agent` 契约测试会跳过这些目录），更新只走 gitlink 与上游 diff 审阅。
+
 维护本表和所有 `SKILL.md` 时，先按本仓库 `docs/claude/` 中的 Claude Skills 指南检查：frontmatter 触发描述、`SKILL.md` 体量、渐进式披露、一层 `references/`、无 skill 内辅助 README、MCP 边界、错误处理和测试/验证记录。
 
 | 本地 skill | 上游/参考 | 本地改造 | 批量更新提示 |
 |------------|-----------|----------|--------------|
 | `humanizer` | [blader/humanizer](https://github.com/blader/humanizer) v2.8.2（MIT），以 `skills/humanizer` 嵌套 submodule 固定官方提交 | 不做 Anban 改编；官方仓库直接进入共享 Skill 树，Seednote/Article/电商约束归各业务 workflow；Codex 从递归初始化的本地 clone 安装 | 运行 `make humanizer-update` 手动推进上游 gitlink；审阅上游 diff、跑契约测试并升级两个 manifest 版本 |
-| 电商上游 SOP | [feichanggege/ecommerce-visual-copywriting-skill](https://github.com/feichanggege/ecommerce-visual-copywriting-skill)（MIT），以 `third_party/ecommerce-visual-copywriting-skill` 嵌套 submodule 固定提交 | 只读引用上游 `SKILL.md`/`references/`/`scripts/`：证据账本、成交驱动力、Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规。Anban 只写落盘/零交互/成图验收适配层，不复制规则正文 | 运行 `make ecommerce-upstream-update` 推进上游 gitlink；审阅 diff、跑 `make ecommerce-upstream-check` 与契约测试后升级版本 |
-| `seedance2-skill` | [dexhunter/seedance2-skill](https://github.com/dexhunter/seedance2-skill)（MIT），位于 `third_party/seedance2-skill` | talking-head 只读引用中文提示词方法；不是托管视频生成运行时 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
-| `GPT-Image2-Skill` | [wuyoscar/GPT-Image2-Skill](https://github.com/wuyoscar/GPT-Image2-Skill)（MIT），位于 `third_party/GPT-Image2-Skill` | talking-head 只读引用提示词/Gallery 方法；禁止使用其 CLI/API，图像一律通过 Anban MCP `generate_image` 生成 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
+| 电商上游 SOP | [feichanggege/ecommerce-visual-copywriting-skill](https://github.com/feichanggege/ecommerce-visual-copywriting-skill)（MIT），以 `skills/ecommerce-visual-copywriting-skill` 嵌套 submodule 固定提交 | 只读引用上游 `SKILL.md`/`references/`/`scripts/`：证据账本、成交驱动力、Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规。Anban 只写落盘/零交互/成图验收适配层，不复制规则正文 | 运行 `make ecommerce-upstream-update` 推进上游 gitlink；审阅 diff、跑 `make ecommerce-upstream-check` 与契约测试后升级版本 |
+| `seedance2-skill` | [dexhunter/seedance2-skill](https://github.com/dexhunter/seedance2-skill)（MIT），位于 `skills/seedance2-skill` | talking-head 只读引用中文提示词方法；不是托管视频生成运行时 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
+| `GPT-Image2-Skill` | [wuyoscar/GPT-Image2-Skill](https://github.com/wuyoscar/GPT-Image2-Skill)（MIT），位于 `skills/GPT-Image2-Skill` | talking-head 只读引用提示词/Gallery 方法；禁止使用其 CLI/API，图像一律通过 Anban MCP `generate_image` 生成 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
 | `moments` | 内容拆解方法参考 [Caihui0127/caihui-moments-skill](https://github.com/Caihui0127/caihui-moments-skill) 的公开框架 | 产出 Anban 朋友圈图文素材包；不默认使用“彩卉”人设，不复制私有素材，不把参考 repo 作为运行时依赖 | 更新时只同步公开方法层；保持文本、语义比例配图和不伪造案例/数据红线 |
 | `article*`、`seednote*`、`ecommerce*`、`portrait-pose-variants`、`anban-setup`、`writers`、`article-research`、`seo-optimization`、`content-writing`、`short-video-cover` | Anban 原创业务 workflow；结构模式参考 [anthropics/skills](https://github.com/anthropics/skills)、[anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official)、[obra/superpowers](https://github.com/obra/superpowers) 和 [affaan-m/ecc](https://github.com/affaan-m/ecc) | 使用标准 `SKILL.md` + 一层 `references/`；案例是 Anban 场景原创，不复制外部措辞或业务流程 | 从 Anban 产品、MCP、server contract 更新；宿主差异放进薄适配器，不复制 Skill |
 

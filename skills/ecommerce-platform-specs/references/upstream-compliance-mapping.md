@@ -1,6 +1,6 @@
 # 上游合规映射（Anban 适配）
 
-> 上游来源：`third_party/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。宣称分类、证据边界、品类保守口径与国内广告法执行规则以上游为准；本文件定义 Anban 的合规流程、报告结构与优先级。
+> 上游来源：`skills/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。宣称分类、证据边界、品类保守口径与国内广告法执行规则以上游为准；本文件定义 Anban 的合规流程、报告结构与优先级。
 
 ## 读取顺序
 

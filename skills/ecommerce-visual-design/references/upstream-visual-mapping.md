@@ -1,6 +1,6 @@
 # 上游视觉映射（Anban 适配）
 
-> 上游来源：`third_party/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。Style Lock、Storyboard、执行卡与自包含 Prompt 以上游为准；本文件定义 Anban 的落盘位置、成图验收与失败修复。
+> 上游来源：`skills/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。Style Lock、Storyboard、执行卡与自包含 Prompt 以上游为准；本文件定义 Anban 的落盘位置、成图验收与失败修复。
 
 ## 读取顺序
 

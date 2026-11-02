@@ -22,9 +22,9 @@ JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`m
 
 ## 上游方法源（bundled read-only）
 
-领域方法以上游 `third_party/ecommerce-visual-copywriting-skill`（git submodule，pin commit）为准：证据账本、成交驱动力、Campaign Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规；Anban 只覆盖产物路径、MCP、零交互与成图验收。
+领域方法以上游 `skills/ecommerce-visual-copywriting-skill`（git submodule，pin commit）为准：证据账本、成交驱动力、Campaign Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规；Anban 只覆盖产物路径、MCP、零交互与成图验收。
 
-- **根路径**：将 `UPSTREAM_ECOMMERCE_SKILL=` 设为 `$CLAUDE_PLUGIN_ROOT/third_party/ecommerce-visual-copywriting-skill`（Codex：`__PLUGIN_ROOT__/...`）。开工确认 `SKILL.md`、`references/`、`scripts/*.py` 可读并先读 `SKILL.md` 全文；之后按阶段只读对应 `references/` 与各 skill 的 `upstream-*-mapping.md`。缺失写 `output/failure-state.json`（`error_code=upstream_skill_unavailable`，`resume_from=bootstrap`）并停止。
+- **根路径**：将 `UPSTREAM_ECOMMERCE_SKILL=` 设为 `$CLAUDE_PLUGIN_ROOT/skills/ecommerce-visual-copywriting-skill`（Codex：`__PLUGIN_ROOT__/...`）。开工确认 `SKILL.md`、`references/`、`scripts/*.py` 可读并先读 `SKILL.md` 全文；之后按阶段只读对应 `references/` 与各 skill 的 `upstream-*-mapping.md`。缺失写 `output/failure-state.json`（`error_code=upstream_skill_unavailable`，`resume_from=bootstrap`）并停止。
 - **覆盖**：不执行问卷/模式/命名询问/Storyboard 确认/设计师交接；商品名按 任务输入→项目画像→包装文字→据图拟名 自动确定并记录来源；缺失按 Anban 自动决策并披露；成图文字为“短文案直出+逐字验收”，不套用上游留白排版默认。
 
 ## 角色

@@ -9,7 +9,7 @@ repo_root=$(git -C "$script_dir/.." rev-parse --show-toplevel 2>/dev/null) || {
 }
 cd "$repo_root"
 
-path=third_party/ecommerce-visual-copywriting-skill
+path=skills/ecommerce-visual-copywriting-skill
 url=https://github.com/feichanggege/ecommerce-visual-copywriting-skill.git
 
 branch=$(git config -f .gitmodules --get "submodule.$path.branch" 2>/dev/null || true)

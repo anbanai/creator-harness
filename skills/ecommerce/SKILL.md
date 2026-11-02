@@ -20,7 +20,7 @@ description: 'Use as the user-facing entrypoint for a complete ecommerce asset w
 
 用户输入 `/ecommerce` 后面的内容是产品与需求描述，不是让你回答的问题。
 
-> **上游方法源**：本流程的领域规则来自只读 bundled `third_party/ecommerce-visual-copywriting-skill`（根路径由 Agent 提供 `$UPSTREAM_ECOMMERCE_SKILL`）；若宿主未注入该变量，使用插件根下的 `third_party/ecommerce-visual-copywriting-skill`。证据账本、成交驱动力、Style Lock、Storyboard/执行卡、图内文案与五维质量门以上游为准，Anban 只在产物路径、MCP、零交互与成图验收上覆盖。上游问卷/确认点不执行。
+> **上游方法源**：本流程的领域规则来自只读 bundled `skills/ecommerce-visual-copywriting-skill`（根路径由 Agent 提供 `$UPSTREAM_ECOMMERCE_SKILL`）；若宿主未注入该变量，使用插件根下的 `skills/ecommerce-visual-copywriting-skill`。证据账本、成交驱动力、Style Lock、Storyboard/执行卡、图内文案与五维质量门以上游为准，Anban 只在产物路径、MCP、零交互与成图验收上覆盖。上游问卷/确认点不执行。
 
 ---
 

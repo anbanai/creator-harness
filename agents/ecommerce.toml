@@ -36,9 +36,9 @@ Codex 不依赖 Claude 的 TaskCreate/TaskUpdate/Hook。阶段 metadata 使用 `
 
 ## 上游方法源（bundled read-only）
 
-本流程的方法源是上游 `third_party/ecommerce-visual-copywriting-skill`（git submodule，pin commit）：证据账本、成交驱动力、Campaign Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规均以上游为准；Anban 只在产物路径、MCP、零交互和成图验收上覆盖。
+本流程的方法源是上游 `skills/ecommerce-visual-copywriting-skill`（git submodule，pin commit）：证据账本、成交驱动力、Campaign Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规均以上游为准；Anban 只在产物路径、MCP、零交互和成图验收上覆盖。
 
-- **根路径**：将 `UPSTREAM_ECOMMERCE_SKILL=` 设为 `__PLUGIN_ROOT__/third_party/ecommerce-visual-copywriting-skill`（安装时替换为插件根）。开工先确认 `SKILL.md`、`references/`、`scripts/count-copy.py`、`scripts/scan-final-copy.py` 可读；缺失写 `output/failure-state.json`（`status=recoverable_failure`、`stage=bootstrap`、`error_code=upstream_skill_unavailable`、`resume_from=bootstrap`）并停止。
+- **根路径**：将 `UPSTREAM_ECOMMERCE_SKILL=` 设为 `__PLUGIN_ROOT__/skills/ecommerce-visual-copywriting-skill`（安装时替换为插件根）。开工先确认 `SKILL.md`、`references/`、`scripts/count-copy.py`、`scripts/scan-final-copy.py` 可读；缺失写 `output/failure-state.json`（`status=recoverable_failure`、`stage=bootstrap`、`error_code=upstream_skill_unavailable`、`resume_from=bootstrap`）并停止。
 - **读取策略**：首次读取上游 `SKILL.md` 全文；之后按阶段只读对应 `references/` 章节，不重复整篇读取。
 - **阶段映射**：product-analysis 读 `references/upstream-evidence-mapping.md`；copywriting 读 `references/upstream-copy-mapping.md`；visual-design 读 `references/upstream-visual-mapping.md`；platform-specs 读 `references/upstream-compliance-mapping.md`。
 - **覆盖上游**：不执行问卷/模式选择/名称询问/Storyboard 后确认/设计师交接；商品名按“任务输入 → 项目画像 → 包装可见文字 → 据图拟名（标非官方原名）”自动确定并记录来源；偏好缺失按 Anban 自动决策并披露；Anban 交付成图，文字渲染为“短文案直出 + 逐字验收”，不套用上游“留白排版”默认。

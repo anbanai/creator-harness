@@ -22,7 +22,7 @@ from typing import Any
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 ASSET_ROOT = SKILL_ROOT / "assets" / "sfx"
 MANIFEST_PATH = ASSET_ROOT / "manifest.json"
-UPSTREAM_ROOT = SKILL_ROOT.parents[1] / "third_party" / "motion-graphics"
+UPSTREAM_ROOT = SKILL_ROOT.parents[1] / "skills" / "motion-graphics"
 UPSTREAM_MANIFEST_PATH = UPSTREAM_ROOT / "skills" / "sound-effects" / "sfx" / "manifest.json"
 UPSTREAM_ASSET_ROOT = UPSTREAM_ROOT / "skills" / "sound-effects" / "sfx"
 MAX_CUES = 120

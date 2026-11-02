@@ -39,8 +39,8 @@ update_submodule() {
   printf '%s advanced from %s to %s\n' "$path" "$old_revision" "$new_revision"
 }
 
-update_submodule third_party/seedance2-skill zh/SKILL.md
-update_submodule third_party/GPT-Image2-Skill skills/gpt-image/SKILL.md
-git diff --submodule=log -- third_party/seedance2-skill third_party/GPT-Image2-Skill
+update_submodule skills/seedance2-skill zh/SKILL.md
+update_submodule skills/GPT-Image2-Skill skills/gpt-image/SKILL.md
+git diff --submodule=log -- skills/seedance2-skill skills/GPT-Image2-Skill
 make creative-references-check
 printf '%s\n' 'Review the upstream diffs before committing the resulting gitlink changes.'

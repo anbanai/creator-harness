@@ -1,6 +1,6 @@
 # 上游文案映射（Anban 适配）
 
-> 上游来源：`third_party/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。证据账本、成交驱动力、图内文案规格与五维质量门以上游为准；本文件只定义 Anban 的落盘位置、成图文字覆盖与机械检查。
+> 上游来源：`skills/ecommerce-visual-copywriting-skill`（MIT，pin `7fd4abaa5a280dddf414ccc1372d886bef702cba`）。证据账本、成交驱动力、图内文案规格与五维质量门以上游为准；本文件只定义 Anban 的落盘位置、成图文字覆盖与机械检查。
 
 ## 读取顺序
 
