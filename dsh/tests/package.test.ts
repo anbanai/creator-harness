@@ -12,6 +12,7 @@ import {
   writeFile,
 } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
+import { createRequire } from 'node:module'
 import { join, parse, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -31,6 +32,19 @@ const cliShimPath = fileURLToPath(
 )
 const builtLibPath = fileURLToPath(new URL('../lib/', import.meta.url))
 const packageRootPath = fileURLToPath(new URL('../../', import.meta.url))
+const yamlModule = createRequire(import.meta.url)('js-yaml') as {
+  DEFAULT_SCHEMA: { extend(types: unknown[]): unknown }
+  Type: new (
+    tag: string,
+    options: { kind: string; construct: (value: string) => unknown },
+  ) => unknown
+  load: (source: string, options: { schema: unknown }) => unknown
+}
+const jsExpression = new yamlModule.Type('tag:yaml.org,2002:js', {
+  kind: 'scalar',
+  construct: (value: string) => value,
+})
+const yamlSchema = yamlModule.DEFAULT_SCHEMA.extend([jsExpression])
 const integrityScriptUrl = new URL(
   '../scripts/package-integrity.mjs',
   import.meta.url,
@@ -47,6 +61,63 @@ const {
   verifyInstalledPackage,
   verifySourceIntegrity,
 } = await import(integrityScriptUrl.href)
+
+function findYamlRecords(
+  value: unknown,
+  predicate: (record: Record<string, unknown>) => boolean,
+): Array<Record<string, unknown>> {
+  if (Array.isArray(value)) return value.flatMap((item) => findYamlRecords(item, predicate))
+  if (typeof value !== 'object' || value === null) return []
+  const record = value as Record<string, unknown>
+  return [
+    ...(predicate(record) ? [record] : []),
+    ...Object.values(record).flatMap((item) => findYamlRecords(item, predicate)),
+  ]
+}
+
+describe('DSH assistant preset plugin composition', () => {
+  it('uses distinct Skills provider IDs for creation and review presets', async () => {
+    const definitions = [
+      {
+        file: '../creation-planner.patch.yml',
+        id: 'creation-planner-skills-provider',
+        presetId: 'creation-planner',
+      },
+      {
+        file: '../postmortem-review.patch.yml',
+        id: 'postmortem-review-skills-provider',
+        presetId: 'postmortem-review',
+      },
+    ] as const
+    const providerIds: string[] = []
+
+    for (const definition of definitions) {
+      const patch = yamlModule.load(
+        await readFile(new URL(definition.file, import.meta.url), 'utf8'),
+        { schema: yamlSchema },
+      )
+      const provider = findYamlRecords(
+        patch,
+        (record) => record.name === './plugins/assistant-session-skills-provider.js',
+      ).find((record) => {
+        const config = record.config
+        return (
+          typeof config === 'object' &&
+          config !== null &&
+          (config as Record<string, unknown>).presetId === definition.presetId
+        )
+      })
+
+      expect(provider, definition.file).toMatchObject({
+        id: definition.id,
+        config: { presetId: definition.presetId },
+      })
+      providerIds.push(String(provider?.id))
+    }
+
+    expect(new Set(providerIds).size).toBe(providerIds.length)
+  })
+})
 
 describe('packed runtime installation', () => {
   it('pins shared transitive dependencies used by the verified runtime', () => {
@@ -523,7 +594,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.121',
+      version: '4.2.122',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',

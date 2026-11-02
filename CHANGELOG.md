@@ -1,3 +1,7 @@
+# 4.2.122
+
+- Give the creation and postmortem review Skills providers independent plugin IDs so loading both assistant presets does not collide.
+
 # 4.2.121
 
 - Rename the user-facing ecommerce workflow to “电商设计” while continuing to recognize “电商出图” as an entry phrase; enable the workflow for all accounts.
