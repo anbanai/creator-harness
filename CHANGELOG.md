@@ -1,3 +1,7 @@
+# 4.2.124
+
+- Deepen WeChat article quality checks by tracing each core claim to its source role, supported scope, counterexamples, and wording strength; add genre-aware explanation checks and subtitle-logic review without adding workflow stages or artifacts.
+
 # 4.2.123
 
 - Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
