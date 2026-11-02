@@ -1266,6 +1266,22 @@ describe('DSH package integrity verifier', () => {
     await expect(verifySourceIntegrity(packageRootPath)).resolves.toBeUndefined()
   })
 
+  it.each(['root', 'preset'])('rejects a stale creation runtime %s persona', async (surface) => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const patchPath = join(fixture.root, 'dsh/creation-planner.patch.yml')
+      const patch = await readFile(patchPath, 'utf8')
+      let index = 0
+      await writeFile(patchPath, patch.replace(/(prefix: >-\n)( +)[^\n]+/g, (match, prefix, indent) => {
+        const target = index++ === (surface === 'root' ? 0 : 1)
+        return target ? `${prefix}${indent}Stale creation instructions.` : match
+      }))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow('Creation Planner runtime')
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
+  })
+
   it('rejects a Project Creator runtime persona that drifts from its Pack source', async () => {
     const fixture = await createIntegrityFixture()
     try {

@@ -352,31 +352,35 @@ async function verifyPreset(root, preset) {
   if (!Array.isArray(generatedComposition)) {
     fail(`${preset.label} Agent composition is not a row array`)
   }
-  if (preset.id === 'project-creator') {
+  if (preset.id === 'project-creator' || preset.id === 'creation-planner') {
     const runtimePatch = await parseYamlFile(
       root,
-      'dsh/project-creator.patch.yml',
-      'Project Creator runtime patch',
+      `dsh/${preset.id}.patch.yml`,
+      `${preset.label} runtime patch`,
     )
-    const runtimePresetRows = rowsWithId(runtimePatch, 'preset-project-creator')
+    const runtimePresetRows = rowsWithId(runtimePatch, `preset-${preset.id}`)
     if (runtimePresetRows.length !== 1 || !isRecord(runtimePresetRows[0].config)) {
-      fail('Project Creator runtime patch has an invalid preset declaration')
+      fail(`${preset.label} runtime patch has an invalid preset declaration`)
     }
     const runtimePreset = runtimePresetRows[0].config
     sameStructure(
       { name: runtimePreset.name, description: runtimePreset.description },
       { name: pack.display_name, description: pack.description },
-      'Project Creator runtime preset metadata',
+      `${preset.label} runtime preset metadata`,
     )
     const sourcePersonas = rowsWithId(sourceComposition, 'persona')
     const runtimePersonas = rowsWithId(runtimePreset.plugins, 'persona')
     if (sourcePersonas.length !== 1 || runtimePersonas.length !== 1) {
-      fail('Project Creator runtime patch has an invalid persona declaration')
+      fail(`${preset.label} runtime patch has an invalid persona declaration`)
+    }
+    if (preset.id === 'creation-planner') {
+      const rootPersona = runtimePatch.find((row) => row.id === 'persona')
+      sameStructure(rootPersona, sourcePersonas[0], `${preset.label} runtime root persona`)
     }
     sameStructure(
       runtimePersonas[0],
       sourcePersonas[0],
-      'Project Creator runtime persona',
+      `${preset.label} runtime persona`,
     )
   }
   const providerRows = []
