@@ -1,3 +1,8 @@
+# 4.2.122
+
+- Persist semantic masters and low-cost explanation rehearsals for talking-head explainers; require their evidence and the explainer plans when a final video follows an explainer input assessment.
+- Keep explainer-only completion gates inactive for ordinary talking-head tasks, and prevent preflight artifacts from being accepted as final delivery.
+
 # 4.2.121
 
 - Rename the user-facing ecommerce workflow to “电商设计” while continuing to recognize “电商出图” as an entry phrase; enable the workflow for all accounts.
