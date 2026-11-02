@@ -19,6 +19,8 @@ surfaces: [plugin]
 features: [talking-head, explainable-knowledge-editing, semantic-master-variants, retention-experiments, independent-validation, generated-video-inserts, image-inserts, motion-graphics, automatic-review-loop]
 artifacts:
   - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json, required: false}
+  - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json, required: false}
+  - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json, required: false}
   - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json, required: false}
   - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json, required: false}
   - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json, required: false}
@@ -97,7 +99,28 @@ artifact_stages:
   - id: final_delivery
     trigger: output/final.mp4
     terminal: true
+  - id: explainer_preflight
+    trigger: output/explainer-input-assessment.json
+    required:
+      - output/explainer-input-assessment.json
+      - output/semantic-master.json
+      - output/explanation-plan.json
+      - output/explanation-rehearsal.json
+      - output/platform-variant-plan.json
+      - output/retention-experiment-plan.json
+      - output/independent-validation-plan.json
+      - output/independent-validation.json
+    required_on_final: true
 delivery:
+  - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json}
+  - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json}
+  - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json}
+  - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json}
+  - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json}
+  - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json}
+  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json}
+  - {role: retention_results, path: output/retention-results.json, mime_type: application/json}
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
   - {role: final_picture, path: output/final-picture.mp4, mime_type: video/mp4}
   - {role: sfx_cues, path: output/sfx-cues.json, mime_type: application/json}
