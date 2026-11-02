@@ -1,3 +1,9 @@
+# 4.2.126
+
+- Keep the creation-planner and postmortem-review presets on distinct Skills provider plugin IDs so loading both assistant presets no longer collides on `assistant-session-skills-provider`.
+- Require an exact expected package version for `smoke-profile --existing-profile` and validate installed bundle exports against it instead of trusting the installed manifest.
+- Verify the pinned ecommerce upstream with its offline `tools/verify-skill.py` (which requires `python3`) and leave the full `make ecommerce-upstream-check` to the reviewer.
+
 # 4.2.125
 
 - Complete the deeper WeChat article evidence workflow across Claude, Codex, and DSH distributions; report templates now include evidence, source authenticity, subtitle logic, and genre-structure checks.
