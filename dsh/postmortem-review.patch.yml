@@ -64,7 +64,7 @@
               failOnStartupError: true
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
-    - id: assistant-session-plugins
+    - id: postmortem-review-session-plugins
       name: '@deepseek-ai/cordis-plugin-group'
       group: true
       config:

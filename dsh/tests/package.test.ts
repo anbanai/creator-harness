@@ -76,7 +76,7 @@ function findYamlRecords(
 }
 
 describe('DSH assistant preset plugin composition', () => {
-  it('uses distinct Skills provider IDs for creation and review presets', async () => {
+  it('keeps distinct creation and review plugin groups and Skills providers across distributions', async () => {
     const definitions = [
       {
         file: '../creation-planner.patch.yml',
@@ -89,33 +89,41 @@ describe('DSH assistant preset plugin composition', () => {
         presetId: 'postmortem-review',
       },
     ] as const
-    const providerIds: string[] = []
-
-    for (const definition of definitions) {
-      const patch = yamlModule.load(
-        await readFile(new URL(definition.file, import.meta.url), 'utf8'),
-        { schema: yamlSchema },
-      )
-      const provider = findYamlRecords(
-        patch,
-        (record) => record.name === './plugins/assistant-session-skills-provider.js',
-      ).find((record) => {
-        const config = record.config
-        return (
-          typeof config === 'object' &&
-          config !== null &&
-          (config as Record<string, unknown>).presetId === definition.presetId
+    for (const surface of ['canonical', 'preset', 'patch']) {
+      const providerIds: string[] = []
+      for (const definition of definitions) {
+        const file = surface === 'canonical'
+          ? `../../packs/${definition.presetId}/agent.dsh.yml`
+          : surface === 'preset'
+            ? `../presets/${definition.presetId}/agent.cordis.yml`
+            : definition.file
+        const patch = yamlModule.load(
+          await readFile(new URL(file, import.meta.url), 'utf8'),
+          { schema: yamlSchema },
         )
-      })
+        const provider = findYamlRecords(
+          patch,
+          (record) => record.name === './plugins/assistant-session-skills-provider.js',
+        ).find((record) => {
+          const config = record.config
+          return (
+            typeof config === 'object' &&
+            config !== null &&
+            (config as Record<string, unknown>).presetId === definition.presetId
+          )
+        })
 
-      expect(provider, definition.file).toMatchObject({
-        id: definition.id,
-        config: { presetId: definition.presetId },
-      })
-      providerIds.push(String(provider?.id))
+        expect(provider, file).toMatchObject({
+          id: definition.id,
+          config: { presetId: definition.presetId },
+        })
+        const group = findYamlRecords(patch, (record) => record.group === true)
+          .find((record) => Array.isArray(record.config) && record.config.includes(provider))
+        expect(group, file).toMatchObject({ id: `${definition.presetId}-session-plugins` })
+        providerIds.push(String(provider?.id), String(group?.id))
+      }
+      expect(new Set(providerIds).size).toBe(providerIds.length)
     }
-
-    expect(new Set(providerIds).size).toBe(providerIds.length)
   })
 })
 
@@ -594,7 +602,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.127',
+      version: '4.2.128',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
