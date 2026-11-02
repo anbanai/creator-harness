@@ -1,3 +1,7 @@
+# 4.2.120
+
+- Rename the user-facing ecommerce workflow to “电商设计” while continuing to recognize “电商出图” as an entry phrase; enable the workflow for all accounts.
+
 # 4.2.119
 
 - Make the talking-head and viral IP video Agents fully automatic: motion samples use Agent-generated review evidence and bounded self-revision, while missing inputs, unverifiable rights/facts, unavailable capabilities, and unresolved defects produce recoverable failure artifacts instead of waiting for user approval.
