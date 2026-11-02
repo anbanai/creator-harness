@@ -10,6 +10,7 @@ skills:
   - article-visual-design
   - article-cover-design
   - article-research
+  - redfox-research
 maxTurns: 180 # 公众号文章主流程实测约需 120-175 turn；保留有限修订余量
 ---
 

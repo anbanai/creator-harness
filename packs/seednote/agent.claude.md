@@ -7,6 +7,7 @@ skills:
   - content-reuse
   - content-tagging
   - seednote-research
+  - redfox-research
   - seednote-writing
   - seednote-visual-design
 maxTurns: 240

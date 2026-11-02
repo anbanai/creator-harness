@@ -316,6 +316,10 @@ path = "__PLUGIN_ROOT__/skills/article-research/SKILL.md"
 enabled = true
 
 [[skills.config]]
+path = "__PLUGIN_ROOT__/skills/redfox-research/SKILL.md"
+enabled = true
+
+[[skills.config]]
 path = "__PLUGIN_ROOT__/skills/trending-topics/SKILL.md"
 enabled = true
 

@@ -191,6 +191,34 @@
               "content_id",
               "analytics_revision"
             ]
+          },
+          "redfox_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "schema_version": { "type": "string", "enum": ["1.0"] },
+              "data_source": { "type": "string", "enum": ["redfox"] },
+              "query": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "mode": { "type": "string", "enum": ["cross_platform", "wechat_search", "xiaohongshu_search", "douyin_search", "douyin_daily"] },
+                  "query": { "type": "string" },
+                  "date": { "type": "string" },
+                  "start_date": { "type": "string" },
+                  "end_date": { "type": "string" },
+                  "category": { "type": "string" },
+                  "page": { "type": "integer", "minimum": 1 },
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+                }
+              },
+              "fetched_at": { "type": "string" },
+              "freshness": { "type": "string", "enum": ["fresh", "stale", "unknown"] },
+              "source_url": { "type": "string" },
+              "missing_fields": { "type": "array", "items": { "type": "string" } },
+              "fallback_reason": { "type": "string" }
+            },
+            "required": ["schema_version", "data_source", "query", "fetched_at", "freshness", "source_url", "missing_fields", "fallback_reason"]
           }
         },
         "required": [
@@ -567,6 +595,34 @@
                   "content_id",
                   "analytics_revision"
                 ]
+          },
+          "redfox_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "schema_version": { "type": "string", "enum": ["1.0"] },
+              "data_source": { "type": "string", "enum": ["redfox"] },
+              "query": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "mode": { "type": "string", "enum": ["cross_platform", "wechat_search", "xiaohongshu_search", "douyin_search", "douyin_daily"] },
+                  "query": { "type": "string" },
+                  "date": { "type": "string" },
+                  "start_date": { "type": "string" },
+                  "end_date": { "type": "string" },
+                  "category": { "type": "string" },
+                  "page": { "type": "integer", "minimum": 1 },
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+                }
+              },
+              "fetched_at": { "type": "string" },
+              "freshness": { "type": "string", "enum": ["fresh", "stale", "unknown"] },
+              "source_url": { "type": "string" },
+              "missing_fields": { "type": "array", "items": { "type": "string" } },
+              "fallback_reason": { "type": "string" }
+            },
+            "required": ["schema_version", "data_source", "query", "fetched_at", "freshness", "source_url", "missing_fields", "fallback_reason"]
               }
             },
             "required": [

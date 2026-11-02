@@ -7,7 +7,7 @@ agent:
   name: content-planning
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [content-planning-evidence]
+  skills: [content-planning-evidence, redfox-research]
   max_turns: 80
 channel: content-planning
 bindings:

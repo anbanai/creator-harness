@@ -3,7 +3,7 @@ name: content-planning
 description: Evidence-backed research, semantic text validation and video scripts without rendering or publication.
 model: inherit
 maxTurns: 80
-skills: [content-planning-evidence]
+skills: [content-planning-evidence, redfox-research]
 ---
 
 # Content planning
