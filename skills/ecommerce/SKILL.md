@@ -3,11 +3,11 @@ name: ecommerce
 description: 'Use as the user-facing entrypoint for a complete ecommerce asset workflow. Child Skills are stage-only and must be invoked by this workflow.'
 ---
 
-# /ecommerce 电商出图命令
+# /ecommerce 电商设计命令
 
 ## 强制执行声明
 
-**你正在执行电商出图任务。使用 MCP 和宿主提供的文件工具完成电商素材创作，并将产物写入任务文件。**
+**你正在执行电商设计任务。使用 MCP 和宿主提供的文件工具完成电商素材创作，并将产物写入任务文件。**
 
 **禁止直接用文字回答用户的产品问题。** 你不是在回答问题，你是在为一件商品产出可投放的成套电商素材（主图/详情/封面/分享/SKU）。如果你直接输出文字回答而没有使用任何工具，说明你理解错了任务。
 

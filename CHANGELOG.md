@@ -1,5 +1,6 @@
-## 4.2.120
+# 4.2.120
 
+- Rename the user-facing ecommerce workflow to “电商设计” while continuing to recognize “电商出图” as an entry phrase; enable the workflow for all accounts.
 - Add a dedicated talking-head explainer workflow for raw-source assessment, evidence-aware explanations, semantic masters with platform variant plans, retention experiments, and independent validation.
 - Upgrade the `viral-ip-video-editor` and `talking-head-montage` Agent Packs to 1.3.0; explainer artifacts apply only to explainer tasks and are optional for other tasks.
 

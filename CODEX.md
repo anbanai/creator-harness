@@ -10,7 +10,7 @@ This directory is the unified Anban plugin source for Claude Code and Codex. Cod
 - **SeedNote posts** (种草笔记)
 - **Moments posts** (朋友圈)
 - **Hypit video replication** (视频复刻；本地插件流程)
-- **E-commerce product imagery** (电商出图：主图/详情/封面/分享/SKU，多产品图输入保一致)
+- **E-commerce product imagery** (电商设计：主图/详情/封面/分享/SKU，多产品图输入保一致)
 
 Both hosts connect to the same `anban-creator` MCP server. Skills, themes, writers, layouts, and content contracts exist once in this directory.
 
@@ -30,7 +30,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 | `hypit` | "视频复刻", "复刻视频", "Hypit" | Reference analysis → Adaptation → SVML/SVRun → MP4 + editable project |
 | `article` | "写文章", "发文章", "公众号文章" | Research → Write → De-AI → SEO → Cover → Illustrations → HTML → Draft |
 | `seednote` | "种草笔记", "种草", "复刻", "仿写" | Research → Viral analysis (replicate) → Content → image-plan/runtime mode output → Compliance → Delivery validation → `output/` delivery |
-| `ecommerce` | "电商出图", "商品图", "主图", "详情页", "商详", "SKU图" | Product Bible → Selling points → Asset plan → Provider-adaptive generation → Vision self-check → Delivery validation → `output/` delivery |
+| `ecommerce` | "电商设计", "电商出图", "商品图", "主图", "详情页", "商详", "SKU图" | Product Bible → Selling points → Asset plan → Provider-adaptive generation → Vision self-check → Delivery validation → `output/` delivery |
 
 **Codex-specific behavior**:
 - Subagents only spawn when the user **explicitly** asks ("use the article subagent to ...", "delegate to X"). Codex does not auto-spawn subagents.

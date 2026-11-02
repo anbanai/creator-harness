@@ -1,7 +1,7 @@
 id: ecommerce
-version: 2.0.5
+version: 2.0.6
 kind: plugin
-display_name: 电商素材
+display_name: 电商设计
 description: 基于产品图片生成完整电商文案和视觉素材包。
 agent:
   name: ecommerce
