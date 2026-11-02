@@ -1,3 +1,8 @@
+## 4.2.120
+
+- Add a dedicated talking-head explainer workflow for raw-source assessment, evidence-aware explanations, semantic masters with platform variant plans, retention experiments, and independent validation.
+- Upgrade the `viral-ip-video-editor` and `talking-head-montage` Agent Packs to 1.3.0; explainer artifacts apply only to explainer tasks and are optional for other tasks.
+
 # 4.2.119
 
 - Make the talking-head and viral IP video Agents fully automatic: motion samples use Agent-generated review evidence and bounded self-revision, while missing inputs, unverifiable rights/facts, unavailable capabilities, and unresolved defects produce recoverable failure artifacts instead of waiting for user approval.
