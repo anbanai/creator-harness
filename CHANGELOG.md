@@ -1,3 +1,7 @@
+# 4.2.121
+
+- Give creation and review runtime plugin groups and Skills providers distinct identifiers so loading all Assistant presets preserves both Skill catalogs.
+
 # 4.2.120
 
 - Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.

@@ -70,7 +70,7 @@
               failOnStartupError: true
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
-    - id: assistant-session-plugins
+    - id: creation-planner-plugins
       name: '@deepseek-ai/cordis-plugin-group'
       group: true
       config:
@@ -78,7 +78,7 @@
           name: './plugins/assistant-session-restrictions.js'
         - id: assistant-session-context
           name: './plugins/assistant-session-context.js'
-        - id: assistant-session-skills-provider
+        - id: creation-planner-skills-provider
           name: './plugins/assistant-session-skills-provider.js'
           config:
             presetId: creation-planner
