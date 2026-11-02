@@ -8,10 +8,12 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 ## 目录
 
 - [受众与目标](#受众与目标)
+- [上游方法源](#上游方法源只读)
 - [输入](#输入)
-- [卖点提炼](#步骤-1卖点提炼fabe--多框架)
+- [卖点提炼](#步骤-1证据账本成交驱动力与卖点提炼)
 - [图片与详情文案](#步骤-2主图文案5-张结构ctr-优先)
 - [去 AI 与合规](#步骤-45去-ai-味humanizer-skill)
+- [图内文案规格与机械检查](#步骤-46图内文案规格与机械检查)
 - [产出](#产出)
 
 ## 受众与目标
@@ -20,6 +22,10 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 - **目标**：主图打赢 **CTR（点击率）**，详情页打赢 **转化率与客单价**，分享图打赢 **站外引流**，整体降低退货（靠信息准确、不夸大）。
 
 这是**商业转化文案**，不是种草的情绪共鸣叙事，也不是品牌 PR 稿——每句话都要推动买家向「点击/下单」移动一步。
+
+## 上游方法源（只读）
+
+证据账本、成交驱动力、图内文案规格与文案质量自检以上游 bundled `ecommerce-visual-copywriting-skill` 为准（根路径由 Agent 提供：`$UPSTREAM_ECOMMERCE_SKILL`）。本阶段读取其 `SKILL.md` Step 1–2、图内文案规格与 Step 6，以及 `$UPSTREAM_ECOMMERCE_SKILL/references/copy-quality-rules.md`、`$UPSTREAM_ECOMMERCE_SKILL/references/output-contracts.md` §1–3/§8，并按 [references/upstream-copy-mapping.md](references/upstream-copy-mapping.md) 落盘。上游问卷/确认点由 Agent 的零交互覆盖规则替代。
 
 ---
 
@@ -32,9 +38,12 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 
 ---
 
-## 步骤 1：卖点提炼（FABE + 多框架）
+## 步骤 1：证据账本、成交驱动力与卖点提炼
 
-从产品档案的 `selling_point_candidates` + 用户卖点，提炼 **3-5 个核心卖点**并**按电商转化优先级排序**。
+先按上游 Step 1 建证据账本，再按上游 Step 2 选成交驱动力（1 主 + 最多 1 辅，价格驱动须有任务依据），最后做 FABE 排序。
+
+- **证据账本**写入 `output/copywriting.md`：每条卖点标宣称类型、来源与状态；只允许「已确认/有依据」进入成品，`待补证` 改中性表达或删除并进入 `## 待补证清单（不进图内）`。
+- **FABE 排序**：从 `selling_point_candidates` + 用户卖点提炼 **3-5 个核心卖点**，按电商转化优先级排序；不足 3 条不凑数。
 
 **提炼框架（择一或组合，确保卖点有据）**：
 - **FABE**：Feature 特征 → Advantage 优势 → Benefit 利益 → Evidence 证据。每个卖点都要能走完 FABE，避免只讲特征不讲利益。
@@ -46,37 +55,11 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 1. 第一卖点 = 最大差异化 + 最大痛点解决 + 最易在主图①3 秒内传达。
 2. 后续按「对决策影响力」降序，证据型卖点（资质/对比/数据）靠后但必须有。
 
-**产出**：`## 核心卖点` 节，每个卖点含：标题（≤10 字）、FABE 展开、证据、目标买家、**建议可视符号**（供 visual-design 把卖点转成图内符号，见下）。
+**产出**：`## 核心卖点` 节，每个卖点含：标题（≤10 字）、FABE 展开、证据（账本行）、目标买家、**建议可视符号**（见 [references/selling-points.md](references/selling-points.md)）。
 
-### 卖点 → 视觉符号桥（给 visual-design 用）
+### 卖点可视化与平台口吻
 
-每个排序卖点给出**建议可视符号**，让抽象卖点能在图里可视（这是文案与视觉的桥）：
-
-| 卖点类型 | 可视符号示例 |
-|---|---|
-| 长续航 / 大容量 | 电量条 / 时钟 / 容量柱对比 |
-| 轻 / 便携 | 羽毛 / 手持比例 / 与硬币对比 |
-| 防水 / 防摔 | 水珠 / IPX 等级标 / 跌落瞬间 |
-| 快充 / 速效 | 闪电 / 倒计时 / 曲线 |
-| 天然 / 成分 | 原料实拍 / 成分图标 / 提取过程 |
-| 保暖 / 透气 | 温度计 / 气流箭头 / 红外热图 |
-| 高颜值 / 设计 | 几何线条 / 多角度展示 / 场景融入 |
-
-> 卖点若无可视符号，visual-design 难以图文对应——文案定稿时即标注建议符号，避免「文图脱节」。
-
-### 平台口吻差异化（按 `target_platform`）
-
-同一组卖点，文案口吻按平台调性调整（受众与决策动机不同）：
-
-| 平台 | 口吻 | 偏好 |
-|---|---|---|
-| **淘宝天猫** | 功能参数 + 价格敏感 | 参数/规格前置、利益直接、促销钩子明确 |
-| **抖音** | 情绪冲击 + 短句节奏 | 痛点/反差前置、口语化短句、强代入场景 |
-| **种草笔记** | 生活方式 + 真实感 | 体验/感受叙事、弱硬广、素人口吻 |
-| **京东** | 参数 + 资质 + 服务 | 参数详尽、认证/服务标识、品质信任 |
-| **微信小店** | 信任背书 + 私域 | 熟人推荐口吻、复购信任、社交亲密感 |
-
-> 平台口吻影响主图文案措辞与详情页叙事节奏，但**核心卖点与 FABE 不变**，只换表达。
+卖点 → 视觉符号桥、平台口吻差异化见 [references/selling-points.md](references/selling-points.md)；平台视觉任务与常见坑以上游 `$UPSTREAM_ECOMMERCE_SKILL/references/platform-playbooks.md` 为准。核心卖点与 FABE 不因平台改变，只换表达。
 
 ## 步骤 2：主图文案（5 张结构，CTR 优先）
 
@@ -84,11 +67,13 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 
 | 张 | 角色 | 文案要点 |
 |----|------|----------|
-| ① 点击主图 | CTR 之王，决定曝光转化 | 第一卖点 + 场景 + 价格/促销钩子；3 秒法则；信息层级：主体最大→卖点次之→钩子最小但醒目 |
+| ① 点击主图 | CTR 之王 + 商品识别 | 主标题=商品名/品类词（来自产品档案命名来源）；至多 1 条卖点副文案；可选 1 个合规钩子；3 秒法则；信息层级：主体最大→卖点次之→钩子最小但醒目 |
 | ② 细节/材质特写 | 建立品质信任 | 材质/工艺/细节卖点；微距质感 |
 | ③ 使用场景 | 代入感与适用性 | 场景化利益（谁/何时/何处用）|
 | ④ 对比/第二卖点 | 强化选择理由 | 与痛点/旧方案对比，或第二核心卖点 |
 | ⑤ 品牌/资质/服务承诺 | 闭环信任 | 品牌背书、检测认证、售后（7天无理由/运费险/质保）|
+
+**KV1 识别优先**：首图第一任务是让买家认出「这是什么商品」。主标题本身写商品名/品类词，卖点与情绪句降为副文案；遮住副文案、缩到缩略图仍能说出品类才算 PASS，不得用氛围句或造型替代商品名。后续细节/场景图可直接讲特性，不要求每张重复商品名。
 
 **CTR 文案准则**：
 - 数字前置、痛点前置、利益前置（先讲买家得到什么，再讲产品是什么）。
@@ -96,7 +81,7 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 - 留白与层级：一张主图最多 1 主文案 + 1-2 辅文案，宁少勿挤。
 - 钩子类（限时/赠品/包邮）须真实且合规（避免极限词）。
 
-**产出**：`## 主图文案` 节，每张含：`张号 / 角色 / 主文案（≤12 字，图内大字）/ 辅文案（≤15 字）/ 必须出现的卖点关键词 / 禁用元素`。
+**产出**：`## 主图文案` 节，每张含：`张号 / 角色 / 主文案（≤12 字，图内大字）/ 辅文案（≤15 字）/ 数字或证据标签 / 实际字数 / 文字渲染方式 / 必须出现的卖点关键词 / 禁用元素`。
 
 ## 步骤 3：详情页文案（黄金详情页结构 + FABE 叙事）
 
@@ -114,11 +99,12 @@ description: 'Use only when the Ecommerce workflow requests product-benefit extr
 
 **详情页文案准则**：
 - 每节标题即卖点（买家快速扫读），正文用短句/列表/数字。
+- 每节 1 个标题 + 至多 3 条要点；要点 ≤18 汉字 / ≤12 英文词，数字/证据要点须有账本来源。
 - 卖点图文一一对应：文案里提到的卖点，对应图里必须可视。
 - 规格参数必须与产品档案一致（降低退货）。
 - 章节数量按 `selected_modules` 的详情节数配置（默认 8-12）。
 
-**产出**：`## 详情页文案` 节，每节含：`节号 / 章节角色 / 标题（≤12 字）/ 信息点列表 / 对应卖点 / 必须出现的文字`。
+**产出**：`## 详情页文案` 节，每节含：`节号 / 章节角色 / 标题（≤12 字）/ 信息点列表 / 对应卖点 / 实际字数 / 文字渲染方式 / 必须出现的文字`。
 
 ## 步骤 4：分享文案（站外引流，仅当已选 share_image）
 
@@ -164,6 +150,15 @@ AI 写作模式、误报边界和改写方法以`humanizer` skill 为准；本�
 
 ---
 
+## 步骤 4.6：图内文案规格与机械检查
+
+- 主图：1 标题（≤12 汉字 / ≤6 英文词）+ ≤2 条副文案（每条 ≤15 汉字 / ≤10 英文词）+ ≤1 个数字/证据标签；详情：1 标题 + ≤3 条要点（每条 ≤18 汉字 / ≤12 英文词）。
+- 每条图内文字用全角「」包裹并写入 `output/asset-plan.md`；按最终字符串计数，超限就删减或拆图，不靠缩小字号硬塞。
+- **Anban 交付成图**：默认由模型直出短文字，不采用上游「留白排版」默认；生成后逐字核验，连续 2 轮仍错字/乱码/漏字则收紧仅标题，仍失败则零文字留白并在 manifest 标 `text_rendering=degraded`。
+- 有 `python3` 时运行上游 `$UPSTREAM_ECOMMERCE_SKILL/scripts/count-copy.py` 与 `$UPSTREAM_ECOMMERCE_SKILL/scripts/scan-final-copy.py`，结果写入 `output/quality-gate.md` 的机械检查行；无 `python3` 标「字数待工具复核」。详见 [references/upstream-copy-mapping.md](references/upstream-copy-mapping.md)。
+
+---
+
 ## 合规前置（写文案时即规避，详细扫描由 ecommerce-platform-specs skill 执行）
 
 - **《广告法》极限词禁用**：最/第一/国家级/顶级/极品/100%/绝对/永久/根治……（完整清单与平台违禁词由 `ecommerce-platform-specs` 提供，本 skill 写作时主动规避）。
@@ -176,37 +171,6 @@ AI 写作模式、误报边界和改写方法以`humanizer` skill 为准；本�
 
 文案 manifest 或审核 JSON（如有）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。产品证据不足时标记低置信度并保留缺失项；失败由 Agent 写 `output/failure-state.json`，本 Skill 不改变 Profile、发布状态或全局配置。
 
-`output/copywriting.md`，结构：
-```markdown
-# 电商转化文案
-
-## 核心卖点（排序）
-1. ... （含：标题/FABE/证据/目标买家/建议可视符号）
-2. ...
-
-## 主图文案（按 target_platform 口吻）
-### ① 点击主图
-- 主文案: ...
-- 辅文案: ...
-- 卖点关键词: ...
-- 建议可视符号: ...
-- 禁用元素: ...
-...
-
-## 详情页文案
-### 第1节 钩子首图
-- 标题: ...
-- 信息点: ...
-- 卖点: ...
-...
-
-## 分享文案（仅当已选 share_image，按渠道分条）
-- 种草笔记: ...
-- 微信: ...
-- 抖音: ...
-
-## SKU 变体文案（仅当已选 sku_images）
-- 变体1: 色名/规格/场景短句
-```
+`output/copywriting.md` 的结构（证据账本、Top3、逐图文案与字数、文字渲染、待补证清单）见 [references/upstream-copy-mapping.md](references/upstream-copy-mapping.md) 的「Anban copywriting.md 结构」。
 
 文案需同时满足：卖点有 FABE 据可循、信息层级服务点击/下单、移动端首屏可读、合规无极限词。

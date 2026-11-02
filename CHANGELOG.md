@@ -1,3 +1,11 @@
+# 4.2.123
+
+- Bundle the ecommerce upstream SOP as the read-only git submodule `third_party/ecommerce-visual-copywriting-skill` (MIT, pinned commit) so the workflow reuses its evidence ledger, conversion-driver, Style Lock, Storyboard/execution-card, on-image copy, compliance and five-part quality gate instead of copying rule text into Anban Skills.
+- Add thin Anban stage adapters for product analysis, copywriting, visual design and platform compliance, plus KV1 product-identification and in-image text verification for generated assets.
+- Add the required `output/quality-gate.md` artifact (Gate A before generation, Gate B before delivery) with five-dimension scoring, rewrite rounds, mechanical checks and disclosed gaps; Agent Packs and the runtime completion hook now enforce it.
+- Provision `python3` in the ecommerce runtime image so the pinned upstream `count-copy.py` and `scan-final-copy.py` checks run in managed tasks.
+- Add `make ecommerce-upstream-check` / `make ecommerce-upstream-update` to validate and advance the pinned upstream submodule.
+
 # 4.2.122
 
 - Give the creation and postmortem review Skills providers independent plugin IDs so loading both assistant presets does not collide.

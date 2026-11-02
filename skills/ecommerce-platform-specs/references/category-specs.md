@@ -4,6 +4,8 @@
 
 
 > 平台规范（[platforms.md](platforms.md)）给的是平台级尺寸/规则；本文件补**类目级**差异——同一平台内，服饰/3C数码/食品/美妆个护/家居 的主图套系结构、详情页章节、必含信息、拍摄方式都不同。`ecommerce-product-analysis` 识别出 `category` 后，`ecommerce-visual-design` 据此选主图套系模板与详情页结构。
+>
+> 类目补充（饰品珠宝等）以上游 `$UPSTREAM_ECOMMERCE_SKILL/references/category-notes.md` 为准：材质/镀层/工艺按资料规范全称，不把图片纹理推断成工艺；尺寸适配给分档与结论；无检测依据的「不掉色/不过敏/防滑」等功效或耐用承诺降级为结构描述或保养提示。
 
 ## 服饰鞋包
 
