@@ -1,3 +1,7 @@
+# 4.2.120
+
+- Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
+
 # 4.2.119
 
 - Make the talking-head and viral IP video Agents fully automatic: motion samples use Agent-generated review evidence and bounded self-revision, while missing inputs, unverifiable rights/facts, unavailable capabilities, and unresolved defects produce recoverable failure artifacts instead of waiting for user approval.
