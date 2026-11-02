@@ -20,7 +20,7 @@ description: 'Use as the user-facing entrypoint for a complete ecommerce asset w
 
 用户输入 `/ecommerce` 后面的内容是产品与需求描述，不是让你回答的问题。
 
-> **上游方法源**：本流程的领域规则来自只读 bundled `third_party/ecommerce-visual-copywriting-skill`（根路径由 Agent 提供 `$UPSTREAM_ECOMMERCE_SKILL`）；证据账本、成交驱动力、Style Lock、Storyboard/执行卡、图内文案与五维质量门以上游为准，Anban 只在产物路径、MCP、零交互与成图验收上覆盖。上游问卷/确认点不执行。
+> **上游方法源**：本流程的领域规则来自只读 bundled `third_party/ecommerce-visual-copywriting-skill`（根路径由 Agent 提供 `$UPSTREAM_ECOMMERCE_SKILL`）；若宿主未注入该变量，使用插件根下的 `third_party/ecommerce-visual-copywriting-skill`。证据账本、成交驱动力、Style Lock、Storyboard/执行卡、图内文案与五维质量门以上游为准，Anban 只在产物路径、MCP、零交互与成图验收上覆盖。上游问卷/确认点不执行。
 
 ---
 
@@ -58,7 +58,7 @@ description: 'Use as the user-facing entrypoint for a complete ecommerce asset w
 使用 `ecommerce-visual-design` skill：
 - 传入 `output/product-bible.md`、`output/copywriting.md`、`$ANCHOR_REF`、项目画像与任务选项
 - 产出 `output/asset-plan.md`（仅含已选模块）：Campaign Style Lock + Storyboard + 逐图执行卡
-- **出图前 Gate A**：五维质量门与证据/合规硬性项通过后才可调用 `generate_image`；未过不得进入生成
+- **出图前 Gate A**：完成五维质量门与证据/合规硬性项，并把 Gate A 写入 `output/quality-gate.md`；未过不得调用 `generate_image`
 - 锚点优先（仅选主图模块时以主图①确立基准，否则使用已选模块首张关键图）→ 按模块逐张生成（产品档案前缀块 + **按需选参考图**：每张电商图只传它描绘部位对应的那几张产品图（查「产品图清单」序号）+ **点名保真 prompt**（「本图{部位}与【产品图清单】第N张完全一致」）+ 生成后单独 `analyze_image` 自检（一致性/文字逐字/KV1 识别/合规）+ 最多 3 轮收敛）
 - 产物：`main_01..05.png`、`detail_01..NN.png`、`cover_01..NN.png`、`share_01..NN.png`、`sku_<variant>.png` + `output/asset-plan.md`、`output/image-prompts.md`、`output/best-refs.md`
 
@@ -71,7 +71,7 @@ description: 'Use as the user-facing entrypoint for a complete ecommerce asset w
 
 ### 步骤 6：交付校验与质量门
 
-- 生成 `output/quality-gate.md`（Gate A + Gate B：五维分数/依据、重写轮次、机械检查、阻断与待验收项）
+- 在 `output/quality-gate.md` 追加 Gate B（五维分数/依据、重写轮次、机械检查、阻断与待验收项）
 - 生成 `output/manifest.json`（按模块：文件名/尺寸/用途/内容质量结论/合规状态/文字渲染状态）
 - 直接校验 manifest 中的文件与所有最终产物均位于 `output`，不得移动、复制或按产品名重命名成果目录
 - 报告成果目录 `output` + `submit_agent_feedback(...)`（分数由质量门派生）
@@ -102,13 +102,12 @@ description: 'Use as the user-facing entrypoint for a complete ecommerce asset w
 
 | 步骤 | 调用技能 | 产出 |
 |------|----------|------|
-| 1 | Bash + MCP 调用 | `$PROJECT_ID`、`$TASK_ID`、任务输入 |
-| 2 | 上游 Step 0–2 + 各 skill 的上游适配 reference | 命名来源、证据边界与账本 |
-| 3 | `ecommerce-product-analysis` | `product-bible.md`、`$ANCHOR_REF` |
-| 4 | `ecommerce-copywriting`（内部步骤 4.5 调 `humanizer` 去味，4.6 做字数与终态检查）| `copywriting.md`（含证据账本与 Top3） |
-| 5 | `ecommerce-visual-design` + **Gate A** | `asset-plan.md`（Style Lock/Storyboard/执行卡）、`image-prompts.md`、`best-refs.md`、各模块图片 |
-| 6 | `ecommerce-platform-specs` | `compliance-report.md`（宣称分类/逐图自检/可见出处） |
-| 7 | Agent **Gate B** + 交付校验 | `quality-gate.md`、`output/manifest.json` 与最终成果 |
+| 1 | Bash + MCP 调用（上游读取作为步骤 2 前置） | `$PROJECT_ID`、`$TASK_ID`、任务输入、命名来源与证据边界 |
+| 2 | `ecommerce-product-analysis` | `product-bible.md`、`$ANCHOR_REF` |
+| 3 | `ecommerce-copywriting`（内部步骤 4.5 调 `humanizer` 去味，4.6 做字数与终态检查）| `copywriting.md`（含证据账本与 Top3） |
+| 4 | `ecommerce-visual-design` + **Gate A** | `asset-plan.md`（Style Lock/Storyboard/执行卡）、`image-prompts.md`、`best-refs.md`、各模块图片 |
+| 5 | `ecommerce-platform-specs` | `compliance-report.md`（宣称分类/逐图自检/可见出处） |
+| 6 | Agent **Gate B** + 交付校验 | `quality-gate.md`、`output/manifest.json` 与最终成果 |
 
 > **humanizer 位置**：`humanizer` 不是独立步骤，而是 `ecommerce-copywriting` 内部步骤 4.5（卖点/主图/详情/分享文案定稿后统一去 AI 味，再进入步骤 6 合规扫描）。顺序固定：**先去 AI，后合规**。
 > **质量门位置**：Gate A 在 `generate_image` 之前，Gate B 在交付之前；两者都写入 `output/quality-gate.md`，由运行时 Stop Hook 校验存在。

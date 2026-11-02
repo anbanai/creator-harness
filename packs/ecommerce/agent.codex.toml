@@ -38,7 +38,7 @@ Codex 不依赖 Claude 的 TaskCreate/TaskUpdate/Hook。阶段 metadata 使用 `
 
 本流程的方法源是上游 `third_party/ecommerce-visual-copywriting-skill`（git submodule，pin commit）：证据账本、成交驱动力、Campaign Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规均以上游为准；Anban 只在产物路径、MCP、零交互和成图验收上覆盖。
 
-- **根路径**：`__PLUGIN_ROOT__/third_party/ecommerce-visual-copywriting-skill`（安装时替换为插件根）。开工先确认 `SKILL.md`、`references/`、`scripts/count-copy.py`、`scripts/scan-final-copy.py` 可读；缺失写 `output/failure-state.json`（`status=recoverable_failure`、`stage=bootstrap`、`error_code=upstream_skill_unavailable`、`resume_from=bootstrap`）并停止。
+- **根路径**：将 `UPSTREAM_ECOMMERCE_SKILL=` 设为 `__PLUGIN_ROOT__/third_party/ecommerce-visual-copywriting-skill`（安装时替换为插件根）。开工先确认 `SKILL.md`、`references/`、`scripts/count-copy.py`、`scripts/scan-final-copy.py` 可读；缺失写 `output/failure-state.json`（`status=recoverable_failure`、`stage=bootstrap`、`error_code=upstream_skill_unavailable`、`resume_from=bootstrap`）并停止。
 - **读取策略**：首次读取上游 `SKILL.md` 全文；之后按阶段只读对应 `references/` 章节，不重复整篇读取。
 - **阶段映射**：product-analysis 读 `references/upstream-evidence-mapping.md`；copywriting 读 `references/upstream-copy-mapping.md`；visual-design 读 `references/upstream-visual-mapping.md`；platform-specs 读 `references/upstream-compliance-mapping.md`。
 - **覆盖上游**：不执行问卷/模式选择/名称询问/Storyboard 后确认/设计师交接；商品名按“任务输入 → 项目画像 → 包装可见文字 → 据图拟名（标非官方原名）”自动确定并记录来源；偏好缺失按 Anban 自动决策并披露；Anban 交付成图，文字渲染为“短文案直出 + 逐字验收”，不套用上游“留白排版”默认。
@@ -129,7 +129,7 @@ using the ecommerce-visual-design skill，传入 output/product-bible.md、outpu
 1. 产出 output/asset-plan.md：Campaign Style Lock + Storyboard（每张一个决策问题，KV1 先识别）+ 逐图执行卡（视觉任务/画面与第一落点/文案+字数/文字渲染/排版安全区/证据/所需产品图=[第N张(subject)]/自包含 Prompt/Negative/验收标准）。
 2. **Gate A**：完成出图前自审（证据与合规、转化逻辑、可执行性为硬项），写入 output/quality-gate.md；硬性阻断未解决不得进入 generate_image。
 3. **锚点优先**：仅选中主图模块时先生成主图①，否则用已选模块首张关键图确立色系/版式/字体基准。
-4. 按模块逐张生成：产品档案前缀块 + 点名保真块（本图部位与【产品图清单】第 N 张一致）+ 只传本图所需部位的相关原图，保持与 prompt 编号一致的稳定顺序。每张生成后单独调用 analyze_image 对照第 N 张原图审核产品一致、文字逐字、KV1 缩略图识别与合规；FAIL 时强化约束重生成最多 3 轮，仍不达标标 needs_reference。记录 output/best-refs.md、output/image-prompts.md。
+4. 按模块逐张生成：产品档案前缀块 + 点名保真块（本图部位与【产品图清单】第 N 张一致）+ 只传本图所需部位的相关原图，保持与 prompt 编号一致的稳定顺序。每张生成后单独调用 analyze_image 对照第 N 张原图审核产品一致、文字逐字、KV1 缩略图识别与合规；FAIL 时强化约束重生成最多 3 轮，仍不达标标 needs_reference。文字逐字连续 2 轮失败→收紧仅标题→仍失败→零文字留白并记 text_rendering=degraded。记录 output/best-refs.md、output/image-prompts.md。
 5. 文件命名：main_01.png..main_05.png、detail_01.png..detail_NN.png、cover_01.png..cover_NN.png、share_01.png..share_NN.png、sku_<variant>.png。单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则写结构化失败诊断并停止。
 
 **产出**：output/asset-plan.md、output/image-prompts.md、output/best-refs.md、各模块图片
@@ -170,7 +170,7 @@ using the ecommerce-platform-specs skill：先按上游 compliance-rules 判定�
 
 按步骤 9/10 校验必需产物与 selected_modules。主图①（仅选中主图模块时）和详情核心场景必须 PASS；未解决关键质量问题不得报告完整成功。非关键 needs_reference / deferred / skipped 项在 manifest 和最终报告披露。每张最多 3 次生成，预算不够时保留计划与实际状态，不伪造数量达标。
 
-**质量门（交付合同）**：出图前 Gate A、交付前 Gate B 都必须写入 output/quality-gate.md；五维（证据与合规 / 转化逻辑 / 视觉层级 / 一致性 / 可执行性）、必要条件、80 分线、≤2 轮重写与硬性阻断项以上游 SKILL.md Step 6 + references/output-contracts.md §8–9 为准。
+**质量门（交付合同）**：出图前 Gate A、交付前 Gate B 都必须写入 output/quality-gate.md；五维（证据与合规 / 转化逻辑 / 视觉层级 / 一致性 / 可执行性）、必要条件、80 分线、≤2 轮重写与硬性阻断项以上游 SKILL.md Step 6 + `$UPSTREAM_ECOMMERCE_SKILL/references/output-contracts.md` §8–9 为准。
 
 - Gate A：证据账本状态、五维分数 + 必要条件依据、重写轮次、count-copy.py / scan-final-copy.py 机械检查、阻断项；硬性阻断或证据/合规必要条件不满足时不得进入 generate_image。
 - Gate B：含 analyze_image 自检证据与“待验收”说明、文字渲染（正常/降级/零文字）、合规结论、待补证/人工复核清单、降级项。

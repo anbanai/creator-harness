@@ -24,7 +24,7 @@ JSON 产物遵循 `schema_version`、有限 `status`、`source`、`data_at`、`m
 
 领域方法以上游 `third_party/ecommerce-visual-copywriting-skill`（git submodule，pin commit）为准：证据账本、成交驱动力、Campaign Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规；Anban 只覆盖产物路径、MCP、零交互与成图验收。
 
-- **根路径**：`$CLAUDE_PLUGIN_ROOT/third_party/ecommerce-visual-copywriting-skill`（Codex 为 `__PLUGIN_ROOT__/...`）。开工确认 `SKILL.md`、`references/`、`scripts/*.py` 可读并先读 `SKILL.md` 全文；之后按阶段只读对应 `references/` 与各 skill 的 `upstream-*-mapping.md`。缺失写 `output/failure-state.json`（`error_code=upstream_skill_unavailable`，`resume_from=bootstrap`）并停止。
+- **根路径**：将 `UPSTREAM_ECOMMERCE_SKILL=` 设为 `$CLAUDE_PLUGIN_ROOT/third_party/ecommerce-visual-copywriting-skill`（Codex：`__PLUGIN_ROOT__/...`）。开工确认 `SKILL.md`、`references/`、`scripts/*.py` 可读并先读 `SKILL.md` 全文；之后按阶段只读对应 `references/` 与各 skill 的 `upstream-*-mapping.md`。缺失写 `output/failure-state.json`（`error_code=upstream_skill_unavailable`，`resume_from=bootstrap`）并停止。
 - **覆盖**：不执行问卷/模式/命名询问/Storyboard 确认/设计师交接；商品名按 任务输入→项目画像→包装文字→据图拟名 自动确定并记录来源；缺失按 Anban 自动决策并披露；成图文字为“短文案直出+逐字验收”，不套用上游留白排版默认。
 
 ## 角色
@@ -131,7 +131,7 @@ output directory. TASK_ID is supplied by structured runtime context.
 1. 产出 `output/asset-plan.md`：Style Lock + Storyboard（KV1 先识别）+ 逐图执行卡（任务/画面/文案+字数/文字渲染/安全区/证据/所需产品图/自包含 Prompt/Negative/验收）。
 2. **Gate A**：完成出图前自审（证据与合规、转化逻辑、可执行性为硬项）并写入 `output/quality-gate.md`；硬性阻断未解决不得 `generate_image`。
 3. **锚点优先**：仅选中主图模块时先生成主图①（点击主图），否则用已选模块首张关键图确立色系/版式/字体基准。
-4. 按模块逐张生成：产品档案前缀块 + 点名保真块 + 只传本图部位原图（顺序与编号一致）。每张生成后单独 `analyze_image` 审核产品一致、文字逐字、KV1 缩略图识别与合规；FAIL 强化约束最多 3 轮，仍不达标标 `needs_reference`。记录 `best-refs.md`、`image-prompts.md`。
+4. 按模块逐张生成：产品档案前缀块 + 点名保真块 + 只传本图部位原图（顺序与编号一致）。每张生成后单独 `analyze_image` 审核产品一致、文字逐字、KV1 缩略图识别与合规；FAIL 强化约束最多 3 轮，仍不达标标 `needs_reference`。文字逐字连续 2 轮失败→收紧仅标题→仍失败→零文字留白并记 `text_rendering=degraded`。记录 `best-refs.md`、`image-prompts.md`。
 5. 文件命名：`main_01.png`..`main_05.png`、`detail_01.png`..`detail_NN.png`、`cover_01.png`..`cover_NN.png`、`share_01.png`..`share_NN.png`、`sku_<variant>.png`。单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则写结构化失败诊断并停止。
 
 **产出**：`output/asset-plan.md`、`output/image-prompts.md`、`output/best-refs.md`、各模块图片

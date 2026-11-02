@@ -61,7 +61,8 @@ git submodule update --init --recursive harness
 
 如果单独 clone `anbanai/creator-harness`，请在该仓库中运行
 `git submodule update --init --recursive`。确认
-`skills/humanizer/SKILL.md` 存在后，再从 Anban Writer 根目录注册并安装：
+`skills/humanizer/SKILL.md` 与
+`third_party/ecommerce-visual-copywriting-skill/SKILL.md` 都存在后，再从 Anban Writer 根目录注册并安装：
 
 ```bash
 claude plugin marketplace add ./harness

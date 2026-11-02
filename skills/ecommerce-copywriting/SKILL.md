@@ -154,7 +154,7 @@ AI 写作模式、误报边界和改写方法以`humanizer` skill 为准；本�
 
 - 主图：1 标题（≤12 汉字 / ≤6 英文词）+ ≤2 条副文案（每条 ≤15 汉字 / ≤10 英文词）+ ≤1 个数字/证据标签；详情：1 标题 + ≤3 条要点（每条 ≤18 汉字 / ≤12 英文词）。
 - 每条图内文字用全角「」包裹并写入 `output/asset-plan.md`；按最终字符串计数，超限就删减或拆图，不靠缩小字号硬塞。
-- **Anban 交付成图**：默认由模型直出短文字，不采用上游「留白排版」默认；生成后逐字核验，连续 2 轮仍错字/乱码/漏字则降为零文字留白，并在 manifest 标 `text_rendering=degraded`。
+- **Anban 交付成图**：默认由模型直出短文字，不采用上游「留白排版」默认；生成后逐字核验，连续 2 轮仍错字/乱码/漏字则收紧仅标题，仍失败则零文字留白并在 manifest 标 `text_rendering=degraded`。
 - 有 `python3` 时运行上游 `$UPSTREAM_ECOMMERCE_SKILL/scripts/count-copy.py` 与 `$UPSTREAM_ECOMMERCE_SKILL/scripts/scan-final-copy.py`，结果写入 `output/quality-gate.md` 的机械检查行；无 `python3` 标「字数待工具复核」。详见 [references/upstream-copy-mapping.md](references/upstream-copy-mapping.md)。
 
 ---

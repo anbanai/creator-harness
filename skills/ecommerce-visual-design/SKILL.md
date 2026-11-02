@@ -146,24 +146,18 @@ Style Lock/Negative 与自包含 Prompt 要求见 [references/upstream-visual-ma
 3. 信息层级：主体是否突出、卖点是否在合理层级？
 4. KV1 识别（仅首张主图）：遮住副文案、缩到缩略图，陌生用户能否说出商品品类？
 5. 合规：是否含极限词/违禁词/虚假承诺？
-返回严格 JSON：{all_entities_present, missing_entities, relevance_score(high/medium/low), overall_pass(bool), has_forbidden_content(bool), forbidden_notes}
+返回严格 JSON：{all_entities_present, missing_entities, relevance_score(high/medium/low), overall_pass(bool), has_forbidden_content(bool), forbidden_notes, text_verbatim(bool), text_issues(string array), kv1_identifiable(bool), text_rendering_status(normal|degraded|zero_text)}
 ```
 
-自检结果写入 `output/best-refs.md`（逐图：内容质量 PASS/FAIL、创作修订轮次、`needs_reference`）。
+自检结果写入 `output/best-refs.md`（逐图：内容质量 PASS/FAIL、文字逐字结论、KV1 识别、`text_rendering_status`、创作修订轮次、`needs_reference`）。文字专项：连续 2 轮错字/乱码/漏字 → 收紧仅标题；仍失败 → 零文字留白并记 `text_rendering=degraded`；整体单图重试上限仍为 3 轮。
 
 ## 步骤 6：模块内一致性复查
 
 同模块多张图生成后复查风格一致与卖点不重复；偏离的图按 `$STYLE` 重生成。
 
-## 步骤 7：SKU 变体保真策略（若已选 sku_images）
+## 步骤 7：SKU 变体策略（若已选 sku_images）
 
-SKU 变体图要求「**同一版式、同一打光、仅变体属性不同**」，是保真与差异化的平衡：
-
-- **版式一致**：所有变体共享 `$STYLE`（同构图/背景/打光/字体/版式），仅颜色/款式/规格属性不同——让买家一眼看出是「同一系列的不同选项」。
-- **色准控制**：色彩变体（多色服饰/美妆色号）**用产品图原图色作锚**，prompt 点名「色号/色名与第 N 张（{variant}）完全一致」，生成后单独用 `analyze_image` 对照原图核色；不得臆造色卡外的颜色。
-- **避免雷同**：同构图变体换道具/角度微调（如不同色款的摆位/搭配道具略有差异），避免多张像复制粘贴；但版式骨架不变。
-- **点名保真**：每个变体点名其对应的产品图序号（「与第 N 张（{variant}色）完全一致」），**禁止纯文生图臆造变体**。
-- **命名**：`sku_<variant>.png`，variant 名来自产品档案或用户指定。
+版式一致、色准锚定、避免雷同与命名规则见 [references/detail-page.md](references/detail-page.md) 的「SKU 变体保真策略」。
 
 ---
 
@@ -173,5 +167,5 @@ SKU 变体图要求「**同一版式、同一打光、仅变体属性不同**」
 
 - `output/asset-plan.md`（仅含已选模块的计划）
 - `output/image-prompts.md`（全部 prompt 备份）
-- `output/best-refs.md`（逐图内容质量结论/创作修订/needs_reference）
+- `output/best-refs.md`（逐图内容质量结论、文字逐字/KV1、`text_rendering_status`、创作修订、needs_reference）
 - 各模块图片：`main_01..05.png`、`detail_01..NN.png`、`cover_01..NN.png`、`share_01..NN.png`、`sku_<variant>.png`

@@ -18,8 +18,8 @@
 
 ## 图内文案与成图文字
 
-- 字数上限以社区上游「图内文案规格」为准：主图 1 标题 + ≤2 条副文案 + ≤1 个数字/证据标签；详情模块 1 标题 + ≤3 条要点。
-- **Anban 覆盖**：本流程交付成图，默认由模型直出短文字，不使用上游「留白排版」默认。
+- 结构以上游「图内文案规格」为基线：主图 1 标题 + ≤2 条副文案 + ≤1 个数字/证据标签；详情模块 1 标题 + ≤3 条要点。以下数值为 **Anban 显式覆盖**，其余仍按上游。
+- **Anban 覆盖**：本流程交付成图，默认由模型直出短文字，不使用上游「留白排版」默认，也不套用上游「模型出字 ≤8 汉字」的例外限制。
   - 标题 ≤12 汉字（英文 ≤6 词）；主图副文案 ≤15 汉字（英文 ≤10 词）；详情要点 ≤18 汉字（英文 ≤12 词）。
   - 每条图内文字用全角「」括起写入 prompt，并在 `asset-plan.md` 记录实际字数。
   - 生成后用 `analyze_image` 逐字核验；连续 2 轮仍错字/乱码/漏字 → 缩短到仅标题；仍失败 → 零文字留白，并在 manifest 标 `text_rendering=degraded`。
@@ -27,7 +27,7 @@
 
 ## 机械检查
 
-有 `python3` 时逐条运行（路径由 Agent 提供 `$UPSTREAM_ECOMMERCE_SKILL`）：
+有 `python3` 时逐条运行（路径由 Agent 提供 `$UPSTREAM_ECOMMERCE_SKILL`）；上游文档中的 `python` 命令一律改用 `python3`，镜像只提供 python3：
 
 - `python3 "$UPSTREAM_ECOMMERCE_SKILL/scripts/count-copy.py" "标题" "副文案"`（英文加 `--language en`）
 - `python3 "$UPSTREAM_ECOMMERCE_SKILL/scripts/scan-final-copy.py" "最终文案"`
