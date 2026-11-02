@@ -1,3 +1,7 @@
+# 4.2.123
+
+- Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
+
 # 4.2.122
 
 - Bundle the ecommerce upstream SOP as the read-only git submodule `third_party/ecommerce-visual-copywriting-skill` (MIT, pinned commit) so the workflow reuses its evidence ledger, conversion-driver, Style Lock, Storyboard/execution-card, on-image copy, compliance and five-part quality gate instead of copying rule text into Anban Skills.
@@ -6,11 +10,6 @@
 - Provision `python3` in the ecommerce runtime image so the pinned upstream `count-copy.py` and `scan-final-copy.py` checks run in managed tasks.
 - Add `make ecommerce-upstream-check` / `make ecommerce-upstream-update` to validate and advance the pinned upstream submodule.
 
-# 4.2.121
-
-- Rename the user-facing ecommerce workflow to “电商设计” while continuing to recognize “电商出图” as an entry phrase; enable the workflow for all accounts.
-- Add a dedicated talking-head explainer workflow for raw-source assessment, evidence-aware explanations, semantic masters with platform variant plans, retention experiments, and independent validation.
-- Upgrade the `viral-ip-video-editor` and `talking-head-montage` Agent Packs to 1.3.0; explainer artifacts apply only to explainer tasks and are optional for other tasks.
 
 # 4.2.119
 

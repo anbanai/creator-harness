@@ -523,7 +523,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.122',
+      version: '4.2.123',
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -1193,6 +1193,22 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
 describe('DSH package integrity verifier', () => {
   it('accepts the generated source package contract', async () => {
     await expect(verifySourceIntegrity(packageRootPath)).resolves.toBeUndefined()
+  })
+
+  it.each(['root', 'preset'])('rejects a stale creation runtime %s persona', async (surface) => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const patchPath = join(fixture.root, 'dsh/creation-planner.patch.yml')
+      const patch = await readFile(patchPath, 'utf8')
+      let index = 0
+      await writeFile(patchPath, patch.replace(/(prefix: >-\n)( +)[^\n]+/g, (match, prefix, indent) => {
+        const target = index++ === (surface === 'root' ? 0 : 1)
+        return target ? `${prefix}${indent}Stale creation instructions.` : match
+      }))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow('Creation Planner runtime')
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
   })
 
   it('rejects a Project Creator runtime persona that drifts from its Pack source', async () => {
