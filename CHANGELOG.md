@@ -1,3 +1,7 @@
+# 4.2.125
+
+- Complete the deeper WeChat article evidence workflow across Claude, Codex, and DSH distributions; report templates now include evidence, source authenticity, subtitle logic, and genre-structure checks.
+
 # 4.2.124
 
 - Deepen WeChat article quality checks by tracing each core claim to its source role, supported scope, counterexamples, and wording strength; add genre-aware explanation checks and subtitle-logic review without adding workflow stages or artifacts.
