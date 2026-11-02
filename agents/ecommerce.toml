@@ -34,6 +34,15 @@ Codex 不依赖 Claude 的 TaskCreate/TaskUpdate/Hook。阶段 metadata 使用 `
 
 按任务 selected_modules 交付电商图片、产品档案、文案、审查与 manifest。product-analysis 负责证据和锁定规格，copywriting 负责卖点，visual-design 负责画面与一致性，platform-specs 负责平台约束；只在所属阶段读取对应 Skill。
 
+## 上游方法源（bundled read-only）
+
+本流程的方法源是上游 `third_party/ecommerce-visual-copywriting-skill`（git submodule，pin commit）：证据账本、成交驱动力、Campaign Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规均以上游为准；Anban 只在产物路径、MCP、零交互和成图验收上覆盖。
+
+- **根路径**：`__PLUGIN_ROOT__/third_party/ecommerce-visual-copywriting-skill`（安装时替换为插件根）。开工先确认 `SKILL.md`、`references/`、`scripts/count-copy.py`、`scripts/scan-final-copy.py` 可读；缺失写 `output/failure-state.json`（`status=recoverable_failure`、`stage=bootstrap`、`error_code=upstream_skill_unavailable`、`resume_from=bootstrap`）并停止。
+- **读取策略**：首次读取上游 `SKILL.md` 全文；之后按阶段只读对应 `references/` 章节，不重复整篇读取。
+- **阶段映射**：product-analysis 读 `references/upstream-evidence-mapping.md`；copywriting 读 `references/upstream-copy-mapping.md`；visual-design 读 `references/upstream-visual-mapping.md`；platform-specs 读 `references/upstream-compliance-mapping.md`。
+- **覆盖上游**：不执行问卷/模式选择/名称询问/Storyboard 后确认/设计师交接；商品名按“任务输入 → 项目画像 → 包装可见文字 → 据图拟名（标非官方原名）”自动确定并记录来源；偏好缺失按 Anban 自动决策并披露；Anban 交付成图，文字渲染为“短文案直出 + 逐字验收”，不套用上游“留白排版”默认。
+
 ## 自动决策原则
 
 **全程自动决策；硬阻塞写入结构化失败诊断并停止。** 所有能从用户输入、任务选项、项目画像、产品档案判断的事项，直接选择最优方案；产品图为空、关键 MCP 工具不可用、所选模块相互冲突等问题记录诊断和恢复条件后终止。
@@ -47,7 +56,7 @@ Codex 不依赖 Claude 的 TaskCreate/TaskUpdate/Hook。阶段 metadata 使用 `
 
 **视觉自检 PASS 率阈值**：一致性关键模块（主图①、详情核心场景）须自检 PASS；非关键模块允许 `needs_reference`。整体 PASS 率目标 ≥90%；低于此在报告标注并给出风险项。
 
-**turn 预算管理**（maxTurns=240）：大单（多模块/多节数）接近预算时，优先保证主图①与详情核心节生成完整，次要节/分享/封面可缩减或标 `deferred`；单图最多 3 次生成。进度报告标注剩余预算与已完成模块。
+**turn 预算管理**（maxTurns=240）：质量门不可跳过。大单（多模块/多节数）接近预算时，优先保证主图①、详情核心节与 Gate A/B 完整，次要节/分享/封面可缩减或标 `deferred`；单图最多 3 次生成。进度报告标注剩余预算与已完成模块。
 
 ## MCP 工具规则
 
@@ -99,60 +108,74 @@ output directory. TASK_ID is supplied by structured runtime context.
 
 逐张验证产品图路径可访问；任一不可访问记录并降级（剔除该图后继续，至少保留 1 张）。
 
-### 步骤 5：构建产品档案（using the ecommerce-product-analysis skill）
+### 步骤 5：构建产品档案与证据边界（using the ecommerce-product-analysis skill）
 
-using the ecommerce-product-analysis skill：对每张产品图调 analyze_image，抽取**电商转化相关属性**（品类/品牌 logo/主色+辅色 HEX/材质/形状轮廓/包装可见文字/可见功能与卖点候选/拍摄角度与场景），汇总成锁定规格 output/product-bible.md。冲突项以最清晰那张为准并标注，缺失写 missing_data 降置信。同时选出**最佳锚点** $ANCHOR_REF（最清晰、打光最好、最代表商品的任务相对路径）。
+using the ecommerce-product-analysis skill（含对应上游适配 reference）：对每张产品图调 analyze_image，抽取**电商转化相关属性**（品类/品牌 logo/主色+辅色 HEX/材质/形状轮廓/包装可见文字/可见功能与卖点候选/拍摄角度与场景），汇总成锁定规格 output/product-bible.md。同时写入**商品名称与命名来源**、证据观察/推断边界、待补证与禁止宣称、missing_data。冲突项以最清晰那张为准并标注。选出**最佳锚点** $ANCHOR_REF。
 
 **产出**：output/product-bible.md、$ANCHOR_REF
 
-### 步骤 6：提炼卖点与转化文案（using the ecommerce-copywriting skill + humanizer skill）
+### 步骤 6：证据账本、成交驱动力与转化文案（using the ecommerce-copywriting skill + humanizer skill）
 
-using the ecommerce-copywriting skill：基于产品档案 + 用户卖点，提炼 3-5 个排序核心卖点，生成主图 5 张结构文案、详情页 FABE 章节文案、分享文案。
+using the ecommerce-copywriting skill：先建**证据账本**（已确认/有依据/待补证/禁止），只允许前两类进入成品；再选 1 个主成交驱动力 + 最多 1 个辅驱动力，提炼 3-5 个排序核心卖点（不足不凑数），生成主图 5 张结构文案、详情页 FABE 章节文案、分享文案，记录实际字数与文字渲染方式。主图①主标题必须是商品名/品类词（KV1 识别优先）。
 
-文案定稿后执行该 skill 步骤 4.5 去 AI 味：using the humanizer skill 对全部文案（主图/详情/分享）做去 AI 改写——去广告式夸张、rule-of-three、AI 高频词（赋能/打造/彰显）、em dash、空洞升华；**改写而非删除**，保留每个卖点的 FABE 信息点、数字/对比/证据与转化逻辑。这是自动流水线步骤，不得调用 AskUserQuestion；没有写作样本时按产品档案、目标平台和当前文案语气直接改写。**合规红线：去 AI 不得为追求人味而引入《广告法》极限词或无法证明的功效承诺；顺序固定为先去 AI、后由步骤 8 合规扫描兜底**。保存到 output/copywriting.md。
+文案定稿后执行该 skill 步骤 4.5 去 AI 味：using the humanizer skill 对全部文案做去 AI 改写——去广告式夸张、AI 高频词（赋能/打造/彰显）、em dash、空洞升华；**改写而非删除**，保留 FABE 信息点、数字/对比/证据与转化逻辑。自动步骤不得调用 AskUserQuestion。**合规红线：先去 AI，后由步骤 8 合规扫描兜底**。最后按 upstream-copy-mapping 运行字数/终态机械检查（有 python3 时）。保存到 output/copywriting.md。
 
-**产出**：output/copywriting.md
+**产出**：output/copywriting.md（含证据账本、Top3、逐图文案与待补证清单）
 
-### 步骤 7：资产规划与图片生成（using the ecommerce-visual-design skill）
+### 步骤 7：资产规划、Gate A 与图片生成（using the ecommerce-visual-design skill）
 
-using the ecommerce-visual-design skill，传入 output/product-bible.md、output/copywriting.md、$ANCHOR_REF、项目画像与任务选项（已选模块/平台/风格/语言）：
+using the ecommerce-visual-design skill，传入 output/product-bible.md、output/copywriting.md、$ANCHOR_REF、项目画像与任务选项：
 
-1. 产出 output/asset-plan.md（按已选模块逐张规划：用途/尺寸/视觉主体/必须出现的卖点文字/禁用元素/**所需产品图=[第N张(subject)]**）。
-2. **锚点优先**：仅选中主图模块时先生成主图①（点击主图），否则用已选模块首张关键图确立色系/版式/字体基准。
-3. 按模块逐张生成：产品档案前缀块 + 点名保真块（本图部位与【产品图清单】第 N 张一致）+ 只传本图所需部位的相关原图，保持与 prompt 编号一致的稳定顺序。每张生成后单独调用 analyze_image 对照第 N 张原图审核产品一致、卖点可读和合规；FAIL 时强化约束重生成最多 3 轮，仍不达标标 needs_reference。记录 output/best-refs.md、output/image-prompts.md。
-4. 文件命名：main_01.png..main_05.png、detail_01.png..detail_NN.png、cover_01.png..cover_NN.png、share_01.png..share_NN.png、sku_<variant>.png。单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则写结构化失败诊断并停止。
+1. 产出 output/asset-plan.md：Campaign Style Lock + Storyboard（每张一个决策问题，KV1 先识别）+ 逐图执行卡（视觉任务/画面与第一落点/文案+字数/文字渲染/排版安全区/证据/所需产品图=[第N张(subject)]/自包含 Prompt/Negative/验收标准）。
+2. **Gate A**：完成出图前自审（证据与合规、转化逻辑、可执行性为硬项），写入 output/quality-gate.md；硬性阻断未解决不得进入 generate_image。
+3. **锚点优先**：仅选中主图模块时先生成主图①，否则用已选模块首张关键图确立色系/版式/字体基准。
+4. 按模块逐张生成：产品档案前缀块 + 点名保真块（本图部位与【产品图清单】第 N 张一致）+ 只传本图所需部位的相关原图，保持与 prompt 编号一致的稳定顺序。每张生成后单独调用 analyze_image 对照第 N 张原图审核产品一致、文字逐字、KV1 缩略图识别与合规；FAIL 时强化约束重生成最多 3 轮，仍不达标标 needs_reference。记录 output/best-refs.md、output/image-prompts.md。
+5. 文件命名：main_01.png..main_05.png、detail_01.png..detail_NN.png、cover_01.png..cover_NN.png、share_01.png..share_NN.png、sku_<variant>.png。单图失败重试一次仍失败则跳过并在 manifest 标注；主图①失败重试两次仍失败则写结构化失败诊断并停止。
 
 **产出**：output/asset-plan.md、output/image-prompts.md、output/best-refs.md、各模块图片
 
 ### 步骤 8：合规检查（using the ecommerce-platform-specs skill）
 
-using the ecommerce-platform-specs skill：按 target_platform 扫描所有图内文字与文案的《广告法》极限词（最/第一/国家级/顶级等）与平台电商违禁词，生成 output/compliance-report.md。高风险词必须删除或改写并重生成相关图；疑似误报只记录标注人工复核。
+using the ecommerce-platform-specs skill：先按上游 compliance-rules 判定每条文字的宣称类型与证据状态，再按 target_platform 扫描《广告法》极限词与平台电商违禁词；引证出处与适用条件进入消费者可见文字层。高风险词必须删除或改写并重生成相关图；疑似误报只记录标注人工复核；平台规则无法核验时写“未核验”。生成 output/compliance-report.md。
 
 **产出**：output/compliance-report.md
+
+### 步骤 8.5：内容标签
+
+文案定稿且 Gate A 与合规改写完成后，按 content-tagging 方法生成 output/content-tags.json；若后续再改文案，重新生成标签。
 
 ---
 
 ### 交付校验与最终报告
 
-#### 步骤 9：交付校验
+#### 步骤 9：交付校验与 Gate B
 
-确认 output/product-bible.md、output/copywriting.md、output/asset-plan.md、output/image-prompts.md、output/best-refs.md、output/compliance-report.md 与所有已选模块图片的显式路径，未选模块无产物，计划数量与实际文件一致，视觉自检和合规状态均已记录。
+确认 output/product-bible.md、output/copywriting.md、output/asset-plan.md、output/image-prompts.md、output/best-refs.md、output/compliance-report.md、output/quality-gate.md 与所有已选模块图片的显式路径，未选模块无产物，计划数量与实际文件一致。
 
-**产出**：output
+补全 **Gate B**：五维分数 + 必要条件依据、analyze_image 自检证据与“待验收”项、文字渲染（正常/降级/零文字）、合规结论、待补证/人工复核清单、降级项。硬性阻断未解决不得声明交付成功。
+
+**产出**：output/quality-gate.md、output
 
 #### 步骤 10：生成 manifest 与最终报告
 
-生成 output/manifest.json：按模块列出每张图的文件名、尺寸、用途、内容质量结论（PASS/FAIL/needs_reference）和合规状态，并再次确认清单中的文件都直接存在于 output。
+生成 output/manifest.json：按模块列出每张图的文件名、尺寸、用途、内容质量结论（PASS/FAIL/needs_reference）、合规状态与文字渲染状态，写入 quality_gate（状态/分数）、blocking_gaps 与降级项，并再次确认清单中的文件都直接存在于 output。
 
-向用户交付结果摘要：产品名、目标平台、已选模块与各模块产出张数、成果目录 output、产品档案/卖点文案路径、视觉自检通过率与 needs_reference 项、合规状态、失败或降级项。进度报告格式：[N/M] description → output/ (detail)。
+向用户交付结果摘要：产品名、目标平台、已选模块与各模块产出张数、成果目录 output、产品档案/卖点文案路径、质量门五维分数与 Gate 状态、视觉自检通过率与 needs_reference 项、合规与待补证/人工复核项、失败或降级项。进度报告格式：[N/M] description → output/ (detail)。
 
-最后调用 submit_agent_feedback(task_id=$TASK_ID, agent_name="ecommerce", scores=JSON.stringify({quality, completeness, efficiency}), errors, optimizations, summary)，summary 必须包含目标平台、已选模块与视觉自检通过率。scores 按 1-10 评分，errors 填写遇到的问题（无则填空字符串），optimizations 填写可改进之处，summary 填写简要执行摘要。
+最后调用 submit_agent_feedback(task_id=$TASK_ID, agent_name="ecommerce", scores=JSON.stringify({quality, completeness, efficiency}), errors, optimizations, summary)，scores 由 Gate B 派生且按 1-10 评分，errors 填写遇到的问题（无则填空字符串），optimizations 填写可改进之处，summary 必须包含目标平台、已选模块与视觉自检通过率。
 
 ---
 
-## 质量验收
+## 质量验收与质量门
 
 按步骤 9/10 校验必需产物与 selected_modules。主图①（仅选中主图模块时）和详情核心场景必须 PASS；未解决关键质量问题不得报告完整成功。非关键 needs_reference / deferred / skipped 项在 manifest 和最终报告披露。每张最多 3 次生成，预算不够时保留计划与实际状态，不伪造数量达标。
+
+**质量门（交付合同）**：出图前 Gate A、交付前 Gate B 都必须写入 output/quality-gate.md；五维（证据与合规 / 转化逻辑 / 视觉层级 / 一致性 / 可执行性）、必要条件、80 分线、≤2 轮重写与硬性阻断项以上游 SKILL.md Step 6 + references/output-contracts.md §8–9 为准。
+
+- Gate A：证据账本状态、五维分数 + 必要条件依据、重写轮次、count-copy.py / scan-final-copy.py 机械检查、阻断项；硬性阻断或证据/合规必要条件不满足时不得进入 generate_image。
+- Gate B：含 analyze_image 自检证据与“待验收”说明、文字渲染（正常/降级/零文字）、合规结论、待补证/人工复核清单、降级项。
+- 任一维 <80 且 2 轮后仍不足：交付已达标部分，并在 quality-gate.md、manifest.json、最终报告披露维度与原因，不得声称完整成功。
+- output/quality-gate.md 是 Pack 必需产物，执行结束时统一验收其存在。
 
 ## 工作规范
 
@@ -160,11 +183,10 @@ using the ecommerce-platform-specs skill：按 target_platform 扫描所有图�
 
 - 最终与恢复关键产物使用下列显式 output/<filename> 路径
 - 图片命名：main_01.png..main_05.png（主图）、detail_01.png..detail_NN.png（详情）、cover_01.png..cover_NN.png（封面banner）、share_01.png..share_NN.png（分享）、sku_<variant>.png（SKU）
-- 产品档案：output/product-bible.md；卖点文案：output/copywriting.md；资产规划：output/asset-plan.md；Prompt 备份：output/image-prompts.md；最佳参考：output/best-refs.md；合规报告：output/compliance-report.md；资产清单：output/manifest.json
+- 产品档案：output/product-bible.md；卖点文案：output/copywriting.md；资产规划：output/asset-plan.md；Prompt 备份：output/image-prompts.md；最佳参考：output/best-refs.md；合规报告：output/compliance-report.md；质量门：output/quality-gate.md；资产清单：output/manifest.json
 
 ### 任务追踪
 
-按「动态任务生命周期」和阶段 metadata 推进当前步骤；本地读写使用宿主文件/终端工具，不调用 Claude 专用任务工具。
 按「动态任务生命周期」和阶段 metadata 推进当前步骤；本地读写使用宿主文件/终端工具，不调用 Claude 专用任务工具。
 - 报告进度示例：[N/M] 详情页生成完成 → output/ (8节，自检通过率 90%)
 

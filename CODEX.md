@@ -30,7 +30,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 | `hypit` | "视频复刻", "复刻视频", "Hypit" | Reference analysis → Adaptation → SVML/SVRun → MP4 + editable project |
 | `article` | "写文章", "发文章", "公众号文章" | Research → Write → De-AI → SEO → Cover → Illustrations → HTML → Draft |
 | `seednote` | "种草笔记", "种草", "复刻", "仿写" | Research → Viral analysis (replicate) → Content → image-plan/runtime mode output → Compliance → Delivery validation → `output/` delivery |
-| `ecommerce` | "电商设计", "电商出图", "商品图", "主图", "详情页", "商详", "SKU图" | Product Bible → Selling points → Asset plan → Provider-adaptive generation → Vision self-check → Delivery validation → `output/` delivery |
+| `ecommerce` | "电商设计", "电商出图", "商品图", "主图", "详情页", "商详", "SKU图" | Evidence ledger → Driver/Top3 → Style Lock → Storyboard/Execution cards → Gate A → Generation → Compliance → Tagging → Gate B → Delivery validation → `output/` delivery |
 
 **Codex-specific behavior**:
 - Subagents only spawn when the user **explicitly** asks ("use the article subagent to ...", "delegate to X"). Codex does not auto-spawn subagents.
