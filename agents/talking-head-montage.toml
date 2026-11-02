@@ -11,6 +11,10 @@ name = "talking-head-composition"
 path = "__PLUGIN_ROOT__/skills/talking-head-composition/SKILL.md"
 
 [[skills.config]]
+name = "talking-head-explainer"
+path = "__PLUGIN_ROOT__/skills/talking-head-explainer/SKILL.md"
+
+[[skills.config]]
 path = "__PLUGIN_ROOT__/skills/talking-head-sound-design/SKILL.md"
 enabled = true
 

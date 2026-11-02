@@ -1,5 +1,5 @@
 id: viral-ip-video-editor
-version: 1.2.2
+version: 1.3.0
 kind: plugin
 display_name: 爆款 IP 视频剪辑
 description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核；字幕与 BGM 各自按独立方法论制作（BGM 可按章节换曲），封面在流程最后一步生成。
@@ -9,14 +9,21 @@ agent:
   name: viral-ip-video-editor
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [content-reuse, content-tagging, montage, portrait-cover-design, short-video-cover, talking-head-composition, talking-head-visual-focus, video-bgm-design, video-production-qc, video-subtitle-design, viral-ip-editing, wechat-video-account-review, auto-editor]
+  skills: [content-reuse, content-tagging, montage, portrait-cover-design, short-video-cover, talking-head-composition, talking-head-visual-focus, talking-head-explainer, video-bgm-design, video-production-qc, video-subtitle-design, viral-ip-editing, wechat-video-account-review, auto-editor]
   max_turns: 250
 runtime:
   profile: viral-ip-video-editor
   adapter: openmontage
 surfaces: [plugin]
-features: [viral-ip-video-editing, retention-editing, source-assets, montage-runtime, audio-silence-detection]
+features: [viral-ip-video-editing, retention-editing, explainable-knowledge-editing, semantic-master-variants, retention-experiments, independent-validation, source-assets, montage-runtime, audio-silence-detection]
 artifacts:
+  - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json, required: false}
+  - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json, required: false}
+  - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json, required: false}
+  - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json, required: false}
+  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json, required: false}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json, required: false}
+  - {role: retention_results, path: output/retention-results.json, mime_type: application/json, required: false}
   - {role: project_brief, path: output/project_brief.md, mime_type: text/markdown, required: false}
   - {role: transcript, path: output/transcript.json, mime_type: application/json, required: false}
   - {role: content_map, path: output/content_map.md, mime_type: text/markdown, required: false}

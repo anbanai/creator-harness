@@ -206,6 +206,11 @@ Classify a Skill before editing it:
   talking-head Agent; update them with `make creative-references-update` and
   review the upstream gitlink diff before committing. They do not grant access
   to their provider CLIs or APIs; image creation remains on Anban MCP.
+  `third_party/ecommerce-visual-copywriting-skill` is the read-only method
+  source for the ecommerce Agent; update it with
+  `make ecommerce-upstream-update`, validate it with
+  `make ecommerce-upstream-check`, and never copy its rule text into Anban
+  Skills.
 - Third-party runtime assets use their own update and verification process.
   OpenMontage is pinned and verified by the independently built runtime image;
   it is not stored in this repository or copied into Agent text.

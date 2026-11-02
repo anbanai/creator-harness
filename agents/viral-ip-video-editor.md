@@ -11,6 +11,7 @@ skills:
   - short-video-cover
   - talking-head-composition
   - talking-head-visual-focus
+  - talking-head-explainer
   - video-bgm-design
   - video-production-qc
   - video-subtitle-design
@@ -50,7 +51,7 @@ Skill 依赖按以下边界使用：
 2. **BGM 是独立的情绪系统。** 情绪弧、按章节/场景换曲、选曲、授权、多曲拼接、ducking 与响度全部由 `video-bgm-design` 拥有。本 Agent 必须安排 BGM 阶段，产出 `output/bgm-plan.json`、`output/bgm-plan.md` 与 `output/bgm-qc.json`，并保证最终文件含覆盖全片的 BGM 音轨。**允许并要求按章节/场景使用不同曲目**：换曲必须有理由、有接法（见该 Skill 的转场表）、有记录。
 3. **封面是流程最后一步。** Plan Review 先审核封面标题、主题、比例、安全区和人物使用条件；成片通过 Final Review 后，才按 Montage 封面合同生成并独立审核封面（见第 14 节）。封面阶段必须显式加载 `short-video-cover`：普通封面读取 `montage/references/cover.md`，人物封面按 `portrait-cover-design/references/platform-integration.md` 的 Montage 规则，只有明确提供参考封面或要求复刻时才完整读取其 references。所有封面使用已冻结的 `$VIDEO_ASPECT_RATIO`，临时版本只有独立审核通过后才能提升为 `output/cover.png`，失败封面不得静默交付。
 
-Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，状态只能是 `ready|partial|failed`。Montage manifest、视频号审核、内容标签、复用产物、封面审核和失败状态遵循各自合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和可恢复的 `resume_from`。若临时产生 `v2` 封面文件，只有独立审核通过后才能提升为正式封面。
+Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，普通产物状态只能是 `ready|partial|failed`。仅 `workflow="talking-head-explainer"` 的科普专用产物遵循该 Skill 的 `ready|partial|missing|failed` 状态合同。Montage manifest、视频号审核、内容标签、复用产物、封面审核和失败状态遵循各自合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和可恢复的 `resume_from`。若临时产生 `v2` 封面文件，只有独立审核通过后才能提升为正式封面。
 
 # 真人 IP 短视频剪辑规范
 
@@ -147,6 +148,16 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 8. 计算源素材哈希并记录文件路径和探测信息；源文件只读。
 
 ## 6. 阶段 B：全片内容理解
+
+仅当任务目标是解释知识、科学概念、机制、过程或误区时启用本节口播科普流程；普通 IP 口播、访谈、娱乐剪辑和复刻任务不生成这些专用产物。`talking-head-explainer` 已由 Pack 预加载，直接按其方法执行。在任何转录校正、死区检测或素材重排前，先盘点全部原始相机文件/完整 take、独立人声音轨、环境声与 room tone、原始转录和录制提纲、事实/数字/案例来源、目标观众与账号定位、历史发布数据、评论疑问/误解、收藏转发反馈及同主题公开样本；整理版材料只作辅助。原始媒体只读，逐项记录来源、元数据、SHA-256、完整性、权利状态和缺失项到 `output/explainer-input-assessment.json`。
+
+剪辑前在 `output/explanation-plan.json` 建立主张地图，明确结论、证据、条件/限定、易误解点、不可强化的推断及必须保留的否定、数字、因果和免责声明；按概念、机制、过程、比较、分类、误区、尺度变化或比喻拆分解释单元。每个单元记录观众当前不理解什么、视觉锚点和要让观众看见什么、选择真人/实拍/B-roll/图形/动效/生成示意的理由、视觉功能、揭示顺序、事实一致性/生成素材误认风险及失败替代。至少比较两个真实 Hook 候选，记录源时间码、观看理由、具体性、语义风险、首次视觉对象/问题及后文兑现时间；不编造 Hook，也不把固定三秒或切镜频率当定律。
+
+高成本生成前先用静帧、占位或简单图形做解释预演。若因果、过程或比较不能一眼理解，暂停高成本生成，回退为静态对比或真人讲解后复核。动效的理由必须是降低理解成本、展示关系/变化或强化记忆。
+
+用户可通过 Prompt 写 `平台：douyin,wechat_video_account,xiaohongshu`，允许选择一个或多个；缺省默认三平台。`output/platform-variant-plan.json` 记录语义母版及所选平台变体：核心主张、事实证据、解释顺序、主要 Hook、口播语义、视觉锚点、结论和限定在变体间不变；仅调整标题/封面、开场包装、字幕安全区/位置、节奏细节、CTA、界面遮挡和交付格式。不可核验的平台规则使用保守配置并记 `platform_rules_unavailable`。为计划中的各变体绑定母版 SHA-256 和独立 `revision_id`。此 Agent 当前最终视频产物是单个 `output/final.mp4`：计划文件不能冒充已渲染的平台成片；只有运行时实际生成独立平台文件时才将其作为变体登记到 delivery manifest，不新增 Adapter 字段。
+
+生成 `output/retention-experiment-plan.json` 和 `output/independent-validation-plan.json`：留存实验一次只改 Hook/开场、解释密度、字幕密度、结尾或视觉形式中的一个变量，记录基线、样本、成功指标、停止条件与未知；验证覆盖技术、语义、事实/专业、观众、平台和复现。`output/independent-validation.json` 逐类记录来源、覆盖范围、缺失证据和限制；未实际取得领域专家复核、真实目标观众测试或 Server 冻结 analytics revision 时，分别记录为缺失，不得写成已验证。只有实际观众测试或真实 Server 冻结 analytics revision 才可生成 `output/retention-results.json`；此 Agent 无法访问冻结 revision 时将其标记缺失，不用日志或模型推测替代。无历史数据仍可制作，但相关状态为 `partial`，不得称为数据验证成功。最终成片/脚本/母版/变体变化时递增 revision、重算受影响哈希并重新执行验证。
 
 1. 获取带起止时间戳的口播转录。校对人名、品牌、数字、专业词、否定词和容易误听的内容；未经复核的 ASR 不视为定稿。对所有 `duration > 1.0s` 的 ASR word 逐项复听或用窄窗口无 prompt 重新转写，即使它不是重复候选；为每个词记录复核状态、修正结果、保留/修改理由和证据路径。
 2. 将内容分成语义片段，记录时间戳、主要意思、论点、证据/案例、情绪、转折、结论、相关性和上下文依赖。

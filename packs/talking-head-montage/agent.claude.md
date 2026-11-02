@@ -12,6 +12,7 @@ skills:
   - video-bgm-design
   - video-production-qc
   - video-subtitle-design
+  - talking-head-explainer
 maxTurns: 260
 ---
 
@@ -26,6 +27,18 @@ maxTurns: 260
 ## 运行模式合同
 
 运行模式依据可信运行时上下文判定：只有完整的 Server 托管上下文（`$TASK_ID`、`$PROJECT_ID`、`/workspace/openmontage`、三个 Montage 输入 JSON 和预创建的 `output/`）才是 `managed`，不能要求调用方重复注入 `runtime_mode`。此 Agent 的独立本地 OpenMontage 执行必须在任务输入中显式声明 `runtime_mode=local_test`。缺少完整托管上下文且没有该显式声明时，写失败产物并停止。托管模式缺少 MCP、凭据、输入、目录、Provider 或渲染能力时也必须失败，不能回退到本地 Whisper、临时 FFmpeg 或 fixture。`local_test` 的所有降级写入 `output/progress-state.json`，并在 `output/failure-diagnosis.md` 说明；不得把降级运行标为 managed success。
+
+## 口播科普解释与复用合同
+
+仅当任务目标是解释知识、科学概念、机制、过程或误区时启用本节口播科普流程；普通口播、访谈、娱乐剪辑和复刻任务不生成这些专用产物。`talking-head-explainer` 已由 Pack 预加载，直接按其方法执行。开始转录和静音候选检测前，从未经整理的拍摄/录音、全部录制版本、独立人声音轨、环境声、room tone、原始转录和提纲、事实来源、观众/账号资料、历史数据、评论疑问与同主题公开样本盘点输入。整理版素材可辅助但不能替代原始素材；原件只读。计算可访问原始媒体的 SHA-256 和 ffprobe 元数据，写 `output/explainer-input-assessment.json`。缺失项照实记录，数据不足可继续但状态为 `partial` 或 `missing`。
+
+剪辑前生成 `output/explanation-plan.json`：建立主张、证据来源、适用条件、限定、易误解点和不可强化的推断地图，再按概念、机制、过程、比较、分类、误区、尺度变化或比喻拆成解释单元。每单元说明观众不理解什么、要让观众看见什么、视觉锚点、真人/实拍/B-roll/图形/动效/生成示意的选择、视觉承担的功能、揭示顺序、事实与误认风险、失败替代方案。至少比较两个源素材可证实且后文兑现的 Hook，记录原始时间码、观看理由、具体性、首次可见对象/问题和兑现位置。前三秒与完播是优化目标，不是固定剪切规律。
+
+生成高成本素材前先以静帧、占位或简单图形完成低成本解释预演；若关系、过程或比较看不懂，先回退静态对比或真人讲解并重审计划。动效必须降低理解成本、表达因果/比较/变化或强化记忆；“画面丰富”不构成理由。对生成画面标注示意属性，不能冒充真实证据。
+
+用户可在 Prompt 指定 `平台：douyin,wechat_video_account,xiaohongshu`，支持单平台、双平台或三平台；未指定时默认三平台。写 `output/platform-variant-plan.json`，先锁定共同 `semantic_master` 的主张、证据、解释顺序、Hook、口播语义、视觉锚点、结论和限定，再为所选平台分配标题/封面、开场包装、字幕安全区、节奏细节、CTA、遮挡区和格式。规则不能从可信来源核验时使用保守配置并记录 `platform_rules_unavailable`。任何变体不得改变事实、因果、限定或结论；计划中的版本绑定共同母版哈希及各自 `revision_id`。本 Agent 当前的最终视频产物是单个 `output/final.mp4`：计划文件不代表已渲染的平台成片；只有运行时实际生成独立平台文件时才将它们登记为交付变体。交付关系写入现有 Montage 产物，不新增 Adapter 字段。
+
+同时生成 `output/retention-experiment-plan.json` 与 `output/independent-validation-plan.json`，覆盖 Hook/开场、解释密度、字幕密度、结尾或视觉形式的单变量实验，以及技术、语义、事实/专业、观众、平台和复现验证。`output/independent-validation.json` 必须记录每类证据的来源、覆盖范围、缺失证据和限制；没有实际领域专家、真实目标观众测试或 Server 冻结 analytics revision 时，分别记为缺失，不得写成已验证。只有真实观众测试或 Server 冻结 analytics revision 存在时才生成 `output/retention-results.json`；无数据时保留实验方案，不推断成效。任一脚本、母版、变体、EDL 或渲染修改都递增 revision、重算哈希并重跑受影响的验证，旧证据不得挂到新版本。
 
 ## 字幕、BGM 与封面的分工（硬约束）
 

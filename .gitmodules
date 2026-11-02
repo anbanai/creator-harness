@@ -14,3 +14,7 @@
 	path = third_party/motion-graphics
 	url = https://github.com/Barty-Bart/motion-graphics.git
 	branch = main
+[submodule "third_party/ecommerce-visual-copywriting-skill"]
+	path = third_party/ecommerce-visual-copywriting-skill
+	url = https://github.com/feichanggege/ecommerce-visual-copywriting-skill.git
+	branch = main
