@@ -1,3 +1,9 @@
+# 4.2.128
+
+- Give creation/review session plugin groups distinct IDs so the shared loader retains both Skills providers; align canonical provider IDs and generated presets.
+- Prioritize current creation intent over historical examples, hand off one Studio review without repeating the plan, and bound field-diagnostic correction to one attempt.
+- Show a valid authenticated-context staging payload and preserve Server ownership of readiness and task creation.
+
 # 4.2.127
 
 - Move the pinned upstream Skill submodules (`seedance2-skill`, `GPT-Image2-Skill`, `motion-graphics`, `ecommerce-visual-copywriting-skill`) from `third_party/` to `skills/<repo>` so upstream Skills ship in the same tree as authored Skills, like `skills/humanizer`.
