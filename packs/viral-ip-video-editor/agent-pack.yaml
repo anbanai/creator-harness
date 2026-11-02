@@ -18,6 +18,8 @@ surfaces: [plugin]
 features: [viral-ip-video-editing, retention-editing, explainable-knowledge-editing, semantic-master-variants, retention-experiments, independent-validation, source-assets, montage-runtime, audio-silence-detection]
 artifacts:
   - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json, required: false}
+  - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json, required: false}
+  - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json, required: false}
   - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json, required: false}
   - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json, required: false}
   - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json, required: false}
@@ -77,3 +79,49 @@ artifacts:
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}
   - {role: sync_evidence, path: output/sync-evidence.json, mime_type: application/json, required: true}
+artifact_stages:
+  - id: explainer_preflight
+    trigger: output/explainer-input-assessment.json
+    required:
+      - output/explainer-input-assessment.json
+      - output/semantic-master.json
+      - output/explanation-plan.json
+      - output/explanation-rehearsal.json
+      - output/platform-variant-plan.json
+      - output/retention-experiment-plan.json
+      - output/independent-validation-plan.json
+      - output/independent-validation.json
+    required_on_final: true
+  - id: final_delivery
+    trigger: output/final.mp4
+    terminal: true
+delivery:
+  - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json}
+  - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json}
+  - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json}
+  - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json}
+  - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json}
+  - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json}
+  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json}
+  - {role: retention_results, path: output/retention-results.json, mime_type: application/json}
+  - {role: asset_ledger, path: output/asset-ledger.json, mime_type: application/json}
+  - {role: composition_plan, path: output/composition-plan.json, mime_type: application/json}
+  - {role: composition_lint, path: output/composition-lint.json, mime_type: application/json}
+  - {role: bgm_plan, path: output/bgm-plan.json, mime_type: application/json}
+  - {role: bgm_plan_md, path: output/bgm-plan.md, mime_type: text/markdown}
+  - {role: bgm_qc, path: output/bgm-qc.json, mime_type: application/json}
+  - {role: audio_source_manifest, path: output/audio-source-manifest.json, mime_type: application/json}
+  - {role: captions, path: output/captions.srt, mime_type: text/plain}
+  - {role: caption_plan, path: output/caption-plan.md, mime_type: text/markdown}
+  - {role: caption_style, path: output/caption-style.json, mime_type: application/json}
+  - {role: caption_qc, path: output/caption-qc.json, mime_type: application/json}
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json}
+  - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
+  - {role: cover, path: output/cover.png, mime_type: image/png}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
+  - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json}
+  - {role: sync_evidence, path: output/sync-evidence.json, mime_type: application/json}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown}
+  - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown}
+  - {role: cover_review, path: output/cover-quality.json, mime_type: application/json}

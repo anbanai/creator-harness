@@ -10,6 +10,6 @@
 
 ## 渲染与交付边界
 
-`platform-variant-plan.json` 先登记共同母版哈希、所选平台、包装差异、各版本 revision 和语义等价检查。现有 Montage 合同只保证一个 `output/final.mp4`；除非当前运行时明示支持多次独立渲染并实际产出不同文件，否则将视频渲染标为 unavailable 或 not_run，不得复制同一文件并声称完成多平台导出。
+`platform-variant-plan.json` 顶层必须登记 `master_revision_id` 和 `semantic_master_sha256`，分别等于 `semantic-master.json` 的 `revision_id` 与 `content_sha256`，再记录所选平台、包装差异、各版本 revision 和语义等价检查。现有 Montage 合同只保证一个 `output/final.mp4`；除非当前运行时明示支持多次独立渲染并实际产出不同文件，否则将视频渲染标为 unavailable 或 not_run，不得复制同一文件并声称完成多平台导出。
 
 仅按当前 `delivery-manifest.json` 合同登记真实存在的文件。若合同没有平台变体关系字段，在 `platform-variant-plan.json` 中保存关系与证据路径，不得向 Montage project 或 Adapter 增加未声明字段。包装变体只改标题、封面、开场包装或 CTA 时可复用语义母版；核心口播、事实、因果、限定或解释顺序改变必须创建新母版 revision。

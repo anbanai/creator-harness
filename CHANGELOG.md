@@ -1,3 +1,11 @@
+# 4.2.125
+
+- Complete the deeper WeChat article evidence workflow across Claude, Codex, and DSH distributions; report templates now include evidence, source authenticity, subtitle logic, and genre-structure checks.
+
+# 4.2.124
+
+- Deepen WeChat article quality checks by tracing each core claim to its source role, supported scope, counterexamples, and wording strength; add genre-aware explanation checks and subtitle-logic review without adding workflow stages or artifacts.
+
 # 4.2.123
 
 - Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
@@ -7,6 +15,8 @@
 - Add the required `output/quality-gate.md` artifact (Gate A before generation, Gate B before delivery) with five-dimension scoring, rewrite rounds, mechanical checks and disclosed gaps; Agent Packs and the runtime completion hook now enforce it.
 - Provision `python3` in the ecommerce runtime image so the pinned upstream `count-copy.py` and `scan-final-copy.py` checks run in managed tasks.
 - Add `make ecommerce-upstream-check` / `make ecommerce-upstream-update` to validate and advance the pinned upstream submodule.
+- Persist semantic masters and low-cost explanation rehearsals for talking-head explainers; require their evidence and the explainer plans when a final video follows an explainer input assessment.
+- Keep explainer-only completion gates inactive for ordinary talking-head tasks, and prevent preflight artifacts from being accepted as final delivery.
 
 # 4.2.122
 
