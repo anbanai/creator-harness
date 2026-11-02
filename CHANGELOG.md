@@ -1,6 +1,17 @@
-# 4.2.122
+# 4.2.125
+
+- Complete the deeper WeChat article evidence workflow across Claude, Codex, and DSH distributions; report templates now include evidence, source authenticity, subtitle logic, and genre-structure checks.
+
+# 4.2.124
+
+- Deepen WeChat article quality checks by tracing each core claim to its source role, supported scope, counterexamples, and wording strength; add genre-aware explanation checks and subtitle-logic review without adding workflow stages or artifacts.
+
+# 4.2.123
 
 - Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
+
+# 4.2.122
+
 - Bundle the ecommerce upstream SOP as the read-only git submodule `third_party/ecommerce-visual-copywriting-skill` (MIT, pinned commit) so the workflow reuses its evidence ledger, conversion-driver, Style Lock, Storyboard/execution-card, on-image copy, compliance and five-part quality gate instead of copying rule text into Anban Skills.
 - Add thin Anban stage adapters for product analysis, copywriting, visual design and platform compliance, plus KV1 product-identification and in-image text verification for generated assets.
 - Add the required `output/quality-gate.md` artifact (Gate A before generation, Gate B before delivery) with five-dimension scoring, rewrite rounds, mechanical checks and disclosed gaps; Agent Packs and the runtime completion hook now enforce it.
@@ -8,8 +19,6 @@
 - Add `make ecommerce-upstream-check` / `make ecommerce-upstream-update` to validate and advance the pinned upstream submodule.
 - Persist semantic masters and low-cost explanation rehearsals for talking-head explainers; require their evidence and the explainer plans when a final video follows an explainer input assessment.
 - Keep explainer-only completion gates inactive for ordinary talking-head tasks, and prevent preflight artifacts from being accepted as final delivery.
-
-# 4.2.121
 
 
 # 4.2.119
