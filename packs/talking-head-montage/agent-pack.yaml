@@ -24,8 +24,8 @@ artifacts:
   - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json, required: false}
   - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json, required: false}
   - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json, required: false}
-  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json, required: false}
-  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json, required: false}
+  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json, required: true}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json, required: true}
   - {role: retention_results, path: output/retention-results.json, mime_type: application/json, required: false}
   - {role: rough_cut, path: output/rough-cut.mp4, mime_type: video/mp4, required: true}
   - {role: semantic_cut, path: output/semantic-cut.mp4, mime_type: video/mp4, required: true}

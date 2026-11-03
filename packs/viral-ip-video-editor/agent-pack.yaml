@@ -23,8 +23,8 @@ artifacts:
   - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json, required: false}
   - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json, required: false}
   - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json, required: false}
-  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json, required: false}
-  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json, required: false}
+  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json, required: true}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json, required: true}
   - {role: retention_results, path: output/retention-results.json, mime_type: application/json, required: false}
   - {role: project_brief, path: output/project_brief.md, mime_type: text/markdown, required: false}
   - {role: transcript, path: output/transcript.json, mime_type: application/json, required: false}
@@ -111,9 +111,6 @@ artifact_stages:
       - output/sync-evidence.json
       - output/quality-evidence.json
       - output/progress-state.json
-      - output/generated-video-manifest.json
-      - output/generated-video-review.json
-      - output/generated-video-lint.json
       - output/independent-validation-plan.json
       - output/independent-validation.json
 delivery:
