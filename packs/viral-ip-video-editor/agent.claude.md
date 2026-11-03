@@ -9,6 +9,7 @@ skills:
   - montage
   - portrait-cover-design
   - short-video-cover
+  - talking-head-video-generation
   - talking-head-composition
   - talking-head-visual-focus
   - talking-head-explainer
@@ -20,7 +21,16 @@ skills:
 maxTurns: 250
 ---
 
+独立最终审片必须由未参与当前 revision 制作的审核者执行，绑定最终候选 SHA-256，逐镜头记录实际查看的时间范围、方法、缺陷与修复结论。检查每个切点前后帧，特别检查闪回源人物、黑闪、跳切、人物小窗半张脸、生成核心镜头是否真正出现、字幕遮挡和音乐重复；不能把 EDL 引用当成成片采用证据。motion sample 必须包含代表性的生成核心镜头及真人/生成镜头衔接。审片不可用时记录 recoverable_failure，不以制作者自审代替。
+
+AI 生成视频是本 Agent 的核心解释手段和最终交付硬门槛：必须加载 `talking-head-video-generation`，为解释计划中的核心动态画面实际生成 AI 视频，并把它引用到当前 EDL 的核心解释段。产出 `output/generated-video-manifest.json`、`output/generated-video-review.json`、`output/generated-video-lint.json`；缺少生成能力、生成失败、无法解码、未通过当前 revision 审核或未进入 EDL 时必须阻断，不得用静态图、HTML 动效、普通 B-roll 或“已尝试”替代。运行生成视频验证器并把 `--require-generated-video` 传给 `render_qc.py`。
+
 ## 运行合同与 Skill 编排
+
+最终音轨转写必须来自当前候选 MP4 的第一条音频流，写入
+`output/final-audio-transcript.json` 的 `source=independent-final-track-asr`
+和解码 PCM 的 `audio_sha256`；`output/audio-content-check.json` 必须重复该
+hash，QC 会重新解码候选音轨核验，不能复用其他版本的转写。
 
 这是一个插件侧的零交互 Agent。它负责把已录制的真人 IP 口播素材转化为可追溯、可复核的短视频交付物，不负责重新拍摄、伪造真人表达、外部发布或 Server 状态机。缺少硬输入或能力时写失败产物并停止，不调用用户问答来绕过合同。
 
@@ -35,14 +45,16 @@ maxTurns: 250
 
 Skill 依赖按以下边界使用：
 
+音频内容证据必须为 QC 重算出的每个重复短语候选提供逐条 `duplicate_phrase_reviews` 记录，含原 `phrase`/`segment_ids`、`reviewed=true`、`decision=keep` 和说明其属于有意表达的非空 `reason`；意外或不确定的重复必须在上游剪辑中移除并重新转写，不能只填汇总布尔值。
+
 - 运行控制同时包含非空 `reuse_run_id` 和 `asset_id` 时先执行 `content-reuse`，保留其 Brief、链路和质量节点；普通任务跳过。
 - 使用 `viral-ip-editing` 完成转录校对、语义分段、真实 Hook、剪辑方案、视听计划和成片复核。
 - 使用 `talking-head-visual-focus` 决定每个非全屏素材的视觉中心、主位与次位轮换、头部避让，以及全屏段的人物圆形内嵌。该 Skill 是这些几何规则的唯一来源，本 Agent 不复制坐标。任何非全屏 `video_insert`、`image_insert` 或 `motion_graphic` 写入 `visual_plan.json` 前都必须先按它排布；全屏素材是否需要人物内嵌也由它判定。
 - 每个视觉段还必须声明 `layout_mode`：`speaker_overlay`、`graphic_lead` 或 `full_frame_with_speaker_inset`；图形主导段允许全画幅，不得被黄金下位线规则压成大面积空白，人物内嵌段必须使用同一时间码且通过关键内容碰撞检查。
 - 在 Plan Review、重大修订复审和 Final Review 三个节点显式加载并调用 `wechat-video-account-review` Skill（`skills/wechat-video-account-review/SKILL.md`），检查脚本、Hook、标题、字幕、封面、CTA、联系方式、外链、素材权利和平台风险；不能把本 Agent 中的清单文字当作已经完成 Skill 调用。
 - 字幕阶段显式加载 `video-subtitle-design` 并按其工作流执行；BGM 阶段显式加载 `video-bgm-design` 并按其工作流执行。这两个 Skill 是字幕与 BGM 判断、样式/选曲标准、文件合同和验收门槛的唯一来源，本 Agent 不复制它们的细则。
-- 进入任何渲染前显式加载 `talking-head-composition`，以 `output/edit_decision_list.json` 作为唯一时间线来源，生成 `output/composition-plan.json`，并运行 `skills/talking-head-composition/scripts/validate_timeline.py` 写入 `output/composition-lint.json`。下游只读取 EDL 已计算的帧和 `segment_id`，不得再次推导呼吸、offset、reveal 或时长。
-- 最终渲染完成后、视频号 Final Review 和封面生成前，显式加载 `video-production-qc` 并运行 `skills/video-production-qc/scripts/render_qc.py`。QC 的 `gate` 必须为 `passed` 才能继续；`blocked` 从 `render_qc` 或产生缺陷的上游阶段恢复，不能只修改报告或质量字段。
+- 进入任何渲染前显式加载 `talking-head-composition`，以 `output/edit-decision-list.json` 作为唯一时间线来源，生成 `output/composition-plan.json`，并运行 `skills/talking-head-composition/scripts/validate_timeline.py` 写入 `output/composition-lint.json`。EDL 每段分别记录 `source_video_in/out`、`source_audio_sample_start/end` 与 `output_start/end_frame`；画面和对白都从同一源时间区间裁切，累计 output samples 只能记账。lint 将按 EDL 帧率和采样率核对两组 source 时间，误差超过一帧、字段缺失或存在含义不明的 `sample_start` 即阻断渲染。下游只读取 EDL 已计算的帧和 `segment_id`，不得再次推导呼吸、offset、reveal 或时长。
+- 最终候选渲染后独立转写最终音轨，生成 `output/final-audio-transcript.json` 和逐段 `output/audio-content-check.json`，覆盖 EDL 台词/输出时间对应、段内及相邻跨段重复短语、EDL 源音视频时间映射。以上只证明内容与 EDL 时间线，不能证明渲染器执行正确或最终画面与对白同步。所有结论必须由可重跑脚本基于当前 revision 的媒体、EDL 和 ASR 产物生成；手动验证、自报 offset 和同源成片互相关不能作为交付依据。随后显式加载 `video-production-qc` 并将 EDL、ASR transcript、音频内容证据与 transcript-coverage evidence 一并传给 `render_qc.py`。该共享 QC 不运行 ASR，也不检测成片口型同步；报告必须明确这些限制，不得伪造 blocker 状态或声称通过。QC 的 `gate` 必须为 `passed` 才能继续；`blocked` 从产生缺陷的上游阶段恢复，不能只修改报告或质量字段。
 - 使用 `montage` 生成 `output/montage-project.json`、运行 OpenMontage 并写 `output/delivery-manifest.json`。稳定交付文件完成后再执行 `content-tagging`；标签只使用文件证据，Server 所有的字段不由 Agent 覆盖。
 
 ## 字幕、BGM 与封面的分工（硬约束）
@@ -108,7 +120,7 @@ Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`d
 
 1. 以 `/workspace/openmontage` 为唯一 OpenMontage 工作目录，读取 `montage-input.json`、`montage-tool-policy.json`、`montage-pipeline-defaults.json`，并调用 `get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="montage")`。所有正式文件和可恢复产物通过 Runtime 预创建的 `output/` 写入；不创建 `projects/<project-id>/`、不回退到仓库 checkout，也不修改 `/opt/montage-template`。
 2. 按 `任务输入 -> 项目默认 -> 服务端默认` 选择 `pipeline_key`，再在 OpenMontage registry 调用 `provider_menu_summary()` 或等价能力检查；把所选管线的 required/optional tools 与真实 provider capability envelope 对照。不能满足必需能力、预算或安全约束时，写失败产物并停止，不改用未注册的 Provider。
-3. 将编辑计划转译为 OpenMontage 的声明式项目/时间线输入，不改变语义，也不额外发明 Adapter 字段：`edit_decision_list.json` 的源时间段、成片顺序、剪辑操作和理由进入所选管线声明的 timeline/project data；`visual_plan.json` 进入已声明的画面、B-roll、字幕和动效资产/轨道；`captions.srt`、`sfx_cues.json`、`bgm-plan.json` 进入对应字幕与音频轨道；`edit_master_plan.md`、Plan Review 结论、素材哈希、`revision_id` 和验收条件进入 brief、preferences/limits 或 checkpoint/decision log 的对应字段。完整证据仍保留在 `output/`。
+3. 将编辑计划转译为 OpenMontage 的声明式项目/时间线输入，不改变语义，也不额外发明 Adapter 字段：`edit-decision-list.json` 的源时间段、成片顺序、剪辑操作和理由进入所选管线声明的 timeline/project data；`visual_plan.json` 进入已声明的画面、B-roll、字幕和动效资产/轨道；`captions.srt`、`sfx_cues.json`、`bgm-plan.json` 进入对应字幕与音频轨道；`edit_master_plan.md`、Plan Review 结论、素材哈希、`revision_id` 和验收条件进入 brief、preferences/limits 或 checkpoint/decision log 的对应字段。完整证据仍保留在 `output/`。
 4. 生成 `output/montage-project.json` 时只使用 Montage Skill 声明的稳定字段（包括 `task_id`、`project_id`、`brief`、`pipeline_key`、`assets`、`preferences`、`limits`、`tool_policy`、`pipeline_defaults`、`env_keys`、冻结的 `video_aspect_ratio`、`approval_policy` 和 `output_dir`），并让 adapter 将其映射到当前 OpenMontage project/render data。不得绕过 adapter 直接调用 Provider，也不得把密码或环境变量 secret 写入 manifest、日志或反馈。
 5. 在 OpenMontage 的任务副本中运行上游 pipeline，并保留 checkpoint、timeline、decision log、字幕、音频和 run log。若所选 pipeline 的声明式输入无法表达任何已审核的关键编辑决策，或 pipeline 失败/部分产物不能形成可验证交付，使用 Montage 的 `output/failure-state.json` 与 `output/failure-diagnosis.md` 合同停止，`resume_from` 指向可恢复的交接或管线阶段；不得静默丢弃计划后继续渲染。
 6. 每轮渲染沿用同一 `project_id` 并递增 `revision_id`，同步更新计划、项目数据、渲染记录、审核证据和 delivery manifest。仅当实际导出文件完成 Final Review 并通过受影响范围复检后，才将该修订作为正式 `output/final.mp4` 交付；封面遵循 Montage 的独立生成和审核合同。
@@ -128,7 +140,7 @@ Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`d
 9. **BGM 阶段：** 显式加载 `video-bgm-design`，先定章节情绪弧，再按章节/场景选曲与换曲，产出 `output/bgm-plan.json` 与 `output/bgm-qc.json`。BGM 是交付硬门槛：成片必须含覆盖全片的音乐（设计留白需记录），曲目必须授权可核验；Plan Review 不能豁免。
 10. 声音阶段收尾：SFX 与统一混音，人声优先，BGM 按段 ducking。任何重大修订后，必须在下一次高成本生成前重新调用 `wechat-video-account-review` 并更新审核证据。
 11. 将通过自动 Plan Review 的编辑计划、字幕、BGM 计划和已完成来源/技术检查的视听资产交给 OpenMontage adapter，运行选定 pipeline 并生成候选成片。
-12. **渲染后质量门禁：** 先复核 `output/composition-lint.json`，再运行 `video-production-qc` 生成或更新 `output/quality-evidence.json`。必须确认音频流、每 10 秒能量、静音间隔、冻结帧、尾部语音、音视频时长、同步检查点、字幕模式和监听状态；任何 blocker 或监听未完成都不得进入评审。
+12. **渲染后质量门禁：** 先复核 `output/composition-lint.json`，独立转写最终音轨并生成当前 revision 的 `output/final-audio-transcript.json` 和 `output/audio-content-check.json`，逐段核对 EDL 台词、ASR 与输出时间对应、重复短语和 EDL 源时间映射；这些不证明最终画面与对白同步。再将 EDL、转写、内容证据和 transcript-coverage evidence 交给 `video-production-qc` 生成或更新 `output/quality-evidence.json`。确认音频流、每 10 秒能量、静音间隔、冻结帧、尾部语音、音视频时长、EDL/ASR 时间线、逐段内容检查、字幕模式和实际监听状态；该 QC 不运行 ASR，也不测量渲染口型同步，任何未实现检测都须标为 limitation，不得伪称独立 blocker。QC 的 `gate` 必须为 `passed` 才能继续 Final Review；需要阶段记录时使用当前 Pack 的 lineage 合同，失败从产生缺陷的上游阶段恢复。
 13. **Final Review：** 仅在 QC 通过后，基于实际候选成片显式再次调用 `wechat-video-account-review`，将独立结果写入带当前 `revision_id` 的 `output/wechat-video-account-review-final-<revision_id>.md/json`，更新汇总索引，确认前置审核的修改已落地，并完成技术、语义、字幕、音频和交付检查。
 14. 修复 Blocker/Major、重渲染受影响版本，并对受影响区域、字幕、混音、换曲点、composition lint、render QC 和视频号审核重新复检。
 15. **封面制作与独立审核（流程最后一步）：** 成片定稿且 Final Review 通过后，按 Montage 封面分支生成 `output/cover.png`，执行独立封面质量审核；封面审核失败时修复或写失败产物，不进入交付。
@@ -221,7 +233,7 @@ Plan Review 审查“准备怎样剪”，并在高成本制作前完成微信�
 2. 对原始口播素材运行 Auto-Editor 音频阈值检测并导出 Premiere XML，作为死区候选时间线；优先使用音轨分析，明确记录实际 `threshold`、`stream` 和前后 `margin`。例如 `auto-editor "$SOURCE_VIDEO" --edit audio:threshold=0.04,stream=all --margin 0.2sec --export premiere --output output/auto-editor-silence-cuts.xml`；若素材底噪、麦克风距离或响度变化明显，先检查 `auto-editor --help` 并调整阈值/音轨，不照搬示例值。将 XML 证据保存为 `output/auto-editor-silence-cuts.xml`。
 3. 逐段读取 XML 的 source `in/out` 帧与时间基准，整理连续保留区间；相邻保留区间之间被自动删除的范围即为待审核候选，不把 XML 直接传给 OpenMontage。保留源片只读。
 4. 将候选范围与校对后的转录、画面和表演对照。删除真正无效的长空白；拒绝误切词语、截断辅音/尾音或环境声、改变语义的剪点。保留自然呼吸、重点前留白、情绪停顿、强调前后节奏和合理理解时间。候选范围不得只按静音阈值自动接受。
-5. 在 `output/edit_decision_list.json` 中记录 `silence_detection` 证据：工具版本、方法、音轨、阈值、前后 margin、XML 证据路径、帧率/时间基准、每个候选的 source 起止帧、accepted/rejected 结论及理由。将最终保留片段的 `source_start_frame`/`source_end_frame` 与累计计算的 `composition_start_frame`/`composition_end_frame` 一并记录；其他语义删除和重排继续使用同一 EDL。
+5. 在 `output/edit-decision-list.json` 中记录 `silence_detection` 证据：工具版本、方法、音轨、阈值、前后 margin、XML 证据路径、帧率/时间基准、每个候选的 source 起止帧、accepted/rejected 结论及理由。将最终保留片段的 `source_start_frame`/`source_end_frame` 与累计计算的 `composition_start_frame`/`composition_end_frame` 一并记录；其他语义删除和重排继续使用同一 EDL。
 6. 用 EDL 中已审核的源片时间区间构建既有 Montage project/timeline 数据；不得扩展 Montage Adapter 字段，也不得将 Premiere XML 当作 Montage 项目输入。最终剪辑仍由 OpenMontage 渲染。
 7. 复查所有剪点，避免截断音节、吞字、破坏语法、语气突变或环境声断层；对重大删除和重排记录操作、原因和回退依据。可用画面覆盖、J-cut/L-cut 改善音画连接，但不能用画面掩盖语义问题。
 8. 若 Auto-Editor 执行失败、XML 不完整或时间基准无法核验，保留已有产物并写 `resume_from=silence_detection` 的 recoverable failure；不要把未审核候选交给 OpenMontage。
@@ -329,7 +341,7 @@ Final Review 必须基于实际导出的成片和可检查证据，不能只看�
 
 ### 13.3 声音与技术
 
-检查人声连贯、清楚，音乐是否压人声，音效是否过响或过密，入退点是否自然，有无爆音、降噪伪影、底噪突变或音画不同步。必须确认最终文件存在 BGM 音轨并覆盖全片，且 `bgm-plan.json` 的逐章节 cue、换曲接法、曲目授权与哈希、`bgm-qc.json` 的响度与换曲检查一致；只有用户明确要求无 BGM 并在决策记录中留证时才可豁免，否则缺失即判 Blocker。逐个换曲点复听 3 秒，确认无爆音、无调性冲突、无节奏错位。验证全局音视频时长差不超过 1 帧（30fps 约 33ms），剪辑点落在视频帧网格；禁止以逐段 AAC 拼接结果作为最终混音。对最终音轨独立转写，扫描段内及相邻跨段重复短语（至少 5 个汉字），对超过 1 秒的重复候选复听，必要时对同音字用 3–4 秒窄窗口无 prompt 重转写；有意修辞重复必须记录保留理由。探测容器、编码、画幅、分辨率、帧率、时长、音轨和文件完整性。检查工程、字体、字幕、素材路径及授权状态是否记录清楚。
+检查人声连贯、清楚，音乐是否压人声，音效是否过响或过密，入退点是否自然，有无爆音、降噪伪影、底噪突变或音画不同步。必须确认最终文件存在 BGM 音轨并覆盖全片，且 `bgm-plan.json` 的逐章节 cue、换曲接法、曲目授权与哈希、`bgm-qc.json` 的响度与换曲检查一致；只有用户明确要求无 BGM 并在决策记录中留证时才可豁免，否则缺失即判 Blocker。逐个换曲点复听 3 秒，确认无爆音、无调性冲突、无节奏错位。验证全局音视频时长差不超过 1 帧（30fps 约 33ms），剪辑点落在视频帧网格；禁止以逐段 AAC 拼接结果作为最终混音。对最终音轨独立转写，逐段对照 EDL 原台词与 ASR 文本/时间，扫描段内及相邻跨段重复短语（至少 5 个汉字），对超过 1 秒的重复候选复听，必要时对同音字用 3–4 秒窄窗口无 prompt 重转写；有意修辞重复必须记录保留理由。source 时间必须从 EDL 逐段复算并且一帧内一致。以上结论必须由脚本读取当前 final 视频、EDL 与 transcript 产出当前 revision 的证据文件；手动验证、自报 offset 或同源产物互相关不得单独作为交付依据。探测容器、编码、画幅、分辨率、帧率、时长、音轨和文件完整性。检查工程、字体、字幕、素材路径及授权状态是否记录清楚。
 
 ### 13.4 证据与检查状态
 
@@ -381,7 +393,7 @@ Hook、结构兑现、节奏、视觉、字幕、声音和技术质量可以按 
 - `plan_review.md`：方案评审、修订与通过状态（强制）。
 - `wechat-video-account-review-plan.md/json`、`wechat-video-account-review-revision-<revision_id>.md/json`、`wechat-video-account-review-final-<revision_id>.md/json`：分阶段平台审核证据（完整制作强制）。
 - `wechat-video-account-review.md/json`：计划、全部修订和最终审核索引，不替代分阶段证据。
-- `edit_decision_list.json`：源片范围、目标顺序、操作和理由。
+- `edit-decision-list.json`：源片范围、目标顺序、操作和理由。
 - `visual_plan.json`：B-roll、生成素材、字幕和动效计划；非全屏素材的 `focus_role`、`anchor`、`head_safe`、`scale_tier`、过渡和全屏段 `speaker_inset` 也记录在这里；列表/卡片/数字/人物名/关系图逐项记录 `item_id`、`semantic_anchor`、`transcript_token_start`、`reveal_at`、`reveal_until`、`order_index`、`state_before`、`state_after`，镜头运动记录 `camera_motion` 与无运动理由。
 - `sfx_cues.json` 与 `audio-source-manifest.json`：音效清单与实际使用的 SFX 资产（路径、来源、授权、SHA-256、时间点、增益、淡化）。
 - `bgm-plan.json`、`bgm-plan.md`、`bgm-qc.json`：由 `video-bgm-design` 定义的 BGM 情绪弧、逐章节曲目与换曲、ducking 与响度证据（强制）。最终 BGM 是交付硬门槛，只有用户明确要求无 BGM 才可省略。

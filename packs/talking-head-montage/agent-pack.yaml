@@ -9,7 +9,7 @@ agent:
   name: talking-head-montage
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [talking-head-composition, talking-head-sound-design, content-tagging, short-video-cover, talking-head-visual-focus, talking-head-explainer, video-bgm-design, video-production-qc, video-subtitle-design]
+  skills: [talking-head-video-generation, talking-head-composition, talking-head-sound-design, content-tagging, short-video-cover, talking-head-visual-focus, talking-head-explainer, video-bgm-design, video-production-qc, video-subtitle-design]
   max_turns: 260
 runtime:
   profile: talking-head-montage
@@ -37,6 +37,7 @@ artifacts:
   - {role: asset_source_policy, path: output/asset-source-policy.json, mime_type: application/json, required: true}
   - {role: generated_video_manifest, path: output/generated-video-manifest.json, mime_type: application/json, required: true}
   - {role: generated_video_review, path: output/generated-video-review.json, mime_type: application/json, required: true}
+  - {role: generated_video_lint, path: output/generated-video-lint.json, mime_type: application/json, required: true}
   - {role: asset_source_manifest, path: output/asset-source-manifest.json, mime_type: application/json, required: true}
   - {role: visual_plan, path: output/visual-plan.json, mime_type: application/json, required: true}
   - {role: asset_ledger, path: output/asset-ledger.json, mime_type: application/json, required: true}
@@ -51,6 +52,7 @@ artifacts:
   - {role: caption_qc, path: output/caption-qc.json, mime_type: application/json, required: true}
   - {role: final_picture, path: output/final-picture.mp4, mime_type: video/mp4, required: true}
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
+  - {role: final_audio_transcript, path: output/final-audio-transcript.json, mime_type: application/json, required: true}
   - {role: sfx_cues, path: output/sfx-cues.json, mime_type: application/json, required: true}
   - {role: bgm_plan, path: output/bgm-plan.json, mime_type: application/json, required: true}
   - {role: bgm_plan_md, path: output/bgm-plan.md, mime_type: text/markdown, required: true}
@@ -60,6 +62,7 @@ artifacts:
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}
   - {role: sync_evidence, path: output/sync-evidence.json, mime_type: application/json, required: true}
+  - {role: audio_content_check, path: output/audio-content-check.json, mime_type: application/json, required: true}
   - {role: cover_reference_input, path: output/input-manifest.md, mime_type: text/markdown, required: false}
   - {role: cover_reference_image, path: output/reference-cover.png, mime_type: image/png, required: false}
   - {role: cover_reference_compressed_image, path: output/reference-cover-compressed.png, mime_type: image/png, required: false}
@@ -73,7 +76,7 @@ artifacts:
   - {role: review_decision, path: output/review-decision.json, mime_type: application/json, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
-  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: true}
 artifact_stages:
   - id: motion_review
     trigger: output/motion-sample.mp4
@@ -88,6 +91,7 @@ artifact_stages:
       - output/asset-source-policy.json
       - output/generated-video-manifest.json
       - output/generated-video-review.json
+      - output/generated-video-lint.json
       - output/asset-source-manifest.json
       - output/asset-ledger.json
       - output/visual-plan.json
@@ -99,6 +103,17 @@ artifact_stages:
   - id: final_delivery
     trigger: output/final.mp4
     terminal: true
+    required:
+      - output/edit-decision-list.json
+      - output/composition-lint.json
+      - output/final-audio-transcript.json
+      - output/audio-content-check.json
+      - output/sync-evidence.json
+      - output/quality-evidence.json
+      - output/generated-video-manifest.json
+      - output/generated-video-review.json
+      - output/generated-video-lint.json
+      - output/progress-state.json
   - id: explainer_preflight
     trigger: output/explainer-input-assessment.json
     required:
@@ -122,6 +137,7 @@ delivery:
   - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json}
   - {role: retention_results, path: output/retention-results.json, mime_type: application/json}
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
+  - {role: final_audio_transcript, path: output/final-audio-transcript.json, mime_type: application/json}
   - {role: final_picture, path: output/final-picture.mp4, mime_type: video/mp4}
   - {role: sfx_cues, path: output/sfx-cues.json, mime_type: application/json}
   - {role: bgm_plan, path: output/bgm-plan.json, mime_type: application/json}
@@ -138,5 +154,12 @@ delivery:
   - {role: content_tags, path: output/content-tags.json, mime_type: application/json}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json}
+  - {role: edit_decision_list, path: output/edit-decision-list.json, mime_type: application/json}
+  - {role: generated_video_manifest, path: output/generated-video-manifest.json, mime_type: application/json}
+  - {role: generated_video_review, path: output/generated-video-review.json, mime_type: application/json}
+  - {role: generated_video_lint, path: output/generated-video-lint.json, mime_type: application/json}
+  - {role: sync_evidence, path: output/sync-evidence.json, mime_type: application/json}
+  - {role: audio_content_check, path: output/audio-content-check.json, mime_type: application/json}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json}
 ui:
   renderer: custom:talking-head-montage

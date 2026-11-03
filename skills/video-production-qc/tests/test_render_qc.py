@@ -15,19 +15,261 @@ spec.loader.exec_module(render_qc)
 
 
 class RenderQcTests(unittest.TestCase):
-    def test_sync_evidence_requires_checkpoints(self):
+    def test_generated_video_gate_blocks_when_required_inputs_are_missing(self):
+        check = render_qc.generated_video_check(None, None, "rev-1", Path.cwd())
+        self.assertEqual(check.status, "blocked")
+        self.assertEqual(check.check_id, "generated_video_adoption")
+
+    def test_stage_lineage_recomputes_order_revision_and_current_hashes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "output" / "final.mp4"
+            artifact.parent.mkdir()
+            artifact.write_bytes(b"current render")
+            digest = render_qc.file_sha256(artifact)
+            event = {
+                "event_index": 1,
+                "stage": "final_render",
+                "revision_id": "rev-1",
+                "started_at": "2026-11-03T10:00:00Z",
+                "completed_at": "2026-11-03T10:01:00Z",
+                "outputs": [{"path": "output/final.mp4", "sha256": digest, "revision_id": "rev-1", "created_at_stage": "final_render"}],
+            }
+            state = {"schema_version": "1.0", "source": "talking-head-montage", "revision_id": "rev-1", "events": [event]}
+            valid = render_qc.stage_lineage_check_value(state, root, "rev-1", ["output/final.mp4"])
+            self.assertEqual(valid["gate"], "passed")
+            artifact.write_bytes(b"changed after evidence")
+            stale = render_qc.stage_lineage_check_value(state, root, "rev-1", ["output/final.mp4"])
+            self.assertEqual(stale["gate"], "blocked")
+
+    def test_transcript_timing_evidence_requires_checkpoints(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sync.json"
             path.write_text(json.dumps({"checkpoints": []}))
-            checks = render_qc.sync_checks(Path("video.mp4"), path, 1 / 30)
+            checks = render_qc.transcript_timing_checks(Path("video.mp4"), path, revision_id="rev-1")
             self.assertEqual(checks[0].status, "blocked")
 
-    def test_sync_evidence_blocks_jitter_over_one_frame(self):
+    def test_transcript_coverage_is_recomputed_from_edl_and_asr(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sync.json"
-            path.write_text(json.dumps({"checkpoints": [{"offset_ms": 0}, {"offset_ms": 40}]}))
-            checks = render_qc.sync_checks(Path("video.mp4"), path, 1 / 30)
-            self.assertEqual(checks[1].status, "blocked")
+            video = Path(directory) / "video.mp4"
+            edl = Path(directory) / "edl.json"
+            transcript = Path(directory) / "asr.json"
+            video.write_bytes(b"video")
+            edl.write_text(json.dumps({"fps": 30, "sample_rate": 48000, "segments": [{
+                "segment_id": "s1", "source_video_in": 0, "source_video_out": 2,
+                "source_audio_sample_start": 0, "source_audio_sample_end": 96000,
+                "output_start_frame": 0, "output_end_frame": 60,
+            }]}))
+            transcript.write_text(json.dumps({"segments": [{"segment_id": "s1", "text": "hello", "start_time": 0.12, "end_time": 1.94}]}))
+            original_audio_hash = render_qc.audio_track_sha256
+            render_qc.audio_track_sha256 = lambda _: "audio-hash"
+            transcript_data = json.loads(transcript.read_text())
+            transcript_data.update({"schema_version": "1.0", "source": "independent-final-track-asr", "audio_sha256": "audio-hash"})
+            transcript.write_text(json.dumps(transcript_data))
+            path.write_text(json.dumps({
+                "schema_version": "1.0",
+                "source": "video-production-qc",
+                "method": "edl-transcript-coverage",
+                "revision_id": "rev-1",
+                "video_sha256": render_qc.file_sha256(video),
+                "edl_sha256": render_qc.file_sha256(edl),
+                "transcript_sha256": render_qc.file_sha256(transcript),
+                "audio_sha256": "audio-hash",
+                "segments": [{"segment_id": "s1", "output_start_frame": 0, "output_end_frame": 60, "asr_start_time": 0.12, "asr_end_time": 1.94}],
+            }))
+            checks = render_qc.transcript_timing_checks(video, path, revision_id="rev-1", edl_path=edl, transcript_path=transcript)
+            self.assertEqual(checks[0].status, "passed")
+            self.assertIn("within its assigned EDL output interval", checks[0].threshold)
+            render_qc.audio_track_sha256 = original_audio_hash
+
+    def test_transcript_interval_outside_edl_blocks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video, edl, transcript, evidence = (root / name for name in ("video.mp4", "edl.json", "asr.json", "sync.json"))
+            video.write_bytes(b"video")
+            edl.write_text(json.dumps({"fps": 30, "segments": [{"segment_id": "s1", "output_start_frame": 0, "output_end_frame": 30}]}))
+            transcript.write_text(json.dumps({"schema_version": "1.0", "source": "independent-final-track-asr", "audio_sha256": "audio-hash", "segments": [{"segment_id": "s1", "text": "hello", "start_time": 0.2, "end_time": 1.2}]}))
+            original_audio_hash = render_qc.audio_track_sha256
+            render_qc.audio_track_sha256 = lambda _: "audio-hash"
+            evidence.write_text(json.dumps({
+                "schema_version": "1.0", "source": "video-production-qc", "method": "edl-transcript-coverage", "revision_id": "rev-1",
+                "video_sha256": render_qc.file_sha256(video), "edl_sha256": render_qc.file_sha256(edl), "transcript_sha256": render_qc.file_sha256(transcript), "audio_sha256": "audio-hash",
+                "segments": [{"segment_id": "s1", "output_start_frame": 0, "output_end_frame": 30, "asr_start_time": 0.2, "asr_end_time": 1.2}],
+            }))
+            try:
+                checks = render_qc.transcript_timing_checks(video, evidence, revision_id="rev-1", edl_path=edl, transcript_path=transcript)
+            finally:
+                render_qc.audio_track_sha256 = original_audio_hash
+            self.assertEqual(checks[0].status, "blocked")
+
+    def test_transcript_timing_evidence_rejects_unattributed_all_zero_offsets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sync.json"
+            path.write_text(json.dumps({
+                "schema_version": "1.0",
+                "source": "manual",
+                "revision_id": "rev-1",
+                "checkpoints": [{"segment_id": "s1", "offset_ms": 0}, {"segment_id": "s1", "offset_ms": 0}],
+            }))
+            checks = render_qc.transcript_timing_checks(Path("video.mp4"), path, revision_id="rev-1")
+            self.assertEqual(checks[0].status, "blocked")
+
+    def test_transcript_timing_rejects_non_monotonic_asr_times(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video, edl, transcript, evidence = (root / name for name in ("video.mp4", "edl.json", "asr.json", "sync.json"))
+            video.write_bytes(b"video")
+            edl.write_text(json.dumps({"fps": 30, "sample_rate": 48000, "segments": [{
+                "segment_id": "s1", "output_start_frame": 0, "output_end_frame": 30,
+            }]}))
+            transcript.write_text(json.dumps({"schema_version": "1.0", "source": "independent-final-track-asr", "audio_sha256": "audio-hash", "segments": [{
+                "segment_id": "s1", "start_time": 1.0, "end_time": 0.5,
+            }]}))
+            original_audio_hash = render_qc.audio_track_sha256
+            render_qc.audio_track_sha256 = lambda _: "audio-hash"
+            evidence.write_text(json.dumps({
+                "schema_version": "1.0", "source": "video-production-qc", "method": "edl-source-time-audit", "revision_id": "rev-1",
+                "video_sha256": render_qc.file_sha256(video), "edl_sha256": render_qc.file_sha256(edl), "transcript_sha256": render_qc.file_sha256(transcript), "audio_sha256": "audio-hash",
+                "checkpoints": [],
+            }))
+            try:
+                checks = render_qc.transcript_timing_checks(video, evidence, revision_id="rev-1", edl_path=edl, transcript_path=transcript)
+            finally:
+                render_qc.audio_track_sha256 = original_audio_hash
+            self.assertEqual(checks[0].status, "blocked")
+
+    def test_audio_content_check_requires_all_three_verifications(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "audio-content-check.json"
+            path.write_text(json.dumps({
+                "schema_version": "1.0",
+                "source": "video-production-qc",
+                "revision_id": "rev-1",
+                "method": "independent-asr-script",
+                "inputs": {"video": "output/final.mp4", "edl": "output/edit-decision-list.json"},
+                "segments": [{"segment_id": "s1", "dialogue_match": True, "duplicate_phrase_check": True}],
+            }))
+            checks = render_qc.audio_content_checks(path, revision_id="rev-1")
+            self.assertEqual(checks[0].status, "blocked")
+
+    def test_audio_content_check_blocks_stale_revision(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "audio-content-check.json"
+            path.write_text(json.dumps({
+                "schema_version": "1.0",
+                "source": "video-production-qc",
+                "revision_id": "rev-old",
+                "method": "independent-asr-script",
+                "inputs": {"video": "output/final.mp4", "edl": "output/edit-decision-list.json"},
+                "segments": [{"segment_id": "s1", "dialogue_match": True, "duplicate_phrase_check": True, "source_time_alignment": True}],
+            }))
+            checks = render_qc.audio_content_checks(path, revision_id="rev-1")
+            self.assertEqual(checks[0].status, "blocked")
+
+    def test_audio_content_check_recomputes_dialogue_and_source_alignment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "final.mp4"
+            edl_path = root / "edl.json"
+            transcript_path = root / "asr.json"
+            evidence_path = root / "audio-content-check.json"
+            video.write_bytes(b"candidate")
+            edl = {"fps": 30, "sample_rate": 48000, "segments": [{
+                "segment_id": "s1", "dialogue": "你好世界", "source_video_in": 2.0,
+                "source_video_out": 3.0, "source_audio_sample_start": 96000,
+                "source_audio_sample_end": 144000,
+                "output_start_frame": 0, "output_end_frame": 30,
+            }]}
+            transcript = {"segments": [{"segment_id": "s1", "text": "你好世界", "start_time": 0.0, "end_time": 1.0}]}
+            original_audio_hash = render_qc.audio_track_sha256
+            render_qc.audio_track_sha256 = lambda _: "audio-hash"
+            edl_path.write_text(json.dumps(edl))
+            transcript.update({"schema_version": "1.0", "source": "independent-final-track-asr", "audio_sha256": "audio-hash"})
+            transcript_path.write_text(json.dumps(transcript))
+            evidence_path.write_text(json.dumps({
+                "schema_version": "1.0", "source": "video-production-qc",
+                "method": "independent-asr-script", "revision_id": "rev-1",
+                "video_sha256": render_qc.file_sha256(video),
+                "edl_sha256": render_qc.file_sha256(edl_path),
+                "transcript_sha256": render_qc.file_sha256(transcript_path),
+                "audio_sha256": "audio-hash",
+                "asr_source": "final-audio-track",
+                "duplicate_phrase_candidates": [],
+                "duplicate_phrase_reviews": [],
+                "segments": [{
+                    "segment_id": "s1", "expected_dialogue": "你好世界", "asr_text": "你好世界",
+                    "dialogue_match": True, "duplicate_phrase_check": True,
+                    "duplicate_phrase_candidates": [],
+                    "source_time_alignment": True, "asr_evidence_path": transcript_path.as_posix(),
+                }],
+            }))
+            checks = render_qc.audio_content_checks(evidence_path, "rev-1", video, edl_path, transcript_path)
+            self.assertEqual(checks[0].status, "passed")
+
+            edl["segments"][0]["source_audio_sample_start"] = 0
+            edl_path.write_text(json.dumps(edl))
+            checks = render_qc.audio_content_checks(evidence_path, "rev-1", video, edl_path, transcript_path)
+            self.assertEqual(checks[0].status, "blocked")
+            render_qc.audio_track_sha256 = original_audio_hash
+
+    def test_audio_content_check_blocks_false_duplicate_review(self):
+        repeated_text = "这是一个完整重复短语这是一个完整重复短语"
+        repeated = render_qc.repeated_phrases([repeated_text], segment_ids=["s1"])
+        self.assertNotEqual(repeated, [])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "final.mp4"
+            edl_path = root / "edl.json"
+            transcript_path = root / "asr.json"
+            evidence_path = root / "audio-content-check.json"
+            video.write_bytes(b"candidate")
+            edl = {"fps": 30, "sample_rate": 48000, "segments": [{
+                "segment_id": "s1", "dialogue": repeated_text, "source_video_in": 2.0,
+                "source_video_out": 3.0, "source_audio_sample_start": 96000,
+                "source_audio_sample_end": 144000, "output_start_frame": 0, "output_end_frame": 30,
+            }]}
+            transcript = {"schema_version": "1.0", "source": "independent-final-track-asr", "audio_sha256": "audio-hash", "segments": [{
+                "segment_id": "s1", "text": repeated_text, "start_time": 0.0, "end_time": 1.0,
+            }]}
+            edl_path.write_text(json.dumps(edl))
+            transcript_path.write_text(json.dumps(transcript))
+            original_audio_hash = render_qc.audio_track_sha256
+            render_qc.audio_track_sha256 = lambda _: "audio-hash"
+            base_evidence = {
+                "schema_version": "1.0", "source": "video-production-qc", "method": "independent-asr-script",
+                "revision_id": "rev-1", "video_sha256": render_qc.file_sha256(video),
+                "edl_sha256": render_qc.file_sha256(edl_path), "transcript_sha256": render_qc.file_sha256(transcript_path),
+                "audio_sha256": "audio-hash", "asr_source": "final-audio-track",
+                "duplicate_phrase_candidates": repeated,
+                "segments": [{"segment_id": "s1", "expected_dialogue": repeated_text, "asr_text": repeated_text,
+                              "dialogue_match": True, "duplicate_phrase_check": True,
+                              "duplicate_phrase_candidates": repeated, "source_time_alignment": True,
+                              "asr_evidence_path": transcript_path.as_posix()}],
+            }
+            try:
+                valid_reviews = [{**candidate, "reviewed": True, "decision": "keep", "reason": "intentional repetition"} for candidate in repeated]
+                removed_reviews = [{**candidate, "reviewed": True, "decision": "remove", "reason": "claimed removed"} for candidate in repeated]
+                for reviews, expected_status in (([], "blocked"), (removed_reviews, "blocked"), (valid_reviews, "passed")):
+                    evidence = {**base_evidence, "duplicate_phrase_reviews": reviews}
+                    evidence_path.write_text(json.dumps(evidence))
+                    checks = render_qc.audio_content_checks(evidence_path, "rev-1", video, edl_path, transcript_path)
+                    self.assertEqual(checks[0].status, expected_status)
+            finally:
+                render_qc.audio_track_sha256 = original_audio_hash
+
+    def test_audio_content_check_rejects_duplicate_segment_ids(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video, edl_path, transcript_path, evidence_path = (root / name for name in ("final.mp4", "edl.json", "asr.json", "check.json"))
+            video.write_bytes(b"candidate")
+            edl_path.write_text(json.dumps({"fps": 30, "sample_rate": 48000, "segments": [
+                {"segment_id": "s1"}, {"segment_id": "s1"},
+            ]}))
+            transcript_path.write_text(json.dumps({"segments": []}))
+            evidence_path.write_text(json.dumps({"segments": []}))
+            checks = render_qc.audio_content_checks(evidence_path, "rev-1", video, edl_path, transcript_path)
+            self.assertEqual(checks[0].status, "blocked")
 
     def test_missing_streams_are_blockers(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -44,6 +286,7 @@ class RenderQcTests(unittest.TestCase):
                 render_qc.decode_ok = original_decode
             self.assertEqual(report["gate"], "blocked")
             self.assertTrue(any(item["id"] == "audio_stream" and item["status"] == "blocked" for item in report["checks"]))
+            self.assertFalse(any(item["id"] in ("asr_provenance", "rendered_av_sync", "generated_video_render_presence") for item in report["checks"]))
 
 
 if __name__ == "__main__":

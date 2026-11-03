@@ -258,6 +258,16 @@ analyze_image(
 - [ ] `output/cover-prompts.md` 已备份文件名、用途和最终创作 prompt
 - [ ] `output/cover-review.md` 已生成，5 项审计 PASS/MINOR/FAIL 评级
 
+For a person-led IP account, the cover must visibly feature the actual IP owner
+or the on-camera speaker from the final video. Prefer a sharp, well-lit frame
+extracted from the approved final candidate or an authorized identity
+reference. Do not use a generic generated person, an unrelated stock face, or
+an unverified synthetic lookalike as a substitute. Review identity, face
+visibility at thumbnail size, expression, crop, and platform-safe UI areas;
+record the exact frame/reference path and its hash in `cover-quality.json`.
+If no authorized identity reference is available, fail the person-led cover
+gate instead of silently omitting the person.
+
 ### 全部完成后
 
 ## 质量与失败合同

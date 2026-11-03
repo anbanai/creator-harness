@@ -20,6 +20,18 @@ current revision evidence.
 - The Pack-declared edit-decision-list artifact is the only source of
   source-to-composition time mapping. Every visual item references an EDL
   `segment_id`.
+- Every EDL segment separates source media time from output placement. Use
+  `source_video_in`/`source_video_out` and
+  `source_audio_sample_start`/`source_audio_sample_end` for source trimming;
+  `output_start_frame`/`output_end_frame` are composition positions only.
+  Never use output cumulative samples or frames as a source trim position.
+- Dialogue audio and picture for a segment must address the same source time
+  interval. The timeline validator checks sample-to-second conversion against
+  source video in/out with a one-frame tolerance; missing or ambiguous fields
+  block rendering. This proves only that the EDL is internally consistent; it
+  does not prove that the renderer obeyed the EDL. Post-render QC must measure
+  the rendered media independently, and a missing detector is a delivery
+  blocker.
 - The `dialogue_bed` spans frame zero through the master duration. Visual and
   graphic branches may cover picture layers, but cannot conditionally remove
   dialogue audio.

@@ -241,7 +241,7 @@ The minimum editorial evidence for a full production run is:
 - `content_map.md`
 - `edit_master_plan.md`
 - `plan_review.md`
-- `edit_decision_list.json`
+- `edit-decision-list.json`
 - `visual_plan.json` with per-item reveal timing and camera-motion evidence
 - `asset-ledger.json` with reuse distance and composition fingerprints
 - `sfx_cues.json`

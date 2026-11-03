@@ -13,8 +13,9 @@ or `unavailable`; a blocker cannot be offset by an average quality score.
 | `tail_voice_energy` | blocker | Final 0.5 seconds contain voice energy, unless explicitly exempted |
 | `freeze_detect` | blocker | No frozen-frame interval |
 | `duration_delta` | blocker | Audio/video duration difference <= one video frame |
-| `sync_evidence` | blocker | Reference checkpoints are present |
-| `sync_jitter` | blocker | Maximum absolute offset and jitter <= one video frame |
+| `transcript_timing_evidence` | blocker | Current final-track ASR speech intervals map to every dialogue EDL segment and fall inside each output interval within one frame |
+| `audio_content_check` | blocker | Every EDL segment matches independent final-track ASR whose decoded audio hash matches the current candidate, includes repeated-phrase review, and passes recomputed source-time alignment |
+| `generated_video_adoption` | blocker for talking-head Montage | Recomputed generated-video manifest confirms a successfully generated, reviewed, decodable, current-revision asset is adopted by a core EDL explanation segment |
 | `subtitle_stream` | blocker | Matches the declared subtitle mode |
 
 The Pack declares whether the final media contains a subtitle stream. A
@@ -23,6 +24,10 @@ must still provide the Pack's caption QC and timing evidence. A burn-in or
 embedded-caption delivery may use `required` and must add its own ASR timing
 evidence.
 
-`gate=passed` requires all blocker checks to pass and listening status to be
-`complete`. A report with passing measurements but incomplete listening is
-`degraded` and cannot be reported as a fully verified delivery.
+`gate=passed` requires all implemented blocker checks to pass and listening
+status to be `complete`. `sync-evidence.json` contributes recomputed transcript
+coverage only; caller-authored offsets are ignored. This gate does not measure
+rendered lip sync or prove that an EDL-referenced generated shot appears in the
+final render; those claims must not be inferred from this report. A report with
+passing measurements but incomplete listening is `degraded` and cannot be
+reported as a verified delivery.

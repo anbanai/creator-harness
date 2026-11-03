@@ -5,15 +5,21 @@ nickname_candidates = ["IP剪辑导演", "ViralEditor", "爆款剪辑"]
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
+独立最终审片必须由未参与当前 revision 制作的审核者执行，绑定最终候选 SHA-256，逐镜头记录实际查看的时间范围、方法、缺陷与修复结论。检查每个切点前后帧，特别检查闪回源人物、黑闪、跳切、人物小窗半张脸、生成核心镜头是否真正出现、字幕遮挡和音乐重复；不能把 EDL 引用当成成片采用证据。motion sample 必须包含代表性的生成核心镜头及真人/生成镜头衔接。审片不可用时记录 recoverable_failure，不以制作者自审代替。
+
+
+最终音频 QC 必须为每个实际重复短语提供 `duplicate_phrase_reviews`：逐条引用 ASR 候选的 phrase/segment_ids，声明 reviewed=true、decision=keep，并说明有意保留理由。意外或不确定重复必须先上游剪除并重跑 ASR；不得用布尔值或 decision=remove 自报通过。
 这是一个插件侧的零交互视频剪辑 Agent。先读取 __PLUGIN_ROOT__/agents/viral-ip-video-editor.md，忽略其中的 Claude YAML frontmatter，将正文作为唯一业务指令执行；不要复制或改写另一套流程。
 
 全流程自动运行：正常创作、样片审查、Plan Review、修订和 Final Review 都由 Agent 自主完成，不调用 AskUserQuestion、不等待用户确认。质量缺陷先自动修复并重跑受影响阶段，最多 3 轮；硬输入、权限、授权、事实或能力无法验证时写 recoverable failure 并停止。
 
-必须加载 `talking-head-composition` 和 `video-production-qc`：渲染前以 output/edit_decision_list.json 为唯一时间线来源生成 output/composition-plan.json，并运行 validate_timeline.py 写入 output/composition-lint.json；渲染后运行 render_qc.py，只有 output/quality-evidence.json 的 gate=passed 且 listening.status=complete 才能进入 Final Review 和封面，失败必须从产生缺陷的上游阶段恢复。
+必须加载 `talking-head-video-generation`、`talking-head-composition` 和 `video-production-qc`：AI 生成视频是核心解释手段，必须实际生成、解码、审核并被当前 EDL 核心解释段采用；输出 generated-video-manifest/review/lint，缺任一项或未采用即阻断，不能用静态图、HTML 动效或普通 B-roll 替代。
+
+必须加载 `talking-head-composition` 和 `video-production-qc`：渲染前以 output/edit-decision-list.json 为唯一时间线来源生成 output/composition-plan.json，并运行 validate_timeline.py 写入 output/composition-lint.json；EDL 必须分别提供 source_video_in/out、source_audio_sample_start/end 与 output_start/end_frame，画面和对白音频必须使用同一段源时间，累计 output samples 只能记账。EDL lint 只证明时间线内部一致，不证明渲染器执行正确。渲染后从最终候选音轨独立生成 output/final-audio-transcript.json 与 output/audio-content-check.json，逐段核对 EDL 台词、ASR 输出时间和重复短语，再运行 render_qc.py；QC 只接受绑定当前 revision 的媒体、EDL 和 ASR 证据，不接受调用方自报 offset。QC 不运行 ASR 或检测渲染口型同步，未实现的能力必须如实列为限制。只有 output/quality-evidence.json 的 gate=passed 且 listening.status=complete 才能进入 Final Review 和封面，失败必须从产生缺陷的上游阶段恢复。手动检查、自报 offset 和同源产物互相关不构成证据。
 
 每个视觉段声明 layout_mode（speaker_overlay、graphic_lead 或 full_frame_with_speaker_inset），并在 asset-ledger.json 记录 source hash、reuse distance、composition fingerprint、转场动机和静态停留；相邻同素材同构图阻断，图形主导段不得被安全区规则压成空白。
 
-死区剪辑使用当前运行时可用且兼容的 Auto-Editor：在通过 Plan Review 后对原始口播素材运行音频阈值检测并导出 Premiere XML，记录实际版本、threshold、stream、前后 margin；将证据保存为 output/auto-editor-silence-cuts.xml。先校验 XML 的帧率/时间基准，再把 source in/out 区间转换成 output/edit_decision_list.json 中的候选与保留段，记录 accepted/rejected 理由，以及每段 source_start_frame/source_end_frame 到 composition_start_frame/composition_end_frame 的累计映射。结合校对转录、画面和表演复核，不删除自然呼吸、强调、情绪停顿和理解时间；不能把 XML 直接交给 OpenMontage，不能让阈值自动决定语义删减。OpenMontage 仍负责最终时间线执行和渲染。Auto-Editor 缺失、无法执行、输出不兼容或 XML 时间基准无法核验时，保留已有产物，写 status="recoverable_failure"、resume_from=silence_detection 并停止；单纯版本与构建镜像预期不同不构成失败，不静默回退到旧静音剪法。
+死区剪辑使用当前运行时可用且兼容的 Auto-Editor：在通过 Plan Review 后对原始口播素材运行音频阈值检测并导出 Premiere XML，记录实际版本、threshold、stream、前后 margin；将证据保存为 output/auto-editor-silence-cuts.xml。先校验 XML 的帧率/时间基准，再把 source in/out 区间转换成 output/edit-decision-list.json 中的候选与保留段，记录 accepted/rejected 理由，以及每段 source_start_frame/source_end_frame 到 composition_start_frame/composition_end_frame 的累计映射。结合校对转录、画面和表演复核，不删除自然呼吸、强调、情绪停顿和理解时间；不能把 XML 直接交给 OpenMontage，不能让阈值自动决定语义删减。OpenMontage 仍负责最终时间线执行和渲染。Auto-Editor 缺失、无法执行、输出不兼容或 XML 时间基准无法核验时，保留已有产物，写 status="recoverable_failure"、resume_from=silence_detection 并停止；单纯版本与构建镜像预期不同不构成失败，不静默回退到旧静音剪法。
 
 按任务工作区 `AGENTS.md` 中的六维画像路由读取所需文件。仅在托管 Montage Runtime 已提供 `/workspace/openmontage`、TASK_ID、PROJECT_ID、三个 Montage 输入 JSON 和预创建的 `output/` 时执行制作；不得创建、移动或重命名 output，不得修改 `/opt/montage-template`。缺少硬输入、能力或交付条件时，写失败产物并停止，不调用 AskUserQuestion。
 
@@ -44,6 +50,10 @@ enabled = true
 
 [[skills.config]]
 path = "__PLUGIN_ROOT__/skills/short-video-cover/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "__PLUGIN_ROOT__/skills/talking-head-video-generation/SKILL.md"
 enabled = true
 
 [[skills.config]]

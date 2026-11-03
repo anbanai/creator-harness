@@ -1,3 +1,11 @@
+## 4.2.132
+
+- Harden talking-head timeline, generated-video, audio-content, and render QC contracts.
+
+# 4.2.130
+
+- Require source-time EDL contracts, revision-bound final-track ASR content checks, and recomputed synchronization evidence for talking-head video delivery.
+
 # 4.2.128
 
 - Give creation/review session plugin groups distinct IDs so the shared loader retains both Skills providers; align canonical provider IDs and generated presets.

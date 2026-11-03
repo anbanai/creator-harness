@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -19,17 +20,80 @@ def check(condition: bool, check_id: str, message: str, measured: Any = None) ->
     return {"id": check_id, "status": "passed" if condition else "blocked", "severity": "blocker", "method": "composition-lint", "measured": measured, "threshold": "declared contract", "evidence_paths": [], "message": message if not condition else ""}
 
 
+def source_time_checks(edl: dict[str, Any], fps: float) -> list[dict[str, Any]]:
+    segments = edl.get("segments")
+    sample_rate = edl.get("sample_rate")
+    edl_fps = edl.get("fps")
+    valid_header = (
+        isinstance(segments, list) and bool(segments)
+        and isinstance(sample_rate, (int, float)) and not isinstance(sample_rate, bool)
+        and math.isfinite(sample_rate) and sample_rate > 0
+        and isinstance(edl_fps, (int, float)) and not isinstance(edl_fps, bool)
+        and math.isfinite(edl_fps) and edl_fps > 0
+        and math.isclose(float(edl_fps), fps, rel_tol=0, abs_tol=1e-9)
+    )
+    segment_ids = [segment.get("segment_id") for segment in segments if isinstance(segment, dict)] if isinstance(segments, list) else []
+    explicit_fields = valid_header and all(
+        isinstance(segment, dict)
+        and all(key in segment for key in (
+            "segment_id", "source_video_in", "source_video_out",
+            "source_audio_sample_start", "source_audio_sample_end",
+            "output_start_frame", "output_end_frame",
+        ))
+        and all(isinstance(segment.get(key), (int, float)) and not isinstance(segment.get(key), bool) and math.isfinite(segment.get(key)) for key in ("source_video_in", "source_video_out"))
+        and all(isinstance(segment.get(key), int) and not isinstance(segment.get(key), bool) for key in ("source_audio_sample_start", "source_audio_sample_end", "output_start_frame", "output_end_frame"))
+        and not any(key in segment for key in ("sample_start", "samples", "source_in", "source_out"))
+        for segment in segments
+    ) and all(isinstance(value, str) and value.strip() for value in segment_ids) and len(segment_ids) == len(set(segment_ids))
+    checks = [check(
+        bool(explicit_fields), "explicit_source_time_fields",
+        "each EDL segment must distinguish source media times from output frame positions",
+        {"sample_rate": sample_rate, "segments": len(segments) if isinstance(segments, list) else None},
+    )]
+    results: list[dict[str, Any]] = []
+    if explicit_fields:
+        tolerance = 1.0 / fps if fps > 0 else 1.0 / 30.0
+        for segment in segments:
+            try:
+                video_in = float(segment["source_video_in"])
+                video_out = float(segment["source_video_out"])
+                audio_in = int(segment["source_audio_sample_start"]) / float(sample_rate)
+                audio_out = int(segment["source_audio_sample_end"]) / float(sample_rate)
+                output_valid = int(segment["output_end_frame"]) > int(segment["output_start_frame"])
+                finite = all(math.isfinite(value) and value >= 0 for value in (video_in, video_out, audio_in, audio_out))
+                start_delta = abs(video_in - audio_in)
+                end_delta = abs(video_out - audio_out)
+                results.append({"segment_id": segment["segment_id"], "start_delta_seconds": start_delta, "end_delta_seconds": end_delta})
+                # Preserve the one-frame boundary despite floating-point noise
+                # from converting integer samples back to seconds.
+                epsilon = 1e-9
+                if not finite or video_out <= video_in or not output_valid or start_delta > tolerance + epsilon or end_delta > tolerance + epsilon:
+                    results[-1]["valid"] = False
+                else:
+                    results[-1]["valid"] = True
+            except (TypeError, ValueError, OverflowError):
+                results.append({"segment_id": segment.get("segment_id"), "valid": False})
+    checks.append(check(
+        bool(explicit_fields) and all(item.get("valid") for item in results),
+        "source_time_alignment",
+        "source audio sample range must match source video range within one frame; output positions are accounting only",
+        {"tolerance_seconds": tolerance if explicit_fields else None, "segments": results},
+    ))
+    return checks
+
+
 def validate(edl: dict[str, Any], composition: dict[str, Any], visual: dict[str, Any] | None = None, ledger: dict[str, Any] | None = None, expected_timeline_source: str | None = None) -> dict[str, Any]:
     checks: list[dict[str, Any]] = []
     timeline_source = composition.get("timeline_source")
     expected = expected_timeline_source or timeline_source
     source_matches = timeline_source == expected or Path(timeline_source).name == Path(expected).name
-    checks.append(check(source_matches and ("edit-decision-list.json" in timeline_source or "edit_decision_list.json" in timeline_source), "single_timeline_source", "composition must reference the Pack-declared EDL as its only timeline source", timeline_source))
+    checks.append(check(source_matches and "edit-decision-list.json" in timeline_source, "single_timeline_source", "composition must reference the Pack-declared EDL as its only timeline source", timeline_source))
     forbidden = [key for key in ("breath_points", "offsets", "reveals", "duration_seconds", "visual_clock") if key in composition]
     checks.append(check(not forbidden, "duplicate_time_decisions", "composition must not contain independently computed timing decisions", forbidden))
     fps = composition.get("master_fps")
     frame_count = composition.get("master_duration_frames")
     checks.append(check(isinstance(fps, (int, float)) and fps > 0 and isinstance(frame_count, int) and frame_count > 0, "frame_derived_duration", "duration must be derived from a positive fps and integer frame count", {"fps": fps, "frames": frame_count}))
+    checks.extend(source_time_checks(edl, float(fps) if isinstance(fps, (int, float)) else 0.0))
     bed = composition.get("audio_bed", {})
     checks.append(check(bed.get("source") == "dialogue_bed" and bed.get("start_frame") == 0 and bed.get("end_frame") == frame_count, "continuous_dialogue_bed", "dialogue bed must span the complete master timeline", bed))
     independent = []
