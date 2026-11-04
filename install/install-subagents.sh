@@ -423,6 +423,25 @@ if problem is not None:
     key_path = '.'.join(path)
     raise SystemExit(f'[install-subagents] ERROR: {reason} {key_path}; config.toml was not changed.')
 
+# Validate the complete rewrite, including connection refresh and registration
+# additions: scanner mistakes inside quoted documentation must also fail closed.
+expected_out = copy.deepcopy(expected_target)
+
+def add_missing_registration(expected, registration):
+    for key, value in registration.items():
+        if key not in expected:
+            expected[key] = copy.deepcopy(value)
+        elif isinstance(value, dict) and isinstance(expected[key], dict):
+            add_missing_registration(expected[key], value)
+
+add_missing_registration(expected_out, parsed_registration)
+expected_out['mcp_servers']['creator'].update(creator_connection_values)
+if parsed_out != expected_out:
+    raise SystemExit(
+        '[install-subagents] ERROR: unsupported configuration representation; '
+        'final registration merge could not preserve unrelated settings. No changes were made.'
+    )
+
 with open(tmp_path, 'w', encoding='utf-8') as f:
     f.write(out_text)
 PY
