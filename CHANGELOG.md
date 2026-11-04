@@ -7,6 +7,7 @@
 - Rename the knowledge-editing Agent to `ip-explainer` (知识 IP 剪辑 / IP Explainer), with precise bilingual discovery and consistent evidence identity.
 - Review reference footage for explanation, object continuity and promise/payoff; consolidate orchestration in the canonical Pack.
 - Migrate retired Codex registrations safely, retaining existing input protocols and production quality gates.
+- Strengthen WeChat picture topic research with an evidence-backed comparison framework for contrast-led topics, including fair comparison dimensions, reader value, cover promise, and uncertainty boundaries.
 
 ## 4.2.133
 
