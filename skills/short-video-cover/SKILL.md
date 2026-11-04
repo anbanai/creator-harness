@@ -6,7 +6,7 @@ description: 'Use when designing or auditing high-quality short-video covers fro
 # Short-video Cover Quality
 
 This Skill owns the cover as a visual communication artifact. The target is a
-cover that explains its promise and subject in one second at feed size, while
+cover derived from the video's core visual argument that explains its promise and subject in one second at feed size, while
 remaining original, fact-grounded, and reproducible. A larger canvas or more
 text is not a quality improvement.
 
@@ -161,7 +161,9 @@ a prompt to copy. The supplied Anban case study is the calibration example.
 
 ### 3. Build the cover plan and source assets
 
-Select the strongest evidence-bearing source frame or object. For a person-led
+Select the strongest evidence-bearing source frame or object from the video's
+core visual argument. A title enlargement without a concrete subject, action,
+or relationship fails the cover gate. For a person-led
 cover, the face must be recognizable and emotionally useful at thumbnail size;
 for a topic-led cover, the object or scene must make the topic concrete. Extract
 several frames from the raw material if needed and log their timestamps and

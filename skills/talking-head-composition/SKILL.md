@@ -42,6 +42,11 @@ current revision evidence.
   dialogue, SFX, and (when a Pack owns it) BGM layers.
 - A covering graphic or mask is opaque by default. A transparent layer requires
   an explicit blend mode, reason, and review evidence.
+- HyperFrames layers that depend on first-frame visibility must set
+  `immediateRender` explicitly; verify transparent layers against an extracted
+  frame rather than trusting the timeline declaration.
+- Subtitle layers sit above visual inserts and masks in the declared z-order;
+  the z-order is checked at frame boundaries and after every trim.
 - Do not concatenate independently AAC-encoded segments. Prefer one filter graph
   and one final encode, retaining encoder-delay evidence.
 

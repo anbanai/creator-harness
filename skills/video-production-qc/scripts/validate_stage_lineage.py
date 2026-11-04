@@ -74,6 +74,10 @@ def validate(data: dict[str, Any], root: Path, revision_id: str, required_paths:
         except (TypeError, ValueError, OverflowError) as exc:
             errors.append(f"event {index!r} has invalid timestamps: {exc}")
 
+        supersedes = event.get("supersedes", [])
+        if supersedes is not None and (not isinstance(supersedes, list) or any(not isinstance(item, str) or not item.strip() for item in supersedes)):
+            errors.append(f"event {index!r} supersedes must be a list of non-empty artifact paths")
+
         outputs = event.get("outputs")
         if not isinstance(outputs, list):
             errors.append(f"event {index!r} has no output artifact list")

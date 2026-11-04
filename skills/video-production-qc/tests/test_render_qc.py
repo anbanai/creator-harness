@@ -15,6 +15,100 @@ spec.loader.exec_module(render_qc)
 
 
 class RenderQcTests(unittest.TestCase):
+    def test_stage_required_paths_do_not_require_generated_video_by_default(self):
+        required = render_qc.stage_required_paths(False)
+        self.assertNotIn("output/generated-video-manifest.json", required)
+        self.assertNotIn("output/generated-video-review.json", required)
+        self.assertNotIn("output/generated-video-lint.json", required)
+
+    def test_stage_required_paths_include_generated_video_when_declared(self):
+        required = render_qc.stage_required_paths(True)
+        self.assertIn("output/generated-video-manifest.json", required)
+
+    def test_first_audio_residue_blocks_short_flash_before_declared_dialogue(self):
+        original_run = render_qc.run
+        try:
+            render_qc.run = lambda command: type("Result", (), {"returncode": 0, "stdout": "", "stderr": "[silencedetect] silence_start: 0.08\n[silencedetect] silence_end: 0.14\n"})()
+            check = render_qc.first_audio_residue_check(Path("video.mp4"), 0.5)
+        finally:
+            render_qc.run = original_run
+        self.assertEqual(check.status, "blocked")
+
+    def test_first_audio_residue_blocks_when_lead_in_is_unverifiable(self):
+        original_run = render_qc.run
+        try:
+            render_qc.run = lambda command: type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+            check = render_qc.first_audio_residue_check(Path("video.mp4"), 0.5)
+        finally:
+            render_qc.run = original_run
+        self.assertEqual(check.status, "blocked")
+
+    def test_first_audio_residue_passes_verified_leading_silence(self):
+        original_run = render_qc.run
+        try:
+            render_qc.run = lambda command: type("Result", (), {"returncode": 0, "stdout": "", "stderr": "[silencedetect] silence_start: 0\n[silencedetect] silence_end: 0.5\n"})()
+            check = render_qc.first_audio_residue_check(Path("video.mp4"), 0.5)
+        finally:
+            render_qc.run = original_run
+        self.assertEqual(check.status, "passed")
+
+    def test_first_dialogue_start_uses_final_asr_when_edl_begins_at_zero(self):
+        with tempfile.TemporaryDirectory() as directory:
+            transcript = Path(directory) / "asr.json"
+            transcript.write_text(json.dumps({"segments": [{"start_time": 0.42}]}))
+            self.assertEqual(render_qc.first_declared_dialogue_start(None, 30, transcript), 0.42)
+
+    def test_first_dialogue_start_preserves_zero_start_from_final_asr(self):
+        with tempfile.TemporaryDirectory() as directory:
+            transcript = Path(directory) / "asr.json"
+            transcript.write_text(json.dumps({"segments": [{"start_time": 0.0}]}))
+            self.assertEqual(render_qc.first_declared_dialogue_start(None, 30, transcript), 0.0)
+
+    def test_run_qc_blocks_unverifiable_first_audio_residue(self):
+        original = {
+            "probe": render_qc.probe,
+            "decode_ok": render_qc.decode_ok,
+            "frame_rate": render_qc.frame_rate,
+            "duration": render_qc.duration,
+            "energy_windows": render_qc.energy_windows,
+            "silence_intervals": render_qc.silence_intervals,
+            "tail_energy": render_qc.tail_energy,
+            "first_audio_residue_check": render_qc.first_audio_residue_check,
+            "true_peak_check": render_qc.true_peak_check,
+            "freeze_intervals": render_qc.freeze_intervals,
+            "transcript_timing_checks": render_qc.transcript_timing_checks,
+            "audio_content_checks": render_qc.audio_content_checks,
+        }
+        try:
+            render_qc.probe = lambda _: {"streams": [{"codec_type": "video", "codec_name": "h264", "r_frame_rate": "30/1", "duration": "1.0"}, {"codec_type": "audio", "codec_name": "aac", "duration": "1.0"}]}
+            render_qc.decode_ok = lambda _: (True, "")
+            render_qc.frame_rate = lambda _: 30.0
+            render_qc.duration = lambda metadata, stream: 1.0
+            render_qc.energy_windows = lambda _: ([-20.0], "")
+            render_qc.silence_intervals = lambda _: ([], "")
+            render_qc.tail_energy = lambda _: True
+            render_qc.first_audio_residue_check = lambda *_: render_qc.Check("first_audio_residue", "blocked", message="unverifiable")
+            render_qc.true_peak_check = lambda _: render_qc.Check("true_peak", "passed")
+            render_qc.freeze_intervals = lambda _: ([], "")
+            render_qc.transcript_timing_checks = lambda *args, **kwargs: []
+            render_qc.audio_content_checks = lambda *args, **kwargs: []
+            report = render_qc.run_qc(Path("video.mp4"), "rev-1", "off", "complete", None)
+        finally:
+            for name, value in original.items():
+                setattr(render_qc, name, value)
+        self.assertEqual(report["gate"], "blocked")
+        residue = next(item for item in report["checks"] if item["id"] == "first_audio_residue")
+        self.assertEqual(residue["status"], "blocked")
+
+    def test_true_peak_check_blocks_clipping(self):
+        original_run = render_qc.run
+        try:
+            render_qc.run = lambda command: type("Result", (), {"returncode": 0, "stdout": "", "stderr": "Peak: -0.2 dBFS\n"})()
+            check = render_qc.true_peak_check(Path("video.mp4"))
+        finally:
+            render_qc.run = original_run
+        self.assertEqual(check.status, "blocked")
+
     def test_generated_video_gate_blocks_when_required_inputs_are_missing(self):
         check = render_qc.generated_video_check(None, None, "rev-1", Path.cwd())
         self.assertEqual(check.status, "blocked")

@@ -59,15 +59,16 @@ python3 skills/video-production-qc/scripts/render_qc.py \
   --asr-transcript output/final-audio-transcript.json \
   --audio-content-check output/audio-content-check.json \
   --sync-evidence output/sync-evidence.json \
-  --generated-video-manifest output/generated-video-manifest.json \
   --progress-state output/progress-state.json \
-  --require-generated-video \
   --require-stage-lineage \
   --root .
 ```
 
-The command must use `ffprobe` for stream and duration inspection and FFmpeg
-for full decode, silence, and freeze checks. Missing tools, malformed evidence,
+If the visual plan declares `uses_generated_video=true`, add
+`--generated-video-manifest output/generated-video-manifest.json
+--require-generated-video`; otherwise omit both flags and the absence of a
+generated-video manifest is valid. The command must use `ffprobe` for stream and duration inspection and FFmpeg
+for full decode, first-second audio, silence, clipping, and freeze checks. Missing tools, malformed evidence,
 or an unreadable media file are blocking failures. The script writes a
 machine-readable report even when it exits non-zero.
 
@@ -76,6 +77,9 @@ machine-readable report even when it exits non-zero.
 - A ten-second window must contain measurable audio energy.
 - No silence interval may exceed `0.5s`.
 - No `freezedetect` interval is allowed.
+- The first decoded second contains no stray source audio before the first
+  intended dialogue cue; every hard cut is checked for a one-frame audio flash.
+- True peak and clipping checks pass; a decoded waveform that clips is a blocker.
 - Audio/video duration difference must be at most one video frame.
 - The last `0.5s` must contain voice energy unless the frozen timeline
   explicitly records a non-speech ending.
@@ -98,10 +102,11 @@ machine-readable report even when it exits non-zero.
   rerunning ASR; a summary
   boolean cannot replace per-candidate review. The QC script rechecks text, ASR
   output timing, source timing, revision, and input hashes.
-- For the talking-head Montage Pack, pass `--require-generated-video` and the
-  current manifest. QC recomputes asset provenance, revision, hash, decode and
-  EDL-reference checks; it does not trust `generated-video-lint.json` alone.
-  At least one reviewed AI-video asset must map to a core explanation unit.
+- When the visual plan declares generated video, pass `--require-generated-video`
+  and the current manifest. QC recomputes asset provenance, revision, hash,
+  decode and EDL-reference checks; it does not trust `generated-video-lint.json`
+  alone. When no generated video is declared, this gate is skipped and the
+  real-video/image/document path remains valid.
 - For the talking-head Montage Pack, pass `--require-stage-lineage` and the
   current `output/progress-state.json`. The lineage check recomputes event
   ordering, revision binding, and SHA-256 values for current required artifacts.
@@ -109,12 +114,12 @@ machine-readable report even when it exits non-zero.
   authenticated execution log and cannot be strengthened by file timestamps.
 - This proves EDL adoption, not that the renderer included the shot in
   `final.mp4`; review the motion sample and final candidate for that separately.
-- For the talking-head Montage Pack, QC recomputes the generated-video asset
+- When generated video is declared, QC recomputes the generated-video asset
   gate against the current EDL, revision, on-disk SHA-256 values, and `ffprobe`
   decodeability. At least one approved generated-video asset must be referenced
-  by a core explanation segment; a standalone lint report is not trusted.
-  Other Packs must provide their own equivalent contract rather than being
-  forced to generate AI video.
+  by a core explanation segment; a standalone lint report is not trusted. When
+  it is not declared, the real-video/image/document path remains valid and no
+  generated-video artifact is required.
 - EDL-boundary versus ASR offset and jitter are timeline diagnostics only and
   must stay within one video frame under this contract. They do not establish
   picture-to-dialogue sync. Constant codec delay must be recorded instead of
