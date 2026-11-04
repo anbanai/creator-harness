@@ -125,7 +125,10 @@ except UnicodeDecodeError:
     raise SystemExit('[install-subagents] ERROR: existing config.toml must be valid UTF-8 TOML; no changes were made.')
 tmp_lines = tmp_text.splitlines()
 
-HEADER_RE = re.compile(r'^\s*(\[\[[^\[\]]+\]\]|\[[^\[\]]+\])\s*(?:#.*)?$')
+# TOML quoted keys may contain brackets, dots and comment characters.
+TOML_KEY = r"(?:[A-Za-z0-9_-]+|\"(?:[^\"\\]|\\.)*\"|'[^']*')"
+TOML_PATH = rf'{TOML_KEY}(?:\s*\.\s*{TOML_KEY})*'
+HEADER_RE = re.compile(rf'^\s*(\[\[\s*{TOML_PATH}\s*\]\]|\[\s*{TOML_PATH}\s*\])\s*(?:#.*)?$')
 KV_RE = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=')
 
 def strip_toml_comment(line):

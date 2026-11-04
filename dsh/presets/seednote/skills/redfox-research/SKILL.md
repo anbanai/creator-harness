@@ -5,12 +5,10 @@ description: Use when research needs RedFox read-only data for cross-platform ho
 
 # RedFox research
 
-Use RedFox only as a read-only research source. The runtime may provide
-`REDFOX_API_KEY`; never print it, write it to an artifact, include it in a
-prompt, or pass it as a command-line argument. If the key is absent or the
-source is unavailable, record the failure and use the owning research Skill's
-documented fallback. Do not invent heat, engagement, freshness, authors, or
-article metadata.
+RedFox is read-only. Keep runtime `REDFOX_API_KEY` out of output, artifacts,
+prompts and command-line arguments. If absent or unavailable, record the failure
+and use the owning research Skill's fallback. Never invent heat, engagement,
+freshness, authors or article metadata.
 
 ## Supported research modes
 
