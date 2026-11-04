@@ -98,7 +98,7 @@ else
     exit 1
   fi
   "$python_bin" - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" "$retired_explainer_agent" <<'PY'
-import re, sys
+import copy, re, sys
 
 try:
     import tomllib
@@ -218,11 +218,28 @@ for _, line, structural in structural_toml_lines(tmp_lines):
     if not skip_legacy_table:
         filtered_lines.append(line)
 tmp_lines = filtered_lines
-remaining_agents = tomllib.loads('\n'.join(tmp_lines)).get('agents', {})
+filtered_target = tomllib.loads('\n'.join(tmp_lines))
+expected_target = copy.deepcopy(parsed_target)
+expected_agents = expected_target.get('agents')
+if isinstance(expected_agents, dict):
+    for name in retired_agents:
+        expected_agents.pop(name, None)
+    # Removing the last explicit child table can also remove implicit [agents].
+    if not expected_agents and 'agents' not in filtered_target:
+        expected_target.pop('agents')
+remaining_agents = filtered_target.get('agents', {})
 if isinstance(remaining_agents, dict) and retired_agents.intersection(remaining_agents):
     raise SystemExit(
         '[install-subagents] ERROR: unsupported retired Agent configuration representation; '
         'use an [agents.<name>] table before reinstalling. No changes were made.'
+    )
+
+# Fail closed if the line scanner cannot preserve every unrelated TOML value
+# (for example, unusual escaped multiline strings). Never silently discard it.
+if filtered_target != expected_target:
+    raise SystemExit(
+        '[install-subagents] ERROR: unsupported retired Agent configuration representation; '
+        'migration could not preserve unrelated settings. No changes were made.'
     )
 
 # Creator connection fields are plugin-owned. Refresh their values so upgrades
