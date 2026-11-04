@@ -235,7 +235,10 @@ describe('WeChat draft lifecycle contract', () => {
     }
   })
 
-  it('keeps both native manifests and the Claude marketplace at 4.2.134', async () => {
+  it('keeps native manifests and the Claude marketplace aligned with the package version', async () => {
+    const packageManifest = JSON.parse(
+      await readFile(join(root, 'package.json'), 'utf8'),
+    )
     const paths = [
       '.claude-plugin/plugin.json',
       '.codex-plugin/plugin.json',
@@ -246,7 +249,7 @@ describe('WeChat draft lifecycle contract', () => {
       const version = path.endsWith('marketplace.json')
         ? manifest.plugins[0].version
         : manifest.version
-      expect(version, path).toBe('4.2.134')
+      expect(version, path).toBe(packageManifest.version)
     }
   })
 })

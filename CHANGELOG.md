@@ -1,3 +1,11 @@
+## 4.2.137
+
+- Keep feedback analysis Skills within the frozen FeedbackJob contract: return private evidence for Server validation and persistence; leave scheduling and strategy activation to the Server.
+
+## 4.2.136
+
+- Remove seven obsolete feedback Skill copies from the plugin root; `skills/` remains the single distributed source.
+
 ## 4.2.135
 
 - Unify topic references around canonical assets and task-linked claims; autonomous Topic Radar accepts execution-scoped research evidence and verified empty outcomes.

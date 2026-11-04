@@ -1,16 +1,16 @@
 ---
 name: strategy-advisor
-description: Use when the monthly strategy queue, or an explicitly enabled weekly candidate run, has enough revised performance evidence.
+description: Use when a frozen strategy-advisor FeedbackJob contains revised performance evidence for advisory analysis.
 ---
 
 # Strategy Advisor
 
-Combine completed weekly insights, the closed-month performance review, content postmortems, and coverage metadata into an advisory Strategy Snapshot. The default trigger is monthly; weekly runs produce candidates only when the project explicitly enables them. A formal snapshot requires at least ten valid contents and traceable source analytics revisions.
+Combine the completed weekly insights, closed-month performance review, content postmortems, and coverage metadata available in the frozen FeedbackJob context into an advisory strategy candidate. The Server owns cadence, dispatch, and eligibility. A formal recommendation candidate requires at least ten valid contents and traceable source analytics revisions.
 
-When evidence is insufficient, persist a data-insufficient status without strong recommendations, without extra LLM interpretation, and without replacing the last valid active snapshot. Recommendations use `keep`, `increase`, `reduce`, and `test` categories and include confidence and limitations. Activate a new revision atomically, retire the prior active revision, and never mutate profile, writer, theme, prompt, or running task snapshots.
+When evidence is insufficient, return `data_insufficient` without strong recommendations. Recommendations use `keep`, `increase`, `reduce`, and `test` categories and include confidence and limitations. Return the candidate in private JSON for Server validation and persistence. Only the Server may create or activate a Strategy Snapshot revision, retire a prior revision, or decide whether an existing snapshot remains active. Never mutate profile, writer, theme, prompt, or running task snapshots.
 
 New tasks freeze the active snapshot ID, revision, and digest at bootstrap. Running tasks continue using their frozen GenerationContext. Downstream consumer is the next generation's `post-scorer`.
 
 ## Analysis boundary
 
-No eligible evidence produces `data_insufficient` with low confidence and no strong recommendations. Never modify a profile, prompt, publish state, or global configuration; activating a snapshot remains a Server-owned persistence operation.
+If the frozen context contains no eligible evidence, return `data_insufficient` with low confidence and no strong recommendations. Never modify job state, a profile, prompt, publish state, an active snapshot, or global configuration.
