@@ -381,6 +381,14 @@ Hook、结构兑现、节奏、视觉、字幕、声音和技术质量可以按 
 
 封面缺失、未通过独立审核或与 delivery manifest 不一致都判 Blocker。
 
+### 封面质量增强合同
+
+`short-video-cover` 不再把“生成一张带字的图片”视为完成。封面开始前必须从原始视频/音频、全部可用拍摄版本、校对转录、标题候选、账号与受众资料、授权人物/道具素材、参考封面集合和历史表现数据中建立 `output/input-manifest.md`；整理好的旧封面只能作为派生证据。参考图按集合分析，不复制单张图的像素构图；参考集合的视觉语法、`cover.png` 的失败诊断和迁移决策分别写入 `output/reference-analysis.md` 与 `output/cover-plan.md`。
+
+每次封面至少提出两个概念并选择一个：一秒观看理由、真实主体、人物/物体动作、前中后景、标题断行、强调词、色彩、遮挡和安全区都必须有内容依据。人物 IP 必须使用授权的真实人物帧或身份参考；没有身份证据时阻断，不使用泛化 AI 人脸。生成模型优先只生成无关键文字的视觉底图，精确标题使用可复算的 `ffmpeg drawtext` 或已注册合成器落版，记录 CJK 字体、copy 文件、底图和最终文件 SHA-256；无法确定性排版时不得声称标题准确。
+
+封面审核必须同时覆盖原图和约 270x480 缩略图：标题逐字、主题兑现、主体身份/动作、缩略图焦点顺序、背景语义、对比度、脸/物体遮挡、平台安全区、水印/伪文字和实际比例。除 `output/cover-quality.json` 外，必须写 `output/cover-asset-manifest.json`、`output/cover-variant-matrix.json`、`output/cover-thumbnail-review.json` 和 `output/independent-validation.json`；独立审核者不得参与该 revision 的制作，审核绑定最终候选 SHA-256。缺少 OCR、目标受众盲测、独立设计师评审或历史/发布 analytics 时明确记为 missing/low confidence，不能用 Agent 自评补齐。只有 `overall_pass=true` 的独立候选才能提升为 `output/cover.png`。
+
 ## 15. 工程与产物组织
 
 优先使用当前项目的工程、时间线格式、脚本和模板。FFmpeg 用于探测、转码、简单剪辑和常规音频处理；复杂多轨、关键帧动画或合成使用合适的时间线/合成工具。所有产物使用一致的时间基准，并区分源片与成片时间。

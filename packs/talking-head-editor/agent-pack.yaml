@@ -45,10 +45,15 @@ artifacts:
   - {role: cover_reference_compressed_image, path: output/reference-cover-compressed.png, mime_type: image/png, required: false}
   - {role: cover_reference_analysis, path: output/reference-analysis.md, mime_type: text/markdown, required: false}
   - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
+  - {role: cover_quality, path: output/cover-quality.json, mime_type: application/json, required: false}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json, required: false}
   - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
   - {role: cover_reference_prompts, path: output/cover-prompts.md, mime_type: text/markdown, required: false}
   - {role: cover_review, path: output/cover-review.md, mime_type: text/markdown, required: false}
   - {role: cover_candidate, path: output/cover_v2.png, mime_type: image/png, required: false}
+  - {role: cover_asset_manifest, path: output/cover-asset-manifest.json, mime_type: application/json, required: false}
+  - {role: cover_variant_matrix, path: output/cover-variant-matrix.json, mime_type: application/json, required: false}
+  - {role: cover_thumbnail_review, path: output/cover-thumbnail-review.json, mime_type: application/json, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
@@ -84,6 +89,11 @@ delivery:
   - {role: audio_source_manifest, path: output/audio-source-manifest.json, mime_type: application/json}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
+  - {role: cover_quality, path: output/cover-quality.json, mime_type: application/json}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json}
+  - {role: cover_asset_manifest, path: output/cover-asset-manifest.json, mime_type: application/json}
+  - {role: cover_variant_matrix, path: output/cover-variant-matrix.json, mime_type: application/json}
+  - {role: cover_thumbnail_review, path: output/cover-thumbnail-review.json, mime_type: application/json}
   - {role: subtitles, path: output/subtitles.srt, mime_type: application/x-subrip}
 ui:
   renderer: custom:talking-head-editor

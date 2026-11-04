@@ -1,12 +1,12 @@
 ## 4.2.134
 
-- Rename the talking-head knowledge-editing Agent to `ip-explainer` (知识 IP 剪辑 / IP Explainer), with explicit bilingual discovery descriptions and updated native registrations and evidence identity.
-- Retire the previous Codex registration on reinstall; keep existing input filenames and production quality gates.
+- Rename the knowledge-editing Agent to `ip-explainer` (知识 IP 剪辑 / IP Explainer), with precise bilingual discovery and consistent evidence identity.
+- Review reference footage for explanation, object continuity and promise/payoff; consolidate orchestration in the canonical Pack.
+- Migrate retired Codex registrations safely, retaining existing input protocols and production quality gates.
 
 ## 4.2.133
 
-- Make talking-head reference review test visible explanation, object continuity and promise/payoff against the current render; retain technical and independent-review gates.
-- Consolidate Montage orchestration in the Pack source and keep reusable shot review in the explainer Skill.
+- Raise short-video cover quality gates: require raw-source asset audits, reference-set visual grammar, deterministic copy composition, thumbnail review, and independent validation for the viral IP and talking-head Montage Agents.
 
 ## 4.2.132
 

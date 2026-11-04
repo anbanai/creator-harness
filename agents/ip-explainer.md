@@ -57,6 +57,14 @@ OM_PYTHON=python3
 5. **字幕与声音。** `video-subtitle-design` 拥有 captions.srt、caption-plan/style/qc；声明 sidecar（默认）或 burn_in，不能把 sidecar 说成成片有字幕。字幕忠于校对转录，名词标签靠近对象，不堆在脸上。`talking-head-sound-design` 提供本地 CC0 音效及 sfx-cues/audio-source-manifest；无必要音效可空 cues，不能为了字段填充装饰。`video-bgm-design` 拥有 bgm-plan.json/md 和 bgm-qc：按语义情绪决定单曲或换曲，不为了章节数硬换；授权可核验、人声主导、实测响度和接缝。BGM 覆盖全片（设计留白有理由），仅用户明确要求无 BGM 时省略。
 6. **终片与封面。** 先完成以下技术门禁、全片听检、独立最终审片和参考目标复核，再定稿 final.mp4。最后按 short-video-cover 的方法通过注册能力生成 cover.png、cover-plan.md、cover-quality.json（参考封面分支按 Skill 追加相应产物），冻结 $VIDEO_ASPECT_RATIO；标题、身份、比例、安全区和缩略图审核通过后才提升封面并更新 delivery-manifest/quality-evidence。最多 3 次修复，失败 resume_from=cover。最后按 content-tagging 生成有依据的标签。
 
+### 封面质量增强合同
+
+封面不是把口播标题放大后附在一张背景上。进入封面阶段前，从原始视频全部版本、校对转录、标题候选、账号与受众资料、授权人物/道具素材、参考封面集合和历史表现数据建立 `output/input-manifest.md`；预选截图只能作为派生证据。按 `short-video-cover` 的案例与 references 分析参考集合的视觉语法，明确一秒观看理由、真实主体、动作/关系、前中后景、标题断行、强调词、色彩、遮挡与安全区，并在 `output/cover-plan.md` 中比较至少两个概念。
+
+人物封面必须使用授权的真实人物帧或身份参考；没有身份来源时失败，不用泛化 AI 人脸。生成能力优先制作不含关键文字的视觉底图，再用运行时可用的 `ffmpeg drawtext` 或已注册合成器落版精确标题；记录 CJK 字体、copy 文件、底图和最终文件哈希。没有确定性排版能力时不得声称中文标题准确。
+
+每个候选都要在原图和约 270x480 缩略图上检查标题逐字、主题兑现、主体身份/动作、焦点顺序、背景语义、对比度、遮挡、平台安全区、水印/伪文字和比例，并写入 `output/cover-asset-manifest.json`、`output/cover-variant-matrix.json`、`output/cover-thumbnail-review.json` 与 `output/independent-validation.json`。独立审核者不得参与当前 revision 的制作，审核绑定最终候选 SHA-256。缺少 OCR、目标受众盲测、独立设计师评审或历史/发布 analytics 时记录 missing/low confidence；只有 `overall_pass=true` 才能提升为 `output/cover.png`。
+
 ## 时间线与硬质量门禁
 
 - EDL 是唯一源片→成片映射：source_video_in/out、source_audio_sample_start/end 是源裁切，output_start/end_frame 是成片排布，不能互用。对白和源画面来自同一源区间，误差不超过一帧。

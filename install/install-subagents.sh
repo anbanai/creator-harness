@@ -60,24 +60,10 @@ if [[ ! -f "$PLUGIN_ROOT/skills/article/SKILL.md" ]]; then
   echo "[install-subagents] Or set ANBAN_PLUGIN_ROOT to point at the installed plugin directory." >&2
 fi
 
-# --- 2. Copy subagent TOMLs into ~/.codex/agents/ -------------------------
-
-mkdir -p "$CODEX_AGENTS_DIR"
+# --- 2. Validate and merge registration before changing installed agents ---
 
 legacy_article_agent="wechat""article"
-rm -f "$CODEX_AGENTS_DIR/${legacy_article_agent}.toml"
 retired_explainer_agent="talking-head-montage"
-rm -f "$CODEX_AGENTS_DIR/${retired_explainer_agent}.toml"
-
-for toml in "$AGENTS_SRC"/*.toml; do
-  name="$(basename "$toml")"
-  target="$CODEX_AGENTS_DIR/$name"
-  # Substitute __PLUGIN_ROOT__ with discovered path on copy
-  sed "s|__PLUGIN_ROOT__|$PLUGIN_ROOT|g" "$toml" > "$target"
-  echo "[install-subagents] Installed: $target"
-done
-
-# --- 3. Merge registration into ~/.codex/config.toml ----------------------
 
 mkdir -p "$CODEX_DIR"
 
@@ -213,16 +199,28 @@ if creator_exists:
             'No changes were made.'
         )
 
-legacy_headers = {f'[agents.{legacy_article_agent}]', f'[agents.{retired_explainer_agent}]'}
+retired_agents = {legacy_article_agent, retired_explainer_agent}
+
+def is_retired_header(header):
+    # Parse table paths so quoted keys, whitespace and child tables agree.
+    table = tomllib.loads(header).get('agents', {})
+    return isinstance(table, dict) and bool(retired_agents.intersection(table))
+
 filtered_lines = []
 skip_legacy_table = False
 for _, line, structural in structural_toml_lines(tmp_lines):
     header_match = HEADER_RE.match(line) if structural else None
     if header_match:
-        skip_legacy_table = header_match.group(1) in legacy_headers
+        skip_legacy_table = is_retired_header(header_match.group(1))
     if not skip_legacy_table:
         filtered_lines.append(line)
 tmp_lines = filtered_lines
+remaining_agents = tomllib.loads('\n'.join(tmp_lines)).get('agents', {})
+if isinstance(remaining_agents, dict) and retired_agents.intersection(remaining_agents):
+    raise SystemExit(
+        '[install-subagents] ERROR: unsupported retired Agent configuration representation; '
+        'use an [agents.<name>] table before reinstalling. No changes were made.'
+    )
 
 # Creator connection fields are plugin-owned. Refresh their values so upgrades
 # cannot retain a stale endpoint or noncanonical credential variable.
@@ -414,6 +412,18 @@ PY
   trap - EXIT
   echo "[install-subagents] Merged registration into $CODEX_CONFIG"
 fi
+
+# --- 3. Install files only after configuration validation succeeded --------
+
+mkdir -p "$CODEX_AGENTS_DIR"
+for toml in "$AGENTS_SRC"/*.toml; do
+  name="$(basename "$toml")"
+  target="$CODEX_AGENTS_DIR/$name"
+  sed "s|__PLUGIN_ROOT__|$PLUGIN_ROOT|g" "$toml" > "$target"
+  echo "[install-subagents] Installed: $target"
+done
+rm -f "$CODEX_AGENTS_DIR/${legacy_article_agent}.toml"
+rm -f "$CODEX_AGENTS_DIR/${retired_explainer_agent}.toml"
 
 # --- 4. Reminders ---------------------------------------------------------
 

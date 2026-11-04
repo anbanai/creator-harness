@@ -14,29 +14,20 @@ article metadata.
 
 ## Supported research modes
 
-- **Cross-platform hot topics**: aggregate the RedFox `trending-hub-top10`
-  source across the supported public platforms.
-- **WeChat search**: search public WeChat articles for a concrete keyword and
-  preserve the returned title, author, metrics, date, and URL when present.
-- **Xiaohongshu search**: search popular public notes for a concrete keyword
-  and preserve the returned note and interaction fields only when returned.
-- **Douyin search and daily ranking**: search public works or read a daily
-  ranking for the requested date and preserve the returned platform fields.
+- **Cross-platform hot topics**: aggregate `trending-hub-top10` across supported public platforms.
+- **WeChat search**: query public articles; retain returned title, author, metrics, date and URL.
+- **Xiaohongshu search**: query popular public notes; retain only returned note and interaction fields.
+- **Douyin search/rankings**: query public works or daily rankings for the requested date; retain returned fields.
 
-The upstream RedFox repository is the method reference:
-`https://github.com/redfox-data/redfox-community`. Use its read-only query
-scripts only when the runtime image explicitly includes the corresponding
-adapter. Do not copy upstream payment, subscription, downloader, account,
-comment, like, publish, or browser automation workflows.
-
-The locked upstream paths and revision are recorded in
-[references/upstream.md](references/upstream.md). Load that reference when a
-mode-specific adapter or provenance statement is needed.
+Method reference: `https://github.com/redfox-data/redfox-community`. Use upstream
+read-only query scripts only through an adapter explicitly included in the
+runtime. Never copy payment, subscription, downloader, account, comment, like,
+publish or browser automation workflows. Load [references/upstream.md](references/upstream.md)
+for mode-specific adapters or provenance; it records locked paths and revision.
 
 ## Evidence contract
 
-Every RedFox result consumed by a research workflow must be represented in the
-owning output artifact with:
+Record each consumed result in the owning output artifact:
 
 ```text
 schema_version=1.0
