@@ -1,11 +1,11 @@
 ---
 name: talking-head-video-generation
-description: Use when producing knowledge-led talking-head shorts where AI-generated video must be an actual core visual, not an optional or planned asset.
+description: Use when IP 知识讲解 or 科普口播 needs AI 演示镜头 (generated explainer footage) to show a process, action or state change. Generates, reviews and adopts core video assets for the ip-explainer Agent and other knowledge-editing workflows; does not own end-to-end editing or generic text-to-video tasks.
 ---
 
-# Talking-Head Video Generation
+# 讲解镜头生成 · Explainer Footage
 
-This Skill owns generation and adoption of AI video in the talking-head Montage workflow. Read [references/asset-contract.md](references/asset-contract.md) before generation, then run `scripts/validate_generated_video.py` before composition and final QC.
+This Skill owns generation and adoption of AI video for knowledge explainers, including 知识 IP 剪辑 / IP Explainer. Read [references/asset-contract.md](references/asset-contract.md) before generation, then run `scripts/validate_generated_video.py` before composition and final QC.
 
 ## Required outcome
 
@@ -16,9 +16,9 @@ This Skill owns generation and adoption of AI video in the talking-head Montage 
 
 ## Workflow
 
-1. Read the explanation plan and select the core unit where movement clarifies a process, transformation, spatial relation, or otherwise hard-to-see concept. Keep claims grounded in the source evidence. Label illustrative generations so they cannot be mistaken for documentary evidence.
+1. Read the explanation plan and select the core unit where movement clarifies a process, transformation, spatial relation, or otherwise hard-to-see concept. Specify the visible subject, starting state, action, end state, and continuity with adjacent shots in the existing visual plan. Approve composition/keyframes before expensive generation; a camera move around a static object does not satisfy a required demonstration. Keep claims grounded in the source evidence. Label illustrative generations so they cannot be mistaken for documentary evidence.
 2. Probe actual registered generation capability and execute through the OpenMontage-native pipeline. Save the request/result identifiers, provider/model, parameters, prompt or prompt hash, generation status, asset path, SHA-256, intended unit, and rights/provenance in `output/generated-video-manifest.json`.
-3. Decode and inspect each candidate. Record review outcome, revision, inspected ranges, and defects in `output/generated-video-review.json`. Failed or merely queued assets do not count.
+3. Decode and inspect each candidate. Check whether the intended action and result are actually visible at playback speed, including object count/identity, contact, direction, and physical plausibility; attractive first/last frames alone are insufficient. Record review outcome, revision, inspected ranges, and defects in `output/generated-video-review.json`. Failed or merely queued assets do not count.
 4. Add accepted generated assets to the EDL's visual asset references and run the validator. The validator fails closed on absent/failed generation, stale revision, missing file/hash, failed full decode, unapproved review, or an asset not referenced by a core EDL segment.
 5. Re-run the gate after any EDL, asset, or render revision change. Never hand-edit a gate report to pass.
 

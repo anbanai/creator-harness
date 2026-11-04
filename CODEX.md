@@ -27,6 +27,7 @@ The plugin follows Codex's **Skill + Subagent + MCP** model:
 
 | Subagent | Triggers | Pipeline |
 |----------|----------|----------|
+| `ip-explainer` — 知识 IP 剪辑 / IP Explainer | "IP 口播剪辑", "知识讲解", "专家口播", "科普短视频", "knowledge explainer editing" | Recorded footage → Semantic edit → Explanatory visuals → Captions/audio → Independent review → Cover |
 | `hypit` | "视频复刻", "复刻视频", "Hypit" | Reference analysis → Adaptation → SVML/SVRun → MP4 + editable project |
 | `article` | "写文章", "发文章", "公众号文章" | Research → Write → De-AI → SEO → Cover → Illustrations → HTML → Draft |
 | `seednote` | "种草笔记", "种草", "复刻", "仿写" | Research → Viral analysis (replicate) → Content → image-plan/runtime mode output → Compliance → Delivery validation → `output/` delivery |

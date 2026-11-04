@@ -35,7 +35,7 @@ class RenderQcTests(unittest.TestCase):
                 "completed_at": "2026-11-03T10:01:00Z",
                 "outputs": [{"path": "output/final.mp4", "sha256": digest, "revision_id": "rev-1", "created_at_stage": "final_render"}],
             }
-            state = {"schema_version": "1.0", "source": "talking-head-montage", "revision_id": "rev-1", "events": [event]}
+            state = {"schema_version": "1.0", "source": "ip-explainer", "revision_id": "rev-1", "events": [event]}
             valid = render_qc.stage_lineage_check_value(state, root, "rev-1", ["output/final.mp4"])
             self.assertEqual(valid["gate"], "passed")
             artifact.write_bytes(b"changed after evidence")

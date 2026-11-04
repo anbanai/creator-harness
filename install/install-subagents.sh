@@ -66,6 +66,8 @@ mkdir -p "$CODEX_AGENTS_DIR"
 
 legacy_article_agent="wechat""article"
 rm -f "$CODEX_AGENTS_DIR/${legacy_article_agent}.toml"
+retired_explainer_agent="talking-head-montage"
+rm -f "$CODEX_AGENTS_DIR/${retired_explainer_agent}.toml"
 
 for toml in "$AGENTS_SRC"/*.toml; do
   name="$(basename "$toml")"
@@ -109,7 +111,7 @@ else
     echo "[install-subagents] ERROR: Python 3.11+ is required to safely update config.toml (or install the tomli package for this Python interpreter)." >&2
     exit 1
   fi
-  "$python_bin" - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" <<'PY'
+  "$python_bin" - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" "$retired_explainer_agent" <<'PY'
 import re, sys
 
 try:
@@ -124,6 +126,7 @@ except ModuleNotFoundError:
         )
 
 reg_path, tmp_path, legacy_article_agent = sys.argv[1], sys.argv[2], sys.argv[3]
+retired_explainer_agent = sys.argv[4]
 reg_text = open(reg_path, encoding='utf-8').read()
 reg_lines = reg_text.splitlines()
 try:
@@ -210,13 +213,13 @@ if creator_exists:
             'No changes were made.'
         )
 
-legacy_header = f'[agents.{legacy_article_agent}]'
+legacy_headers = {f'[agents.{legacy_article_agent}]', f'[agents.{retired_explainer_agent}]'}
 filtered_lines = []
 skip_legacy_table = False
 for _, line, structural in structural_toml_lines(tmp_lines):
     header_match = HEADER_RE.match(line) if structural else None
     if header_match:
-        skip_legacy_table = header_match.group(1) == legacy_header
+        skip_legacy_table = header_match.group(1) in legacy_headers
     if not skip_legacy_table:
         filtered_lines.append(line)
 tmp_lines = filtered_lines
