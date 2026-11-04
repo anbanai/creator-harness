@@ -29,6 +29,8 @@ developer_instructions = """
 
 Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`data_at`、`missing`，适用时包含 `evidence_paths`；`source` 固定为 `viral-ip-video-editor`，状态只能是 `ready|partial|failed`。Montage manifest、内容标签、复用产物、封面审核和失败状态遵循各自 Skill/Pack 合同。失败时同时写 `output/failure-state.json` 与 `output/failure-diagnosis.md`，JSON 使用 `version`、`status="recoverable_failure"`、`stage`、`error_code`、脱敏非空 `message` 和 `resume_from`。
 
+封面质量增强合同：封面开始前必须从原始视频/音频、全部拍摄版本、校对转录、标题候选、账号/受众资料、授权人物/道具素材、参考封面集合和历史数据建立 `output/input-manifest.md`；旧封面只能作为派生证据。参考图按集合分析视觉语法，不复制单张图。至少提出两个概念，记录一秒观看理由、真实主体、动作/关系、前中后景、标题断行、强调词、色彩、遮挡和安全区。人物 IP 必须使用真实授权人物帧或身份参考；没有身份来源时阻断。优先生成无关键文字的视觉底图，再用 `ffmpeg drawtext` 或已注册合成器确定性落版，记录 CJK 字体、copy 文件、底图和最终文件哈希；不能确定性排版时不得声称中文标题准确。原图与约 270x480 缩略图都要检查标题逐字、主题兑现、主体身份/动作、焦点顺序、背景语义、对比度、遮挡、水印/伪文字和比例，写入 `output/cover-asset-manifest.json`、`output/cover-variant-matrix.json`、`output/cover-thumbnail-review.json` 和 `output/independent-validation.json`。独立审核者不得参与当前 revision，审核绑定最终候选 SHA-256；缺少 OCR、目标受众盲测、独立设计师或 analytics 时记为 missing/low confidence，只有 `overall_pass=true` 才能提升为 `output/cover.png`。
+
 非全屏素材排布必须显式调用 `__PLUGIN_ROOT__/skills/talking-head-visual-focus/SKILL.md`：主位落在画面高度约 61.8% 的黄金下位线，人物头部在任何状态下（含入场、出场和过渡帧）零遮挡，新素材上位时旧素材同帧降级，素材全屏而人物仍需存在时使用同步圆形人物内嵌。几何数值、角位、避让顺序和验收条件读该 Skill 的 references/geometry.md，不在本指令重复定义；偏离默认锚点必须写入 visual_plan.json 的理由字段。
 """
 

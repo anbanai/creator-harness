@@ -1,3 +1,7 @@
+## 4.2.133
+
+- Raise short-video cover quality gates: require raw-source asset audits, reference-set visual grammar, deterministic copy composition, thumbnail review, and independent validation for the viral IP and talking-head Montage Agents.
+
 ## 4.2.132
 
 - Harden talking-head timeline, generated-video, audio-content, and render QC contracts.

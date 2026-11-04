@@ -1,5 +1,5 @@
 id: talking-head-montage
-version: 1.3.0
+version: 1.3.1
 kind: plugin
 display_name: 口播 Montage 制作
 description: 以 OpenMontage hybrid 为主引擎，完成真人口播、生成视频素材、图片素材、图形动效、字幕与分章节 BGM 的本地制作与文件审核，并在流程最后一步生成封面。
@@ -73,6 +73,9 @@ artifacts:
   - {role: cover_reference_prompts, path: output/cover-prompts.md, mime_type: text/markdown, required: false}
   - {role: cover_review, path: output/cover-review.md, mime_type: text/markdown, required: false}
   - {role: cover_candidate, path: output/cover_v2.png, mime_type: image/png, required: false}
+  - {role: cover_asset_manifest, path: output/cover-asset-manifest.json, mime_type: application/json, required: false}
+  - {role: cover_variant_matrix, path: output/cover-variant-matrix.json, mime_type: application/json, required: false}
+  - {role: cover_thumbnail_review, path: output/cover-thumbnail-review.json, mime_type: application/json, required: false}
   - {role: review_decision, path: output/review-decision.json, mime_type: application/json, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
@@ -151,6 +154,9 @@ delivery:
   - {role: cover, path: output/cover.png, mime_type: image/png}
   - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown}
   - {role: cover_quality, path: output/cover-quality.json, mime_type: application/json}
+  - {role: cover_asset_manifest, path: output/cover-asset-manifest.json, mime_type: application/json}
+  - {role: cover_variant_matrix, path: output/cover-variant-matrix.json, mime_type: application/json}
+  - {role: cover_thumbnail_review, path: output/cover-thumbnail-review.json, mime_type: application/json}
   - {role: content_tags, path: output/content-tags.json, mime_type: application/json}
   - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
   - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json}

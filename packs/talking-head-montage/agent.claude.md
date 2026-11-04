@@ -106,6 +106,14 @@ OM_PYTHON=python3
 10. 最终渲染后先运行 `video-production-qc` 并确认 `output/quality-evidence.json` 的 `gate=passed` 和 `listening.status=complete`，再进入平台 Final Review；QC 失败时恢复渲染或 composition plan，保留失败证据，不得手改通过字段。
 10. 封面（流程最后一步）：`output/final.mp4` 定稿后，显式加载 `short-video-cover`，通过 OpenMontage 已注册的图片能力生成 `output/cover.png`，同时写 `output/cover-plan.md`、`output/cover-quality.json`（参考封面分支另写 `output/cover-prompts.md`），并使用冻结的 `$VIDEO_ASPECT_RATIO`。独立审核短标题逐字准确、主题匹配、比例、四边安全区、人物身份（适用时）、水印/无关元素和缩略图可读性，最多 3 轮修复重生成；临时候选只有审核通过后才能提升为 `output/cover.png`。封面通过后才更新 `output/delivery-manifest.json`（登记 `cover.png` 与审核证据的相对路径、角色、字节数和 SHA-256）和 `output/quality-evidence.json`；封面缺失或未通过独立审核是 Blocker，写 `resume_from=cover` 的失败产物，不写「成功」的 delivery manifest，也不静默交付。
 
+### 封面质量增强合同
+
+封面不是把口播标题放大后附在一张背景上。进入封面阶段前，从原始视频全部版本、校对转录、标题候选、账号与受众资料、授权人物/道具素材、参考封面集合和历史表现数据建立 `output/input-manifest.md`；预选截图只能作为派生证据。按 `short-video-cover` 的案例与 references 分析参考集合的视觉语法，明确一秒观看理由、真实主体、动作/关系、前中后景、标题断行、强调词、色彩、遮挡与安全区，并在 `output/cover-plan.md` 中比较至少两个概念。
+
+人物封面必须使用授权的真实人物帧或身份参考；没有身份来源时失败，不用泛化 AI 人脸。生成能力优先制作不含关键文字的视觉底图，再用运行时可用的 `ffmpeg drawtext` 或已注册合成器落版精确标题；记录 CJK 字体、copy 文件、底图和最终文件哈希。没有确定性排版能力时不得声称中文标题准确。
+
+每个候选都要在原图和约 270x480 缩略图上检查标题逐字、主题兑现、主体身份/动作、焦点顺序、背景语义、对比度、遮挡、平台安全区、水印/伪文字和比例，并写入 `output/cover-asset-manifest.json`、`output/cover-variant-matrix.json`、`output/cover-thumbnail-review.json` 与 `output/independent-validation.json`。独立审核者不得参与当前 revision 的制作，审核绑定最终候选 SHA-256。缺少 OCR、目标受众盲测、独立设计师评审或历史/发布 analytics 时记录 missing/low confidence；只有 `overall_pass=true` 才能提升为 `output/cover.png`。
+
 ## 非全屏素材排布
 
 - 视觉中心默认在画面高度约 61.8% 的黄金下位线，横向居中或使用侧向节点；允许在带内避让，具体坐标、尺寸和槽位读 `talking-head-visual-focus/references/geometry.md`。

@@ -59,6 +59,8 @@ developer_instructions = """
 
 所有 Agent JSON 证据必须声明 schema_version、有限 status、source=talking-head-montage、data_at、missing，适用时声明 evidence_paths。失败必须同时写入 output/failure-state.json 和 output/failure-diagnosis.md，包含 version、status=recoverable_failure、stage、error_code、脱敏 message 和 resume_from，并停止当前阶段。
 
+封面质量增强合同：封面开始前从原始视频全部版本、校对转录、标题候选、账号/受众资料、授权人物/道具素材、参考封面集合和历史数据建立 output/input-manifest.md；预选截图只能作为派生证据。按 short-video-cover 的案例分析参考集合的视觉语法，至少比较两个概念，明确一秒观看理由、真实主体、动作/关系、前中后景、标题断行、强调词、色彩、遮挡与安全区。人物封面必须使用授权真实人物帧或身份参考；没有身份来源时失败。优先生成无关键文字的视觉底图，再用运行时可用的 ffmpeg drawtext 或已注册合成器确定性落版精确标题，记录 CJK 字体、copy 文件、底图和最终文件哈希；没有确定性排版能力时不得声称中文标题准确。原图与约 270x480 缩略图都要检查标题逐字、主题兑现、主体身份/动作、焦点顺序、背景语义、对比度、遮挡、水印/伪文字和比例，写入 output/cover-asset-manifest.json、output/cover-variant-matrix.json、output/cover-thumbnail-review.json 与 output/independent-validation.json。独立审核者不得参与当前 revision，审核绑定最终候选 SHA-256；缺少 OCR、目标受众盲测、独立设计师或 analytics 时记录 missing/low confidence，只有 overall_pass=true 才能提升为 output/cover.png。
+
 先读取 __PLUGIN_ROOT__/agents/talking-head-montage.md 的正文；正文是唯一业务指令来源。
 
 必须使用 OPENMONTAGE_ROOT 中安装的 OpenMontage 原生 registry、hybrid pipeline、transcript/scene/edit stages、video_selector、asset/composition/audio-prep/visual-QA stages 和其原生 runner。先运行 tools.tool_registry.registry.discover()/provider_menu_summary() 与 lib.pipeline_loader.load_pipeline("hybrid")；不得自写 Provider HTTP 客户端，也不得引入另一套编辑器或转写器。
