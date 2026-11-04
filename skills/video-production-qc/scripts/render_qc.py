@@ -136,6 +136,77 @@ def tail_energy(path: Path, tail: float = 0.5) -> bool:
     return bool(match and match.group(1) != "-inf")
 
 
+def first_audio_residue_check(path: Path, declared_dialogue_start: float = 0.0) -> Check:
+    """Reject a short non-silent flash before the first declared dialogue cue."""
+    if declared_dialogue_start <= 0:
+        return Check(
+            "first_audio_residue",
+            "blocked",
+            method="ffmpeg silencedetect",
+            message="first dialogue cue is at frame zero; a clean lead-in cannot be independently verified",
+        )
+    result = run([
+        "ffmpeg", "-hide_banner", "-nostats", "-t", f"{declared_dialogue_start:.6f}", "-i", str(path),
+        "-af", "silencedetect=noise=-45dB:d=0.02", "-f", "null", "-",
+    ])
+    text = result.stderr + result.stdout
+    intervals = silence_intervals_from_text(text)
+    if result.returncode != 0:
+        return Check("first_audio_residue", "blocked", method="ffmpeg silencedetect", message=result.stderr.strip() or "first-second audio probe failed")
+    # A verifiable clean lead-in must begin with silence. If the probe cannot
+    # establish that, fail closed instead of treating an all-active prefix as
+    # proof that no stray sound exists.
+    leading = next(((start, end) for start, end in intervals if start <= 0.02), None)
+    measured = {"declared_dialogue_start": declared_dialogue_start, "silence_intervals": intervals}
+    if leading is None:
+        return Check(
+            "first_audio_residue",
+            "blocked",
+            method="ffmpeg silencedetect",
+            measured=measured,
+            threshold="a leading silence interval must be verified before the first dialogue cue",
+            message="no leading silence interval was detected; pre-roll residue is unverifiable",
+        )
+    has_activity = leading[1] < declared_dialogue_start - 0.02
+    return Check(
+        "first_audio_residue",
+        "blocked" if has_activity else "passed",
+        method="ffmpeg silencedetect",
+        measured=measured,
+        threshold="no non-silent island before first dialogue cue",
+        message="non-silent activity detected after leading silence" if has_activity else "",
+    )
+
+
+def silence_intervals_from_text(text: str) -> list[tuple[float, float]]:
+    starts: list[float] = []
+    intervals: list[tuple[float, float]] = []
+    for line in text.splitlines():
+        start_match = re.search(r"silence_start:\s*([0-9.]+)", line)
+        end_match = re.search(r"silence_end:\s*([0-9.]+)", line)
+        if start_match:
+            starts.append(float(start_match.group(1)))
+        if end_match and starts:
+            intervals.append((starts.pop(0), float(end_match.group(1))))
+    return intervals
+
+
+def true_peak_check(path: Path, ceiling_db: float = -1.0) -> Check:
+    result = run([
+        "ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
+        "-af", "ebur128=peak=true", "-f", "null", "-",
+    ])
+    text = result.stderr + result.stdout
+    peaks = []
+    for match in re.finditer(r"Peak:\s*(-?(?:[0-9]+(?:\\.[0-9]+)?|inf))\s*dBFS", text):
+        if match.group(1).lower() != "inf":
+            peaks.append(float(match.group(1)))
+    if result.returncode != 0 or not peaks:
+        return Check("true_peak", "blocked", method="ffmpeg ebur128", message=result.stderr.strip() or "true peak measurement unavailable")
+    peak = max(peaks)
+    return Check("true_peak", "passed" if peak <= ceiling_db else "blocked", method="ffmpeg ebur128", measured=peak, threshold=f"<= {ceiling_db:.1f} dBFS")
+
+
 def freeze_intervals(path: Path) -> tuple[list[tuple[float, float]], str]:
     result = run([
         "ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
@@ -384,6 +455,41 @@ def generated_video_check(manifest_path: Path | None, edl_path: Path | None, rev
     )
 
 
+def stage_required_paths(use_generated_video: bool) -> list[str]:
+    paths = [
+        "output/edit-decision-list.json",
+        "output/final.mp4",
+        "output/final-audio-transcript.json",
+        "output/audio-content-check.json",
+        "output/sync-evidence.json",
+    ]
+    if use_generated_video:
+        paths.extend([
+            "output/generated-video-manifest.json",
+            "output/generated-video-review.json",
+            "output/generated-video-lint.json",
+        ])
+    return paths
+
+
+def first_declared_dialogue_start(edl_path: Path | None, fps: float, transcript_path: Path | None = None) -> float:
+    if fps <= 0:
+        return 0.0
+    edl_starts: list[float] = []
+    asr_starts: list[float] = []
+    try:
+        if edl_path is not None:
+            data = json.loads(edl_path.read_text())
+            rows = data.get("segments", [])
+            edl_starts.extend(float(row["output_start_frame"]) / fps for row in rows if isinstance(row, dict) and isinstance(row.get("output_start_frame"), (int, float)))
+        if transcript_path is not None:
+            transcript = json.loads(transcript_path.read_text())
+            asr_starts.extend(float(row["start_time"]) for row in transcript.get("segments", []) if isinstance(row, dict) and isinstance(row.get("start_time"), (int, float)))
+        return min(asr_starts) if asr_starts else min(edl_starts, default=0.0)
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        return 0.0
+
+
 def stage_lineage_check(progress_path: Path | None, revision_id: str, root: Path, required_paths: list[str]) -> Check:
     if progress_path is None:
         return Check("stage_lineage", "blocked", method="validate_stage_lineage", message="current progress-state evidence is required")
@@ -450,6 +556,8 @@ def run_qc(video: Path, revision_id: str, subtitle_mode: str, listening_status: 
             checks.append(Check("max_silence_gap", "passed" if longest <= 0.5 else "blocked", method="ffmpeg silencedetect", measured=longest, threshold="<= 0.5s"))
             has_tail = tail_exempt or tail_energy(video)
             checks.append(Check("tail_voice_energy", "passed" if has_tail else "blocked", method="ffmpeg volumedetect", measured=has_tail, threshold="voice in final 0.5s"))
+            checks.append(first_audio_residue_check(video, first_declared_dialogue_start(edl_path, fps, transcript_path)))
+            checks.append(true_peak_check(video))
         else:
             checks.extend([
                 Check("audio_energy_windows", "blocked", message="audio stream unavailable"),
@@ -463,16 +571,7 @@ def run_qc(video: Path, revision_id: str, subtitle_mode: str, listening_status: 
         if require_generated_video or generated_video_manifest is not None:
             checks.append(generated_video_check(generated_video_manifest, edl_path, revision_id, root or video.parent.parent))
         if require_stage_lineage:
-            required_paths = [
-                "output/edit-decision-list.json",
-                "output/final.mp4",
-                "output/final-audio-transcript.json",
-                "output/audio-content-check.json",
-                "output/sync-evidence.json",
-                "output/generated-video-manifest.json",
-                "output/generated-video-review.json",
-                "output/generated-video-lint.json",
-            ]
+            required_paths = stage_required_paths(require_generated_video or generated_video_manifest is not None)
             checks.append(stage_lineage_check(progress_path, revision_id, root or video.parent.parent, required_paths))
         has_subtitle_stream = any(stream.get("codec_type") == "subtitle" for stream in streams)
         subtitle_ok = subtitle_mode == "off" or has_subtitle_stream

@@ -1,3 +1,8 @@
+## 4.2.138
+
+- Deepen `ip-explainer` quality contracts: conditional generated video, raw-source and evidence gates, preflight capability reporting, first-second audio and clipping QC, provider-neutral BGM, and core-argument cover validation.
+- Add the Server/MCP execution identity injection RFC without changing Server behavior.
+
 ## 4.2.137
 
 - Keep feedback analysis Skills within the frozen FeedbackJob contract: return private evidence for Server validation and persistence; leave scheduling and strategy activation to the Server.

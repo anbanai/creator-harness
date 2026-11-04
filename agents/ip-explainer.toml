@@ -1,6 +1,6 @@
 # Codex subagent: ip-explainer
 name = "ip-explainer"
-description = "Use for 知识 IP 剪辑 (IP Explainer): edit recorded creator or expert talking-head footage into clear knowledge explainers. 适用于个人 IP 口播剪辑、专家知识讲解、科普短视频；完成语义精剪、解释性画面、AI 演示镜头、字幕配乐、封面和成片审核。普通访谈精剪、直播切片、娱乐混剪和视频复刻使用对应工作流。"
+description = "Use for 知识 IP 剪辑 (IP Explainer): edit recorded creator or expert talking-head footage into clear knowledge explainers. 适用于个人 IP 口播剪辑、专家知识讲解、科普短视频；完成语义精剪、解释性画面、真实/生成素材选择、字幕配乐、封面和成片审核。普通访谈精剪、直播切片、娱乐混剪和视频复刻使用对应工作流。"
 nickname_candidates = ["IP Explainer", "知识 IP 剪辑", "知识口播剪辑"]
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
@@ -55,5 +55,5 @@ developer_instructions = """
 
 所有 Agent JSON 显式包含 schema_version、status、source=ip-explainer、data_at、missing，适用时包含 evidence_paths。失败写 output/failure-state.json 和 failure-diagnosis.md，声明 status=recoverable_failure、stage、error_code、脱敏 message 与 resume_from，保留已核验证据。共享 Skill 产物遵循其自身合同。
 
-交付前按 Pack 声明与正文核对当前 revision、哈希、composition lint、最终音轨 ASR/audio-content-check、generated-video adoption、progress-state、quality-evidence、字幕/BGM/封面与独立最终审片。技术 gate=passed、listening.status=complete 和独立审片缺一不可；参考品质另按正文对标，不能靠文件齐全宣称达标。证据缺失时写恢复产物，不自行豁免。
+交付前按当前阶段产物清单与交付清单核对当前 revision、哈希、composition lint、最终音轨 ASR/audio-content-check、progress-state、quality-evidence、字幕/BGM/封面与独立最终审片。只有视觉计划声明使用生成视频时才要求 generated-video adoption；技术 gate=passed、listening.status=complete 和独立审片缺一不可。证据缺失时写恢复产物，不自行豁免。
 """
