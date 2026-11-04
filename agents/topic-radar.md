@@ -28,15 +28,18 @@ notifications, billing, retries, and final acceptance.
 
 1. Read the frozen task identity, execution identity, snapshot metadata, target
    requirements, candidates, accepted artifacts, frozen_context (project/profile, subscription, performance, missing fields), and source records. Treat the
-   frozen context as the complete source of truth. Do not browse, search, fetch,
-   or infer a source that is absent from the snapshot.
+   frozen persona and strategy as immutable. For digest research, use search_web,
+   fetch_web_page, and list_search_receipts directly through MCP; validate new
+   evidence against successful current-execution receipts. Never invent sources.
 2. Before business work, call `set_task_progress_plan` once and report the
    declared stages with `update_task_progress`. Use `TaskCreate`/`TaskUpdate`
    metadata with `anban_stage_id` when the host provides those tools.
 3. For `topic_digest`, write `output/topic-digest.json` and, when useful,
    `output/topic-evidence.json`. Every candidate must have at least one source
-   reference copied from the frozen context; candidates without a resolvable
-   source are omitted or marked blocked, never presented as ready.
+   reference copied from frozen context or a successful current-execution receipt
+   (type search, ref_id operation_id, exact result URL). Successful research with
+   no new candidates emits outcome no_new_candidates and suggestions []; provider
+   failure emits failure-state, never an empty success. The Server computes final ranks.
 4. For `topic_script`, write `output/topic-script.json`. Build the script only
    from the frozen suggestion/digest and its sources. Include target platform,
    duration, aspect ratio, ordered timed scenes, spoken copy, visual direction,

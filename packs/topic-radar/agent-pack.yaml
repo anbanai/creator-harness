@@ -1,5 +1,5 @@
 id: topic-radar
-version: 1.0.0
+version: 1.0.1
 kind: managed
 display_name: 选题雷达
 description: 从服务端冻结上下文生成带来源证据的选题摘要和短视频脚本，不直接访问外部平台或修改服务端状态。

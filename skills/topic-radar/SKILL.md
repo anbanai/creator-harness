@@ -6,8 +6,8 @@ description: Use when a managed Topic Radar task must turn a Server-frozen snaps
 # Topic Radar Artifact Contract
 
 Topic Radar is a file-backed transformation of a Server-frozen snapshot. The
-Agent may interpret and score supplied material, but it does not collect new
-material or own durable state. The Server validates and persists the result.
+Agent may research new material through search_web, fetch_web_page, and
+list_search_receipts MCP capabilities for topic_digest; it never owns durable state. The Server validates and persists the result.
 
 ## Startup
 
@@ -15,8 +15,11 @@ material or own durable state. The Server validates and persists the result.
    snapshot identity/hash, and the pre-created `output/` directory.
 2. Check required evidence and explicitly record missing fields. Do not ask
    questions or substitute live defaults for frozen values.
-3. Use only source records in the snapshot. A source reference must be copied
-   from a resolvable frozen record; do not fabricate URLs, ranks, freshness, or
+3. Preserve frozen persona, strategy, subscription, and weights. For topic_digest,
+   search using frozen interests, fetch promising pages, then call list_search_receipts
+   with the current task identity. Copy new references from successful current-execution
+   receipts as type search, ref_id equal to operation_id, and the exact result URL.
+   Script tasks use only frozen sources; do not fabricate URLs, ranks, freshness, or
    engagement claims.
 
 ## Shared JSON envelope
@@ -27,18 +30,24 @@ Digest, script, and evidence JSON artifacts have `schema_version: "1.0"`, `task_
 are complete. Use `warning` for bounded partial quality, `data_insufficient`
 when the snapshot cannot support the requested result, and `blocked` for an
 unresolvable task or identity conflict. `quality_status` is ready, warning, or
-blocked. For insufficient data, write failure-state instead of an empty digest.
+blocked. Provider failures require failure-state and must never masquerade as empty success.
 
 Each source reference is an object with `type`, `label`, `platform`, `ref_id`,
 `title`, `url`, `rank`, `hot`, `fetched_at`, and `freshness` when supplied.
-Omit absent fields; do not emit null or fill missing values from memory. Candidate-level `source_refs` must point to those exact records.
+Omit absent fields; do not emit null or fill missing values from memory. Candidate-level `source_refs` must point to those exact records. New research
+references require both receipt ID and exact URL; leave platform absent unless
+the Server receipt provides it. Do not put provider metadata URLs into citations.
 
 ## Digest: `output/topic-digest.json`
 
-The digest contains `generated_at` (RFC3339) and a nonempty `suggestions` array.
+The digest contains `generated_at` (RFC3339), `outcome` (candidates or
+no_new_candidates), and a `suggestions` array. After successful current-execution
+research, zero relevant/new candidates is valid: emit no_new_candidates with
+suggestions [], status ready or warning, and explain the search coverage in evidence.
 Each suggestion contains `title`, `introduction`, `source_summary`, `source_refs`,
 `scores`, and `video_fit`. Use the frozen_context project/profile, subscription,
-performance history, and missing_fields to assess relevance; no live lookups.
+performance history, and missing_fields to assess relevance. Keep research
+responses and limitations in output/topic-evidence.json; do not change frozen strategy.
 
 Supply seven suitability scores from 0 to 1: `traffic_potential`, `account_fit`,
 `differentiation`, `timeliness`, `monetization`, `production_cost`, and
@@ -52,7 +61,8 @@ emit score_total or award bonuses for external-source cross-platform counts.
 
 Keep rationale in optional `output/topic-evidence.json`, repeating the envelope
 and identifying each suggestion by title, claim, source refs, and limitations.
-A suggestion without a resolvable frozen source must not be emitted as ready.
+A suggestion requires a resolvable frozen source or a successful current-execution
+receipt. Historical or foreign-execution receipts cannot authorize new sources.
 
 ## Script: `output/topic-script.json`
 

@@ -83,3 +83,5 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 - 信息足够立即暂存 ready 草稿；累计问题不超过 5 个。只有 Studio 确认响应才能证明 Task 已创建。
 - 需求澄清不会修改画像，不提前生成内容，不选择内部工作流。
 - 只调用 AskUserQuestion、Skill 和当前会话的 `stage_assistant_draft`；不调用文件、Shell、搜索、任务、发布、账单或 profile 写入能力。
+
+用户从选题库进入时，将选题的 `asset_id` 原样保留在 `plan.asset_id` 中；它是本次创作的来源引用，不是上传素材 ID。不要推测、替换或丢弃此引用，Server 在提交时验证归属并冻结输入。

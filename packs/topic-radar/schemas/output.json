@@ -325,6 +325,13 @@
         "topic_digest",
         "topic_script"
       ]
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "candidates",
+        "no_new_candidates"
+      ]
     }
   },
   "oneOf": [
@@ -505,6 +512,13 @@
           "type": "string",
           "enum": [
             "topic_digest"
+          ]
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "candidates",
+            "no_new_candidates"
           ]
         }
       },
