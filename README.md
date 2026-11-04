@@ -132,6 +132,8 @@ claude --verbose --agent anban:wechat-article AI Agent 入门指南
 claude --verbose --agent anban:seednote 降噪耳机种草笔记
 ```
 
+**知识 IP 剪辑 / IP Explainer** 的 Agent 调用名为 `anban:ip-explainer`，用于把已录制的个人 IP、专家口播剪成知识讲解或科普短视频，包含解释性画面、字幕配乐、封面和成片审核。本地执行需配置可用的 OpenMontage 环境、提供输入媒体并显式指定 `runtime_mode=local_test`。知识结构策划由 `talking-head-explainer` Skill 负责，AI 演示镜头由 `talking-head-video-generation` Skill 负责；普通访谈、直播切片和视频复刻使用对应工作流。
+
 视频生成、白板动画和视频复刻仅通过 Studio 下发托管任务，并使用各自独立的运行镜像；Agent 名称分别为 `montage`、`whiteboard-animation` 和 `hypit`。白板动画运行时固定上游 `geeklee/srt-whiteboard-animation` 提交，预装字幕解析、线稿预览、流式笔迹渲染和合并所需依赖。需要先启用服务端能力并准备官方 Runtime Profile。仅安装插件不包含浏览器、官方引擎或 Provider 配置，本地直接调用不会启动生产视频工作流。
 
 如果你调整 Claude Code 权限模式，请只在受信任工作区中放宽权限，并确认任务输入媒体可被 agent 访问。

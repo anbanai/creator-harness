@@ -41,6 +41,7 @@ const expectedSkillNames = {
     'portrait-cover-design',
     'seo-optimization',
     'article-research',
+    'redfox-research',
     'content-tagging',
     'topic-evaluator',
     'trend-rider',
@@ -52,6 +53,7 @@ const expectedSkillNames = {
     'humanizer',
     'portrait-cover-design',
     'seednote-research',
+    'redfox-research',
     'seednote-viral-analysis',
     'seednote-visual-design',
     'seednote-writing',
@@ -936,7 +938,7 @@ describe('DSH profile smoke flow', () => {
     expect(fixture.overrides.log.mock.calls.map(([line]) => line)).toEqual([
       'Bundle rows: anban-mcp=1 anban-preset-manager=1 preset-local-mcp=0',
       'Healthy Presets: wechat-article, seednote',
-      'Mounted Skill catalogs: wechat-article=14 seednote=11',
+      'Mounted Skill catalogs: wechat-article=15 seednote=12',
       `Export resolution: ${publicExports.join(', ')}`,
     ])
     expect(fixture.overrides.rm).toHaveBeenCalledWith(fixture.smokeRoot, {

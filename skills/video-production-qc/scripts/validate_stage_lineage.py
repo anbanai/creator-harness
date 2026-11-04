@@ -38,7 +38,7 @@ def validate(data: dict[str, Any], root: Path, revision_id: str, required_paths:
             "errors": ["progress state must be a JSON object"],
         }
     events = data.get("events")
-    if data.get("schema_version") != "1.0" or data.get("source") not in {"talking-head-montage", "viral-ip-video-editor"} or data.get("revision_id") != revision_id:
+    if data.get("schema_version") != "1.0" or data.get("source") not in {"ip-explainer", "viral-ip-video-editor"} or data.get("revision_id") != revision_id:
         errors.append("progress state schema, source or revision does not match")
     if not isinstance(events, list) or not events:
         events = []

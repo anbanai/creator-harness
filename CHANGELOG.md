@@ -1,6 +1,12 @@
-# 4.2.134
+## 4.2.135
 
-- Topic Radar researches execution-scoped sources through MCP and accepts verified empty outcomes.
+- Unify topic references around canonical assets and task-linked claims; autonomous Topic Radar accepts execution-scoped research evidence and verified empty outcomes.
+
+## 4.2.134
+
+- Rename the knowledge-editing Agent to `ip-explainer` (知识 IP 剪辑 / IP Explainer), with precise bilingual discovery and consistent evidence identity.
+- Review reference footage for explanation, object continuity and promise/payoff; consolidate orchestration in the canonical Pack.
+- Migrate retired Codex registrations safely, retaining existing input protocols and production quality gates.
 
 ## 4.2.133
 

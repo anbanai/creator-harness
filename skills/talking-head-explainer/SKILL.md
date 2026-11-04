@@ -1,9 +1,9 @@
 ---
 name: talking-head-explainer
-description: Use when planning or editing recorded talking-head explainers, educational videos, or science communication shorts that need raw-source assessment, clear explanations, a reusable semantic master, retention experiments, or independent validation. Do not use for product demos, pure entertainment edits, or video replication.
+description: Use when planning or reviewing IP 知识讲解、专家口播、科普短视频 (creator or expert knowledge explainers) from recorded talking-head footage. Owns fact grounding, explanation structure, visual plans and independent validation. For end-to-end 知识 IP 剪辑 / IP Explainer, use the ip-explainer Agent. Not for ordinary interviews, livestream clipping, product demos, entertainment montages or video replication.
 ---
 
-# 口播科普解释
+# 知识讲解策划 · Explainer Planning
 
 ## 适用范围与边界
 
@@ -23,7 +23,7 @@ description: Use when planning or editing recorded talking-head explainers, educ
 
 1. 在任何转录校正、死区检测或素材重排前生成 `output/explainer-input-assessment.json`，列出每个输入的来源、哈希、时间、完整性、用途、权利状态和缺失项。
 2. 在剪辑前建立主张地图，并把内容拆成解释单元：概念、机制、过程、比较、分类、误区、尺度变化或生活化比喻。每个单元记录核心主张、证据、条件/限定、易误解点、必须保留的数字/否定/因果/免责声明和不应被剪辑强化的推断。
-3. 为每个单元生成 `output/explanation-plan.json`。写明观众当前不理解什么、画面要让观众看见什么、视觉锚点、表达方式、比喻、视觉功能、揭示顺序、事实一致性风险、生成素材误认风险和失败替代方案。复杂选择按需读取 `references/explanation-patterns.md`。
+3. 为每个单元生成 `output/explanation-plan.json`。写明观众当前不理解什么、画面要让观众看见什么、视觉锚点、表达方式、比喻、视觉功能、揭示顺序、事实一致性风险、生成素材误认风险和失败替代方案。复杂选择按需读取 `references/explanation-patterns.md`。提供参考片或要求达到参考品质时，先按 [references/reference-video-review.md](references/reference-video-review.md) 拆解对象、动作、状态变化和声画对应，将少量可迁移目标写入现有 explanation plan；不能只模仿字体、色调或镜头数量。
 4. 至少比较两个来自真实原片或事实资料的 Hook 候选。记录原始时间码、观看理由、后文兑现位置、具体性、语义风险、首次出现的对象/问题和是否立即说明解决什么问题。前三秒和完播是目标，不把固定秒数、镜头数或切换频率当作定律。
 5. 创建 `output/semantic-master.json`，固定核心主张、事实证据、解释顺序、主要 Hook、口播语义、核心视觉锚点、结论和必要限定。按需读取 `references/platform-variants.md`，为用户选择的平台生成变体计划；未指定时使用 douyin、wechat_video_account、xiaohongshu 三个平台。仅当现有渲染能力实际生成独立平台文件时，才将其称为平台视频变体；不得复制同一个 MP4 冒充多平台成片。
 6. 基于已冻结的语义母版，先做低成本静帧、占位或简单图形预演，生成 `output/explanation-rehearsal.json`，记录母版 revision/hash、使用的素材、帧/时间码或占位依据、每个解释单元的信息揭示顺序、遮挡/碰撞检查、检查方式及结果。预演只证明流程已走查，不等于目标观众理解测试；没有真实观众样本时将理解结果标为 `not_tested`。预演不通过时记录失败原因和回退方案，禁止进入高成本素材生成。
@@ -35,13 +35,15 @@ description: Use when planning or editing recorded talking-head explainers, educ
 
 每个视觉元素必须至少承担解释、证明、强调、比较、转场或注意力重置之一，并说明它降低了什么理解成本。优先让观众看见对象、过程、变量、关系或统一比较轴；动效的验收标准是理解提升，不是画面数量。生成素材可能被误认为真实证据时，标记并改用示意标签、实拍、静态图形或真人讲解。
 
+比较类内容保持同一比较轴和主体身份，过程类内容保留起始状态→可见动作→结果；生成提示要描述变化，不只描述漂亮物体。示意画面不能证明历史来源，参考片也不能替代事实核验。字幕、人物小窗、配乐和暗色蒙版不能挤掉解释主体。样片与终片按同一参考片段检验，技术通过与参考品质达标分别记录到现有审查产物。具体审片动作和未达标处理见上述 reference。
+
 ## 平台与数据边界
 
 平台变体只能调整标题/封面包装、开场包装层、字幕安全区和位置、节奏细节、CTA、界面遮挡区域和交付格式。不得改变事实、因果、限制条件或结论。规则无法核验时使用保守配置并标记 `platform_rules_unavailable`。发布后指标只能消费 Server 提供的冻结 analytics revision；Agent 日志和本地文件不能证明效果。
 
 ## 输出合同
 
-以下科普专用 JSON 均包含 `schema_version`、`status`、`source`、`workflow="talking-head-explainer"`、`data_at`、`missing` 和 `evidence_paths`。`source` 必须是当前执行 Agent 的 ID（`viral-ip-video-editor` 或 `talking-head-montage`），`data_at` 使用 UTC ISO 8601 时间；专用产物的 `status` 为 `ready|partial|missing|failed`。其中 `missing` 表示产物所需输入不足以形成有意义的记录，`failed` 表示生成或验证过程出错；缺少历史数据、专家、观众样本或平台规则时应列入 `missing`，但仍可产出有用计划并标为 `partial`。凡引用视频、母版或变体的产物还须记录 `revision_id` 和对应哈希。没有真实数据时不得写成功验证结论。
+以下科普专用 JSON 均包含 `schema_version`、`status`、`source`、`workflow="talking-head-explainer"`、`data_at`、`missing` 和 `evidence_paths`。`source` 必须是当前执行 Agent 的 ID（`viral-ip-video-editor` 或 `ip-explainer`），`data_at` 使用 UTC ISO 8601 时间；专用产物的 `status` 为 `ready|partial|missing|failed`。其中 `missing` 表示产物所需输入不足以形成有意义的记录，`failed` 表示生成或验证过程出错；缺少历史数据、专家、观众样本或平台规则时应列入 `missing`，但仍可产出有用计划并标为 `partial`。凡引用视频、母版或变体的产物还须记录 `revision_id` 和对应哈希。没有真实数据时不得写成功验证结论。
 
 - `output/explainer-input-assessment.json`
 - `output/semantic-master.json`
