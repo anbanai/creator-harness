@@ -1,3 +1,8 @@
+## 4.2.136
+
+- Expose pinned Montage pipelines, playbooks, and platform output profiles as project defaults and task overrides; freeze and validate the selected configuration before Agent execution.
+- Update Montage Agent instructions to use the structured frozen output profile for rendering and cover generation.
+
 ## 4.2.135
 
 - Unify topic references around canonical assets and task-linked claims; autonomous Topic Radar accepts execution-scoped research evidence and verified empty outcomes.
