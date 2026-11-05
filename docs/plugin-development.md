@@ -80,7 +80,7 @@ with-Skill, and without-Skill cases.
 ## MCP and artifacts
 
 `.mcp.json` connects to the fixed official endpoint
-`https://creator.anbanai.com/mcp`; the endpoint is a plugin implementation
+`https://api-creator.anbanai.com/mcp`; the endpoint is a plugin implementation
 detail and is not user-configurable. Its Authorization header uses the sensitive
 `${user_config.api_key}` value. Never print keys, bearer tokens, private draft
 URLs, or authorization headers.
@@ -216,7 +216,7 @@ Classify a Skill before editing it:
   generated Presets by hand.
 - Keep DSH credentials in the official credential adapter, configure only
   `ANBAN_API_KEY`, and keep the MCP endpoint fixed at
-  `https://creator.anbanai.com/mcp`. Presets must not embed MCP clients,
+  `https://api-creator.anbanai.com/mcp`. Presets must not embed MCP clients,
   credential values, or host-specific adapter files.
 - Keep deterministic validation in scripts or server tests.
 - Bump `package.json`, the `pnpm-lock.yaml` root importer metadata,

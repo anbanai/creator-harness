@@ -26,7 +26,7 @@ description: Use when user mentions "初始化", "anban-setup", "第一次使用
 
 - `api_key`：必填、敏感字段，映射到 MCP Authorization header。
 
-官方插件会自动连接固定端点 `https://creator.anbanai.com/mcp`。该端点是实现细节，不是用户配置项；用户只需配置 `api_key`。
+官方插件会自动连接固定端点 `https://api-creator.anbanai.com/mcp`。该端点是实现细节，不是用户配置项；用户只需配置 `api_key`。
 
 认证失败时，提示用户打开插件配置填写或更新 `api_key`。不要把 API Key 写入项目文件，也不要把密钥打印到日志或最终回答。
 
@@ -36,7 +36,7 @@ Codex 使用环境变量与安装器写入的 `[mcp_servers.creator]` 配置：
 
 - `ANBAN_API_KEY`：必填 Bearer token。
 
-安装器会自动注册固定端点 `https://creator.anbanai.com/mcp`。该端点不是安装选项；用户只需配置 `ANBAN_API_KEY`。
+安装器会自动注册固定端点 `https://api-creator.anbanai.com/mcp`。该端点不是安装选项；用户只需配置 `ANBAN_API_KEY`。
 
 优先引导用户在 shell 启动文件中设置 `ANBAN_API_KEY`，再重启 Codex。不要自动覆盖 `~/.codex/config.toml`；用户明确要求手动注册 MCP 时，使用 `bearer_token_env_var = "ANBAN_API_KEY"` 合并现有配置。
 

@@ -62,7 +62,7 @@ Server finalizer 会验证发布包字段、状态、路径、图片数量和已
 """
 
 [mcp_servers.creator]
-url = "https://creator.anbanai.com/mcp"
+url = "https://api-creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 # Shared semantic content tagging

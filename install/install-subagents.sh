@@ -224,7 +224,7 @@ tmp_lines = filtered_lines
 # Creator connection fields are plugin-owned. Refresh their values so upgrades
 # cannot retain a stale endpoint or noncanonical credential variable.
 creator_header = '[mcp_servers.creator]'
-creator_endpoint = 'https://creator.anbanai.com/mcp'
+creator_endpoint = 'https://api-creator.anbanai.com/mcp'
 creator_connection_values = {
     'url': creator_endpoint,
     'bearer_token_env_var': 'ANBAN_API_KEY',

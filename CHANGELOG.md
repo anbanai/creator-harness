@@ -1,3 +1,7 @@
+# 4.2.103
+
+- Connect Claude, Codex, and DSH directly to the fixed Creator API MCP endpoint at `https://api-creator.anbanai.com/mcp`.
+
 # 4.2.102
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.

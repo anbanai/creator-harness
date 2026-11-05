@@ -180,7 +180,7 @@ using the ecommerce-platform-specs skill：按 target_platform 扫描所有图�
 """
 
 [mcp_servers.creator]
-url = "https://creator.anbanai.com/mcp"
+url = "https://api-creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]

@@ -49,5 +49,5 @@ path = "__PLUGIN_ROOT__/skills/content-planning-evidence/SKILL.md"
 enabled = true
 
 [mcp_servers.creator]
-url = "https://creator.anbanai.com/mcp"
+url = "https://api-creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"

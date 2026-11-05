@@ -203,7 +203,7 @@ describe('anban MCP registration', () => {
     expect(fake.plugin).toHaveBeenCalledWith(mcpClient, {
       transport: 'streamable-http',
       serverName: 'creator',
-      url: 'https://creator.anbanai.com/mcp',
+      url: 'https://api-creator.anbanai.com/mcp',
       headers: { Authorization: `Bearer ${FAKE_SECRET}` },
       toolCallTimeoutMs: 900_000,
       failOnStartupError: false,

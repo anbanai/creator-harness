@@ -16,7 +16,7 @@
 
 ### Case 3: 官方固定端点连接失败
 
-- Input: 官方插件连接固定端点 https://creator.anbanai.com/mcp 超时。
+- Input: 官方插件连接固定端点 https://api-creator.anbanai.com/mcp 超时。
 - Recommended path: 按宿主检查上述凭据来源和 MCP 工具可用性，再检查官方服务的网络可达性并重新调用 list_projects。
 - Artifacts: connectivity-report.md。
 - Quality gate: 固定端点是实现细节，不提供覆盖选项，不回显认证信息。

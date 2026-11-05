@@ -5,7 +5,7 @@ import * as mcpClient from '@deepseek-ai/dsh-mcp-client'
 import { safeError } from './safe-error.js'
 
 const API_KEY_REF = credentialRef('ANBAN_API_KEY')
-const MCP_URL = 'https://creator.anbanai.com/mcp'
+const MCP_URL = 'https://api-creator.anbanai.com/mcp'
 const SERVER_NAME = 'creator'
 const TOOL_CALL_TIMEOUT_MS = 900_000
 const MAX_API_KEY_LENGTH = 4_096

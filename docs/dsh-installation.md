@@ -130,7 +130,7 @@ onboarding does not configure arbitrary third-party credentials. It configures
 supported model-provider credentials, so configure `ANBAN_API_KEY` through the
 official credential document above instead.
 
-The Creator MCP endpoint is fixed at `https://creator.anbanai.com/mcp`. It is
+The Creator MCP endpoint is fixed at `https://api-creator.anbanai.com/mcp`. It is
 not a profile option. Never put a key or serialized Authorization header in a
 Preset, command argument, log, screenshot, test fixture, or generated artifact.
 

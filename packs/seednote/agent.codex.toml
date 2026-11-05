@@ -343,7 +343,7 @@ using the seednote-writing skill 扫描标题与正文，执行违禁词和诱�
 """
 
 [mcp_servers.creator]
-url = "https://creator.anbanai.com/mcp"
+url = "https://api-creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]

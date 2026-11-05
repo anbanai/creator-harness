@@ -19,7 +19,7 @@ Agent 自有 JSON 产物必须包含 `schema_version`、`status`、`source`、`d
 """
 
 [mcp_servers.creator]
-url = "https://creator.anbanai.com/mcp"
+url = "https://api-creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]

@@ -86,7 +86,7 @@ and write through its runtime-provided output link.
 """
 
 [mcp_servers.creator]
-url = "https://creator.anbanai.com/mcp"
+url = "https://api-creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
 [[skills.config]]

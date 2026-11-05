@@ -80,7 +80,7 @@ claude plugin install --scope user anban@anbanai
 
 - `api_key`：必填，敏感字段，用于连接 Anban Creator MCP 服务
 
-安装或启用插件时，Claude Code 只会提示填写 API Key，并将敏感值保存到安全存储中。通常不需要手动编辑 `~/.claude/settings.json`。官方插件自动连接固定端点 `https://creator.anbanai.com/mcp`；该端点是实现细节，不是用户配置项。
+安装或启用插件时，Claude Code 只会提示填写 API Key，并将敏感值保存到安全存储中。通常不需要手动编辑 `~/.claude/settings.json`。官方插件自动连接固定端点 `https://api-creator.anbanai.com/mcp`；该端点是实现细节，不是用户配置项。
 
 ## 5. 运行 `/anban:anban-setup`
 
