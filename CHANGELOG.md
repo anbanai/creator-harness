@@ -1,3 +1,7 @@
+## 4.2.141
+
+- Clarify that expression, demonstration, and evidence describe communication roles; real talking-head and AI-generated primary media may both carry supporting graphic layers.
+
 ## 4.2.140
 
 - Make the `ip-explainer` Pack explicitly generate AI video first for demonstration shots; use graphics or documentary footage only as declared fallbacks.
