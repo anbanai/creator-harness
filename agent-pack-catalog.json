@@ -1858,9 +1858,9 @@
         "semantic-master-variants",
         "retention-experiments",
         "independent-validation",
-        "conditional-generated-video-inserts",
+        "generated-video-led-explainer",
         "image-inserts",
-        "motion-graphics",
+        "motion-graphics-fallback",
         "automatic-review-loop"
       ],
       "artifacts": [
@@ -2499,7 +2499,7 @@
       "ui": {
         "renderer": "custom:ip-explainer"
       },
-      "digest": "db6d371c7de35bc176373924a28201cadb663d40b3a943a6f04c82eead00a8fc"
+      "digest": "c789eecf9075ee74baf2d906eb74dedd0c644928a5eed55496789eea513eb06f"
     },
     {
       "id": "local-life",
@@ -6261,7 +6261,7 @@
         }
       ],
       "ui": {},
-      "digest": "35f81e8e3c05332b0953dbc5a83cab9379b68c5faae9cb9e942b0477ffc8dba0"
+      "digest": "af34edb9404c6bd4751ae34b5d61f185abd5980b6a260e6d98a073c09985afb7"
     },
     {
       "id": "wechat-article",
