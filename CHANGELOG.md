@@ -1,3 +1,7 @@
+## 4.2.140
+
+- Make the `ip-explainer` Pack explicitly generate AI video first for demonstration shots; use graphics or documentary footage only as declared fallbacks.
+
 ## 4.2.139
 
 - Make AI-generated video the default demonstration path for `ip-explainer`; retain graphics and explicit documentary footage as documented fallbacks.
