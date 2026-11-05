@@ -44,9 +44,7 @@ def report(root: Path, output: Path, runtime_mode: str, plugin_root: Path | None
     context_file = os.environ.get("ANBAN_EXECUTION_CONTEXT_FILE", "").strip()
     context_file_ok = bool(context_file and Path(context_file).is_file()) if context_file else None
     pixabay_skill = plugin_root / "skills/search-pixabay/SKILL.md"
-    pixabay_upstream_skill = plugin_root / "skills/pixabay-search-skill/src/search-pixabay/SKILL.md"
     sfxmint_skill = plugin_root / "skills/sfxmint/SKILL.md"
-    sfxmint_upstream_skill = plugin_root / "skills/sfxmint-mcp/skills/sfxmint/SKILL.md"
     checks = {
         "runtime_mode_declared": runtime_mode in {"managed", "local_test"},
         "managed_context": all((task_id, project_id, execution_id)) if runtime_mode == "managed" else None,
@@ -63,11 +61,23 @@ def report(root: Path, output: Path, runtime_mode: str, plugin_root: Path | None
         "output_writable": output_ok,
         "openmontage_root": bool(os.environ.get("OPENMONTAGE_ROOT")),
         "image_source_configured": bool(os.environ.get("ANBAN_IMAGE_PROVIDER") or os.environ.get("IMAGE_SEARCH_PROVIDER")),
-        "pixabay_bgm_skill_installed": pixabay_skill.is_file() and pixabay_upstream_skill.is_file(),
-        "sfxmint_sfx_skill_installed": sfxmint_skill.is_file() and sfxmint_upstream_skill.is_file(),
+        "audio_discovery": {
+            "pixabay_skill_distributed": pixabay_skill.is_file(),
+            "pixabay_search_capability": "not_probed",
+            "pixabay_download_capability": "not_probed",
+            "pixabay_rights_verification": "not_probed",
+            "sfxmint_skill_distributed": sfxmint_skill.is_file(),
+            "sfxmint_lookup_capability": "not_probed",
+            "sfxmint_download_capability": "not_probed",
+            "audio_mixer_capability": "not_probed",
+        },
         "model_quota_declared": bool(os.environ.get("ANBAN_MODEL_QUOTA")),
     }
     missing = [key for key, value in checks.items() if value is False]
+    audio = checks["audio_discovery"]
+    for key in ("pixabay_skill_distributed", "sfxmint_skill_distributed"):
+        if audio[key] is False:
+            missing.append(f"audio_discovery.{key}")
     return {
         "schema_version": "1.0",
         "source": "video-production-qc",

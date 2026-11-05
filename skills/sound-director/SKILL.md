@@ -5,7 +5,7 @@ description: Use when a video needs dialogue, BGM, and SFX assembled into a fina
 
 # Sound Director
 
-Own the final audio assembly after picture lock. Read the approved picture, clean dialogue, `output/bgm-plan.json`, `output/sfx-cues.json`, and their source manifests. BGM discovery and selection belong to `video-bgm-design` using only `search-pixabay`; SFX discovery and cue planning belong to `talking-head-sound-design` using only `sfxmint`. This Skill combines their approved local audio assets with dialogue, checks the render, and records evidence. It does not search for or select tracks, generate audio, or make rights claims.
+Own the final audio assembly after picture lock. Read the approved picture, clean dialogue, `output/bgm-plan.json`, `output/sfx-cues.json`, and their source manifests. BGM discovery and selection belong to `video-bgm-design` using the bundled `search-pixabay` Skill; SFX discovery and cue planning belong to `talking-head-sound-design` using the bundled `sfxmint` Skill. This Skill combines their approved local audio assets with dialogue, checks the render, and records evidence. It does not search for or select tracks, generate audio, or make rights claims.
 
 ## Workflow
 

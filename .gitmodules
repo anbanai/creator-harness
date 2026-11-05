@@ -18,10 +18,3 @@
 	path = skills/ecommerce-visual-copywriting-skill
 	url = https://github.com/feichanggege/ecommerce-visual-copywriting-skill.git
 	branch = main
-[submodule "skills/sfxmint-mcp"]
-	path = skills/sfxmint-mcp
-	url = https://github.com/sfxmint/sfxmint-mcp.git
-[submodule "skills/pixabay-search-skill"]
-	path = skills/pixabay-search-skill
-	url = https://github.com/Tonyhzk/pixabay-search-skill.git
-	branch = main

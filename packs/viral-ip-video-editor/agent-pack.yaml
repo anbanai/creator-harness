@@ -18,6 +18,7 @@ surfaces: [plugin]
 features: [viral-ip-video-editing, retention-editing, explainable-knowledge-editing, generated-video-inserts, semantic-master-variants, retention-experiments, independent-validation, source-assets, montage-runtime, audio-silence-detection]
 artifacts:
   - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json, required: false}
+  - {role: bgm_candidates, path: output/bgm-candidates.json, mime_type: application/json, required: false}
   - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json, required: false}
   - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json, required: false}
   - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json, required: false}
@@ -118,6 +119,7 @@ artifact_stages:
       - output/independent-validation.json
 delivery:
   - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json}
+  - {role: bgm_candidates, path: output/bgm-candidates.json, mime_type: application/json}
   - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json}
   - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json}
   - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json}

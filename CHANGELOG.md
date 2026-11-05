@@ -1,3 +1,7 @@
+## 4.2.145
+
+- Vendor the Pixabay search and SFXMint Skills into the plugin tree and remove their upstream submodule/plugin dependencies from the `ip-explainer` audio workflow. Runtime availability of retrieval, download, and rights evidence remains explicit.
+
 ## 4.2.144
 
 - Refine `ip-explainer` audio discovery to use the pinned Pixabay and SFXMint Skills, with OpenMontage `audio_mixer` reserved for post-production mixing.

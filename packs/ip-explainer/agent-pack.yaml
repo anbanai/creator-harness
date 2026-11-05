@@ -55,7 +55,9 @@ artifacts:
   - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: final_audio_transcript, path: output/final-audio-transcript.json, mime_type: application/json, required: true}
   - {role: sfx_cues, path: output/sfx-cues.json, mime_type: application/json, required: true}
+  - {role: sfx_library_results, path: output/sfx-library-results.json, mime_type: application/json, required: false}
   - {role: bgm_plan, path: output/bgm-plan.json, mime_type: application/json, required: true}
+  - {role: bgm_candidates, path: output/bgm-candidates.json, mime_type: application/json, required: false}
   - {role: bgm_plan_md, path: output/bgm-plan.md, mime_type: text/markdown, required: true}
   - {role: bgm_qc, path: output/bgm-qc.json, mime_type: application/json, required: true}
   - {role: audio_source_manifest, path: output/audio-source-manifest.json, mime_type: application/json, required: true}

@@ -11,7 +11,7 @@ BGM 是宏观情绪建筑，不是一条循环铺满全片的音轨。它有自�
 
 ## Pixabay 音乐能力
 
-BGM 搜索只调用用户指定的上游 `search-pixabay` Skill，并遵循其音乐参考生成 Pixabay 搜索结果链接。需要取得曲目时，只能沿该 Skill 生成的 Pixabay 结果页/曲目页操作；不得另用通用网页搜索、其他站点或其他音乐搜索/provider Skill。Pixabay 搜索 Skill 本身只生成链接，不下载音频或核验授权，因此必须实际取得本地音频文件，并从对应曲目页记录可核验的来源与许可信息、访问时间及 SHA-256，才能将曲目标为可混音。若运行环境不能完成站内选曲、下载或许可核验，则保留候选并写 `resume_from=bgm_selection`，不进入混音，也不转去其他来源找替代曲目。用户提供或项目既有音乐库中的本地曲目可按本 Skill 的来源与授权合同审核；这不授权使用其他搜索渠道。
+BGM 搜索只使用随 Anban 分发的本地 `search-pixabay` Skill 生成 Pixabay 音乐候选链接；不要求安装外部插件或 MCP。该 Skill 只生成链接，不下载音频或核验授权。运行环境可用的浏览器、下载或授权核验能力须在本次任务中实际探测；不得假设它们存在。只有取得本地音频文件，并记录可核验的来源与许可信息、访问时间及 SHA-256，曲目才可进入混音。若环境无法完成这些步骤，保留候选并写 `resume_from=bgm_selection`，不进入混音，也不转去其他来源找替代曲目。用户提供或项目既有音乐库中的本地曲目可按本 Skill 的来源与授权合同审核；这不授权使用其他搜索渠道。
 
 ## 目录
 
@@ -37,7 +37,7 @@ BGM 搜索只调用用户指定的上游 `search-pixabay` Skill，并遵循其�
 
 硬性边界：
 
-- 只通过 `search-pixabay` Skill 生成 Pixabay 候选；本工作流不通过其他站点或通用网页搜索发现 BGM。该 Skill 本身不下载或核验授权。若没有运行时明确提供的授权获取能力，保留候选并标为待取得，不将 BGM 阶段伪报为完成；授权未核验的曲目不得进入成片。
+- 只通过本地 `search-pixabay` Skill 生成 Pixabay 候选；本工作流不通过其他站点或通用网页搜索发现 BGM。该 Skill 本身不下载或核验授权。若没有运行时明确提供的授权获取能力，保留候选并标为待取得，不将 BGM 阶段伪报为完成；授权未核验的曲目不得进入成片。
 - 不得用音乐替代内容：没有信息增量的音乐只增加干扰。
 - 不得用持续升调、密集打击乐制造虚假紧迫感或掩盖内容空洞。
 - 不得声称任何曲目“已获平台授权”或“一定过审”；只陈述可核验的许可证事实。
@@ -48,7 +48,7 @@ BGM 搜索只调用用户指定的上游 `search-pixabay` Skill，并遵循其�
 
 - 成片时长与章节/场景划分（章节 id、起止、用途、情绪目标；可由剪辑计划提供）。
 - 干净人声母版（或人声时间轴），用于判断 ducking 和音乐留白。
-- `search-pixabay` Skill 生成的候选链接，以及（若已取得）本地音频文件和来源/许可信息；候选不等于可用素材。
+- `output/bgm-candidates.json`（由 `search-pixabay` 生成）中的候选链接，以及（若已取得）本地音频文件和来源/许可信息；候选不等于可用素材。
 
 可选：
 
@@ -98,7 +98,7 @@ BGM 搜索只调用用户指定的上游 `search-pixabay` Skill，并遵循其�
 
 ## 第三步：选曲
 
-对每个 cue 按以下维度选曲，写入 `bgm-plan.json` 的 `selection`：
+将 `output/bgm-candidates.json` 中的候选按原始 `candidate_id`、标题、作者、曲目页 URL、检查时间和适配说明复制到 `bgm-plan.json.candidates[]`，并保持 `candidate_only: true`。未取得本地音频和权利凭证的候选不得进入 `tracks[]` 或 `cues[]`。对已取得且核验的曲目，再按以下维度选择，写入 `bgm-plan.json` 的 `selection`：
 
 - **情绪**：与章节 `emotion` 匹配，优先“支撑”而不是“重复”。悲伤段不必用悲情大提琴，克制的钢琴可能更准。
 - **能量**：用配器密度与鼓点强度对齐 `energy`；能量错配比情绪错配更明显。
@@ -177,10 +177,10 @@ BGM 搜索只调用用户指定的上游 `search-pixabay` Skill，并遵循其�
 
 ## 失败与降级
 
-- 没有任何可用授权曲目时，只用 `search-pixabay` 生成并记录 Pixabay 候选。此 Skill 不提供下载或授权核验；若运行时没有明确提供的授权获取能力，记录候选待取得并写 `resume_from=bgm_selection`，不得把链接当作已交付 BGM。不得通过通用网页搜索、其他网站或其他音乐搜索/provider 兜底。
+- 没有任何可用授权曲目时，只用本地 `search-pixabay` Skill 生成并记录 Pixabay 候选。该 Skill 不提供下载或授权核验；若运行时没有明确提供的授权获取能力，记录候选待取得并写 `resume_from=bgm_selection`，不得把链接当作已交付 BGM。不得通过通用网页搜索、其他网站或其他音乐搜索/provider 兜底。
 - 授权信息缺失（有文件无许可证）：标 `unverified`，不得混入成片；能替换就替换，不能替换则失败。
 - 音乐能力/解码失败：保留计划与已核验素材，写失败产物，`resume_from=bgm_mix`。
-- `search-pixabay` Skill 不可用时，记录 `pixabay_skill_unavailable` 并写 `resume_from=bgm_selection` 的可恢复失败；不得静默切换来源。只有搜索链接、没有本地文件或权利证据时，状态必须保持待取得/未完成，不把“已生成搜索链接”当成 BGM 已完成。
+- 本地 `search-pixabay` Skill 不可用时，记录 `pixabay_skill_unavailable` 并写 `resume_from=bgm_selection` 的可恢复失败；不得静默切换来源。只有搜索链接、没有本地文件或权利证据时，状态必须保持待取得/未完成，不把“已生成搜索链接”当成 BGM 已完成。
 - 无法测量响度：允许交付但必须标 `loudness_unverified`，不得声称符合任何响度标准。
 - 无法复听：只做自动检查并明确标注“自动检查通过，人工复听未完成”。
 

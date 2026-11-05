@@ -43,31 +43,45 @@ class PreflightTests(unittest.TestCase):
         self.assertTrue(data["checks"]["managed_context"])
         self.assertTrue(data["checks"]["execution_identity"]["task_id_present"])
 
-    def test_audio_capability_checks_use_the_selected_skill_entries(self):
+    def test_audio_preflight_distinguishes_distributed_skills_from_runtime_capabilities(self):
         with tempfile.TemporaryDirectory() as directory:
             plugin_root = Path(directory)
             (plugin_root / "skills/search-pixabay").mkdir(parents=True)
-            (plugin_root / "skills/pixabay-search-skill/src/search-pixabay").mkdir(parents=True)
             (plugin_root / "skills/sfxmint").mkdir(parents=True)
-            (plugin_root / "skills/sfxmint-mcp/skills/sfxmint").mkdir(parents=True)
             (plugin_root / "skills/search-pixabay/SKILL.md").touch()
-            (plugin_root / "skills/pixabay-search-skill/src/search-pixabay/SKILL.md").touch()
             (plugin_root / "skills/sfxmint/SKILL.md").touch()
-            (plugin_root / "skills/sfxmint-mcp/skills/sfxmint/SKILL.md").touch()
             data = preflight.report(plugin_root, plugin_root / "output", "local_test", plugin_root)
-        self.assertTrue(data["checks"]["pixabay_bgm_skill_installed"])
-        self.assertTrue(data["checks"]["sfxmint_sfx_skill_installed"])
+        audio = data["checks"]["audio_discovery"]
+        self.assertTrue(audio["pixabay_skill_distributed"])
+        self.assertTrue(audio["sfxmint_skill_distributed"])
+        self.assertEqual(audio["pixabay_search_capability"], "not_probed")
+        self.assertEqual(audio["sfxmint_lookup_capability"], "not_probed")
+        self.assertEqual(audio["audio_mixer_capability"], "not_probed")
+
+    def test_audio_capability_does_not_require_upstream_submodules_or_mcp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plugin_root = Path(directory)
+            for skill in ("search-pixabay", "sfxmint"):
+                skill_dir = plugin_root / "skills" / skill
+                skill_dir.mkdir(parents=True)
+                (skill_dir / "SKILL.md").touch()
+            data = preflight.report(plugin_root, plugin_root / "output", "local_test", plugin_root)
+        audio = data["checks"]["audio_discovery"]
+        self.assertTrue(audio["pixabay_skill_distributed"])
+        self.assertTrue(audio["sfxmint_skill_distributed"])
+        self.assertEqual(audio["pixabay_download_capability"], "not_probed")
+        self.assertEqual(audio["sfxmint_download_capability"], "not_probed")
 
     def test_audio_capability_fails_when_adapter_entrypoint_is_missing(self):
         with tempfile.TemporaryDirectory() as directory:
             plugin_root = Path(directory)
-            (plugin_root / "skills/pixabay-search-skill/src/search-pixabay").mkdir(parents=True)
-            (plugin_root / "skills/sfxmint-mcp/skills/sfxmint").mkdir(parents=True)
-            (plugin_root / "skills/pixabay-search-skill/src/search-pixabay/SKILL.md").touch()
-            (plugin_root / "skills/sfxmint-mcp/skills/sfxmint/SKILL.md").touch()
             data = preflight.report(plugin_root, plugin_root / "output", "local_test", plugin_root)
-        self.assertFalse(data["checks"]["pixabay_bgm_skill_installed"])
-        self.assertFalse(data["checks"]["sfxmint_sfx_skill_installed"])
+        audio = data["checks"]["audio_discovery"]
+        self.assertFalse(audio["pixabay_skill_distributed"])
+        self.assertFalse(audio["sfxmint_skill_distributed"])
+        self.assertIn("audio_discovery.pixabay_skill_distributed", data["missing"])
+        self.assertIn("audio_discovery.sfxmint_skill_distributed", data["missing"])
+        self.assertEqual(data["status"], "partial")
 
 
 if __name__ == "__main__":
