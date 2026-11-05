@@ -32,9 +32,9 @@ config_file = "~/.codex/agents/moments.toml"
 nickname_candidates = ["Moments", "朋友圈写手", "PrivateDomain"]
 
 [agents.ecommerce]
-description = "电商出图全自动执行引擎（多产品图 → 主图/详情/封面/分享/SKU，保证产品跨图一致）"
+description = "电商设计全自动执行引擎（多产品图 → 主图/详情/封面/分享/SKU，保证产品跨图一致）"
 config_file = "~/.codex/agents/ecommerce.toml"
-nickname_candidates = ["ShopBot", "Merchant", "电商出图师"]
+nickname_candidates = ["ShopBot", "Merchant", "电商设计师"]
 
 [agents.montage]
 description = "视频生成（业务需求 + 素材 → 成片与交付清单）"
@@ -50,6 +50,11 @@ nickname_candidates = ["VideoEditor", "AutoCut", "视频剪辑"]
 description = "口播精剪（静音粗剪 → 语义精剪 → 动效样片审核 → 音效与 BGM）"
 config_file = "~/.codex/agents/talking-head-editor.toml"
 nickname_candidates = ["TalkingHeadEditor", "口播精剪", "口播剪辑"]
+
+[agents.ip-explainer]
+description = "Use for 知识 IP 剪辑 (IP Explainer): edit recorded creator or expert talking-head footage into clear knowledge explainers. 适用于个人 IP 口播剪辑、专家知识讲解、科普短视频；完成语义精剪、解释性画面、AI 演示镜头、字幕配乐、封面和成片审核。普通访谈精剪、直播切片、娱乐混剪和视频复刻使用对应工作流。"
+config_file = "~/.codex/agents/ip-explainer.toml"
+nickname_candidates = ["IP Explainer", "知识 IP 剪辑", "知识口播剪辑"]
 
 [agents.viral-ip-video-editor]
 description = "爆款 IP 口播短视频剪辑（素材理解 → 留存导向剪辑 → 成片质量复核）"
@@ -105,3 +110,8 @@ nickname_candidates = ["素材混剪", "LocalLife", "MixVideo"]
 description = "生成带证据的内容研究、语义验证文章与视频脚本"
 config_file = "~/.codex/agents/content-planning.toml"
 nickname_candidates = ["Content Planner", "内容研究"]
+
+[agents.topic-radar]
+description = "基于冻结证据生成选题摘要和短视频脚本"
+config_file = "~/.codex/agents/topic-radar.toml"
+nickname_candidates = ["Topic Radar", "选题雷达"]

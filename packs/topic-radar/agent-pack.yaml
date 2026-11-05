@@ -1,0 +1,47 @@
+id: topic-radar
+version: 1.0.1
+kind: managed
+display_name: 选题雷达
+description: 从服务端冻结上下文生成带来源证据的选题摘要和短视频脚本，不直接访问外部平台或修改服务端状态。
+agent:
+  name: topic-radar
+  claude_source: agent.claude.md
+  codex_source: agent.codex.toml
+  skills: [topic-radar]
+  max_turns: 80
+channel: topic-radar
+bindings:
+  task_kinds: [topic_digest, topic_script]
+runtime:
+  profile: topic-radar
+  adapter: standard
+surfaces: [plugin, task]
+features: [topic-radar, frozen-context-artifacts]
+billing_operations:
+  topic_digest: task.topic_digest
+  topic_script: task.topic_script
+artifacts:
+  - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+artifacts_by_task_type:
+  topic_digest:
+    - {role: topic_digest, path: output/topic-digest.json, mime_type: application/json, required: true}
+    - {role: topic_evidence, path: output/topic-evidence.json, mime_type: application/json, required: false}
+    - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+  topic_script:
+    - {role: topic_script, path: output/topic-script.json, mime_type: application/json, required: true}
+    - {role: script_markdown, path: output/topic-script.md, mime_type: text/markdown, required: false}
+    - {role: subtitles, path: output/topic-script.srt, mime_type: application/x-subrip, required: false}
+    - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
+delivery_by_task_type:
+  topic_digest:
+    - {role: topic_digest, path: output/topic-digest.json, mime_type: application/json}
+    - {role: topic_evidence, path: output/topic-evidence.json, mime_type: application/json}
+  topic_script:
+    - {role: topic_script, path: output/topic-script.json, mime_type: application/json}
+    - {role: script_markdown, path: output/topic-script.md, mime_type: text/markdown}
+    - {role: subtitles, path: output/topic-script.srt, mime_type: application/x-subrip}
+schemas:
+  task_input: schemas/task-input.json
+  output: schemas/output.json
+ui:
+  renderer: custom:topic-radar

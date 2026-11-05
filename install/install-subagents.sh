@@ -60,22 +60,10 @@ if [[ ! -f "$PLUGIN_ROOT/skills/article/SKILL.md" ]]; then
   echo "[install-subagents] Or set ANBAN_PLUGIN_ROOT to point at the installed plugin directory." >&2
 fi
 
-# --- 2. Copy subagent TOMLs into ~/.codex/agents/ -------------------------
-
-mkdir -p "$CODEX_AGENTS_DIR"
+# --- 2. Validate and merge registration before changing installed agents ---
 
 legacy_article_agent="wechat""article"
-rm -f "$CODEX_AGENTS_DIR/${legacy_article_agent}.toml"
-
-for toml in "$AGENTS_SRC"/*.toml; do
-  name="$(basename "$toml")"
-  target="$CODEX_AGENTS_DIR/$name"
-  # Substitute __PLUGIN_ROOT__ with discovered path on copy
-  sed "s|__PLUGIN_ROOT__|$PLUGIN_ROOT|g" "$toml" > "$target"
-  echo "[install-subagents] Installed: $target"
-done
-
-# --- 3. Merge registration into ~/.codex/config.toml ----------------------
+retired_explainer_agent="talking-head-montage"
 
 mkdir -p "$CODEX_DIR"
 
@@ -109,8 +97,8 @@ else
     echo "[install-subagents] ERROR: Python 3.11+ is required to safely update config.toml (or install the tomli package for this Python interpreter)." >&2
     exit 1
   fi
-  "$python_bin" - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" <<'PY'
-import re, sys
+  "$python_bin" - "$REGISTRATION_SRC" "$tmp" "$legacy_article_agent" "$retired_explainer_agent" <<'PY'
+import copy, re, sys
 
 try:
     import tomllib
@@ -124,6 +112,7 @@ except ModuleNotFoundError:
         )
 
 reg_path, tmp_path, legacy_article_agent = sys.argv[1], sys.argv[2], sys.argv[3]
+retired_explainer_agent = sys.argv[4]
 reg_text = open(reg_path, encoding='utf-8').read()
 reg_lines = reg_text.splitlines()
 try:
@@ -136,7 +125,10 @@ except UnicodeDecodeError:
     raise SystemExit('[install-subagents] ERROR: existing config.toml must be valid UTF-8 TOML; no changes were made.')
 tmp_lines = tmp_text.splitlines()
 
-HEADER_RE = re.compile(r'^\s*(\[\[[^\[\]]+\]\]|\[[^\[\]]+\])\s*(?:#.*)?$')
+# TOML quoted keys may contain brackets, dots and comment characters.
+TOML_KEY = r"(?:[A-Za-z0-9_-]+|\"(?:[^\"\\]|\\.)*\"|'[^']*')"
+TOML_PATH = rf'{TOML_KEY}(?:\s*\.\s*{TOML_KEY})*'
+HEADER_RE = re.compile(rf'^\s*(\[\[\s*{TOML_PATH}\s*\]\]|\[\s*{TOML_PATH}\s*\])\s*(?:#.*)?$')
 KV_RE = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=')
 
 def strip_toml_comment(line):
@@ -210,16 +202,45 @@ if creator_exists:
             'No changes were made.'
         )
 
-legacy_header = f'[agents.{legacy_article_agent}]'
+retired_agents = {legacy_article_agent, retired_explainer_agent}
+
+def is_retired_header(header):
+    # Parse table paths so quoted keys, whitespace and child tables agree.
+    table = tomllib.loads(header).get('agents', {})
+    return isinstance(table, dict) and bool(retired_agents.intersection(table))
+
 filtered_lines = []
 skip_legacy_table = False
 for _, line, structural in structural_toml_lines(tmp_lines):
     header_match = HEADER_RE.match(line) if structural else None
     if header_match:
-        skip_legacy_table = header_match.group(1) == legacy_header
+        skip_legacy_table = is_retired_header(header_match.group(1))
     if not skip_legacy_table:
         filtered_lines.append(line)
 tmp_lines = filtered_lines
+filtered_target = tomllib.loads('\n'.join(tmp_lines))
+expected_target = copy.deepcopy(parsed_target)
+expected_agents = expected_target.get('agents')
+if isinstance(expected_agents, dict):
+    for name in retired_agents:
+        expected_agents.pop(name, None)
+    # Removing the last explicit child table can also remove implicit [agents].
+    if not expected_agents and 'agents' not in filtered_target:
+        expected_target.pop('agents')
+remaining_agents = filtered_target.get('agents', {})
+if isinstance(remaining_agents, dict) and retired_agents.intersection(remaining_agents):
+    raise SystemExit(
+        '[install-subagents] ERROR: unsupported retired Agent configuration representation; '
+        'use an [agents.<name>] table before reinstalling. No changes were made.'
+    )
+
+# Fail closed if the line scanner cannot preserve every unrelated TOML value
+# (for example, unusual escaped multiline strings). Never silently discard it.
+if filtered_target != expected_target:
+    raise SystemExit(
+        '[install-subagents] ERROR: unsupported retired Agent configuration representation; '
+        'migration could not preserve unrelated settings. No changes were made.'
+    )
 
 # Creator connection fields are plugin-owned. Refresh their values so upgrades
 # cannot retain a stale endpoint or noncanonical credential variable.
@@ -402,6 +423,25 @@ if problem is not None:
     key_path = '.'.join(path)
     raise SystemExit(f'[install-subagents] ERROR: {reason} {key_path}; config.toml was not changed.')
 
+# Validate the complete rewrite, including connection refresh and registration
+# additions: scanner mistakes inside quoted documentation must also fail closed.
+expected_out = copy.deepcopy(expected_target)
+
+def add_missing_registration(expected, registration):
+    for key, value in registration.items():
+        if key not in expected:
+            expected[key] = copy.deepcopy(value)
+        elif isinstance(value, dict) and isinstance(expected[key], dict):
+            add_missing_registration(expected[key], value)
+
+add_missing_registration(expected_out, parsed_registration)
+expected_out['mcp_servers']['creator'].update(creator_connection_values)
+if parsed_out != expected_out:
+    raise SystemExit(
+        '[install-subagents] ERROR: unsupported configuration representation; '
+        'final registration merge could not preserve unrelated settings. No changes were made.'
+    )
+
 with open(tmp_path, 'w', encoding='utf-8') as f:
     f.write(out_text)
 PY
@@ -411,6 +451,18 @@ PY
   trap - EXIT
   echo "[install-subagents] Merged registration into $CODEX_CONFIG"
 fi
+
+# --- 3. Install files only after configuration validation succeeded --------
+
+mkdir -p "$CODEX_AGENTS_DIR"
+for toml in "$AGENTS_SRC"/*.toml; do
+  name="$(basename "$toml")"
+  target="$CODEX_AGENTS_DIR/$name"
+  sed "s|__PLUGIN_ROOT__|$PLUGIN_ROOT|g" "$toml" > "$target"
+  echo "[install-subagents] Installed: $target"
+done
+rm -f "$CODEX_AGENTS_DIR/${legacy_article_agent}.toml"
+rm -f "$CODEX_AGENTS_DIR/${retired_explainer_agent}.toml"
 
 # --- 4. Reminders ---------------------------------------------------------
 

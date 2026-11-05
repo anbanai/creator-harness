@@ -1,8 +1,187 @@
-# 4.2.103
+## 4.2.144
 
 - Connect Claude, Codex, and DSH directly to the fixed Creator API MCP endpoint at `https://api-creator.anbanai.com/mcp`.
 
-# 4.2.102
+## 4.2.143
+
+- Add provider-neutral discovery for domestic public-web music and sound-effect candidates with explicit rights verification.
+
+## 4.2.142
+
+- Clarify SFX as an optional supporting audio layer for real footage, AI-generated shots, and graphic overlays.
+
+## 4.2.141
+
+- Clarify that expression, demonstration, and evidence describe communication roles; real talking-head and AI-generated primary media may both carry supporting graphic layers.
+
+## 4.2.140
+
+- Make the `ip-explainer` Pack explicitly generate AI video first for demonstration shots; use graphics or documentary footage only as declared fallbacks.
+
+## 4.2.139
+
+- Make AI-generated video the default demonstration path for `ip-explainer`; retain graphics and explicit documentary footage as documented fallbacks.
+- Clarify that the provider-neutral BGM contract has no concrete music vendor wired in yet, and distinguish declared configuration from a connected capability.
+
+## 4.2.137
+
+- Keep feedback analysis Skills within the frozen FeedbackJob contract: return private evidence for Server validation and persistence; leave scheduling and strategy activation to the Server.
+- Expose pinned Montage pipelines, playbooks, and platform output profiles as project defaults and task overrides; freeze and validate the selected configuration before Agent execution.
+- Update Montage Agent instructions to use the structured frozen output profile for rendering and cover generation.
+
+## 4.2.136
+
+- Remove seven obsolete feedback Skill copies from the plugin root; `skills/` remains the single distributed source.
+
+## 4.2.135
+
+- Unify topic references around canonical assets and task-linked claims; autonomous Topic Radar accepts execution-scoped research evidence and verified empty outcomes.
+
+## 4.2.134
+
+- Rename the knowledge-editing Agent to `ip-explainer` (知识 IP 剪辑 / IP Explainer), with precise bilingual discovery and consistent evidence identity.
+- Review reference footage for explanation, object continuity and promise/payoff; consolidate orchestration in the canonical Pack.
+- Migrate retired Codex registrations safely, retaining existing input protocols and production quality gates.
+- Strengthen WeChat picture topic research with an evidence-backed comparison framework for contrast-led topics, including fair comparison dimensions, reader value, cover promise, and uncertainty boundaries.
+
+## 4.2.133
+
+- Raise short-video cover quality gates: require raw-source asset audits, reference-set visual grammar, deterministic copy composition, thumbnail review, and independent validation for the viral IP and talking-head Montage Agents.
+
+## 4.2.132
+
+- Harden talking-head timeline, generated-video, audio-content, and render QC contracts.
+
+# 4.2.130
+
+- Require source-time EDL contracts, revision-bound final-track ASR content checks, and recomputed synchronization evidence for talking-head video delivery.
+
+# 4.2.128
+
+- Give creation/review session plugin groups distinct IDs so the shared loader retains both Skills providers; align canonical provider IDs and generated presets.
+- Prioritize current creation intent over historical examples, hand off one Studio review without repeating the plan, and bound field-diagnostic correction to one attempt.
+- Show a valid authenticated-context staging payload and preserve Server ownership of readiness and task creation.
+
+# 4.2.127
+
+- Move the pinned upstream Skill submodules (`seedance2-skill`, `GPT-Image2-Skill`, `motion-graphics`, `ecommerce-visual-copywriting-skill`) from `third_party/` to `skills/<repo>` so upstream Skills ship in the same tree as authored Skills, like `skills/humanizer`.
+- Keep upstream bytes read-only and exempt from Anban Skill lint: `scripts/audit-workflows.mjs` and the `server/agent` Skill contracts skip upstream submodule directories instead of special-casing `humanizer`.
+- Update Agent, Skill, install and update-script path references plus the ecommerce runtime image check to the new `skills/` locations.
+- Add RedFox read-only research routing and provenance lock for trend, WeChat,
+  Xiaohongshu, and Douyin research modes.
+- Keep Agent credentials runtime-scoped and extend the Server trend provider
+  contract with RedFox freshness metadata.
+
+# 4.2.126
+
+- Keep the creation-planner and postmortem-review presets on distinct Skills provider plugin IDs so loading both assistant presets no longer collides on `assistant-session-skills-provider`.
+- Require an exact expected package version for `smoke-profile --existing-profile` and validate installed bundle exports against it instead of trusting the installed manifest.
+- Verify the pinned ecommerce upstream with its offline `tools/verify-skill.py` (which requires `python3`) and leave the full `make ecommerce-upstream-check` to the reviewer.
+
+# 4.2.125
+
+- Complete the deeper WeChat article evidence workflow across Claude, Codex, and DSH distributions; report templates now include evidence, source authenticity, subtitle logic, and genre-structure checks.
+
+# 4.2.124
+
+- Deepen WeChat article quality checks by tracing each core claim to its source role, supported scope, counterexamples, and wording strength; add genre-aware explanation checks and subtitle-logic review without adding workflow stages or artifacts.
+
+# 4.2.123
+
+- Limit creation clarification to five questions and stage a confirmable plan as soon as inputs are sufficient; Studio owns final approval through the start-creation action.
+
+- Bundle the ecommerce upstream SOP as the read-only git submodule `third_party/ecommerce-visual-copywriting-skill` (MIT, pinned commit) so the workflow reuses its evidence ledger, conversion-driver, Style Lock, Storyboard/execution-card, on-image copy, compliance and five-part quality gate instead of copying rule text into Anban Skills.
+- Add thin Anban stage adapters for product analysis, copywriting, visual design and platform compliance, plus KV1 product-identification and in-image text verification for generated assets.
+- Add the required `output/quality-gate.md` artifact (Gate A before generation, Gate B before delivery) with five-dimension scoring, rewrite rounds, mechanical checks and disclosed gaps; Agent Packs and the runtime completion hook now enforce it.
+- Provision `python3` in the ecommerce runtime image so the pinned upstream `count-copy.py` and `scan-final-copy.py` checks run in managed tasks.
+- Add `make ecommerce-upstream-check` / `make ecommerce-upstream-update` to validate and advance the pinned upstream submodule.
+- Persist semantic masters and low-cost explanation rehearsals for talking-head explainers; require their evidence and the explainer plans when a final video follows an explainer input assessment.
+- Keep explainer-only completion gates inactive for ordinary talking-head tasks, and prevent preflight artifacts from being accepted as final delivery.
+
+# 4.2.122
+
+- Give the creation and postmortem review Skills providers independent plugin IDs so loading both assistant presets does not collide.
+
+# 4.2.121
+
+- Rename the user-facing ecommerce workflow to “电商设计” while continuing to recognize “电商出图” as an entry phrase; enable the workflow for all accounts.
+- Add a dedicated talking-head explainer workflow for raw-source assessment, evidence-aware explanations, semantic masters with platform variant plans, retention experiments, and independent validation.
+- Upgrade the `viral-ip-video-editor` and `talking-head-montage` Agent Packs to 1.3.0; explainer artifacts apply only to explainer tasks and are optional for other tasks.
+
+# 4.2.119
+
+- Make the talking-head and viral IP video Agents fully automatic: motion samples use Agent-generated review evidence and bounded self-revision, while missing inputs, unverifiable rights/facts, unavailable capabilities, and unresolved defects produce recoverable failure artifacts instead of waiting for user approval.
+
+# 4.2.118
+
+- Add the shared `talking-head-composition` and `video-production-qc` Skills to the talking-head video Packs. Final renders now require a single EDL-backed composition plan, an explicit permanent dialogue bed, asset reuse evidence, deterministic media gates, and complete listening evidence before Final Review, cover generation, or delivery.
+
+# 4.2.117
+
+- Add two dedicated Skills that own video subtitles and background music as first-class systems: `video-subtitle-design` (caption strategy, segmentation, reading-speed timing, per-chapter style mapping, safe areas, emphasis, QC) and `video-bgm-design` (emotional arc, per-chapter/per-scene track switching, selection, licensing, multi-track transitions, ducking, loudness QC).
+- Wire both Skills into the `talking-head-montage` and `viral-ip-video-editor` Packs. Subtitles and BGM are again mandatory deliverables, now produced through those workflows instead of ad-hoc rules: `captions.srt`, `caption-plan.md`, `caption-style.json`, `caption-qc.json`, `bgm-plan.json`, and `bgm-qc.json`.
+- Allow and require a different music track per chapter or scene: each switch needs a reason, a transition decision from the BGM Skill's table, and per-track licensing evidence. A music track is still a hard delivery gate.
+- Make the cover the mandatory final production step: generate and independently audit `cover.png` only after `final.mp4` passes Final Review, and gate the final delivery manifest on it.
+- Delegate rather than duplicate: `viral-ip-editing` now only decides whether subtitles/music serve the edit and records the chapter map; `talking-head-sound-design` stays SFX-only; `montage` enforces the Pack-declared caption/BGM/cover artifacts; `wechat-video-account-review` covers captions, music, and covers again.
+
+# 4.2.116
+
+- Add the managed Topic Radar Pack for frozen-context topic digests and source-attributed short-video scripts.
+
+# 4.2.115
+
+- Tighten talking-head and viral video production contracts for transcript verification, duplicate-phrase review, word-boundary captions, progressive visual reveals, camera motion, audio/video sync evidence, and required licensed background music.
+- Require complete managed-runtime context, fail closed when production capabilities are missing, and verify the rendered output against the approved plan before delivery.
+- Add non-fullscreen visual-focus geometry and transition-frame checks, plus explicit Pack and Agent evidence requirements.
+
+# 4.2.114
+
+- Add the shared `talking-head-visual-focus` Skill and wire it into both talking-head Agents: non-fullscreen material anchors on the lower golden line, the newest material takes the primary slot while earlier material demotes in the same frame, and the speaker's head stays uncovered on every frame including entrance, exit, and transition.
+- Keep the speaker present with a synchronized circular inset when material goes full-frame, and fall back to the non-fullscreen layout when no corner clears the asset's own content.
+
+# 4.2.113
+
+- Expand talking-head visual direction with content-led motion graphics, kinetic typography, progressive reveals, varied compositions, and stronger sample review against repetitive or oversized static cards.
+
+# 4.2.112
+
+- Preload the short-video-cover Skill for the talking-head editor and Montage Agent Packs.
+- Improve talking-head captions: keep each cue to one line, omit captions when visible material already communicates the full spoken point, and keep Montage captions within a narrower, higher safe area.
+
+# 4.2.111
+
+- Align talking-head Montage Codex instructions with the local OpenMontage boundary and shared evidence contract; synchronize Agent Pack versions and generated catalog.
+
+# 4.2.110
+
+- Make `talking-head-montage` a self-contained OpenMontage Agent; remove the circular same-name Skill dependency.
+- Keep creation-plan missing inputs limited to execution blockers, preserve explicitly approved placeholders or later supplements in existing constraints, and follow Server-returned readiness and blocking issues before offering confirmation.
+
+# 4.2.109
+
+- Align `talking-head-montage` with OpenMontage-native editing, provider selection, hybrid rendering, and asset-generation stages.
+
+# 4.2.108
+
+- Add the plugin-only `talking-head-montage` Agent, using OpenMontage hybrid for source-led talking-head production with independently planned video inserts, image inserts, motion graphics, and a local file review gate.
+
+# 4.2.107
+
+- Harden talking-head delivery with measured CC0 motion-graphics SFX selection, per-cue audibility evidence, bounded aesthetic frame review, video timecode tagging, and role-aware artifact size limits.
+
+# 4.2.106
+
+- Add read-only Seedance 2 and GPT-Image upstream references to the talking-head workflow while routing generated images exclusively through Anban MCP; add official-source checks and explicit upstream update targets.
+
+# 4.2.105
+
+- Correct the managed talking-head transcription credential mapping, use the installed video-use helpers, and make Agent runtime checks capability-based while retaining reproducible image pins. Verify normalized multi-source audio assembly before accepting a rough cut.
+
+# 4.2.104
+
+- Add an offline, measured talking-head SFX pass using a pinned subset of CC0 assets; record per-cue provenance and pre/post mix loudness and true peak.
+
+- Harden the talking-head-editor contract: add explicit motion-review stages, declare Auto-Editor/HyperFrames image runtime versions, require content-tagging as a read-only dependency, and record independent media, subtitle, audio, and visual verification evidence.
 
 - Merge workspace profile routing into the viral IP video editor while retaining its pinned Auto-Editor silence-detection workflow; include the talking-head editor pack and profile-routing updates.
 

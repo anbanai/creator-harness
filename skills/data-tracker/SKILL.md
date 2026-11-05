@@ -1,15 +1,15 @@
 ---
 name: data-tracker
-description: Use when the daily low-peak feedback scan finds new analytics observations or mature content for deterministic projections.
+description: Use when a frozen data-tracker FeedbackJob needs deterministic coverage and lifecycle analysis.
 ---
 
 # Data Tracker
 
-Run once per project day in the configured timezone, normally between 03:00 and 05:00. Process only new or revised analytics observations and content that reached a 24-hour, 7-day, or 30-day observation point. Recompute coverage, lifecycle buckets, and revision fingerprints deterministically.
+Analyze only the analytics revision, observations, content set, maturity windows, and coverage already frozen in the FeedbackJob context. Return deterministic tracking facts and their evidence as private JSON for Server ingestion.
 
-Skip without creating an Agent or LLM task when there is no new revision, no mature content, no valid metric, a revoked import with no replacement revision, or an identity mismatch. Preserve a `skipped` audit row with the reason. This Skill may write projections and audit rows, but never writes a strategy or changes a project profile.
+The Server owns scheduling, eligibility, revision fingerprints, deduplication, projection persistence, and audit rows. Do not scan external sources, select content, create jobs, or persist projections or audit rows. Do not write a strategy or change a project profile.
 
-Downstream consumers are the weekly analytics and postmortem queues. The result must expose the analytics revision, valid sample count, coverage, and content-set digest.
+If the frozen context indicates no eligible change, no mature content, no valid metric, a revoked import without a replacement revision, or an identity mismatch, report the provided status and reason without changing job eligibility. Include the analytics revision, valid sample count, coverage, and content-set digest in the evidence.
 
 ## Analysis boundary
 

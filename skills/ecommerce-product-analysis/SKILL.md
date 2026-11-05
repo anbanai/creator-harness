@@ -8,6 +8,7 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 ## 目录
 
 - [目标](#目标)
+- [上游方法源](#上游方法源只读)
 - [分析流程](#分析流程)
 - [产品档案](#产品档案-product-bible)
 - [常见失败与修复](#常见失败与修复)
@@ -21,6 +22,10 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 3. **卖点提炼**——文案 skill 据此提炼 FABE 卖点。
 
 这是对**实物商品**的理解（品类/品牌/材质/包装/功能），不是对线稿角色配色的分析，也不是对种草笔记爆款的拆解——目标与维度完全不同。
+
+## 上游方法源（只读）
+
+命名来源、证据边界与产品事实抽取方法以上游 bundled `ecommerce-visual-copywriting-skill` 为准（`$UPSTREAM_ECOMMERCE_SKILL`）。开工读取上游 `SKILL.md` Step 0–2 与 `output-contracts.md` §1，按 [references/upstream-evidence-mapping.md](references/upstream-evidence-mapping.md) 落盘；问卷/命名询问/确认点由 Agent 的零交互规则替代。
 
 ---
 
@@ -47,29 +52,7 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 
 **`subject` 部位标签是关键产物**——它决定后续生成时「这张图该被哪些电商图当参考」。务必为每张图给出明确的 subject（**按品类用对应部位词**：茶类=茶汤/干茶/叶底/包装；服饰=平铺/挂拍/细节/材质/模特；3C数码=正面/背面/接口/屏幕/配件/参数表；美妆个护=瓶身/膏体/质地/上脸/成分表；食品=成品/原料/包装正反/保质期标识；家居=整体/细节/使用场景；通用=包装正面/包装背面/产品本体/原料/成品/剖面/细节特写/使用场景/模特手持），看不清的标注置信 low。
 
-**电商属性抽取 prompt 模板**：
-
-```
-你是电商商品视觉分析专家。分析这张产品图，仅基于图中可见内容，抽取以下电商转化相关属性，用简体中文返回严格 JSON：
-{
-  "subject": "这张图展示的是产品的哪个部位/视角/状态？按品类给对应部位词：茶类=茶汤/干茶/叶底/包装；服饰=平铺/挂拍/细节/材质/模特；3C数码=正面/背面/接口/屏幕/配件/参数表；美妆个护=瓶身/膏体/质地/上脸/成分表；食品=成品/原料/包装正反/保质期标识；家居=整体/细节/使用场景；通用=包装正面/包装背面/产品本体/原料/成品/剖面/细节特写/使用场景/模特手持。该字段决定本图后续被哪些电商图选作参考。",
-  "category": "品类（如：无线蓝牙耳机/羽绒服/精华液）",
-  "subcategory": "细分类目",
-  "brand_logo": {"visible": true/false, "text": "图中可见的品牌/logo 文字", "position": "位置", "color": "颜色"},
-  "colors": {"primary": "主色（给 HEX 如 #1A1A1A + 语义名 如哑光黑）", "secondary": ["辅色1", "辅色2"]},
-  "materials": ["可见材质（如 ABS 塑料/羽绒/玻璃瓶）"],
-  "shape": "形状轮廓描述（如：入耳式、圆柱瓶身 30ml、方盒）",
-  "size_clues": "可见尺寸线索（如与手/桌面比例、标注的规格）",
-  "packaging_text": ["包装/瓶身/标签上可见的文字（品名、规格、成分、slogan 等），原样转录"],
-  "visible_features": ["可见功能/设计特征（如主动降噪、USB-C、防水等级标识）"],
-  "selling_point_candidates": ["可推断的卖点候选（如长续航、便携、成分天然）"],
-  "shooting_angle": "拍摄角度（正面/45°/俯拍/使用场景）",
-  "scene": "场景类型与调性：底质（纯白底/实景/模特手持/桌面陈列）+ 用途（lifestyle 生活场景 / 功能演示 / 卖点可视化）+ 可推断的季节/受众暗示（如夏季户外 / 居家主妇 / 商务人士）",
-  "confidence": "high/medium/low（low 触发条件：光线差/产品被遮挡/包装文字模糊/疑似非本品/角度无法判断主体；medium=部分属性靠推断）",
-  "missing_or_unclear": ["这张图看不清或需其他图补充的属性"]
-}
-只返回 JSON，不要解释。看不清的属性留空或填 null，并记入 missing_or_unclear。
-```
+**电商属性抽取 prompt 模板**：见 [references/product-extraction-prompt.md](references/product-extraction-prompt.md)（含抽取 JSON、subject 词表、置信度规则与命名/证据标注）。
 
 ### 步骤 3：汇总成产品档案
 
@@ -77,6 +60,11 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 
 ```markdown
 # 产品档案 Product Bible
+
+## 商品名称与命名来源
+- 商品名: ...
+- 命名来源: 任务输入 / 项目画像 / 包装可见文字 / 据图拟名（非官方原名，不推断材质/工艺/认证）
+- 品类词: ...（KV1 主标题使用）
 
 ## 锚点
 - 最佳锚点参考图: $ANCHOR_REF = {选定的任务相对路径}（来源：产品图 N，理由：最清晰/打光最好/最代表商品）
@@ -127,6 +115,15 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 - 形状轮廓: ...
 - 包装可见文字（不得增删改）: ...
 
+## 证据观察与推断边界
+- 任务输入 / 包装可见文字（已确认）: ...
+- 图片观察（只作视觉依据，不升级为事实）: ...
+- 推断（不得进入卖点与图内文字）: ...
+
+## 待补证与禁止宣称
+- 待补证（中性表达或删除，不进入图内文字）: ...
+- 禁止宣称（治疗/保证性效果/虚构背书）: ...
+
 ## 缺失/低置信 (missing_data)
 - ...
 ```
@@ -141,13 +138,7 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 
 ## 常见失败与修复
 
-| 问题 | 原因 | 修复 |
-|------|------|------|
-| 产品图 >10MB 无法 analyze | 超限 | 调用 `compress_image(task_id=$TASK_ID, input_path=<原路径>, output_path="output/compressed_<NN>.png")` 后分析返回路径 |
-| 多张图品牌/logo 矛盾 | 不同角度/版本 | 以包装文字最清晰那张为准，标注重复确认 |
-| 颜色 HEX 不准 | 光线/白平衡 | 给语义色名 + 近似 HEX，标置信 medium |
-| 某属性全部缺失 | 无对应角度图 | 记入 missing_data，降置信，不臆造 |
-| 场景图混入非产品主体 | 背景杂物 | 区分产品主体与场景道具，档案只锁产品主体 |
+压缩、品牌矛盾、色准、缺失属性与场景杂物的处理见 [references/product-extraction-prompt.md](references/product-extraction-prompt.md) 的「常见失败与修复」。
 
 ---
 
@@ -155,7 +146,7 @@ description: "Use only during the Ecommerce workflow's product-analysis stage to
 
 产品索引或分析 JSON（如使用）必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和 `evidence_paths`。没有可访问产品图或关键身份证据不足时写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message`、`resume_from`；不得把推断规格写成事实。
 
-- `output/product-bible.md`（锁定规格，含**「产品图清单」**：序号 | subject 部位标签 | 任务相对路径 | 该图可见产品信息）
+- `output/product-bible.md`（锁定规格，含**「产品图清单」**：序号 | subject 部位标签 | 任务相对路径 | 该图可见产品信息；以及商品名称与命名来源、证据观察与推断边界、待补证与禁止宣称）
 - `output/product-photos.md`（产品图访问性清单与可见性）
 - `$ANCHOR_REF`（最佳锚点任务相对路径，写入档案与内部变量）
 

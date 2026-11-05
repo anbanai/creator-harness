@@ -50,9 +50,13 @@ The article must satisfy:
 
 - each `##` section uses at least one anchor from `context-brief.md`;
 - each section contains concrete material: scenario, case, data, person, conflict, metaphor, or actionable detail;
+- each core claim is distinguished as fact, inference, opinion, or personal experience, and its material has a stated evidentiary role;
+- claims do not exceed the scope of their evidence; missing primary evidence, counterexamples, and alternative explanations are disclosed by narrowing the wording;
 - first 100 Chinese characters contain a real hook, not generic opening filler;
 - subtitles are scannable, paragraphs are mobile-friendly, and claims are supported by context;
 - the ending gives a concrete action or one answerable question without forbidden engagement bait.
+
+When the article type is known, use the corresponding explanation contract without forcing a fixed template: viewpoint articles connect claim -> material -> interpretation; practical articles explain what -> why -> how; book articles distinguish the book's position -> the writer's interpretation -> reader application; personal-growth articles distinguish fact -> feeling -> reflection; list articles keep each item independently understandable and non-duplicative. Personal experiences and named cases must not gain invented dates, numbers, dialogue, or outcomes.
 
 ## 公众号文章预检
 
@@ -67,6 +71,10 @@ Required checks:
 - 标题摘要一致性: title, digest, opening, and body promises align; do not hide key information with ellipsis or vague suspense.
 - 互动合规: natural questions and collection/share suggestions are allowed only when tied to article value; no benefits, materials, contact, or off-platform action can be bound to interaction.
 - AI 套话风险: remove generic elevation, rigid three-part summaries, empty conclusions, overused transition words, and unsupported judgment sentences.
+- 论点证据边界: for each core claim, record the material's exact support, source role, applicable scope, counterexample or alternative explanation, and any required wording reduction.
+- 来源与案例真实性: key facts prefer primary evidence; secondary material is labeled; unverifiable personal or named cases are not presented as confirmed fact.
+- 小标题逻辑: subtitles form a readable parallel, progressive, causal, or contrastive relationship without repeated sections.
+- 体裁解释结构: the selected article type's explanation contract is satisfied without inventing case details.
 - 自动调整: the scanner performs at most one low-ambiguity CTA revision pass. Do not mechanically alter facts, quotations, numbers, or author opinions.
 - 最终一致性: after images or review edits change `output/04-article-final.md`, run the adapter-declared scanner again without `--fix`, then render `output/05-article.html`. If review changes Markdown again, repeat scan -> render -> review before publication.
 
@@ -79,6 +87,10 @@ Report format:
 - 标题摘要一致性：通过 / 已调整（说明）
 - 互动合规：通过 / 已调整（说明）
 - AI 套话风险：通过 / 已调整（说明）
+- 论点证据边界：通过 / 已调整（说明）
+- 来源与案例真实性：通过 / 已调整（说明）
+- 小标题逻辑：通过 / 已调整（说明）
+- 体裁解释结构：通过 / 已调整（说明）
 结论：无审阅未通过项，可以进入 SEO 与视觉阶段。
 ```
 

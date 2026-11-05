@@ -1,15 +1,15 @@
 ---
 name: publish-analytics
-description: Use when the weekly feedback queue analyzes mature, non-empty publication observations for WeChat articles or Seednote posts.
+description: Use when a frozen weekly FeedbackJob needs analysis of mature publication observations for WeChat articles or Seednote posts.
 ---
 
 # Publish Analytics
 
-Run on the weekly project schedule, normally Monday 04:00-06:00 in the project timezone. Consume the frozen analytics revision and content set produced by the daily tracker. Aggregate publish time, content type, writer, theme, visual style, title and body length, image count, tags, and valid engagement metrics.
+Consume only the frozen analytics revision and content set in the FeedbackJob context. Aggregate publish time, content type, writer, theme, visual style, title and body length, image count, tags, and valid engagement metrics into evidence-backed analysis.
 
-Eligibility requires a new revision, mature content, at least one valid observation, no successful result for the same fingerprint, no running duplicate, and an active project. Use a minimum of five valid contents for grouped comparisons; below that threshold save an explainable insufficient-sample result or skip according to the operation policy. Do not rerun for every import when the fingerprint is unchanged.
+The Server owns scheduling, eligibility, fingerprint deduplication, project status, and dispatch. Use a minimum of five valid contents for grouped comparisons; below that threshold report an explainable insufficient-sample result. Do not create, restart, or enqueue jobs.
 
-Deterministic aggregation may write an insight. LLM interpretation is optional and only runs after the queued job is eligible. Never mutate profile, writer, theme, prompt, or an active task snapshot. Downstream consumers are `performance-review`, `content-postmortem`, and the monthly strategy candidate.
+Return any insight as a private JSON candidate with evidence, confidence, and limitations. State correlations and limitations without claiming causation. The Server validates and persists the result. Never write database records or mutate a profile, writer, theme, prompt, or active task snapshot.
 
 ## Analysis boundary
 

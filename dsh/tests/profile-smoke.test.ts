@@ -41,6 +41,7 @@ const expectedSkillNames = {
     'portrait-cover-design',
     'seo-optimization',
     'article-research',
+    'redfox-research',
     'content-tagging',
     'topic-evaluator',
     'trend-rider',
@@ -52,6 +53,7 @@ const expectedSkillNames = {
     'humanizer',
     'portrait-cover-design',
     'seednote-research',
+    'redfox-research',
     'seednote-viral-analysis',
     'seednote-visual-design',
     'seednote-writing',
@@ -936,7 +938,7 @@ describe('DSH profile smoke flow', () => {
     expect(fixture.overrides.log.mock.calls.map(([line]) => line)).toEqual([
       'Bundle rows: anban-mcp=1 anban-preset-manager=1 preset-local-mcp=0',
       'Healthy Presets: wechat-article, seednote',
-      'Mounted Skill catalogs: wechat-article=14 seednote=11',
+      'Mounted Skill catalogs: wechat-article=15 seednote=12',
       `Export resolution: ${publicExports.join(', ')}`,
     ])
     expect(fixture.overrides.rm).toHaveBeenCalledWith(fixture.smokeRoot, {
@@ -952,6 +954,7 @@ describe('DSH profile smoke flow', () => {
     await smokeModule.verifyInstalledProfile({
       ...fixture.overrides,
       dshHome: fixture.dshHome,
+      expectedVersion: packageVersion,
       profileDir: fixture.profileDir,
       smokeRoot: fixture.smokeRoot,
     })
@@ -962,6 +965,54 @@ describe('DSH profile smoke flow', () => {
         pnpmCommand: fixture.pnpmCommand,
       }),
     )
+  })
+
+  it('requires an explicit expected package version for existing-profile smoke', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+
+    await expect(
+      smokeModule.verifyInstalledProfile({
+        ...fixture.overrides,
+        dshHome: fixture.dshHome,
+        profileDir: fixture.profileDir,
+        smokeRoot: fixture.smokeRoot,
+      }),
+    ).rejects.toThrow(
+      'Installed profile smoke requires an exact expected package version',
+    )
+  })
+
+  it('rejects expected package versions with trailing newlines', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture()
+
+    await expect(
+      smokeModule.verifyInstalledProfile({
+        ...fixture.overrides,
+        dshHome: fixture.dshHome,
+        expectedVersion: `${packageVersion}\n`,
+        profileDir: fixture.profileDir,
+        smokeRoot: fixture.smokeRoot,
+      }),
+    ).rejects.toThrow(
+      'Installed profile smoke requires an exact expected package version',
+    )
+  })
+
+  it('rejects an existing profile whose plugin version differs from the release version', async () => {
+    const smokeModule = await import(smokeScriptUrl.href)
+    const fixture = profileFixture('9.9.9')
+
+    await expect(
+      smokeModule.verifyInstalledProfile({
+        ...fixture.overrides,
+        dshHome: fixture.dshHome,
+        expectedVersion: packageVersion,
+        profileDir: fixture.profileDir,
+        smokeRoot: fixture.smokeRoot,
+      }),
+    ).rejects.toThrow('Installed package.json export is invalid')
   })
 
   it.each([

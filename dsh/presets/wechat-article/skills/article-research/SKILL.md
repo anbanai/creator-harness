@@ -14,7 +14,7 @@ Use this Skill for topic source selection, duplicate checks, candidate generatio
 
 1. Read the user prompt and decide whether a concrete topic or current-hot-topic intent was specified. Phrases such as “今天有什么热点” or “当前热搜” are trend-discovery intent, not a concrete article topic.
 2. Call `get_project_profile(project_id, scope="wechat", task_id?)` for positioning, keywords, audience, writer, theme, and task overrides.
-3. For current-hot-topic intent, invoke `trending-topics` immediately after profile resolution so the request always reaches `list_trends`; do not let a non-empty topic pool suppress that call. Use the pool as fallback or an additional candidate source. For ordinary topic discovery without a specified topic, call `claim_topic(project_id, task_id?)` first.
+3. For current-hot-topic intent, invoke `trending-topics` immediately after profile resolution so the request always reaches `list_trends`; do not let a non-empty topic pool suppress that call. Use the pool as fallback or an additional candidate source. For ordinary topic discovery without a specified topic, call `claim_topic(project_id, task_id)` first.
 4. Always call `list_project_titles(project_id)`, `list_drafts(project_id)`, and `list_published_articles(project_id)` before finalizing a title or outline. For each WeChat history response, inspect `history_available`: `true` means `items` is authoritative, including a successful empty result; `false` means history could not be queried and `items` must not be treated as empty history.
 5. Build a topic-history set from recorded task titles, drafts, and published articles. Compare the underlying reader problem and article angle, not title wording alone; use [recent-topic-deduplication.md](references/recent-topic-deduplication.md) for time windows and the MCP history contract.
 6. When there is no user-specified topic and the claimed pool is empty, use `trending-topics` as an optional public-hot-topic source after the pool and history checks. Do not let a trend replace an explicit user topic or a non-empty claimed pool item, except that current-hot-topic intent must still query trends as described above.
@@ -57,6 +57,7 @@ Write these file-backed artifacts:
    - hook;
    - `##` sections;
    - each section's claim, context anchor, supporting material, and reader takeaway;
+   - for every core claim: claim type (fact, inference, opinion, or personal experience), source role (primary evidence, secondary material, or topic lead), what the evidence specifically supports, applicable scope, counterexample or alternative explanation, and whether the wording exceeds the evidence;
    - CTA / ending direction;
    - SEO seed keywords.
 3. `output/context-brief.md` when the caller has not already created one, containing original user need, project positioning, historical avoidance, chosen topic reason, and section anchors.
@@ -76,6 +77,8 @@ When the pool is empty, generate 5-10 candidates directly from project positioni
 
 Pick the highest-scoring non-duplicate candidate. If all candidates collide with history, generate a second batch with a narrower angle or a different reader problem.
 
+For every core claim in the outline, trace the supporting material to its strongest available source. Prefer the original policy, dataset, paper, filing, announcement, interview, or firsthand record over a report or summary. Treat news reports, reposts, book reviews, and social posts as secondary material unless they link to and are checked against the original. Treat hot lists, comments, and viral articles as topic leads only. Record what the source proves, what it does not prove, and any plausible alternative explanation; narrow the claim when the evidence is incomplete.
+
 For trend candidates, preserve the distinction between real MCP fields and local judgment: `fresh`/`stale` comes from the returned trend record, while relevance, lifecycle, and borrowing angles come from `trend-rider`. A stale snapshot may inform a long-tail angle but must not be presented as a current hot topic.
 
 Outline templates are chosen internally:
@@ -94,7 +97,10 @@ Outline templates are chosen internally:
 - If a history MCP call itself returns an error or cannot be completed, write the owning Agent's structured failure state and stop before topic selection. Do not convert transport, authorization, or other API failures into an empty list.
 - Candidate confidence is low: choose the least risky topic and add a "low confidence" note instead of blocking the whole task.
 - Outline lacks concrete anchors: return to research notes and add supporting material before writing `output/02-outline.md`.
+- A core claim has only secondary material or an unverifiable personal case: keep the gap visible in `output/01-research.md` / `output/02-outline.md`, lower the wording strength, or present it explicitly as an interpretation rather than a fact.
 
 ## 深入参考
 
 - 大纲模板：[outline-templates.md](references/outline-templates.md)
+
+`claim_topic` requires an existing task and returns `asset_id`, the canonical topic identity. Preserve this reference in research artifacts; retries return the same topic. Never treat a queue row ID as a topic identity.

@@ -13,6 +13,15 @@ const baseline = process.argv.includes('--baseline')
 const errors = []
 const warnings = []
 const rel = (path) => relative(root, path).replaceAll('\\', '/')
+// Read-only upstream submodules live directly under skills/ next to authored
+// Skills. Their Markdown is upstream-owned and distributed verbatim, so Anban
+// prompt, link, lifecycle and size lint does not apply to their files.
+const upstreamSkillRepos = new Set(['humanizer', 'seedance2-skill', 'GPT-Image2-Skill', 'motion-graphics', 'ecommerce-visual-copywriting-skill'])
+const upstreamSkillNames = new Set()
+const isUpstreamSkill = (path) => {
+  const [top, repo] = rel(path).split('/')
+  return top === 'skills' && upstreamSkillRepos.has(repo)
+}
 async function walk(dir) {
   const files = []
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -24,7 +33,7 @@ async function walk(dir) {
   return files
 }
 async function read(path) {
-  if (!baseline || path.includes('/humanizer/')) return readFile(path, 'utf8')
+  if (!baseline || isUpstreamSkill(path)) return readFile(path, 'utf8')
   try { return execFileSync('git', ['show', `HEAD:${rel(path)}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }) }
   catch { return null }
 }
@@ -68,8 +77,8 @@ const skills = new Map()
 for (const path of files.filter((p) => p.endsWith('.md'))) {
   const text = await read(path)
   if (text === null) continue
-  const humanizer = path.includes('/humanizer/')
-  if (!humanizer) {
+  const upstreamSkill = isUpstreamSkill(path)
+  if (!upstreamSkill) {
     documents.set(rel(path), text)
     if (!baseline) {
       calls(path, text); links(path, text)
@@ -80,7 +89,8 @@ for (const path of files.filter((p) => p.endsWith('.md'))) {
   const meta = frontmatter(text, rel(path))
   const lines = text.trimEnd().split('\n').length
   if (!meta.name || !meta.description) errors.push(`${rel(path)}: missing name/description`)
-  if (!humanizer && lines > 280) errors.push(`${rel(path)}: ${lines} lines exceeds 280; move conditional detail to references`)
+  if (!upstreamSkill && lines > 280) errors.push(`${rel(path)}: ${lines} lines exceeds 280; move conditional detail to references`)
+  if (upstreamSkill) upstreamSkillNames.add(meta.name)
   skills.set(meta.name, { chars: text.length, lines, description: meta.description })
 }
 for (const path of files.filter((p) => p.includes('/templates/') && p.endsWith('.json'))) {
@@ -148,8 +158,8 @@ const report = {
   mode: baseline ? 'HEAD baseline' : 'working tree',
   measurement: 'UTF-16 characters; startup = Claude Agent source + eagerly preloaded SKILL.md; Codex enabled Skills are discoverable, not eagerly loaded; references and deferred Humanizer are additional stage costs.',
   skill_count: skills.size,
-  authored_skill_chars: [...skills.entries()].filter(([name]) => name !== 'humanizer').reduce((n, [, v]) => n + v.chars, 0),
-  authored_skill_lines: [...skills.entries()].filter(([name]) => name !== 'humanizer').reduce((n, [, v]) => n + v.lines, 0),
+  authored_skill_chars: [...skills.entries()].filter(([name]) => !upstreamSkillNames.has(name)).reduce((n, [, v]) => n + v.chars, 0),
+  authored_skill_lines: [...skills.entries()].filter(([name]) => !upstreamSkillNames.has(name)).reduce((n, [, v]) => n + v.lines, 0),
   authored_document_chars: [...documents.values()].reduce((n, text) => n + text.length, 0),
   authored_document_lines: [...documents.values()].reduce((n, text) => n + text.trimEnd().split('\n').length, 0),
   authored_agent_chars: [...documents.entries()].filter(([path]) => path.startsWith('packs/')).reduce((n, [, text]) => n + text.length, 0),

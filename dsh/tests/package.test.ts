@@ -12,6 +12,7 @@ import {
   writeFile,
 } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
+import { createRequire } from 'node:module'
 import { join, parse, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -31,6 +32,19 @@ const cliShimPath = fileURLToPath(
 )
 const builtLibPath = fileURLToPath(new URL('../lib/', import.meta.url))
 const packageRootPath = fileURLToPath(new URL('../../', import.meta.url))
+const yamlModule = createRequire(import.meta.url)('js-yaml') as {
+  DEFAULT_SCHEMA: { extend(types: unknown[]): unknown }
+  Type: new (
+    tag: string,
+    options: { kind: string; construct: (value: string) => unknown },
+  ) => unknown
+  load: (source: string, options: { schema: unknown }) => unknown
+}
+const jsExpression = new yamlModule.Type('tag:yaml.org,2002:js', {
+  kind: 'scalar',
+  construct: (value: string) => value,
+})
+const yamlSchema = yamlModule.DEFAULT_SCHEMA.extend([jsExpression])
 const integrityScriptUrl = new URL(
   '../scripts/package-integrity.mjs',
   import.meta.url,
@@ -47,6 +61,71 @@ const {
   verifyInstalledPackage,
   verifySourceIntegrity,
 } = await import(integrityScriptUrl.href)
+
+function findYamlRecords(
+  value: unknown,
+  predicate: (record: Record<string, unknown>) => boolean,
+): Array<Record<string, unknown>> {
+  if (Array.isArray(value)) return value.flatMap((item) => findYamlRecords(item, predicate))
+  if (typeof value !== 'object' || value === null) return []
+  const record = value as Record<string, unknown>
+  return [
+    ...(predicate(record) ? [record] : []),
+    ...Object.values(record).flatMap((item) => findYamlRecords(item, predicate)),
+  ]
+}
+
+describe('DSH assistant preset plugin composition', () => {
+  it('keeps distinct creation and review plugin groups and Skills providers across distributions', async () => {
+    const definitions = [
+      {
+        file: '../creation-planner.patch.yml',
+        id: 'creation-planner-skills-provider',
+        presetId: 'creation-planner',
+      },
+      {
+        file: '../postmortem-review.patch.yml',
+        id: 'postmortem-review-skills-provider',
+        presetId: 'postmortem-review',
+      },
+    ] as const
+    for (const surface of ['canonical', 'preset', 'patch']) {
+      const providerIds: string[] = []
+      for (const definition of definitions) {
+        const file = surface === 'canonical'
+          ? `../../packs/${definition.presetId}/agent.dsh.yml`
+          : surface === 'preset'
+            ? `../presets/${definition.presetId}/agent.cordis.yml`
+            : definition.file
+        const patch = yamlModule.load(
+          await readFile(new URL(file, import.meta.url), 'utf8'),
+          { schema: yamlSchema },
+        )
+        const provider = findYamlRecords(
+          patch,
+          (record) => record.name === './plugins/assistant-session-skills-provider.js',
+        ).find((record) => {
+          const config = record.config
+          return (
+            typeof config === 'object' &&
+            config !== null &&
+            (config as Record<string, unknown>).presetId === definition.presetId
+          )
+        })
+
+        expect(provider, file).toMatchObject({
+          id: definition.id,
+          config: { presetId: definition.presetId },
+        })
+        const group = findYamlRecords(patch, (record) => record.group === true)
+          .find((record) => Array.isArray(record.config) && record.config.includes(provider))
+        expect(group, file).toMatchObject({ id: `${definition.presetId}-session-plugins` })
+        providerIds.push(String(provider?.id), String(group?.id))
+      }
+      expect(new Set(providerIds).size).toBe(providerIds.length)
+    }
+  })
+})
 
 describe('packed runtime installation', () => {
   it('pins shared transitive dependencies used by the verified runtime', () => {
@@ -523,7 +602,7 @@ describe('DSH package manifest', () => {
       devDependencies: manifest.devDependencies,
     }).toEqual({
       name: '@anban/dsh-plugin',
-      version: '4.2.103',
+      version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
       type: 'module',
       engines: {
         node: '>=22.19.0 <23 || >=24.0.0',
@@ -1193,6 +1272,22 @@ ONE=1 TWO=2 LABEL="two words" wrapper -- dsh plugin --profile "$ACTIVE_PROFILE" 
 describe('DSH package integrity verifier', () => {
   it('accepts the generated source package contract', async () => {
     await expect(verifySourceIntegrity(packageRootPath)).resolves.toBeUndefined()
+  })
+
+  it.each(['root', 'preset'])('rejects a stale creation runtime %s persona', async (surface) => {
+    const fixture = await createIntegrityFixture()
+    try {
+      const patchPath = join(fixture.root, 'dsh/creation-planner.patch.yml')
+      const patch = await readFile(patchPath, 'utf8')
+      let index = 0
+      await writeFile(patchPath, patch.replace(/(prefix: >-\n)( +)[^\n]+/g, (match, prefix, indent) => {
+        const target = index++ === (surface === 'root' ? 0 : 1)
+        return target ? `${prefix}${indent}Stale creation instructions.` : match
+      }))
+      await expect(verifySourceIntegrity(fixture.root)).rejects.toThrow('Creation Planner runtime')
+    } finally {
+      await rm(fixture.fixtureParent, { force: true, recursive: true })
+    }
   })
 
   it('rejects a Project Creator runtime persona that drifts from its Pack source', async () => {

@@ -56,6 +56,7 @@ const EXPECTED_SKILL_NAMES = {
     'portrait-cover-design',
     'seo-optimization',
     'article-research',
+    'redfox-research',
     'content-tagging',
     'topic-evaluator',
     'trend-rider',
@@ -67,6 +68,7 @@ const EXPECTED_SKILL_NAMES = {
     'humanizer',
     'portrait-cover-design',
     'seednote-research',
+    'redfox-research',
     'seednote-viral-analysis',
     'seednote-visual-design',
     'seednote-writing',
@@ -626,6 +628,16 @@ export async function verifyInstalledProfile(overrides = {}) {
   ) {
     throw new Error('Installed profile smoke requires a profile and DSH_HOME')
   }
+  let expectedVersion
+  try {
+    expectedVersion = registryVersion(
+      `${PACKAGE_NAME}@${String(overrides.expectedVersion ?? '')}`,
+    )
+  } catch {
+    throw new Error(
+      'Installed profile smoke requires an exact expected package version',
+    )
+  }
 
   const ownsSmokeRoot = overrides.smokeRoot === undefined
   const dependencies = {
@@ -709,7 +721,7 @@ export async function verifyInstalledProfile(overrides = {}) {
       )
     }
     const manifest = exportsBySpecifier.get(`${PACKAGE_NAME}/package.json`)
-    validateInstalledExports(exportsBySpecifier, manifest?.version)
+    validateInstalledExports(exportsBySpecifier, expectedVersion)
     dependencies.log(
       `Bundle rows: anban-mcp=${bundleRows.mcp} anban-preset-manager=${bundleRows.presetManager} preset-local-mcp=${bundleRows.presetLocalMcp}`,
     )
@@ -1070,13 +1082,14 @@ if (
   try {
     const args = process.argv.slice(2)
     if (args[0] === '--existing-profile') {
-      if (args.length !== 2) {
+      if (args.length !== 3) {
         throw new Error(
-          'usage: smoke-profile.mjs --existing-profile <profile>',
+          'usage: smoke-profile.mjs --existing-profile <profile> <expected-version>',
         )
       }
       await verifyInstalledProfile({
         dshHome: process.env.DSH_HOME,
+        expectedVersion: args[2],
         profile: args[1],
       })
     } else {

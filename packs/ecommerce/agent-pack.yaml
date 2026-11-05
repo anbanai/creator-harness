@@ -1,7 +1,7 @@
 id: ecommerce
-version: 2.0.5
+version: 2.1.0
 kind: plugin
-display_name: 电商素材
+display_name: 电商设计
 description: 基于产品图片生成完整电商文案和视觉素材包。
 agent:
   name: ecommerce
@@ -25,12 +25,14 @@ artifacts:
   - {role: image_prompts, path: output/image-prompts.md, mime_type: text/markdown, required: false}
   - {role: best_refs, path: output/best-refs.md, mime_type: text/markdown, required: false}
   - {role: compliance, path: output/compliance-report.md, mime_type: text/markdown, required: false}
+  - {role: quality_gate, path: output/quality-gate.md, mime_type: text/markdown, required: true}
   - {role: manifest, path: output/manifest.json, mime_type: application/json, required: true}
   - {role: compressed_image, path: output/compressed_*.png, mime_type: image/png, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: false}
 delivery:
   - {role: copywriting, path: output/copywriting.md, mime_type: text/markdown}
+  - {role: quality_gate, path: output/quality-gate.md, mime_type: text/markdown}
   - {role: manifest, path: output/manifest.json, mime_type: application/json}
   - {role: main_image, path: output/main_*.png, mime_type: image/png}
   - {role: detail_image, path: output/detail_*.png, mime_type: image/png}

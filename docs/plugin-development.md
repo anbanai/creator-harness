@@ -198,10 +198,24 @@ Classify a Skill before editing it:
 
 - Self-authored assets follow this repository's prompt lint, progressive
   disclosure, eval, ownership, manifest, and changelog rules.
-- Upstream submodules preserve upstream history and bytes and are updated
-  through source, version, and gitlink checks. `skills/humanizer` points
-  directly to the official `blader/humanizer` repository; business rules
-  belong in the owning Agent or Skill.
+- Upstream submodules live directly under `skills/<repo>` beside authored
+  Skills and ship with the plugin like any other Skill entry, but they are not
+  Anban-owned: they preserve upstream history and bytes and are updated
+  through source, version, and gitlink checks instead of Anban prompt lint.
+  `scripts/audit-workflows.mjs` and the `server/agent` Skill contracts skip
+  these repositories.
+  `skills/humanizer` points directly to the official `blader/humanizer`
+  repository; business rules belong in the owning Agent or Skill.
+  `skills/seedance2-skill` and `skills/GPT-Image2-Skill` are read-only creative
+  references for the talking-head Agent; update them with
+  `make creative-references-update` and review the upstream gitlink diff before
+  committing. They do not grant access to their provider CLIs or APIs; image
+  creation remains on Anban MCP.
+  `skills/ecommerce-visual-copywriting-skill` is the read-only method
+  source for the ecommerce Agent; update it with
+  `make ecommerce-upstream-update`, validate it with
+  `make ecommerce-upstream-check`, and never copy its rule text into Anban
+  Skills.
 - Third-party runtime assets use their own update and verification process.
   OpenMontage is pinned and verified by the independently built runtime image;
   it is not stored in this repository or copied into Agent text.

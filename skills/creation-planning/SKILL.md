@@ -20,40 +20,50 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 
 ## 流程
 
-1. 用一句话复述本次目标，并只引用画像中与本次创作相关的既有约束。
+1. 以用户本次明确目标、话题和要求为准；画像中的历史选题和示例不构成本次选择，不得替换当前话题。需要澄清时用一句话复述目标，只引用与本次相关的既有约束。
 2. 先按[创作决策框架](references/creation-framework.md)检查目标、话题、角度和表达形式。已有项目画像中的定位、风格、受众、平台、偏好和记忆默认继承，不要在创作模式重复确认；只有用户明确要为本次作品临时调整时才询问覆盖值。
-3. 按业务 reference 一次询问一个会改变结果的关键问题。可由上下文合理推导的字段直接记录；需要用户比较时优先使用 3-5 个动态选项，并保留“其他/自定义”和“帮我推荐”。
+3. 整个本次创作需求累计最多 5 个问题，包含文字追问和确认问题；不是每轮 5 个，也不必问满。所有澄清问题统一通过 `AskUserQuestion`（文字题也使用无选项问题），正文不另附追问。按业务 reference 一次询问一个会改变结果的关键问题。可由上下文合理推导的字段直接记录；需要用户比较时优先使用 3-5 个动态选项，并保留“其他/自定义”和“帮我推荐”。
 4. 用户未指定的生产细节记录为交给内容 Agent 自主决定，不要继续追问标题、细节大纲、正文措辞、镜头脚本、配图提示词或内部 Prompt。
-5. 先展示完整需求摘要并请用户修改或确认。确认后调用 `stage_assistant_draft`，提交 `{"plan": ...}` 和 `ready: true`；此前可暂存 `ready: false`。
-6. 提交后等待 Studio 确认卡。不要声称作品任务已创建；只有 Studio 确认响应才是创建结果。
+5. 信息足够时立即调用 `stage_assistant_draft`，提交 `{"plan": ...}` 和 `ready: true`，让 Studio 展示需求摘要与“开始创作”按钮。`ready: true` 表示申请确认资格，不表示用户已批准；用户点击按钮才是最终确认，不要先通过 `AskUserQuestion` 请求完整计划确认，也不要再问一轮“是否确认/开始”。回答第 5 问后停止提问，采用上下文和明确标注的建议收敛计划；可推荐的角度和表达形式直接列为建议，不再追问。仍缺无法推导的必要事实或素材时只列 `missing_inputs` 并暂存 `ready: false`，不编造事实，不以继续讨论或换话题重置预算。
+6. 暂存后读取 Server 返回的权威 `draft`：提交 `ready: true` 只是申请确认资格，实际以 `draft.ready`、`draft.confirmation_state`、`draft.blocking_issues` 和 `confirmation_required` 为准。只有 Server 返回可确认时才用一句话交接，例如“需求已整理，请在摘要卡点击‘开始创作’，或选择‘修改需求’。”；不复述完整摘要、不输出原始 JSON 或内部草稿元数据。若返回字段校验问题，按 `blocking_issues` 的 `code`、`field`、`message` 对对应字段做一次定点修正并重新暂存，保留已确认需求，不再让用户确认整份计划；再次被拒绝时只说明一条简短阻塞，停止重试。其他阻塞只说明缺口，不输出内部推理或调试猜测；必要输入的澄清仍受累计 5 问限制，达到上限后等待用户主动补充，不提示点击尚不可用的按钮。不要声称作品任务已创建；只有 Studio 确认响应才是创建结果。
 
 ## 草稿合同
 
-`plan` 至少包含以下字段：
+调用示例（已具备必要信息，不代表已获用户批准）：
 
 ```json
 {
-  "goal": "创作目标",
-  "content_type": "工作流类型",
-  "topic": "本次作品讨论的话题",
-  "angle": "切入角度",
-  "expression_form": "表达形式",
-  "profile_context": ["本次实际沿用的画像信息"],
-  "temporary_overrides": [],
-  "expected_result": "希望获得的结果",
-  "requirements": ["用户明确提出的要求"],
-  "constraints": ["用户明确提出的限制"],
-  "assets": ["用户提供或引用的素材"],
-  "missing_inputs": ["创建任务前仍缺少的必要输入"],
-  "agent_decisions": ["交给内容 Agent 自主决定的事项"]
+  "payload": {
+    "plan": {
+      "goal": "帮助新手掌握 AI 辅助创作",
+      "content_type": "wechat-article",
+      "topic": "从选题到初稿的五步流程",
+      "angle": "用虚构咖啡店新品宣传案例演示每一步",
+      "expression_form": "约 1800 字的步骤教程",
+      "profile_context": ["清晰实用的表达", "面向新手内容创作者"],
+      "temporary_overrides": [],
+      "requirements": ["明确案例虚构", "每步给一条可复制的提示词和一条合格标准"],
+      "constraints": ["不夸大收益，不承诺爆款，不设营销 CTA"],
+      "missing_inputs": [],
+      "agent_decisions": ["标题和详细大纲由内容 Agent 决定"]
+    }
+  },
+  "ready": true
 }
 ```
 
-暂存时严格使用以上字段和 Server 接受的可选字段：`execution_profile`、`image_ratio`、`image_capability_key`、`video_edit_brief`、`video_edit_preferences`。`goal`、`content_type`、`topic`、`angle`、`expression_form`、`target_audience`、`style_constraints`、`asset_plan`、`acceptance_criteria`、`cost_estimate` 必须是字符串；`requirements`、`constraints`、`missing_inputs`、`agent_decisions`、`profile_context`、`temporary_overrides`、`outline`、`execution_options` 必须是字符串数组；`assets` 是素材对象或素材描述字符串的数组。不要发送 `account`、`platform`、`column`、`audience_segments`、`reader_problem`、`structure`、`visual_plan`、`success_criteria`、`review_and_signoff`、`material_plan`、`illustration_plan`、`fact_checklist`、`topic_position` 或 `brand_involvement` 等未在合同中的字段，也不要把 `constraints`、`outline` 或 `success_criteria` 改成对象；把这些信息分别压缩到 `goal`、`expected_result`、字符串数组或对应字符串字段中。`stage_assistant_draft` 的 `payload` 只能包含 `plan`（或复盘模式的 `review`），不能添加其他顶层键。
+缺失的不透明身份元数据由已认证会话上下文补齐；不要猜测或向用户追问这些内部 ID。
+
+`plan` 还可使用 `expected_result`、`assets`、`target_audience`、`outline`、`style_constraints`、`asset_plan`、`acceptance_criteria`、`cost_estimate`、`execution_options` 和 Server 接受的可选字段：`execution_profile`、`image_ratio`、`image_capability_key`、`video_edit_brief`、`video_edit_preferences`。`goal`、`content_type`、`topic`、`angle`、`expression_form`、`expected_result`、`target_audience`、`style_constraints`、`asset_plan`、`acceptance_criteria`、`cost_estimate` 必须是字符串；`requirements`、`constraints`、`missing_inputs`、`agent_decisions`、`profile_context`、`temporary_overrides`、`outline`、`execution_options` 必须是字符串数组；`assets` 是素材对象或素材描述字符串的数组。不要发送 `account`、`platform`、`column`、`audience_segments`、`reader_problem`、`structure`、`visual_plan`、`success_criteria`、`review_and_signoff`、`material_plan`、`illustration_plan`、`fact_checklist`、`topic_position` 或 `brand_involvement` 等未在合同中的字段，也不要把 `constraints`、`outline` 或 `success_criteria` 改成对象；把这些信息分别压缩到 `goal`、`expected_result`、字符串数组或对应字符串字段中。`stage_assistant_draft` 的 `payload` 只能包含 `plan`（或复盘模式的 `review`），不能添加其他顶层键。
 
 `goal`、`content_type`、`topic`、`angle` 和 `expression_form` 是用户确认创作计划时的必需字段。`ready=true` 时还必须提交 `profile_context` 和 `temporary_overrides` 两个字符串数组：前者只列出本次实际沿用的项目画像信息，后者只列出用户明确要求的本次临时调整；没有对应内容时提交空数组。它们用于标注来源，不是再次确认画像，也不写回 Profile。受众、素材、事实来源、限制和验收标准只在确实影响本次作品时补充，不要求所有用户填写完整字段；成本、执行选项和生产细节也不是 ready 的前置条件。恢复或暂存计划时遵循当前字段合同，不保留未声明的旧版字段，也不生成内部工作流字段。`content_type` 只表示工作流类型，不要把话题或表达形式塞入其中。
 
 `profile_context` 列出本次实际沿用的项目画像摘要，`temporary_overrides` 列出用户明确指定的本次覆盖；ready 草稿必须同时携带二者，不适用时使用空数组。不得把临时覆盖写入 Profile，也不要为了填充来源说明而重新询问画像。
+
+`missing_inputs` 只记录缺失后无法执行本次作品的必要输入；存在此类输入时提交 `ready: false` 并在剩余提问预算内澄清；达到 5 问后等待用户主动补充。用户已明确同意占位或后补的素材、明确不属于本次交付的内容，以及执行 Agent 可以完成的研究，按含义保留在已有 `requirements`、`constraints` 或 `temporary_overrides` 中，不放入 `missing_inputs`，也不新增字段。不得从沉默或模糊措辞推断用户同意延后补充。
+
+- 用户明确说“门店照片后补，先用占位图完成初稿”：将该约定记录在 `requirements` 或 `constraints`；如无其他执行阻塞，`missing_inputs` 使用空数组。
+- 用户要求“按我提供的视频剪辑”，但尚未提供视频且没有同意替代方案：将“待提供本次剪辑的源视频”保留在 `missing_inputs`，草稿不可确认。
 
 按需读取业务 reference：
 
@@ -66,9 +76,12 @@ description: Use when an Anban Assistant creation session turns a user's goal in
 
 ## 质量检查
 
-- 计划中的每个关键决定都来自用户确认或明确标记为待确认。
+- 计划中的每个关键决定都来自用户明确输入、实际继承的画像或明确标注的建议，交由 Studio 最终确认。
 - 话题、角度和表达形式均已明确；已经在项目画像确认的六维信息没有被重复询问。
 - 目标、期望结果、必要输入和限制能被后续作品任务直接使用。
-- 用户确认前不把草稿标为 ready；用户确认后仍不宣称 Task 已创建。
+- `missing_inputs` 只含执行阻塞；用户明确同意的后补或占位约定保留在现有约束中；暂存后的可确认结论与 Server 返回的有效状态和阻塞问题一致。
+- 信息足够立即暂存 ready 草稿；累计问题不超过 5 个。只有 Studio 确认响应才能证明 Task 已创建。
 - 需求澄清不会修改画像，不提前生成内容，不选择内部工作流。
 - 只调用 AskUserQuestion、Skill 和当前会话的 `stage_assistant_draft`；不调用文件、Shell、搜索、任务、发布、账单或 profile 写入能力。
+
+用户从选题库进入时，将选题的 `asset_id` 原样保留在 `plan.asset_id` 中；它是本次创作的来源引用，不是上传素材 ID。不要推测、替换或丢弃此引用，Server 在提交时验证归属并冻结输入。

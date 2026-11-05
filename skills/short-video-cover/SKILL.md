@@ -1,269 +1,244 @@
 ---
 name: short-video-cover
-description: 'Use when replicating viral short-video covers, generating a short-video cover from a reference cover image, or when user mentions "短视频封面", "爆款封面", "封面复刻", "复刻封面", "cover replication", "B站封面", "抖音封面", "视频号封面", "种草笔记视频封面". Triggers whenever a user provides a reference cover image and asks for a new short-video cover based on it — even if they don''t explicitly say "复刻". Covers the short-video cover replication workflow: analyze reference cover''s visual logic → migrate to user''s new title → generate cover prompt → quality optimization.'
+description: 'Use when designing or auditing high-quality short-video covers from raw source assets and reference cover sets, including 短视频封面、爆款封面、封面复刻、封面优化 and tasks that supply a reference image. The workflow targets thumbnail clarity, concrete subject evidence, exact copy, and independent validation; it does not promise reach.'
 ---
 
-# 短视频爆款封面——参考封面复刻工作流
+# Short-video Cover Quality
 
-## 目录
+This Skill owns the cover as a visual communication artifact. The target is a
+cover derived from the video's core visual argument that explains its promise and subject in one second at feed size, while
+remaining original, fact-grounded, and reproducible. A larger canvas or more
+text is not a quality improvement.
 
-- [任务图像参数合同](#任务图像参数合同)
-- [MCP 工具](#mcp-工具)
-- [核心原则](#核心原则)
-- [完整工作流](#完整工作流)
-- [质量与失败合同](#质量与失败合同)
+Read [anban-cover-case-study.md](references/anban-cover-case-study.md) when a
+reference set is supplied or when the existing cover is text-heavy. Read the
+other references only when their phase is active:
 
-## 任务图像参数合同
+- [analysis-template.md](references/analysis-template.md): structured reference analysis.
+- [prompt-template.md](references/prompt-template.md) and [prompt-and-repair.md](references/prompt-and-repair.md): image-generation prompts.
+- [optimization-checklist.md](references/optimization-checklist.md): visual audit prompts.
+- [delivery-template.md](references/delivery-template.md): final report shape.
 
-- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="short-video-cover", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
-- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
-- `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；短视频平台可优先参考 `9:16`，但只在能力支持时选择。
-- 每次生成都必须显式传 `aspect_ratio` 参数；`image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
+## Non-negotiable quality bar
 
+The finished cover must have:
 
-## MCP 工具
+- one clear promise or question, with no more than three visible text layers;
+- one concrete visual subject: the real IP owner, a verified guest, a source
+  frame, a relevant object, or a real scene;
+- a readable hierarchy at approximately 270x480 and in a blurred/low-attention
+  thumbnail test;
+- visible foreground, middle-ground, and background relationships when the
+  subject benefits from depth;
+- a restrained palette with a deliberate contrast accent, subject separation,
+  and no accidental pseudo-logo or pseudo-text;
+- exact title copy and safe-area placement verified after composition.
 
-| MCP 工具 | 说明 |
-|----------|------|
-| `analyze_image` (project_id, task_id, image_url?, file_path?, prompt) | 图像视觉分析——优先传任务相对 `file_path`，返回 AI 视觉分析结果。一次只分析一张图 |
-| `generate_image` (project_id, prompt, image_type, output_path, ref_image_path, aspect_ratio, task_id) | 生成并登记单张图片；托管运行时自动把成品写入 `output_path`。当前是参考图生成，不是 ControlNet/img2img |
-| `download_image` (project_id, task_id, url, output_path) | 下载公共 HTTPS 图片并登记为当前执行的持久任务文件，返回任务相对 `file_path` |
-| `compress_image` (task_id, input_path, output_path, max_width?) | 压缩授权任务图并登记新的持久任务文件 |
+Do not deliver a flat text poster when the source content provides a person,
+relationship, object, place, or action that can carry the story. Do not invent a
+person, guest, event, product result, or factual scene. Do not copy a reference
+cover pixel-for-pixel.
 
----
+## Raw input contract
 
-## 当前能力边界（必须向用户透明记录）
+Before planning, inspect the most original available inputs. A cleaned cover or
+preselected still is evidence, not a sufficient source set. Look for:
 
-- `generate_image` 是**参考图生成**，不是 ControlNet 或专用封面排版工具。参考图能提高视觉一致性，**不能锁定构图、字号、文字位置**。
-- 中文文字在图片内的渲染**不稳定**——AI 生图模型对中文文字支持差。封面以**视觉冲击为主**，关键文字应作为辅助而非主体；若用户需要精确文字排版，建议生成图后用 PS/Canva 二次加工。
-- `aspect_ratio=$EFFECTIVE_ASPECT_RATIO` 是宽高比提示，不是像素级硬约束；返回后需用文件尺寸或 `analyze_image` 验证比例。
-- 在专用封面排版工具接入前，**二次优化**是重新生成，不是"只改局部"。
+1. all original video takes and clean audio, then extract candidate frames;
+2. the corrected transcript, title candidates, source outline, factual sources,
+   comments/questions, audience and account profile;
+3. authorized portrait/video references for every person-led IP or guest;
+4. original object/product/location images and any usable foreground details;
+5. a reference set of comparable high-performing covers, not only one image;
+6. platform display captures, safe areas, font availability, brand marks, and
+   historical cover/CTR or retention data when available;
+7. source, hash, rights status, and the claim each asset can support.
 
-如用户要求"标题文字必须精确显示为指定中文"，必须先说明当前能力无法严格保证。
+Write `output/input-manifest.md` with paths, hashes, source roles, missing
+evidence, and whether each item is raw, derived, or reference-only. If the
+actual IP owner is required and no authorized identity source exists, fail the
+person-led gate rather than substituting a generic generated face.
 
----
+## 图像参数合同
 
-## 核心原则
+The calling Agent resolves the task Profile before this Skill runs. When the
+user specifies a ratio, preserve the 用户明确比例. When the Profile selects
+智能适配, choose only from the allowed ratios. When
+`resolved_profile.image_ratio` is explicit, preserve it as
+`$EFFECTIVE_ASPECT_RATIO`; when it is `auto`, choose only from
+`resolved_profile.allowed_image_ratios`. Every `generate_image` call passes the
+same semantic ratio. This Skill does not create a second Profile scope or
+silently crop to a different ratio.
+Every generation must 显式传 `aspect_ratio` and verify the returned file
+dimensions; ratio text in a prompt alone is not evidence.
 
-### 原则 0：不抄构图，学视觉逻辑（最高优先级）
+## What expert cover teams do beyond the prompt
 
-参考封面的作用是**拆解其画面结构**——标题位置、主体位置、配色方案、字体气质、视觉重点——而不是像素级复制。**抄构图等于抄表达，会触发原创性风险**；学视觉逻辑等于学方法，可复用到任何新标题。
+The planner must explicitly record these decisions in `output/cover-plan.md`:
 
-判断"轻度参考 / 深度参考"的差异：
-- **轻度参考**（`reference_depth=light`）：只参考色彩倾向和标题层级思路，构图、主体位置、字体气质全部重做
-- **深度参考**（`reference_depth=deep`）：参考整体构图、主体位置、字体气质，但替换具体视觉元素和文字内容
+- the one-second viewer question and the content evidence that answers it;
+- why the headline wording is stronger than the raw video title;
+- which real subject, expression, gesture, object, or relationship carries the
+  promise and why it is credible;
+- the foreground/middle-ground/background and occlusion plan;
+- title line breaks, emphasis words, font, contrast, and safe-area geometry;
+- the reference grammar being transferred and the parts being deliberately
+  changed for originality;
+- two or more candidate concepts and the reason one wins;
+- the independent evidence needed to call the result ready.
 
-### 原则 1：先用 analyze_image 看图
+Do not use a generic style label such as “高级、电影感、爆款” as a substitute
+for these decisions.
 
-**Read 工具不用于图像视觉分析**——在本环境中 Read 上传图像到 CDN 并返回 URL，不提供视觉内容。所有需要"看"图像的场景必须使用 `analyze_image`。
+## Tools and boundaries
 
-### 原则 2：Prompt 8 要素缺一不可
+Use only the registered image capabilities and local media tools available to
+the Agent:
 
-封面 prompt 必须包含 8 个要素（顺序可调）：①画面比例 ②标题排版 ③人物/主体 ④背景 ⑤色彩 ⑥字体气质 ⑦主体元素 ⑧禁止事项。缺要素会直接导致生成结果不稳定。详见 [references/prompt-template.md](references/prompt-template.md)。
+- `analyze_image` for reference and candidate audits;
+- `generate_image` for a visual plate or a fully composed cover when the
+  provider can render exact copy reliably;
+- `crop_image`/`compress_image` for task-file preparation;
+- `ffprobe`/`ffmpeg` for source-frame extraction, thumbnail renders, ratio and
+  pixel checks, and deterministic text composition when the runtime provides
+  CJK fonts;
+- OCR, face/subject visibility, contrast, and target-audience tests when they
+  are available. Record unavailable checks instead of pretending they passed.
 
-### 原则 3：任务有效比例硬约束
+`generate_image` is not a layout engine. For exact Chinese copy, prefer a
+two-pass workflow: generate a clean visual plate with no critical text, then
+compose the approved copy deterministically with `ffmpeg drawtext` or another
+registered compositor. Keep the copy in a text file, use an installed CJK
+font, and hash the plate, copy file, font, and final output. If no deterministic
+composition path is available, do not claim exact-copy readiness; run the
+visual audit and mark the cover `needs_manual_edit` or failed.
 
-用户明确比例必须原样使用。智能适配时才把 **9:16 竖版**作为短视频平台的优先参考，并且只能从当前能力公开的 `resolved_profile.allowed_image_ratios` 中选择。
+The registered calls remain atomic and task-scoped:
 
----
-
-## 完整工作流
-
-### Phase 0 — 初始化
-
-读取任务身份、项目与参考封面，写 `output/input-manifest.md`：新主题、标题、平台、参考深度、风格、比例和张数。任务输入优先；`get_project_profile(project_id=$PROJECT_ID, task_id=$TASK_ID, scope="wechat")` 返回任务有效比例。
-
-详见 [references/input-template.md](references/input-template.md)；仅在上述阶段读取。
-
-### Phase 1 — 拆解参考封面
-
-#### 步骤 3：定位参考图 + 视觉分析
-
-**3a. 定位任务参考图**：
-
-优先读取 `.anban-creator/input-attachments/index.json`，按用户要求选择对应 `type="image"` 条目的 `path` 并记为 `$REF_TASK_PATH`。若用户只提供公共 HTTPS URL，则登记为持久任务文件：
-
-```
-download_image(
-  project_id="$PROJECT_ID",
-  task_id="$TASK_ID",
-  url=<公共 HTTPS URL>,
-  output_path="output/reference-cover.png"
-) → 返回 REF_TASK_PATH
-```
-
-把 `$REF_TASK_PATH` 及其附件索引来源记录到 `output/input-manifest.md`。
-
-**3b. 视觉分析**：
-
-调用 `analyze_image` 提取参考封面的 8 个维度，prompt 模板见 [references/analysis-template.md](references/analysis-template.md)：
-
-```
-analyze_image(
-  project_id="$PROJECT_ID",
-  task_id="$TASK_ID",
-  file_path="$REF_TASK_PATH",
-  prompt=<参考 references/analysis-template.md 的 8 维度分析模板>
-)
-```
-
-如果因 10MB 限制失败，调用 `compress_image(task_id=$TASK_ID, input_path=$REF_TASK_PATH, output_path="output/reference-cover-compressed.png")`，然后用返回的任务相对路径重试分析。
-
-**3c. 写入分析结果**：
-
-把 analyze_image 返回的 8 维度结构化描述写入 `output/reference-analysis.md`，包含：画面比例、标题位置与层级、人物/主体位置、背景氛围、主色与强调色、字体气质、视觉重点、构图技巧。
-
----
-
-### Phase 2 — 迁移到新内容
-
-#### 步骤 4：构建 cover-plan.md
-
-根据新标题、账号领域、参考分析（特别是 `reference_depth`），判断迁移策略。**这一步是"思路"到"行动"的关键过渡**——必须把抽象的视觉逻辑翻译成针对当前新标题的具体决策。
-
-判断维度：
-
-1. **新标题分行**：根据标题字数和语义节奏，决定分几行、哪些词放大
-   - 短标题（≤6 字）：1 行，整体放大
-   - 中标题（7-12 字）：2 行，关键词放大
-   - 长标题（13+ 字）：2-3 行，主关键词明显放大，辅助词缩小
-2. **放大词识别**：从新标题中挑出 1-2 个最具情绪张力或信息密度的词
-3. **主体位置**：参考封面的人像/主体放在哪里？新封面是否保留这个位置逻辑？
-   - `reference_depth=deep`：保留参考的主体位置逻辑
-   - `reference_depth=light`：根据新标题重新决定
-4. **背景调整**：参考背景氛围是否适合新标题的账号领域？不适合则替换
-5. **素材保留/替换**：参考封面中的装饰元素（图标、徽章、几何形）是否保留？
-   - 装饰性元素：可保留以保持视觉密度
-   - 语义性元素（具体产品/Logo）：必须替换
-
-写入 `output/cover-plan.md`：
-
-```markdown
-# Cover Plan
-
-## Migration Strategy
-
-- reference_depth: light
-- title_breakdown:
-  - line_1: "3 步学会"（中等大小）
-  - line_2: "爆款标题"（放大，强视觉冲击）
-- emphasized_words: ["爆款标题"]
-- subject_position: 居中偏上（保留参考逻辑）
-- background: 由参考的纯黑改为深蓝渐变（更符合知识干货调性）
-- decorative_elements: 保留右下角箭头图标，替换左上角徽章
-
-## Style Anchors
-
-- main_color: 深蓝（参考的黑色调整为更亲和的深蓝）
-- accent_color: 暖黄（与主色对比，提升标题可读性）
-- font_vibe: 黑体加粗（参考是无衬线粗体，沿用）
-- visual_focus: 标题文字（参考的视觉重点是人脸，新封面改为文字主导）
-```
-
----
-
-### Phase 3 — 生成封面
-
-#### 步骤 5：构建 prompt + 调用 generate_image
-
-**5a. 构建 prompt**：
-
-按 [references/prompt-template.md](references/prompt-template.md) 的 8 要素模板组装 prompt。Prompt 控制在 500 词以内，避免长 prompt 触发 504；超过时删减到关键要素 + 1-2 个最重要反面约束。
-
-构建要点：
-- 已确定要素直接填入：`画面比例 $EFFECTIVE_ASPECT_RATIO`、`标题分行`、`主体位置`、`背景描述`、`色彩主+强调`、`字体气质`、`主体元素`、`禁止事项`
-- `reference_depth=deep` 时，prompt 中显式声明"参考封面的构图逻辑"
-- `reference_depth=light` 时，prompt 中只提色彩和字体气质参考，构图完全自主
-- 中文文字描述要具体（"标题'爆款标题'用大号黑体加粗"），但要在能力边界说明中告知用户渲染可能不精确
-
-**5b. 调用 generate_image**：
-
-```
-result = generate_image(
-  project_id="$PROJECT_ID",
-  task_id="$TASK_ID",
-  prompt=<5a 构建的 prompt>,
+```text
+generate_image(
+  project_id=$PROJECT_ID,
+  task_id=$TASK_ID,
+  prompt=<visual-plate prompt>,
   image_type="cover",
-  output_path="output/cover.png",
+  output_path="output/cover_v2.png",
   aspect_ratio=$EFFECTIVE_ASPECT_RATIO,
-  ref_image_path="$REF_TASK_PATH"
+  ref_image_path=<authorized reference path>
 )
-COVER_ANALYSIS_URL = result.download_url
-```
 
-**5c. Prompt 备份**：
-
-- 确认 `generate_image` 成功；托管运行时会把图片写入 `output/cover.png`，不得手工下载或 base64 转存
-- 把图片文件名、用途和最终创作 prompt 写入 `output/cover-prompts.md`；参考封面的语义拆解与迁移决策保留在 `output/reference-analysis.md` 和 `output/cover-plan.md`
-
----
-
-### Phase 4 — 二次优化
-
-#### 步骤 6：审计 + 必要重试
-
-**6a. 审计生成结果**：
-
-```
 analyze_image(
-  project_id="$PROJECT_ID",
-  task_id="$TASK_ID",
-  image_url="$COVER_ANALYSIS_URL",
-  prompt=<参考 references/optimization-checklist.md 的 5 项审计模板>
+  project_id=$PROJECT_ID,
+  task_id=$TASK_ID,
+  file_path=$CANDIDATE_PATH,
+  prompt=<thumbnail and exact-copy audit>
 )
 ```
 
-审计 5 项（详见 [references/optimization-checklist.md](references/optimization-checklist.md)）：
+The generated path is a candidate. Promote it to `output/cover.png` only after
+the independent review and quality evidence pass.
 
-1. 标题是否清楚（文字可辨认、层级分明）
-2. 构图是否接近参考的逻辑（不是像素级，是结构逻辑）
-3. 人物/主体是否突出（视觉重点是否对焦在主体）
-4. 颜色是否统一（主色和强调色和谐，无杂色）
-5. 元素是否过多（画面是否杂乱，视觉重点是否被稀释）
+## Workflow
 
-写入 `output/cover-review.md`，每项打分 PASS/MINOR/FAIL 并附分析依据。
+### 1. Freeze inputs and ratio
 
-**6b. 必要时重试**：
+The caller resolves and freezes `$EFFECTIVE_ASPECT_RATIO`. Use it unchanged in
+every generation and verification step. Locate attachments through the task
+manifest, preserve the original files, and record the input manifest before
+generation.
 
-任一关键项（标题清楚、主体突出）FAIL，或 3 项以上 MINOR：
-- 用更具体的 prompt 重试 1 次（明确指出问题项，加强反面约束）
-- `output_path` 改为 `output/cover_v2.png`
-- 重试结果同样走 6a 审计；若仍 FAIL 则接受当前最佳并在 cover-review.md 标注 `needs_manual_edit`（建议用户用 PS/Canva 二次加工具体文字）
+### 2. Analyze the reference set
 
-**不要无限重试**——最多 1 次重试，避免消耗。
+Run `analyze_image` once per reference image. For each image record:
 
----
+- hook type and exact title hierarchy;
+- subject identity, action, expression, crop, scale, and relationship;
+- foreground, middle-ground, background, texture, depth, and focal path;
+- palette, contrast, typography character, series mark, badge, and name strip;
+- what is transferable, what is content-specific, and what must be changed.
 
-### Phase 5 — 交付报告
+Write `output/reference-analysis.md`. A reference set is a visual grammar, not
+a prompt to copy. The supplied Anban case study is the calibration example.
 
-逐图汇报本地文件、参考拆解、迁移方案、审核结果、重试及未解决风险；只将审核通过的图标为可用。保留 input-manifest.md、reference-analysis.md、cover-plan.md、cover-prompts.md 和 cover-review.md 以便恢复。
+### 3. Build the cover plan and source assets
 
-详见 [references/delivery-template.md](references/delivery-template.md)；仅在上述阶段读取。
+Select the strongest evidence-bearing source frame or object from the video's
+core visual argument. A title enlargement without a concrete subject, action,
+or relationship fails the cover gate. For a person-led
+cover, the face must be recognizable and emotionally useful at thumbnail size;
+for a topic-led cover, the object or scene must make the topic concrete. Extract
+several frames from the raw material if needed and log their timestamps and
+hashes in `output/cover-asset-manifest.json`.
 
-## Prompt 修订
+Make at least two cover concepts. Each concept defines a headline, subject,
+background, depth/overlap, palette, crop, and safe-area geometry. Limit the
+visible copy to a main hook plus small context or identity labels. Do not fill
+empty space with explanatory paragraphs.
 
-用内容主体、构图、色彩、字体、层级、光影、纹理、情绪八要素描述视觉逻辑；更换可识别构图和文案，避免照抄原图。重试针对审核中实际缺失的元素。
+### 4. Generate and compose
 
-详见 [references/prompt-and-repair.md](references/prompt-and-repair.md)；仅在上述阶段读取。
+Generate the selected visual plate with a prompt containing ratio, subject,
+scene, depth, palette, lighting, crop, and forbidden artifacts. Use supplied
+identity or object references in their declared order. Do not ask the image
+model to invent a real guest or proof.
 
-## 验证清单
+Then compose exact copy deterministically when possible. Preserve the source
+plate and write the candidate path recorded in the variant matrix.
+Record prompt, tool/version, reference paths, font, copy file, and hashes in
+`output/cover-prompts.md` and `output/cover-variant-matrix.json`.
 
-### 单张封面完成后
+### 5. Audit at real viewing size
 
-- [ ] `output/input-manifest.md` 已生成，包含全部 6 个用户输入字段
-- [ ] `output/input-manifest.md` 已记录输入参考图的 `$REF_TASK_PATH` 与附件索引来源
-- [ ] `output/reference-analysis.md` 已生成，覆盖 8 个分析维度
-- [ ] `output/cover-plan.md` 已生成，包含迁移决策和 style anchors
-- [ ] `output/cover.png` 已由托管运行时写入
-- [ ] `output/cover-prompts.md` 已备份文件名、用途和最终创作 prompt
-- [ ] `output/cover-review.md` 已生成，5 项审计 PASS/MINOR/FAIL 评级
+For every candidate:
 
-### 全部完成后
+1. Verify actual dimensions and ratio with `ffprobe` or equivalent.
+2. Render a thumbnail near 270x480 and inspect it with `analyze_image`.
+3. Check headline recognition, subject identity, emotional read, focal order,
+   face/object occlusion, safe areas, contrast, and accidental artifacts.
+4. Check exact copy with OCR or a deterministic source-copy comparison. A
+   prompt claiming the right text is not evidence that the pixels are right.
+5. Have an independent reviewer who did not create the candidate perform a
+   blind PASS/MINOR/FAIL review and bind it to the candidate SHA-256.
 
-## 质量与失败合同
+Write `output/cover-thumbnail-review.json`, `output/cover-review.md`, and
+`output/cover-quality.json`. The review must say which checks were actually
+run and which remain unavailable.
 
-生成与审核 JSON 必须包含 `schema_version`、有限 `status`（`ready`、`warning`、`blocked`、`failed`、`skipped`）、`source`、`data_at`、`missing` 和适用的 `evidence_paths`。参考图不可用、生成失败或审核证据不足时保留已有产物并写 `output/failure-state.json`，包含 `version`、`status`、`stage`、`error_code`、脱敏 `message` 和 `resume_from`；不得自动修改 Profile 或发布状态。
+### 6. Repair and deliver
 
-- [ ] 任一关键项（标题清楚、主体突出）FAIL 时已重试 1 次
-- [ ] 重试后仍 FAIL 已标记 `needs_manual_edit` 并向用户说明
-- [ ] 最终报告已交付，包含路径、迁移摘要、审计结论、能力边界声明
+Repair the earliest failed decision: headline, source subject, crop, depth,
+contrast, or composition. Do not merely enlarge text. Use at most three total
+generation attempts unless the caller explicitly changes the brief. A failed
+candidate cannot be silently promoted to `output/cover.png`; only an
+independently reviewed candidate with `overall_pass=true` may be promoted.
+
+When evidence is missing, write the normal failure contract with
+`resume_from`, preserve all candidates, and stop. Never modify Profile, task
+state, or publication state from this Skill.
+
+## Evidence beyond the Agent and user
+
+Where available, include in `output/independent-validation.json`:
+
+- blind review by an independent designer or creative director;
+- one-second target-audience thumbnail choices with sample size and protocol;
+- automated ratio, safe-area, OCR, contrast, and face/subject checks;
+- comparison against the account's historical cover baseline;
+- post-publication CTR, three-second retention, and controlled A/B evidence.
+
+Missing evidence is recorded as missing or low confidence. It is never inferred
+from a successful tool call or from the creator's own opinion.
+
+## Output contract
+
+Maintain `output/input-manifest.md`, `output/reference-analysis.md`,
+`output/cover-plan.md`, `output/cover-asset-manifest.json`,
+`output/cover-variant-matrix.json`, `output/cover-prompts.md`,
+`output/cover-thumbnail-review.json`, `output/cover-review.md`,
+`output/cover-quality.json`, and the final `output/cover.png`. JSON files use
+the shared envelope (`schema_version`, `status`, `source`, `data_at`,
+`missing`, and applicable `evidence_paths`). Failure preserves artifacts and
+writes `output/failure-state.json` and `output/failure-diagnosis.md`.
+
+Read [optimization-checklist.md](references/optimization-checklist.md) for the
+audit prompt and [delivery-template.md](references/delivery-template.md) only
+when writing the final report.

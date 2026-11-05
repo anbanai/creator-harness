@@ -1,22 +1,31 @@
 id: viral-ip-video-editor
-version: 1.0.11
+version: 1.3.1
 kind: plugin
 display_name: 爆款 IP 视频剪辑
-description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核。
+description: 基于 Montage 运行时处理真人 IP 口播素材，完成留存导向的剪辑规划、制作指导和成片质量复核；字幕与 BGM 各自按独立方法论制作（BGM 可按章节换曲），封面在流程最后一步生成。
 interaction:
   user_questions: false
 agent:
   name: viral-ip-video-editor
   claude_source: agent.claude.md
   codex_source: agent.codex.toml
-  skills: [content-reuse, content-tagging, montage, portrait-cover-design, short-video-cover, viral-ip-editing, wechat-video-account-review, auto-editor]
+  skills: [content-reuse, content-tagging, montage, portrait-cover-design, short-video-cover, talking-head-video-generation, talking-head-composition, talking-head-visual-focus, talking-head-explainer, video-bgm-design, video-production-qc, video-subtitle-design, viral-ip-editing, wechat-video-account-review, auto-editor]
   max_turns: 250
 runtime:
   profile: viral-ip-video-editor
   adapter: openmontage
 surfaces: [plugin]
-features: [viral-ip-video-editing, retention-editing, source-assets, montage-runtime, audio-silence-detection]
+features: [viral-ip-video-editing, retention-editing, explainable-knowledge-editing, generated-video-inserts, semantic-master-variants, retention-experiments, independent-validation, source-assets, montage-runtime, audio-silence-detection]
 artifacts:
+  - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json, required: false}
+  - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json, required: false}
+  - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json, required: false}
+  - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json, required: false}
+  - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json, required: false}
+  - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json, required: false}
+  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json, required: true}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json, required: true}
+  - {role: retention_results, path: output/retention-results.json, mime_type: application/json, required: false}
   - {role: project_brief, path: output/project_brief.md, mime_type: text/markdown, required: false}
   - {role: transcript, path: output/transcript.json, mime_type: application/json, required: false}
   - {role: content_map, path: output/content_map.md, mime_type: text/markdown, required: false}
@@ -30,31 +39,119 @@ artifacts:
   - {role: wechat_video_account_review_revision_json, path: output/wechat-video-account-review-revision-*.json, mime_type: application/json, required: false}
   - {role: wechat_video_account_review_final, path: output/wechat-video-account-review-final-*.md, mime_type: text/markdown, required: false}
   - {role: wechat_video_account_review_final_json, path: output/wechat-video-account-review-final-*.json, mime_type: application/json, required: false}
-  - {role: edit_decision_list, path: output/edit_decision_list.json, mime_type: application/json, required: false}
+  - {role: edit_decision_list, path: output/edit-decision-list.json, mime_type: application/json, required: false}
+  - {role: asset_ledger, path: output/asset-ledger.json, mime_type: application/json, required: true}
+  - {role: composition_plan, path: output/composition-plan.json, mime_type: application/json, required: true}
+  - {role: composition_lint, path: output/composition-lint.json, mime_type: application/json, required: true}
+  - {role: generated_video_manifest, path: output/generated-video-manifest.json, mime_type: application/json, required: true}
+  - {role: generated_video_review, path: output/generated-video-review.json, mime_type: application/json, required: true}
+  - {role: generated_video_lint, path: output/generated-video-lint.json, mime_type: application/json, required: true}
   - {role: auto_editor_silence_cuts, path: output/auto-editor-silence-cuts.xml, mime_type: application/xml, required: false}
   - {role: visual_plan, path: output/visual_plan.json, mime_type: application/json, required: false}
   - {role: sfx_cues, path: output/sfx_cues.json, mime_type: application/json, required: false}
-  - {role: bgm_plan, path: output/bgm_plan.json, mime_type: application/json, required: false}
-  - {role: captions, path: output/captions.srt, mime_type: text/plain, required: false}
+  - {role: bgm_plan, path: output/bgm-plan.json, mime_type: application/json, required: true}
+  - {role: bgm_plan_md, path: output/bgm-plan.md, mime_type: text/markdown, required: true}
+  - {role: bgm_qc, path: output/bgm-qc.json, mime_type: application/json, required: true}
+  - {role: audio_source_manifest, path: output/audio-source-manifest.json, mime_type: application/json, required: true}
+  - {role: captions, path: output/captions.srt, mime_type: text/plain, required: true}
+  - {role: caption_plan, path: output/caption-plan.md, mime_type: text/markdown, required: true}
+  - {role: caption_style, path: output/caption-style.json, mime_type: application/json, required: true}
+  - {role: caption_qc, path: output/caption-qc.json, mime_type: application/json, required: true}
   - {role: qc_report, path: output/qc_report.md, mime_type: text/markdown, required: false}
-  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: false}
-  - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: false}
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json, required: true}
+  - {role: final_video, path: output/final.mp4, mime_type: video/mp4, required: true}
   - {role: project_manifest, path: output/montage-project.json, mime_type: application/json, required: false}
-  - {role: cover, path: output/cover.png, mime_type: image/png, required: false}
-  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: false}
+  - {role: cover, path: output/cover.png, mime_type: image/png, required: true}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json, required: true}
   - {role: content_reuse_brief, path: output/content-reuse-brief.json, mime_type: application/json, required: false}
   - {role: content_lineage, path: output/content-lineage.json, mime_type: application/json, required: false}
   - {role: topic_analysis, path: output/topic-analysis.md, mime_type: text/markdown, required: false}
   - {role: quality_report, path: output/quality-report.json, mime_type: application/json, required: false}
-  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: false}
-  - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown, required: false}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown, required: true}
+  - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown, required: true}
   - {role: cover_reference_prompts, path: output/cover-prompts.md, mime_type: text/markdown, required: false}
-  - {role: cover_review, path: output/cover-quality.json, mime_type: application/json, required: false}
+  - {role: cover_review, path: output/cover-quality.json, mime_type: application/json, required: true}
   - {role: cover_reference_analysis, path: output/reference-analysis.md, mime_type: text/markdown, required: false}
   - {role: cover_reference_input, path: output/input-manifest.md, mime_type: text/markdown, required: false}
   - {role: cover_reference_image, path: output/reference-cover.png, mime_type: image/png, required: false}
   - {role: cover_reference_compressed_image, path: output/reference-cover-compressed.png, mime_type: image/png, required: false}
   - {role: cover_candidate, path: output/cover_v2.png, mime_type: image/png, required: false}
   - {role: cover_reference_review, path: output/cover-review.md, mime_type: text/markdown, required: false}
+  - {role: cover_asset_manifest, path: output/cover-asset-manifest.json, mime_type: application/json, required: false}
+  - {role: cover_variant_matrix, path: output/cover-variant-matrix.json, mime_type: application/json, required: false}
+  - {role: cover_thumbnail_review, path: output/cover-thumbnail-review.json, mime_type: application/json, required: false}
   - {role: failure_state, path: output/failure-state.json, mime_type: application/json, required: false}
   - {role: failure_diagnosis, path: output/failure-diagnosis.md, mime_type: text/markdown, required: false}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json, required: true}
+  - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json, required: true}
+  - {role: sync_evidence, path: output/sync-evidence.json, mime_type: application/json, required: true}
+  - {role: audio_content_check, path: output/audio-content-check.json, mime_type: application/json, required: true}
+  - {role: final_audio_transcript, path: output/final-audio-transcript.json, mime_type: application/json, required: true}
+artifact_stages:
+  - id: explainer_preflight
+    trigger: output/explainer-input-assessment.json
+    required:
+      - output/explainer-input-assessment.json
+      - output/semantic-master.json
+      - output/explanation-plan.json
+      - output/explanation-rehearsal.json
+      - output/platform-variant-plan.json
+      - output/retention-experiment-plan.json
+      - output/independent-validation-plan.json
+      - output/independent-validation.json
+    required_on_final: true
+  - id: final_delivery
+    trigger: output/final.mp4
+    terminal: true
+    required:
+      - output/edit-decision-list.json
+      - output/composition-lint.json
+      - output/generated-video-manifest.json
+      - output/generated-video-review.json
+      - output/generated-video-lint.json
+      - output/final-audio-transcript.json
+      - output/audio-content-check.json
+      - output/sync-evidence.json
+      - output/quality-evidence.json
+      - output/progress-state.json
+      - output/independent-validation-plan.json
+      - output/independent-validation.json
+delivery:
+  - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json}
+  - {role: semantic_master, path: output/semantic-master.json, mime_type: application/json}
+  - {role: explanation_plan, path: output/explanation-plan.json, mime_type: application/json}
+  - {role: explanation_rehearsal, path: output/explanation-rehearsal.json, mime_type: application/json}
+  - {role: platform_variant_plan, path: output/platform-variant-plan.json, mime_type: application/json}
+  - {role: retention_experiment_plan, path: output/retention-experiment-plan.json, mime_type: application/json}
+  - {role: independent_validation_plan, path: output/independent-validation-plan.json, mime_type: application/json}
+  - {role: independent_validation, path: output/independent-validation.json, mime_type: application/json}
+  - {role: retention_results, path: output/retention-results.json, mime_type: application/json}
+  - {role: asset_ledger, path: output/asset-ledger.json, mime_type: application/json}
+  - {role: composition_plan, path: output/composition-plan.json, mime_type: application/json}
+  - {role: composition_lint, path: output/composition-lint.json, mime_type: application/json}
+  - {role: bgm_plan, path: output/bgm-plan.json, mime_type: application/json}
+  - {role: bgm_plan_md, path: output/bgm-plan.md, mime_type: text/markdown}
+  - {role: bgm_qc, path: output/bgm-qc.json, mime_type: application/json}
+  - {role: audio_source_manifest, path: output/audio-source-manifest.json, mime_type: application/json}
+  - {role: captions, path: output/captions.srt, mime_type: text/plain}
+  - {role: caption_plan, path: output/caption-plan.md, mime_type: text/markdown}
+  - {role: caption_style, path: output/caption-style.json, mime_type: application/json}
+  - {role: caption_qc, path: output/caption-qc.json, mime_type: application/json}
+  - {role: content_tags, path: output/content-tags.json, mime_type: application/json}
+  - {role: final_video, path: output/final.mp4, mime_type: video/mp4}
+  - {role: generated_video_manifest, path: output/generated-video-manifest.json, mime_type: application/json}
+  - {role: final_audio_transcript, path: output/final-audio-transcript.json, mime_type: application/json}
+  - {role: generated_video_review, path: output/generated-video-review.json, mime_type: application/json}
+  - {role: generated_video_lint, path: output/generated-video-lint.json, mime_type: application/json}
+  - {role: cover, path: output/cover.png, mime_type: image/png}
+  - {role: delivery_manifest, path: output/delivery-manifest.json, mime_type: application/json}
+  - {role: quality_evidence, path: output/quality-evidence.json, mime_type: application/json}
+  - {role: progress_state, path: output/progress-state.json, mime_type: application/json}
+  - {role: sync_evidence, path: output/sync-evidence.json, mime_type: application/json}
+  - {role: audio_content_check, path: output/audio-content-check.json, mime_type: application/json}
+  - {role: cover_plan, path: output/cover-plan.md, mime_type: text/markdown}
+  - {role: cover_prompt, path: output/cover-prompt.md, mime_type: text/markdown}
+  - {role: cover_review, path: output/cover-quality.json, mime_type: application/json}
+  - {role: cover_asset_manifest, path: output/cover-asset-manifest.json, mime_type: application/json}
+  - {role: cover_variant_matrix, path: output/cover-variant-matrix.json, mime_type: application/json}
+  - {role: cover_thumbnail_review, path: output/cover-thumbnail-review.json, mime_type: application/json}

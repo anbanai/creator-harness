@@ -7,27 +7,27 @@ description: "Use only during the Ecommerce workflow's visual planning and gener
 
 ## 目录
 
-- [图片比例固定规则](#图片比例固定规则)
+- [图像参数合同](#图像参数合同图片比例固定规则)
+- [上游方法源](#上游方法源只读)
 - [硬性纪律](#硬性纪律违反视为流程失败)
 - [输入](#输入)
 - [图片生成](#步骤-4图片生成)
-- [常见失败与修复](#常见失败与修复)
 - [产出](#产出)
 
-## 图片比例固定规则
+## 图像参数合同（图片比例固定规则）
 
-### 任务图像参数合同
-
-- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="ecommerce", task_id=$TASK_ID)` 后读取 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
-- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：必须原样作为 `$EFFECTIVE_ASPECT_RATIO`，每次 `generate_image` 都显式传 `aspect_ratio=$EFFECTIVE_ASPECT_RATIO`。
-- `resolved_profile.image_ratio` 等于 `"auto"` 表示智能适配：Agent 可按不同模块分别从 `resolved_profile.allowed_image_ratios` 选择 `$EFFECTIVE_ASPECT_RATIO`；平台常用比例只作选择参考。
-- 每次生成都必须显式传 `aspect_ratio` 参数。
-- `image_type=cover|content` 只表示产物角色，不决定能力、比例、裁剪或价格。
+- 调用 `get_project_profile(project_id=$PROJECT_ID, scope="ecommerce", task_id=$TASK_ID)` 后读 `resolved_profile.image_ratio` 与 `resolved_profile.allowed_image_ratios`。
+- `resolved_profile.image_ratio` 不等于 `"auto"` 表示用户明确比例：原样作为 `$EFFECTIVE_ASPECT_RATIO`；等于 `"auto"` 表示智能适配：按模块从 `resolved_profile.allowed_image_ratios` 选择。
+- 每次 `generate_image` 都必须显式传 `aspect_ratio`（取 `$EFFECTIVE_ASPECT_RATIO`）；`image_type=cover|content` 只表示产物角色。
 
 
 ## 受众与目标
 
 服务于**点击与下单**的商业转化视觉——**不是种草情绪共鸣，也不是线稿保真**。每张图都要回答「它让买家更想点击/下单了吗」。
+
+## 上游方法源（只读）
+
+Campaign Style Lock、Storyboard、逐图执行卡、自包含 Prompt 与 Negative 以上游 bundled `ecommerce-visual-copywriting-skill` 为准（根路径由 Agent 提供：`$UPSTREAM_ECOMMERCE_SKILL`）。本阶段读取其 `SKILL.md` Step 3–5 与 `$UPSTREAM_ECOMMERCE_SKILL/references/output-contracts.md` §2–4，并按 [references/upstream-visual-mapping.md](references/upstream-visual-mapping.md) 落盘；KV1 识别优先见 [references/main-image.md](references/main-image.md)。
 
 ## 硬性纪律（违反视为流程失败）
 
@@ -62,10 +62,12 @@ description: "Use only during the Ecommerce workflow's visual planning and gener
 
 ---
 
-## 步骤 1：确定视觉风格基线 `$STYLE`
+## 步骤 1：锁定 Campaign Style Lock
 
-- 项目有参考图/风格描述 → 用之。
-- 否则按**品类 × 平台 × 受众**动态设计 `$STYLE`（配色/版式/字体/质感/信息密度），写入 `output/asset-plan.md` 的「视觉风格基线」。`$STYLE` 由主图①确立，后续图共享。
+- 项目有参考图/风格描述 → 优先继承；否则按**品类 × 平台 × 受众**设计。
+- 写入 `output/asset-plan.md` 的 `## Campaign Style Lock`，至少含：产品身份、构图、色彩、光影、字体与信息密度、背景/场景、Reference Fidelity、Negative Constraints；`$STYLE` 是其内部简称。
+- 产品身份以 `product-bible.md` 的「一致性锁定项」为准；不得为了更好看改包装结构、Logo、规格或配件。
+- Lock 由已选模块首张关键图确立、后续图共享；每条 prompt 重复写 Lock 与 Negative，不写「同上」。
 
 **电商视觉语言要素**：
 - **卖点可视化**：把抽象卖点转成可视符号（如「长续航」→ 电量条/时钟图标；「轻」→ 羽毛/手持比例）。
@@ -74,16 +76,12 @@ description: "Use only during the Ecommerce workflow's visual planning and gener
 - **商业品质感**：专业打光、材质质感、留白、栅格对齐。
 - **移动端首屏可读**：主图①与详情首节在手机首屏即传达核心卖点。
 
-## 步骤 2：产出 asset-plan.md（仅含已选模块）
+## 步骤 2：产出 Storyboard 与 asset-plan.md（仅含已选模块）
 
-按模块逐张规划。每张含：`用途 / 尺寸 / 视觉主体 / 必须出现的卖点文字 / 禁用元素 / 所需产品图=[第N张(subject), ...]（查「产品图清单」，精确到序号）/ 验收标准`。
+先出 `## Storyboard`（每张图一个决策问题与角色：Hero/Benefit/Proof/Compare/Scene/Spec-CTA），再逐张写执行卡：
+`视觉任务/用户疑问 / 画面与第一落点 / 图内文案（含实际字数）/ 文字渲染方式 / 排版与安全区 / 证据来源 / 所需产品图=[第N张(subject)] / 自包含 Prompt / Negative / 验收标准`。KV1（选中主图模块时）主标题必须是商品名/品类词。字段细节见 [references/upstream-visual-mapping.md](references/upstream-visual-mapping.md)。
 
-**智能适配比例参考**（仅当 `resolved_profile.image_ratio` 等于 `"auto"` 时按 `target_platform` 参考，且必须受 `resolved_profile.allowed_image_ratios` 约束；详见 `ecommerce-platform-specs`）：
-- 主图：比例 `1:1`；目标清晰度/分辨率另记为 `2K`，不得拼入 `size`
-- 详情页：比例 `3:4`；目标清晰度/分辨率另记为 `2K`
-- 封面 banner：比例 `16:9` 或 `3:4`；目标清晰度/分辨率另记为 `2K`
-- 分享图：比例 `1:1` 或 `3:4`；目标清晰度/分辨率另记为 `2K`
-- SKU：比例 `1:1`；目标清晰度/分辨率另记为 `2K`
+**智能适配比例参考**（仅 `image_ratio == "auto"` 且受 `allowed_image_ratios` 约束；详见 `ecommerce-platform-specs`）：主图/SKU 常用 `1:1`；详情 `3:4`；封面 `16:9` 或 `3:4`；分享 `1:1` 或 `3:4`。清晰度 `2K` 只写 prompt 与规划，不拼入 `aspect_ratio`。
 
 各模块设计规范见：
 - 主图 → [references/main-image.md](references/main-image.md)
@@ -101,6 +99,8 @@ description: "Use only during the Ecommerce workflow's visual planning and gener
 
 **核心原则（电商独有，与种草笔记的反雷同逻辑刻意相反）**：每张电商图都描绘某个产品部位（茶汤/干茶/叶底/包装…），**只传该部位对应的那几张产品图作参考**，并在 prompt 里点名「与第 N 张完全一致」。禁止任何「纯文生图不传 ref」的电商图——产品必须来自真实参考，不得凭文本臆造。
 
+Style Lock/Negative 与自包含 Prompt 要求见 [references/upstream-visual-mapping.md](references/upstream-visual-mapping.md)；首图识别规则见 [references/main-image.md](references/main-image.md)。
+
 1. **产品档案前缀块**：每个 prompt 以 `【产品档案·必须严格遵守】{产品档案的「一致性锁定项」：品牌 logo 文字与颜色 / 主色 HEX / 形状轮廓 / 包装可见文字}` 开头。
 2. **锚点优先**：先生成主图①（点击主图），确立色系/版式/字体基准。
 3. **按需选参考图**（查 `output/product-bible.md`「产品图清单」的 subject + 序号）：
@@ -115,11 +115,7 @@ description: "Use only during the Ecommerce workflow's visual planning and gener
 5. **视觉自检循环**：一致性关键模块生成后单独调用 `analyze_image`，对照 asset-plan 中的原图序号审核产品、文字和合规。FAIL 时走「包装文字漂移兜底」，最多 3 轮；仍不达标标 `needs_reference` 并在 manifest 披露。
 6. **诚实标注**：语义参考与点名保真能提高一致性，但复杂包装文字仍不能承诺像素级还原；差异作为风险记录。
 
-**包装文字漂移兜底**（复杂包装文字/长成分表是保真难点，逐级升级）：
-1. 第 1 轮 FAIL → 自检结果里的 `missing_entities`/漂移项**识别是哪些具体文字/标记漂移**（logo 文字、品名、规格、成分关键词）。
-2. 第 2 轮重生成 → prompt 追加「**以下文字必须原样保留，不得增删改、不得拼写偏差**：『<从产品档案逐字转录的关键包装文字，≤12 字/条>』」+ 把图内文字**收紧到 ≤12 字**减少出错面 + 用全角「」包裹。
-3. 第 3 轮仍漂移 → 标 `needs_reference`，在 manifest 披露漂移项，并给出**后期合成建议**（把产品原图主体抠出合成到生成场景上，或文字层后期叠加）。
-4. **诚实声明**：AI 生成无法保证像素级包装文字还原；复杂文字以「产品档案原样转录 + 后期合成」为最终保真手段，不向用户承诺 100% 文字还原。
+**包装文字漂移兜底**：逐级升级（识别具体漂移文字 → 逐字转录「以下文字原样保留」并收紧 ≤12 字 → 仍漂移标 `needs_reference` + 后期合成建议），详见 [references/upstream-visual-mapping.md](references/upstream-visual-mapping.md) 的「包装文字漂移兜底」。
 
 ## 步骤 4：图片生成
 
@@ -146,45 +142,22 @@ description: "Use only during the Ecommerce workflow's visual planning and gener
 ```
 你是电商视觉质检员。检查这张电商素材图是否满足：
 1. 产品一致性（**对照本图所用参考图【产品图清单】第 N 张**）：该部位（{subject}）的色泽/形态/包装文字/logo/主色/材质是否与第 N 张完全一致？有无臆造、漂移、多出或漏掉的品牌标记/文字？（把生成图与第 N 张原图逐项比对）
-2. 卖点文字：要求出现的卖点文字「{本张必须出现文字}」是否清晰可读、无错别字/乱码/英文（中文场景）？
+2. 图内文字逐字：要求出现的文字「{本张必须出现文字}」是否逐字一致、清晰可读、无错别字/乱码/英文（中文场景）？
 3. 信息层级：主体是否突出、卖点是否在合理层级？
-4. 合规：是否含极限词/违禁词/虚假承诺？
-返回严格 JSON：{all_entities_present, missing_entities, relevance_score(high/medium/low), overall_pass(bool), has_forbidden_content(bool), forbidden_notes}
+4. KV1 识别（仅首张主图）：遮住副文案、缩到缩略图，陌生用户能否说出商品品类？
+5. 合规：是否含极限词/违禁词/虚假承诺？
+返回严格 JSON：{all_entities_present, missing_entities, relevance_score(high/medium/low), overall_pass(bool), has_forbidden_content(bool), forbidden_notes, text_verbatim(bool), text_issues(string array), kv1_identifiable(bool), text_rendering_status(normal|degraded|zero_text)}
 ```
 
-自检结果写入 `output/best-refs.md`（逐图：内容质量 PASS/FAIL、创作修订轮次、`needs_reference`）。
+自检结果写入 `output/best-refs.md`（逐图：内容质量 PASS/FAIL、文字逐字结论、KV1 识别、`text_rendering_status`、创作修订轮次、`needs_reference`）。文字专项：连续 2 轮错字/乱码/漏字 → 收紧仅标题；仍失败 → 零文字留白并记 `text_rendering=degraded`；整体单图重试上限仍为 3 轮。
 
 ## 步骤 6：模块内一致性复查
 
-同模块多张图生成后，复查视觉风格一致（同色系/版式/字体/信息密度）与卖点不重复堆砌。不一致则按 `$STYLE` 块重生成偏离的那张。
+同模块多张图生成后复查风格一致与卖点不重复；偏离的图按 `$STYLE` 重生成。
 
-## 步骤 7：SKU 变体保真策略（若已选 sku_images）
+## 步骤 7：SKU 变体策略（若已选 sku_images）
 
-SKU 变体图要求「**同一版式、同一打光、仅变体属性不同**」，是保真与差异化的平衡：
-
-- **版式一致**：所有变体共享 `$STYLE`（同构图/背景/打光/字体/版式），仅颜色/款式/规格属性不同——让买家一眼看出是「同一系列的不同选项」。
-- **色准控制**：色彩变体（多色服饰/美妆色号）**用产品图原图色作锚**，prompt 点名「色号/色名与第 N 张（{variant}）完全一致」，生成后单独用 `analyze_image` 对照原图核色；不得臆造色卡外的颜色。
-- **避免雷同**：同构图变体换道具/角度微调（如不同色款的摆位/搭配道具略有差异），避免多张像复制粘贴；但版式骨架不变。
-- **点名保真**：每个变体点名其对应的产品图序号（「与第 N 张（{variant}色）完全一致」），**禁止纯文生图臆造变体**。
-- **命名**：`sku_<variant>.png`，variant 名来自产品档案或用户指定。
-
----
-
-## 常见失败与修复
-
-| 问题 | 原因 | 修复 |
-|------|------|------|
-| 产品跨图不一致 / 与原图不符 | 漏传或错传相关部位 ref / 点名保真弱 | 按所需部位只传相关产品图（步骤 3）+ 强化点名保真「与第 N 张完全一致」+ 自检对照第 N 张原图重生成 |
-| 多张场景图雷同 | 多图复用同一张参考 | 按需选不同部位 ref（茶汤图传茶汤、叶底图传叶底，天然差异化）；确需同张时追加语义相关的产品原图 |
-| 图内文字乱码/英文 | 语言约束弱 | 文字用「」包裹 + 末尾独立「禁止英文/拼音/乱码」段 + 缩短到 ≤12 字 |
-| 卖点未可视 | prompt 只描述产品没描述卖点符号 | 把卖点转成可视符号写进 prompt（见 `$STYLE` 卖点可视化） |
-| 主图①无冲击 | 缺钩子/层级混乱 | 按 main-image.md 的 CTR 模板重做：主体最大→卖点→钩子；信息层级用 design-principles 的 5 变量实现 |
-| 详情节无叙事 | 章节乱序 | 按 detail-page.md 黄金结构重排 |
-| 包装文字/成分表漂移 | 复杂文字生成易错 | 走「包装文字漂移兜底」：识别漂移文字→逐字转录「以下文字原样保留」+ 收紧 ≤12 字→仍漂移标 needs_reference + 后期合成建议 |
-| SKU 变体色偏/雷同 | 色彩臆造 / 同构图复制粘贴 | 用产品图原图色作锚点名色号 + 变体换道具/角度微调但版式骨架不变（见步骤 7） |
-| 首图非白底违规 | 未遵循平台白底规则 | 按平台（淘宝天猫/京东白底强制）重做①：白底为主、主体居中、无牛皮癣；纯白与压体积后期完成 |
-| 平台尺寸/比例不符 | 用错 ratio | 按 platforms.md 该平台的投放像素/比例/数量重选 `aspect_ratio` |
-| 极限词 | 文案带禁用词 | 删除/改写，重生成相关图 |
+版式一致、色准锚定、避免雷同与命名规则见 [references/detail-page.md](references/detail-page.md) 的「SKU 变体保真策略」。
 
 ---
 
@@ -194,5 +167,5 @@ SKU 变体图要求「**同一版式、同一打光、仅变体属性不同**」
 
 - `output/asset-plan.md`（仅含已选模块的计划）
 - `output/image-prompts.md`（全部 prompt 备份）
-- `output/best-refs.md`（逐图内容质量结论/创作修订/needs_reference）
+- `output/best-refs.md`（逐图内容质量结论、文字逐字/KV1、`text_rendering_status`、创作修订、needs_reference）
 - 各模块图片：`main_01..05.png`、`detail_01..NN.png`、`cover_01..NN.png`、`share_01..NN.png`、`sku_<variant>.png`

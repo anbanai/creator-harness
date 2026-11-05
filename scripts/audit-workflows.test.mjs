@@ -139,6 +139,16 @@ test('shared Skills cannot invoke a host-specific lifecycle', async (t) => {
   assert.match(result.report.errors.join('\n'), /host lifecycle tools belong in Agent adapters/)
 })
 
+test('upstream Skill submodules are exempt from Anban lint', async (t) => {
+  const root = await fixture(t)
+  const skill = join(root, 'skills/motion-graphics/skills/motion-broll/SKILL.md')
+  await mkdir(join(root, 'skills/motion-graphics/skills/motion-broll'), { recursive: true })
+  await writeFile(skill, '---\nname: motion-broll\ndescription: Render motion graphics from code.\n---\n' + 'Long upstream section.\n'.repeat(400) + 'TaskCreate [Broken](missing.md)\n')
+  const { code, report } = audit(root)
+  assert.equal(code, 0, report.errors.join('\n'))
+  assert.equal(report.errors.length, 0)
+})
+
 test('Agent plugin-root Skill dependencies must exist', async (t) => {
   const root = await fixture(t)
   await writeFile(join(root, 'packs/article/agent.codex.toml'), 'AskUserQuestion resume_from set_task_progress_plan\npath = "__PLUGIN_ROOT__/skills/missing/SKILL.md"')

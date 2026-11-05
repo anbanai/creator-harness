@@ -26,6 +26,7 @@ Anban Writer repository root:
 ```bash
 git submodule update --init --recursive harness
 test -f harness/skills/humanizer/SKILL.md
+test -f harness/skills/ecommerce-visual-copywriting-skill/SKILL.md
 ```
 
 For a standalone `anbanai/creator-harness` clone, run

@@ -2,3 +2,19 @@
 	path = skills/humanizer
 	url = https://github.com/blader/humanizer.git
 	branch = main
+[submodule "skills/seedance2-skill"]
+	path = skills/seedance2-skill
+	url = https://github.com/dexhunter/seedance2-skill.git
+	branch = main
+[submodule "skills/GPT-Image2-Skill"]
+	path = skills/GPT-Image2-Skill
+	url = https://github.com/wuyoscar/GPT-Image2-Skill.git
+	branch = main
+[submodule "skills/motion-graphics"]
+	path = skills/motion-graphics
+	url = https://github.com/Barty-Bart/motion-graphics.git
+	branch = main
+[submodule "skills/ecommerce-visual-copywriting-skill"]
+	path = skills/ecommerce-visual-copywriting-skill
+	url = https://github.com/feichanggege/ecommerce-visual-copywriting-skill.git
+	branch = main
