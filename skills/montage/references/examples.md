@@ -2,7 +2,7 @@
 
 ### Case 1: Social Short From Brand Brief
 
-Input: `montage-input.json` contains a launch brief, `pipeline_key="social-short"`, vertical aspect ratio, and several product image assets.
+Input: `montage-input.json` contains a launch brief, `pipeline_key="hybrid"`, a frozen `output_profile` for TikTok (`1080x1920`, `9:16`), and several product image assets.
 
 Process: write `output/montage-project.json` with task/project IDs, normalized assets, selected pipeline, preferences, limits, and `output_dir="output"`. Run Montage from `/workspace/openmontage`, then register `final_video` and `output/delivery-manifest.json`.
 

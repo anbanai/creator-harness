@@ -10,6 +10,8 @@
 ## 4.2.137
 
 - Keep feedback analysis Skills within the frozen FeedbackJob contract: return private evidence for Server validation and persistence; leave scheduling and strategy activation to the Server.
+- Expose pinned Montage pipelines, playbooks, and platform output profiles as project defaults and task overrides; freeze and validate the selected configuration before Agent execution.
+- Update Montage Agent instructions to use the structured frozen output profile for rendering and cover generation.
 
 ## 4.2.136
 

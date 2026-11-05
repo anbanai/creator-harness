@@ -35,6 +35,9 @@ Use this skill only for Anban `montage` tasks.
 - A complete Server runtime context is the production contract; do not require a redundant `runtime_mode` field from the caller. If MCP, credentials, the required directory, input, provider capability, or render capability is unavailable, write both failure artifacts and stop. Never silently substitute local Whisper, an ad-hoc FFmpeg workflow, a fixture, or a repository checkout.
 - `runtime_mode=local_test` is allowed only when explicitly set by the caller. Record every degradation in `output/progress-state.json`, write `output/failure-diagnosis.md` when the degradation affects delivery, and never label a degraded local test as managed success.
 - Run all creative pipeline work through the bundled OpenMontage adapter and its provider registry.
+- Treat `montage-input.json` as the frozen, Server-validated creation contract. Use its selected `pipeline_key`, `preferences.playbook_key`, `output_profile_key`, and complete `output_profile` exactly as supplied; do not infer or replace them from the brief, task message, project profile, or local defaults. An empty playbook key means automatic selection by OpenMontage.
+- The output profile is one indivisible specification: preserve its key, width, height, and aspect ratio in the adapter input and configure rendering to match all four values. Do not infer aspect ratio from message text or silently fall back to another platform format.
+- If a required selection is absent, unknown, or internally inconsistent with the frozen capability catalog, write `output/failure-state.json` with error code `invalid_montage_configuration`, write `output/failure-diagnosis.md` with the invalid field and a concise reason, then stop before starting the pipeline. Do not substitute a default pipeline, playbook, or output profile.
 - The managed runtime provides a task-private workspace, structured `TASK_ID`, and a pre-created `output/`. Do not create, discover, move, or rename the output directory.
 - Run managed Montage commands from `/workspace/openmontage`, with `$ANBAN_MONTAGE_SUBMODULE_PATH` fixed to that project root, and write final or resume-critical artifacts through its runtime-provided `output` link.
 - Do not expose raw Montage pipeline internals as Anban stable schema.
@@ -59,9 +62,17 @@ Write `output/montage-project.json` with:
   "task_id": "$TASK_ID",
   "project_id": "$PROJECT_ID",
   "brief": "",
-  "pipeline_key": "default",
+  "pipeline_key": "<pipeline_key from montage-input.json>",
+  "output_profile_key": "<output_profile_key from montage-input.json>",
+  "output_profile": {
+    "key": "<key>",
+    "display_name": "<display_name>",
+    "width": 1080,
+    "height": 1920,
+    "aspect_ratio": "9:16"
+  },
   "assets": [],
-  "preferences": {},
+  "preferences": { "playbook_key": "<playbook_key from montage-input.json, or empty for automatic selection>" },
   "limits": {},
   "tool_policy": {},
   "pipeline_defaults": {},
