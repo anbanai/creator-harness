@@ -55,7 +55,7 @@ OM_PYTHON=python3
 3. **预演与样片。** 依据 explanation plan/semantic master 做低成本分镜；先实现最难的解释单元及其前后衔接，检查对象/动作/结果、字幕、小屏和人物切换。样片不通过先改镜头任务，不整片重抽素材。
 4. **资产与合成。** 在 asset-requirements、visual-plan-draft、asset-source-policy 中先确定每个视觉单元的 `primary_media`，再确定要叠加的 `graphic_layers`。表达型通常以真实口播视频为主素材；演示型需要动作、变化、过程或形象化解释时以 AI 生成视频为主素材；明确纪录性要求时才以真实纪录视频为主素材；证据型以真实图片/原始文档/档案或其他可追溯来源为主素材。随后可在任一主素材上叠加字幕、标注、箭头、示意、对比、结构图、强调和转场等图形动效。图形动效不是主素材的回退顺序，也不能替代必需的动作或结果；生成视频失败时仍要写 recoverable failure，除非主素材本身已按计划改为另一种并记录原因。证据素材必须写来源、授权、访问时间、原文定位和哈希；所有素材和图形层写用途、路径、哈希和 `revision_id`，补丁必须断言命中和前后哈希。
 5. **样片审查。** 依据 composition plan/lint 渲染 motion-sample；正常速度、切点前后帧和手机尺寸检查遮挡/裁切。只修受影响阶段，记录 `revision_id` 与 `supersedes`，未达标写 recoverable failure。
-6. **字幕与声音。** `video-subtitle-design` 拥有字幕产物；`talking-head-sound-design` 只处理必要 SFX；`video-bgm-design` 使用 provider-neutral MCP，只有授权可核验的曲目或明确原创生成音乐才可进入混音，强制首秒无残音、ducking、LUFS、true peak、削波、接缝和首尾余量检查。
+6. **字幕与声音。** `video-subtitle-design` 拥有字幕产物；`talking-head-sound-design` 处理独立的辅助音效层。音效可以叠加在真实口播、AI 生成镜头和图形动效上，只为可见的动作、出现、强调、转场或注意力变化建立 cue，不给每个切点机械加声，也不能替代主素材、口播或 BGM。每个视觉单元记录需要的 `sfx_cues` 或明确 `none`，音效保持低于人声并检查首帧、切点、削波和可听度。`video-bgm-design` 使用 provider-neutral MCP，只有授权可核验的曲目或明确原创生成音乐才可进入混音，强制首秒无残音、ducking、LUFS、true peak、削波、接缝和首尾余量检查。
 7. **终片与封面。** 先完成技术门禁、首秒/切点听检、独立最终审片和参考目标复核，再定稿 final.mp4。封面从视频核心视觉论点、真实人物/对象和动作关系派生，不只放大标题；缺少核心对象或确定性中文排版验证时失败或降级为明确未验证。最后更新 delivery-manifest/quality-evidence 和有依据的标签。
 
 ### 封面质量增强合同

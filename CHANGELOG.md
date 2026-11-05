@@ -1,3 +1,7 @@
+## 4.2.142
+
+- Clarify SFX as an optional supporting audio layer for real footage, AI-generated shots, and graphic overlays.
+
 ## 4.2.141
 
 - Clarify that expression, demonstration, and evidence describe communication roles; real talking-head and AI-generated primary media may both carry supporting graphic layers.
