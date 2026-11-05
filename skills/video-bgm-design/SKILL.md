@@ -11,7 +11,9 @@ BGM 是宏观情绪建筑，不是一条循环铺满全片的音轨。它有自�
 
 ## Provider-neutral 音乐能力
 
-在托管运行中，通过注册的 provider-neutral MCP 能力完成 `search`、`select`、`license`、`download` 四类原子操作；本地 `local_test` 运行只能使用已声明的项目音乐库、本地 provider adapter 或明确记录权利的原创生成音乐。Skill 不绑定具体站点、域名、SDK 或下载脚本。每次调用按 [references/provider-contract.md](references/provider-contract.md) 记录稳定的请求、响应和错误字段；Provider 不可达时保留失败证据，不用未知来源 URL 或静默抓取曲目替代。
+在托管运行中，通过注册的 provider-neutral MCP 能力完成 `search`、`select`、`license`、`download` 四类原子操作；当项目库没有可用曲目时，`search` 应优先检索国内公开网页和公开素材页，再进入授权核验与下载流程。本地 `local_test` 运行只能使用已声明的项目音乐库、本地 provider adapter 或明确记录权利的原创生成音乐。Skill 不绑定具体站点、域名、SDK 或下载脚本。每次调用按 [references/provider-contract.md](references/provider-contract.md) 记录稳定的请求、响应和错误字段；Provider 不可达时保留失败证据，不用未知来源 URL 或静默抓取曲目替代。
+
+国内网页检索只负责发现候选，不等于获得使用权。必须通过已注册的网页检索/页面读取能力访问公开页面，记录页面 URL、站点、访问时间、原文授权说明、文件 URL、文件哈希和下载权限；禁止绕过登录、验证码、付费墙、热链限制或 robots/站点条款。没有可核验授权的曲目只能保留在候选清单，不能进入 `cues` 或最终混音。检索查询使用中文情绪、乐器、用途和授权关键词，站点范围由 Server/能力配置控制，不在 Skill 中硬编码供应商。
 
 当前仓库只定义了这组 provider-neutral 接口，没有绑定具体音乐供应商，也没有内置可直接下载音乐的账号或 API。`ANBAN_MUSIC_PROVIDER` / `MUSIC_PROVIDER` 只能声明“期望使用哪个已注册 provider”，不能证明 provider 已接入；必须同时有 Server/MCP capability 或本地项目音乐库/适配器，并在 `audio-source-manifest.json` 中留下授权和哈希证据。
 
@@ -121,7 +123,7 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 每首曲目必须有一条可核验的来源记录，写进 `bgm-plan.json` 的 `tracks[]`：
 
 - `track_id`、`title`、`artist`、`duration_seconds`。
-- `source_type`：`user_provided` / `project_library` / `cc0` / `royalty_free` / `licensed_purchase`。
+- `source_type`：`user_provided` / `project_library` / `domestic_web_verified` / `cc0` / `royalty_free` / `licensed_purchase`。
 - `source_ref`：授权库条目 id、订单号或用户提供的文件名；不得写密钥、cookie 或内部 URL。
 - `license`：许可证名称与关键限制（是否可商用、是否需署名、是否限平台）。
 - `sha256`：曲目文件哈希。
@@ -183,7 +185,7 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 
 ## 失败与降级
 
-- 没有任何可用授权曲目：写 `resume_from=bgm_selection` 的可恢复失败并停止；不得交付干声版本冒充完成，也不得使用未授权曲目。若 Agent 明确声明使用原创生成音乐，则必须记录生成来源、权利声明、音频哈希和同样的首秒/响度/削波证据。
+- 没有任何可用授权曲目：先完成国内公开网页候选检索；仍无授权证据时，写 `resume_from=bgm_selection` 的可恢复失败并停止。不得交付干声版本冒充完成，也不得使用未授权曲目。若 Agent 明确声明使用原创生成音乐，则必须记录生成来源、权利声明、音频哈希和同样的首秒/响度/削波证据。
 - 授权信息缺失（有文件无许可证）：标 `unverified`，不得混入成片；能替换就替换，不能替换则失败。
 - 音乐能力/解码失败：保留计划与已核验素材，写失败产物，`resume_from=bgm_mix`。
 - provider-neutral MCP 在托管或本地模式均不可用，且没有已声明的项目库或原创生成音乐时：写 `resume_from=bgm_selection` 的可恢复失败并停止，不把“未配置 provider”当成无音乐通过。

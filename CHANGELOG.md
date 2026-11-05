@@ -1,3 +1,7 @@
+## 4.2.143
+
+- Add provider-neutral discovery for domestic public-web music and sound-effect candidates with explicit rights verification.
+
 ## 4.2.142
 
 - Clarify SFX as an optional supporting audio layer for real footage, AI-generated shots, and graphic overlays.
