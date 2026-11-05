@@ -42,6 +42,9 @@ def report(root: Path, output: Path, runtime_mode: str) -> dict[str, object]:
     execution_id = os.environ.get("ANBAN_EXECUTION_ID", "").strip()
     context_file = os.environ.get("ANBAN_EXECUTION_CONTEXT_FILE", "").strip()
     context_file_ok = bool(context_file and Path(context_file).is_file()) if context_file else None
+    music_provider = (os.environ.get("ANBAN_MUSIC_PROVIDER") or os.environ.get("MUSIC_PROVIDER") or "").strip()
+    music_library = (os.environ.get("ANBAN_MUSIC_LIBRARY") or os.environ.get("MUSIC_LIBRARY_PATH") or "").strip()
+    music_capabilities = (os.environ.get("ANBAN_MUSIC_CAPABILITIES_FILE") or "").strip()
     checks = {
         "runtime_mode_declared": runtime_mode in {"managed", "local_test"},
         "managed_context": all((task_id, project_id, execution_id)) if runtime_mode == "managed" else None,
@@ -58,7 +61,11 @@ def report(root: Path, output: Path, runtime_mode: str) -> dict[str, object]:
         "output_writable": output_ok,
         "openmontage_root": bool(os.environ.get("OPENMONTAGE_ROOT")),
         "image_source_configured": bool(os.environ.get("ANBAN_IMAGE_PROVIDER") or os.environ.get("IMAGE_SEARCH_PROVIDER")),
-        "music_source_configured": bool(os.environ.get("ANBAN_MUSIC_PROVIDER") or os.environ.get("MUSIC_PROVIDER")),
+        "music_source_configured": bool(music_provider or music_library),
+        "music_provider_declared": bool(music_provider),
+        "music_library_declared": bool(music_library),
+        "music_capabilities_manifest": bool(music_capabilities and Path(music_capabilities).is_file()) if music_capabilities else None,
+        "music_provider_connected": bool(music_library or (music_provider and music_capabilities and Path(music_capabilities).is_file())),
         "model_quota_declared": bool(os.environ.get("ANBAN_MODEL_QUOTA")),
     }
     missing = [key for key, value in checks.items() if value is False]

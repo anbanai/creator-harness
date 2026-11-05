@@ -43,6 +43,21 @@ class PreflightTests(unittest.TestCase):
         self.assertTrue(data["checks"]["managed_context"])
         self.assertTrue(data["checks"]["execution_identity"]["task_id_present"])
 
+    def test_music_provider_name_alone_is_declared_but_does_not_prove_connection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            old = preflight.os.environ.get("ANBAN_MUSIC_PROVIDER")
+            try:
+                preflight.os.environ["ANBAN_MUSIC_PROVIDER"] = "example-provider"
+                data = preflight.report(Path(directory), Path(directory) / "output", "local_test")
+            finally:
+                if old is None:
+                    preflight.os.environ.pop("ANBAN_MUSIC_PROVIDER", None)
+                else:
+                    preflight.os.environ["ANBAN_MUSIC_PROVIDER"] = old
+        self.assertTrue(data["checks"]["music_provider_declared"])
+        self.assertTrue(data["checks"]["music_source_configured"])
+        self.assertFalse(data["checks"]["music_provider_connected"])
+
 
 if __name__ == "__main__":
     unittest.main()

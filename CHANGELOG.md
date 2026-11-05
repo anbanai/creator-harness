@@ -1,7 +1,7 @@
-## 4.2.138
+## 4.2.139
 
-- Deepen `ip-explainer` quality contracts: conditional generated video, raw-source and evidence gates, preflight capability reporting, first-second audio and clipping QC, provider-neutral BGM, and core-argument cover validation.
-- Add the Server/MCP execution identity injection RFC without changing Server behavior.
+- Make AI-generated video the default demonstration path for `ip-explainer`; retain graphics and explicit documentary footage as documented fallbacks.
+- Clarify that the provider-neutral BGM contract has no concrete music vendor wired in yet, and distinguish declared configuration from a connected capability.
 
 ## 4.2.137
 

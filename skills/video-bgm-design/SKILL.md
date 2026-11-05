@@ -13,6 +13,10 @@ BGM 是宏观情绪建筑，不是一条循环铺满全片的音轨。它有自�
 
 在托管运行中，通过注册的 provider-neutral MCP 能力完成 `search`、`select`、`license`、`download` 四类原子操作；本地 `local_test` 运行只能使用已声明的项目音乐库、本地 provider adapter 或明确记录权利的原创生成音乐。Skill 不绑定具体站点、域名、SDK 或下载脚本。每次调用按 [references/provider-contract.md](references/provider-contract.md) 记录稳定的请求、响应和错误字段；Provider 不可达时保留失败证据，不用未知来源 URL 或静默抓取曲目替代。
 
+当前仓库只定义了这组 provider-neutral 接口，没有绑定具体音乐供应商，也没有内置可直接下载音乐的账号或 API。`ANBAN_MUSIC_PROVIDER` / `MUSIC_PROVIDER` 只能声明“期望使用哪个已注册 provider”，不能证明 provider 已接入；必须同时有 Server/MCP capability 或本地项目音乐库/适配器，并在 `audio-source-manifest.json` 中留下授权和哈希证据。
+
+因此：托管运行需要 Server 注册 `search`、`select`、`license`、`download` 能力；本地 `runtime_mode=local_test` 需要提供项目音乐库、本地 adapter，或已经声明权利的原创生成音乐。没有上述任一实际来源时，BGM 阶段应失败并从 `bgm_selection` 恢复，不能把环境变量或一个网页地址当成已接入音乐服务。
+
 MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停止。显式授权参数必须与执行上下文一致，不能用音乐 provider 的 API key 代替执行身份。
 
 ## 目录

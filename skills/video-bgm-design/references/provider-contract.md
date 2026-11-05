@@ -3,6 +3,11 @@
 This contract keeps the BGM Skill independent of a specific music vendor. Each
 operation is atomic and records the execution scope supplied by the runtime.
 
+The repository currently ships this contract only; it does not ship a concrete
+music provider or provider credentials. A configured provider name is not an
+implementation. The Agent must verify that the capability is registered and
+that the returned rights evidence is usable before mixing.
+
 ## Common fields
 
 Every request and response includes:

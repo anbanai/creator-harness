@@ -16,7 +16,7 @@ runtime:
   adapter: openmontage
 bindings: {}
 surfaces: [plugin]
-features: [talking-head, explainable-knowledge-editing, semantic-master-variants, retention-experiments, independent-validation, conditional-generated-video-inserts, image-inserts, motion-graphics, automatic-review-loop]
+features: [talking-head, explainable-knowledge-editing, semantic-master-variants, retention-experiments, independent-validation, generated-video-led-explainer, image-inserts, motion-graphics-fallback, automatic-review-loop]
 artifacts:
   - {role: preflight_report, path: output/preflight-report.json, mime_type: application/json, required: true}
   - {role: explainer_input_assessment, path: output/explainer-input-assessment.json, mime_type: application/json, required: false}
