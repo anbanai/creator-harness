@@ -33,7 +33,7 @@ description: Use when planning or reviewing IP 知识讲解、专家口播、科
 
 ## 解释性视觉判定
 
-每个视觉单元必须声明 `visual_class`（`expression|demonstration|evidence`）、`primary_media`、`source_priority`、`object`、`action`、`result`、`graphic_role` 和 `fallback_reason`。`visual_class` 是沟通任务，不是素材来源：`expression` 让观众看到 IP 的身份、情绪、判断、强调或直接交流；`demonstration` 让观众看到对象、动作、变化和结果；`evidence` 让观众看到真实图片、原始文档、档案或其他可追溯来源。表达型通常以真实口播视频为主素材；演示型需要动作、变化、过程或形象化解释时默认以审核通过的 AI 生成视频为主素材；证据型以真实来源为主素材，不能用 AI 画面冒充证据。真实口播和 AI 生成视频都可以叠加图形动效，图形动效用于字幕、标注、箭头、示意、对比、结构化信息、强调、转场或注意力引导，是辅助层而不是主素材失败后的替代品。只有改变主素材来源、放弃必需的动作/结果，或省略已声明的辅助层时才填写 `fallback_reason`。每个视觉元素必须至少承担解释、证明、强调、比较、转场或注意力重置之一，并说明它降低了什么理解成本。动效的验收标准是理解提升，不是画面数量。生成素材可能被误认为真实证据时，标记为示意并改用真实来源或明确说明其示意性质。
+每个视觉单元必须声明 `visual_class`（`expression|demonstration|evidence`）、`primary_media`、`source_priority`、`object`、`action`、`result`、`graphic_role` 和 `fallback_reason`。`visual_class` 是沟通任务，不是素材来源：`expression` 让观众看到 IP 的身份、情绪、判断、强调或直接交流；`demonstration` 让观众看到对象、动作、变化和结果；`evidence` 让观众看到真实图片、原始文档、档案或其他可追溯来源。IP 实拍和 AI 生成视频都是主力视频素材，按每个镜头希望观众看到的内容选择；AI 生成能更清楚呈现对象、动作、变化、尺度或视觉隐喻时直接使用，不因镜头归为 expression 就默认选择实拍。证据型以可追溯真实来源为主素材，不能用 AI 画面冒充证据。先选定主力素材，再按需要在实拍或生成视频上叠加图形动效，例如字幕、标注、箭头、示意、对比、结构化信息、强调、转场或注意力引导；图形动效是辅助层，不是生成失败后的默认回退。只有改变已选主素材、放弃必需的动作/结果，或省略已声明的辅助层时才填写 `fallback_reason`。每个视觉元素必须至少承担解释、证明、强调、比较、转场或注意力重置之一，并说明它降低了什么理解成本。动效的验收标准是理解提升，不是画面数量。生成素材可能被误认为真实证据时，标记为示意并改用真实来源或明确说明其示意性质。
 
 比较类内容保持同一比较轴和主体身份，过程类内容保留起始状态→可见动作→结果；生成提示要描述变化，不只描述漂亮物体。示意画面不能证明历史来源，参考片也不能替代事实核验。字幕、人物小窗、配乐和暗色蒙版不能挤掉解释主体。样片与终片按同一参考片段检验，技术通过与参考品质达标分别记录到现有审查产物。具体审片动作和未达标处理见上述 reference。
 
@@ -57,11 +57,11 @@ description: Use when planning or reviewing IP 知识讲解、专家口播、科
 
 `semantic-master.json` 的 `semantic_master` 对象必须包含 `core_claims`、`evidence`、`explanation_order`、`primary_hook`、`spoken_semantics`、`visual_anchors`、`conclusion` 和 `qualifications`。`revision_id` 绑定本轮母版；`content_sha256` 是按稳定 JSON 序列化后对 `semantic_master` 对象计算的 SHA-256，不包含外层信封。`platform-variant-plan.json` 必须引用该 revision 和哈希。
 
-`explanation-rehearsal.json` 必须含 `revision_id`、`semantic_master_sha256`、`rehearsal_mode`（`still_frames|placeholders|simple_graphics`）、`units`、`collision_checks`、`decision`（`proceed|fallback|blocked`）和 `expensive_generation_allowed`。每个 unit 记录理解问题、揭示顺序、证据路径、走查方法、走查结果及低风险回退。只有全部关键单元通过走查才能设置 `proceed` 和 `expensive_generation_allowed=true`；这仍不代表目标观众理解已验证。若关键单元的主方案走查失败，可以把已经实际应用、重新走查并通过的静态对比、真人讲解或简单图形记录为 `applied_fallback`，并将 `decision` 设为 `fallback`、`expensive_generation_allowed=false`；每个失败单元都必须有 `method`、`applied=true`、说明、`walkthrough_result="passed"` 和指向 `output/` 内真实证据的 `evidence_paths`。`fallback` 不能只写“计划回退”，不能在没有失败单元时使用，也不能启用高成本生成。`blocked` 始终不可交付。
+`explanation-rehearsal.json` 必须含 `revision_id`、`semantic_master_sha256`、`rehearsal_mode`（`still_frames|placeholders|simple_graphics`）、`units`、`collision_checks`、`decision`（`proceed|fallback|blocked`）和 `expensive_generation_allowed`。每个 unit 记录理解问题、揭示顺序、证据路径、走查方法、走查结果及低风险回退。预演用于验证镜头逻辑、信息揭示顺序、构图和前后衔接；它不是要求先制作静态/图形替代方案，也不是目标观众理解测试。关键镜头的预演通过后即可按效果选择并启动 AI 视频生成；若简单预演已足以确认生成方案，不要求额外完成所有单元或先证明低成本替代方案。将 `expensive_generation_allowed=true` 限定为已通过镜头逻辑预演且符合 `talking-head-video-generation` 门禁的单元。若某主方案确实失败，可把已实际应用、重新走查并通过的替代方案记录为 `applied_fallback`；每个失败单元都必须有 `method`、`applied=true`、说明、`walkthrough_result="passed"` 和指向 `output/` 内真实证据的 `evidence_paths`。`fallback` 不能只写“计划回退”；`blocked` 始终不可交付。
 
 ## 失败与降级
 
-原始素材不可读、事实主张无法区分或语义风险未解决时，停止并写入现有失败合同，`resume_from` 指向可恢复阶段。预演显示解释不成立时，先应用低风险替代方案并重新走查；替代方案通过后可按 `fallback` 继续，但不得进入高成本生成。若替代方案仍未通过、没有真实证据或无法保持语义，则使用 `blocked` 并停止交付。数据不足允许继续，但必须是 `partial` 或 `missing`，并明确限制。不得把编辑判断写成数据已证明。
+原始素材不可读、事实主张无法区分或语义风险未解决时，停止并写入现有失败合同，`resume_from` 指向可恢复阶段。预演发现镜头逻辑或信息揭示不成立时，先修正该镜头方案并复核；不得仅因尚无静态/图形替代方案而阻止效果更好的 AI 视频生成。主方案确实失败后，可记录实际应用并通过走查的替代方案；仍无法表达必要对象、动作、结果或证据时，使用 `blocked` 并停止交付。数据不足允许继续，但必须是 `partial` 或 `missing`，并明确限制。不得把编辑判断写成数据已证明。
 
 ## 质量检查
 

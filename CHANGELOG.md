@@ -1,3 +1,7 @@
+## 4.2.144
+
+- Refine `ip-explainer` audio discovery to use the pinned Pixabay and SFXMint Skills, with OpenMontage `audio_mixer` reserved for post-production mixing.
+
 ## 4.2.143
 
 - Add provider-neutral discovery for domestic public-web music and sound-effect candidates with explicit rights verification.

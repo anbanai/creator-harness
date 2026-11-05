@@ -7,6 +7,9 @@ skills:
   - talking-head-video-generation
   - talking-head-composition
   - talking-head-sound-design
+  - sound-director
+  - search-pixabay
+  - sfxmint
   - content-tagging
   - short-video-cover
   - talking-head-visual-focus
@@ -46,16 +49,16 @@ OM_PYTHON=python3
 
 优先一条清楚的主张链，单元数量由理解需求决定。为每个核心镜头写在既有 visual plan 中：口播锚点、要看到的对象、起始状态、动作/变化、结果、出镜/退出点。只拍“好看的筷子”不能解释“怎样夹起东西”；只显示词语不能解释机制。保持同一主体的形态、尺度、方向、光线和空间关系，需要改变时给观众可识别的过渡。视觉系统统一；同构图中持续发生有意义的变化可以保留，复用无信息增量的画面应改。
 
-每个视觉单元必须声明 `visual_class`（`expression|demonstration|evidence`）、`primary_media`、`source_priority`、`object`、`action`、`result`、`graphic_role` 和 `fallback_reason`。`visual_class` 只表示沟通任务：`expression` 是让观众看到 IP 的身份、情绪、判断、强调或直接交流；`demonstration` 是让观众看到对象、动作、变化和结果；`evidence` 是让观众看到真实图片、原始文档、档案或其他可追溯来源。它不等于素材来源。表达型通常以真实口播视频为主素材；演示型需要动作、变化、过程或形象化解释时，默认直接调用 `talking-head-video-generation` 生成 AI 视频作为主素材；证据型使用真实来源，不能用 AI 画面冒充证据。真实口播和 AI 生成视频都可以叠加图形动效，图形动效用于字幕、标注、箭头、示意、对比、结构化信息、强调、转场或注意力引导，是辅助层而不是主素材失败后的替代品。只有改变主素材来源、放弃必需的动作/结果，或省略已经声明的辅助层时才填写 `fallback_reason`。生成视频必须先做低成本样片，再通过对象数量、动作、结果、连续性、尾帧运动和语义反转检查。生成失败不能偷偷改成静态卡、未声明的真实视频或把图形动效冒充为主素材。真人建立身份或表达判断，解释主体可使用 `graphic_lead` 全画幅；需要人物存在感时才用 `full_frame_with_speaker_inset`，并保持同步、不遮挡主体。
+每个视觉单元必须声明 `visual_class`（`expression|demonstration|evidence`）、`primary_media`、`source_priority`、`object`、`action`、`result`、`graphic_role` 和 `fallback_reason`。`visual_class` 只表示沟通任务：`expression` 是让观众看到 IP 的身份、情绪、判断、强调或直接交流；`demonstration` 是让观众看到对象、动作、变化和结果；`evidence` 是让观众看到真实图片、原始文档、档案或其他可追溯来源。它不决定素材来源。IP 实拍口播和 AI 生成视频都是主力视频素材；逐镜头按预期效果选择，AI 生成能更清楚呈现对象、动作、变化、规模或视觉隐喻时直接生成，不因镜头被归为 expression 而默认使用实拍。证据型使用真实来源，不能用 AI 画面冒充证据。两类主力视频素材都可以叠加图形动效，图形动效用于字幕、标注、箭头、示意、对比、结构化信息、强调、转场或注意力引导，是辅助层而非主素材失败后的替代品。只有改变已选主素材、放弃必需的动作/结果，或省略已声明的辅助层时才填写 `fallback_reason`。计划使用的生成视频先做低成本样片，再通过对象数量、动作、结果、连续性、尾帧运动和语义反转检查；失败时记录可恢复失败，不能悄悄换静态卡或未声明的真实素材。人物需出镜时使用可用的真实 IP 素材；需要人物存在感时可用 `full_frame_with_speaker_inset`，并保持同步、不遮挡主体。
 
 ## 制作与有限修订
 
-1. **前置检查与原始盘点。** 运行 `python3 __PLUGIN_ROOT__/skills/video-production-qc/scripts/preflight.py --root "$OPENMONTAGE_ROOT" --output output/preflight-report.json --runtime-mode "$RUNTIME_MODE"`，一次性报告运行模式、输入完整性、磁盘空间、FFmpeg 及所需滤镜、OpenMontage/渲染器、图片/文档源、音乐源、模型配额和可写 output。探测全部相机 take、独立人声、room tone、原始脚本/转录、原始图片/文档、授权、音乐 stems 和平台资料；整理后的 final/cover 只能作为派生证据。
+1. **前置检查与原始盘点。** 运行 `python3 __PLUGIN_ROOT__/skills/video-production-qc/scripts/preflight.py --root "$OPENMONTAGE_ROOT" --output output/preflight-report.json --runtime-mode "$RUNTIME_MODE"`，一次性报告运行模式、输入完整性、磁盘空间、FFmpeg 及所需滤镜、OpenMontage/渲染器、图片/文档源、指定 Pixabay 搜索 Skill 与 SFXMint MCP 的安装/运行时能力、模型配额和可写 output。BGM 搜索只走 `pixabay-search-skill`，音效搜索/获取只走 `sfxmint-mcp`；不得用通用网页搜索或其他来源补位。探测全部相机 take、独立人声、room tone、原始脚本/转录、原始图片/文档、授权、用户提供或项目已有的音乐 stems 和平台资料；整理后的 final/cover 只能作为派生证据。
 2. **语义剪辑。** 探测完整源视频，使用 silence/transcript/scene/edit 得到 rough-cut、transcript、EDL 和 edit-strategy。静音仅是候选，不能删掉必要停顿。ASR 只能辅助，重复 ASR 不能作为独立事实证明。输出 semantic-cut，先修脚本的承诺与兑现，再配画面。
 3. **预演与样片。** 依据 explanation plan/semantic master 做低成本分镜；先实现最难的解释单元及其前后衔接，检查对象/动作/结果、字幕、小屏和人物切换。样片不通过先改镜头任务，不整片重抽素材。
-4. **资产与合成。** 在 asset-requirements、visual-plan-draft、asset-source-policy 中先确定每个视觉单元的 `primary_media`，再确定要叠加的 `graphic_layers`。表达型通常以真实口播视频为主素材；演示型需要动作、变化、过程或形象化解释时以 AI 生成视频为主素材；明确纪录性要求时才以真实纪录视频为主素材；证据型以真实图片/原始文档/档案或其他可追溯来源为主素材。随后可在任一主素材上叠加字幕、标注、箭头、示意、对比、结构图、强调和转场等图形动效。图形动效不是主素材的回退顺序，也不能替代必需的动作或结果；生成视频失败时仍要写 recoverable failure，除非主素材本身已按计划改为另一种并记录原因。证据素材必须写来源、授权、访问时间、原文定位和哈希；所有素材和图形层写用途、路径、哈希和 `revision_id`，补丁必须断言命中和前后哈希。
+4. **资产与合成。** 在 asset-requirements、visual-plan-draft、asset-source-policy 中先按镜头效果确定主力视频素材：可用的 IP 实拍口播或 AI 生成视频；适合生成时直接生成，不把 AI 视频设为仅在实拍缺失时的备选。证据型以真实图片/原始文档/档案或其他可追溯来源为主素材。确定主素材后，再决定字幕、标注、箭头、示意、对比、结构图、强调和转场等图形动效辅助层；这些辅助层可叠加在 IP 实拍或 AI 生成视频上，不构成素材来源排序或回退条件，也不能替代必需动作或结果。计划使用的生成视频失败时写 recoverable failure，除非按效果重新选定主力素材并记录原因。证据素材必须写来源、授权、访问时间、原文定位和哈希；所有素材和图形层写用途、路径、哈希和 `revision_id`，补丁必须断言命中和前后哈希。
 5. **样片审查。** 依据 composition plan/lint 渲染 motion-sample；正常速度、切点前后帧和手机尺寸检查遮挡/裁切。只修受影响阶段，记录 `revision_id` 与 `supersedes`，未达标写 recoverable failure。
-6. **字幕与声音。** `video-subtitle-design` 拥有字幕产物；`talking-head-sound-design` 处理独立的辅助音效层。音效可以叠加在真实口播、AI 生成镜头和图形动效上，只为可见的动作、出现、强调、转场或注意力变化建立 cue，不给每个切点机械加声，也不能替代主素材、口播或 BGM。每个视觉单元记录需要的 `sfx_cues` 或明确 `none`，音效保持低于人声并检查首帧、切点、削波和可听度。`video-bgm-design` 使用 provider-neutral MCP，只有授权可核验的曲目或明确原创生成音乐才可进入混音，强制首秒无残音、ducking、LUFS、true peak、削波、接缝和首尾余量检查。
+6. **声音设计。** 由 Sound Director 汇总干净对白、画面/EDL、BGM 计划和 SFX cue，输出 `audio-mix-session.json`：BGM 只由 `video-bgm-design` 调用 `search-pixabay` 生成 Pixabay 音乐候选；SFX 只由 `talking-head-sound-design` 调用 `sfxmint` Skill/MCP 检索与获取。不得用通用网页搜索、其他网站、旧内置音效库或其他来源替代这两个指定 Skill。按运行时探测记录 Skill/MCP 的可用能力；候选链接/预览不等于本地音频文件或授权证据，素材未取得、授权不满足或能力不可用时按对应 Skill 写明未完成/可恢复失败，不进入混音。最终混音由 Sound Director 负责：探测并使用 OpenMontage 原生 `audio_mixer`；它只负责后期混音，不负责素材搜索。没有该 mixer 或不能满足控制要求时写可恢复失败并停止，不切换 FFmpeg 或其他混音器。混音后生成 `audio-qc.json`，检查首帧残音、所有切点、ducking、响度、true peak、削波、接缝、音画时长，并完成人工抽听或明确标为未执行。
 7. **终片与封面。** 先完成技术门禁、首秒/切点听检、独立最终审片和参考目标复核，再定稿 final.mp4。封面从视频核心视觉论点、真实人物/对象和动作关系派生，不只放大标题；缺少核心对象或确定性中文排版验证时失败或降级为明确未验证。最后更新 delivery-manifest/quality-evidence 和有依据的标签。
 
 ### 封面质量增强合同

@@ -23,6 +23,18 @@ path = "__PLUGIN_ROOT__/skills/talking-head-sound-design/SKILL.md"
 enabled = true
 
 [[skills.config]]
+name = "sound-director"
+path = "__PLUGIN_ROOT__/skills/sound-director/SKILL.md"
+
+[[skills.config]]
+name = "search-pixabay"
+path = "__PLUGIN_ROOT__/skills/search-pixabay/SKILL.md"
+
+[[skills.config]]
+name = "sfxmint"
+path = "__PLUGIN_ROOT__/skills/sfxmint/SKILL.md"
+
+[[skills.config]]
 name = "content-tagging"
 path = "__PLUGIN_ROOT__/skills/content-tagging/SKILL.md"
 

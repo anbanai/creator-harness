@@ -18,8 +18,8 @@
   ],
   "tracks": [
     { "track_id": "t1", "title": "…", "artist": "…", "duration_seconds": 165,
-      "source_type": "cc0", "source_ref": "library:pack-07/ambient-13",
-      "license": "CC0 1.0", "sha256": "…", "rights_status": "verified" }
+      "source_type": "pixabay_verified", "source_ref": "pixabay-track-page",
+      "license": "verified license details from the track page", "sha256": "…", "rights_status": "verified" }
   ],
   "cues": [
     { "cue_id": "c1", "chapter_id": "ch1", "start": 0.0, "end": 8.4,
@@ -27,7 +27,6 @@
       "gain_db": -15, "ducking": { "attack_ms": 120, "release_ms": 380, "min_gain_db": -20 },
       "fade_in": 0.5, "fade_out": 0.0,
       "transition_to_next": { "type": "crossfade", "duration": 0.6, "anchor": "bar_end" },
-      "jianying_search_keywords": ["悬念", "轻电子", "节奏感"],
       "reason": "Hook 段需要建立张力，鼓点密度中低，不压口播" }
   ]
 }
@@ -36,10 +35,12 @@
 字段规则：
 
 - `start`/`end` 使用成片绝对秒；`in_point`/`out_point` 是曲目内秒。
+- `source_type` 仅允许 `user_provided`、`project_library`、`pixabay_verified`；候选链接不能登记为 track，未取得本地文件与权利证据的候选不能进入 cue。
 - `gain_db` 是该 cue 相对人声的基准增益（通常 -12 ~ -18）。
 - `ducking.min_gain_db` 是 ducking 触发时的下限，必须比 `gain_db` 更低。
 - `transition_to_next.anchor` 只允许 `bar_end`、`section_end`、`cut`、`silence`。
 - `gap` 类型的留白 cue 用 `"track_id": null` + `"gap_reason"` 表示。
+- Pixabay search links belong in `candidates[]` with `status: "candidate_only"`; they are not local tracks and cannot be referenced by a mix cue.
 
 ## Ducking 与音量自动化
 

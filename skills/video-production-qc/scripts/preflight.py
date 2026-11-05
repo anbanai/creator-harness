@@ -19,7 +19,8 @@ def command_output(command: list[str]) -> tuple[bool, str]:
     return result.returncode == 0, (result.stdout + result.stderr).strip()
 
 
-def report(root: Path, output: Path, runtime_mode: str) -> dict[str, object]:
+def report(root: Path, output: Path, runtime_mode: str, plugin_root: Path | None = None) -> dict[str, object]:
+    plugin_root = plugin_root or Path(__file__).resolve().parents[3]
     disk = shutil.disk_usage(root)
     ffmpeg = shutil.which("ffmpeg")
     ffprobe = shutil.which("ffprobe")
@@ -42,9 +43,10 @@ def report(root: Path, output: Path, runtime_mode: str) -> dict[str, object]:
     execution_id = os.environ.get("ANBAN_EXECUTION_ID", "").strip()
     context_file = os.environ.get("ANBAN_EXECUTION_CONTEXT_FILE", "").strip()
     context_file_ok = bool(context_file and Path(context_file).is_file()) if context_file else None
-    music_provider = (os.environ.get("ANBAN_MUSIC_PROVIDER") or os.environ.get("MUSIC_PROVIDER") or "").strip()
-    music_library = (os.environ.get("ANBAN_MUSIC_LIBRARY") or os.environ.get("MUSIC_LIBRARY_PATH") or "").strip()
-    music_capabilities = (os.environ.get("ANBAN_MUSIC_CAPABILITIES_FILE") or "").strip()
+    pixabay_skill = plugin_root / "skills/search-pixabay/SKILL.md"
+    pixabay_upstream_skill = plugin_root / "skills/pixabay-search-skill/src/search-pixabay/SKILL.md"
+    sfxmint_skill = plugin_root / "skills/sfxmint/SKILL.md"
+    sfxmint_upstream_skill = plugin_root / "skills/sfxmint-mcp/skills/sfxmint/SKILL.md"
     checks = {
         "runtime_mode_declared": runtime_mode in {"managed", "local_test"},
         "managed_context": all((task_id, project_id, execution_id)) if runtime_mode == "managed" else None,
@@ -61,11 +63,8 @@ def report(root: Path, output: Path, runtime_mode: str) -> dict[str, object]:
         "output_writable": output_ok,
         "openmontage_root": bool(os.environ.get("OPENMONTAGE_ROOT")),
         "image_source_configured": bool(os.environ.get("ANBAN_IMAGE_PROVIDER") or os.environ.get("IMAGE_SEARCH_PROVIDER")),
-        "music_source_configured": bool(music_provider or music_library),
-        "music_provider_declared": bool(music_provider),
-        "music_library_declared": bool(music_library),
-        "music_capabilities_manifest": bool(music_capabilities and Path(music_capabilities).is_file()) if music_capabilities else None,
-        "music_provider_connected": bool(music_library or (music_provider and music_capabilities and Path(music_capabilities).is_file())),
+        "pixabay_bgm_skill_installed": pixabay_skill.is_file() and pixabay_upstream_skill.is_file(),
+        "sfxmint_sfx_skill_installed": sfxmint_skill.is_file() and sfxmint_upstream_skill.is_file(),
         "model_quota_declared": bool(os.environ.get("ANBAN_MODEL_QUOTA")),
     }
     missing = [key for key, value in checks.items() if value is False]
@@ -83,10 +82,11 @@ def report(root: Path, output: Path, runtime_mode: str) -> dict[str, object]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--plugin-root", type=Path, default=Path(__file__).resolve().parents[3])
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--runtime-mode", choices=["managed", "local_test"], required=True)
     args = parser.parse_args()
-    data = report(args.root, args.output, args.runtime_mode)
+    data = report(args.root, args.output, args.runtime_mode, args.plugin_root)
     args.output.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
     return 0 if data["status"] == "ready" else 1
 

@@ -9,17 +9,9 @@ BGM 是宏观情绪建筑，不是一条循环铺满全片的音轨。它有自�
 
 默认单曲贯穿；只有情绪、能量、空间或章节语义确实变化时才换曲。换曲必须写明理由、接法和受影响的时间段。
 
-## Provider-neutral 音乐能力
+## Pixabay 音乐能力
 
-在托管运行中，通过注册的 provider-neutral MCP 能力完成 `search`、`select`、`license`、`download` 四类原子操作；当项目库没有可用曲目时，`search` 应优先检索国内公开网页和公开素材页，再进入授权核验与下载流程。本地 `local_test` 运行只能使用已声明的项目音乐库、本地 provider adapter 或明确记录权利的原创生成音乐。Skill 不绑定具体站点、域名、SDK 或下载脚本。每次调用按 [references/provider-contract.md](references/provider-contract.md) 记录稳定的请求、响应和错误字段；Provider 不可达时保留失败证据，不用未知来源 URL 或静默抓取曲目替代。
-
-国内网页检索只负责发现候选，不等于获得使用权。必须通过已注册的网页检索/页面读取能力访问公开页面，记录页面 URL、站点、访问时间、原文授权说明、文件 URL、文件哈希和下载权限；禁止绕过登录、验证码、付费墙、热链限制或 robots/站点条款。没有可核验授权的曲目只能保留在候选清单，不能进入 `cues` 或最终混音。检索查询使用中文情绪、乐器、用途和授权关键词，站点范围由 Server/能力配置控制，不在 Skill 中硬编码供应商。
-
-当前仓库只定义了这组 provider-neutral 接口，没有绑定具体音乐供应商，也没有内置可直接下载音乐的账号或 API。`ANBAN_MUSIC_PROVIDER` / `MUSIC_PROVIDER` 只能声明“期望使用哪个已注册 provider”，不能证明 provider 已接入；必须同时有 Server/MCP capability 或本地项目音乐库/适配器，并在 `audio-source-manifest.json` 中留下授权和哈希证据。
-
-因此：托管运行需要 Server 注册 `search`、`select`、`license`、`download` 能力；本地 `runtime_mode=local_test` 需要提供项目音乐库、本地 adapter，或已经声明权利的原创生成音乐。没有上述任一实际来源时，BGM 阶段应失败并从 `bgm_selection` 恢复，不能把环境变量或一个网页地址当成已接入音乐服务。
-
-MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停止。显式授权参数必须与执行上下文一致，不能用音乐 provider 的 API key 代替执行身份。
+BGM 搜索只调用用户指定的上游 `search-pixabay` Skill，并遵循其音乐参考生成 Pixabay 搜索结果链接。需要取得曲目时，只能沿该 Skill 生成的 Pixabay 结果页/曲目页操作；不得另用通用网页搜索、其他站点或其他音乐搜索/provider Skill。Pixabay 搜索 Skill 本身只生成链接，不下载音频或核验授权，因此必须实际取得本地音频文件，并从对应曲目页记录可核验的来源与许可信息、访问时间及 SHA-256，才能将曲目标为可混音。若运行环境不能完成站内选曲、下载或许可核验，则保留候选并写 `resume_from=bgm_selection`，不进入混音，也不转去其他来源找替代曲目。用户提供或项目既有音乐库中的本地曲目可按本 Skill 的来源与授权合同审核；这不授权使用其他搜索渠道。
 
 ## 目录
 
@@ -45,7 +37,7 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 
 硬性边界：
 
-- 只能使用用户提供、项目授权库或明确可商用/CC0 的曲目；授权未核验的曲目不得进入成片。
+- 只通过 `search-pixabay` Skill 生成 Pixabay 候选；本工作流不通过其他站点或通用网页搜索发现 BGM。该 Skill 本身不下载或核验授权。若没有运行时明确提供的授权获取能力，保留候选并标为待取得，不将 BGM 阶段伪报为完成；授权未核验的曲目不得进入成片。
 - 不得用音乐替代内容：没有信息增量的音乐只增加干扰。
 - 不得用持续升调、密集打击乐制造虚假紧迫感或掩盖内容空洞。
 - 不得声称任何曲目“已获平台授权”或“一定过审”；只陈述可核验的许可证事实。
@@ -56,7 +48,7 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 
 - 成片时长与章节/场景划分（章节 id、起止、用途、情绪目标；可由剪辑计划提供）。
 - 干净人声母版（或人声时间轴），用于判断 ducking 和音乐留白。
-- 授权音乐来源：项目授权库、用户上传、CC0/免版税库；以及每首曲目的许可证信息。
+- `search-pixabay` Skill 生成的候选链接，以及（若已取得）本地音频文件和来源/许可信息；候选不等于可用素材。
 
 可选：
 
@@ -116,14 +108,14 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 - **结构**：优先选有明确 intro/loop/outro 的曲子，便于在换曲点干净收尾；无 intro 的曲子需要淡入。
 - **时长**：单曲可用长度必须覆盖 cue 时长；不足时用 loop，并记录 loop 边界是否可听出接缝。
 - **片段选择**：不得默认每个 cue 都从 `in_point=0` 开始。按当前章节的乐句、节拍、能量包络和转场目标选择 `in_point`/`out_point`；多个 cue 复用同一曲目时，除非是刻意设计的主题回归，否则不得重复同一音乐片段或相同开头。为每个复用点记录音乐源区间、选择理由和与相邻画面/章节的关系。
-- **平台可替换性**：为每条 cue 记录 2–4 个 `jianying_search_keywords`（情绪/风格/乐器类中文词），便于用户日后在剪映中替换成同风格曲目。
+- **候选可追溯性**：记录所选候选的搜索关键词、Pixabay 搜索链接和候选状态，便于后续取得文件后继续核验；不要将未取得的候选登记为已选 track。
 
 ## 第四步：授权与来源
 
 每首曲目必须有一条可核验的来源记录，写进 `bgm-plan.json` 的 `tracks[]`：
 
 - `track_id`、`title`、`artist`、`duration_seconds`。
-- `source_type`：`user_provided` / `project_library` / `domestic_web_verified` / `cc0` / `royalty_free` / `licensed_purchase`。
+- `source_type`：`user_provided` / `project_library` / `pixabay_verified`。不得创建其他来源类型；不能归入这三类的曲目不进入本流程的选曲与混音。
 - `source_ref`：授权库条目 id、订单号或用户提供的文件名；不得写密钥、cookie 或内部 URL。
 - `license`：许可证名称与关键限制（是否可商用、是否需署名、是否限平台）。
 - `sha256`：曲目文件哈希。
@@ -134,7 +126,7 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 - `rights_status != verified` 的曲目不得进入成片；`unverified` 只能出现在候选清单里。
 - 同一首曲子跨多个 cue 使用时只登记一次 track，cue 引用 `track_id`。
 - 需要署名的许可证必须在 `bgm-plan.md` 给出署名文案，供发布时使用。
-- 用户明确要求“暂不考虑版权”时，可以继续制作，但必须标 `unverified` 并把风险写进交付报告，不得写成已授权。
+- 用户要求先搜索网络素材不代表放弃授权门禁；无法核验使用权时只能保留候选记录，不得混入成片。
 
 ## 第五步：拼接与转场
 
@@ -174,7 +166,7 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 
 ## 输出合同
 
-- `output/bgm-plan.json`：`schema_version`、`status`、`source`、`data_at`、`missing`、`ratio`（适用时）、`arc[]`（章节情绪弧）、`tracks[]`（曲目与授权）、`cues[]`（每个 cue：`cue_id`、`chapter_id`、`start`、`end`、`track_id`、`in_point`、`out_point`、`gain_db`、`ducking{attack_ms,release_ms,min_gain_db}`、`fade_in`、`fade_out`、`transition_to_next`、`jianying_search_keywords[]`、`reason`）。
+- `output/bgm-plan.json`：`schema_version`、`status`、`source`、`data_at`、`missing`、`ratio`（适用时）、`arc[]`（章节情绪弧）、`candidates[]`（Pixabay 搜索词、候选链接及 `candidate_only` 状态）、`tracks[]`（仅含已取得的本地曲目及权利证据）、`cues[]`（每个 cue：`cue_id`、`chapter_id`、`start`、`end`、`track_id`、`in_point`、`out_point`、`gain_db`、`ducking{attack_ms,release_ms,min_gain_db}`、`fade_in`、`fade_out`、`transition_to_next`、`reason`）。
 - `output/bgm-qc.json`：`schema_version`、`status`、`source`、`data_at`、`missing`、`checks[]`（覆盖、重叠、换曲点响度差、爆音、ducking 生效、LUFS、true peak、授权核验）、`evidence_paths[]`。
 
 规则：
@@ -185,10 +177,10 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 
 ## 失败与降级
 
-- 没有任何可用授权曲目：先完成国内公开网页候选检索；仍无授权证据时，写 `resume_from=bgm_selection` 的可恢复失败并停止。不得交付干声版本冒充完成，也不得使用未授权曲目。若 Agent 明确声明使用原创生成音乐，则必须记录生成来源、权利声明、音频哈希和同样的首秒/响度/削波证据。
+- 没有任何可用授权曲目时，只用 `search-pixabay` 生成并记录 Pixabay 候选。此 Skill 不提供下载或授权核验；若运行时没有明确提供的授权获取能力，记录候选待取得并写 `resume_from=bgm_selection`，不得把链接当作已交付 BGM。不得通过通用网页搜索、其他网站或其他音乐搜索/provider 兜底。
 - 授权信息缺失（有文件无许可证）：标 `unverified`，不得混入成片；能替换就替换，不能替换则失败。
 - 音乐能力/解码失败：保留计划与已核验素材，写失败产物，`resume_from=bgm_mix`。
-- provider-neutral MCP 在托管或本地模式均不可用，且没有已声明的项目库或原创生成音乐时：写 `resume_from=bgm_selection` 的可恢复失败并停止，不把“未配置 provider”当成无音乐通过。
+- `search-pixabay` Skill 不可用时，记录 `pixabay_skill_unavailable` 并写 `resume_from=bgm_selection` 的可恢复失败；不得静默切换来源。只有搜索链接、没有本地文件或权利证据时，状态必须保持待取得/未完成，不把“已生成搜索链接”当成 BGM 已完成。
 - 无法测量响度：允许交付但必须标 `loudness_unverified`，不得声称符合任何响度标准。
 - 无法复听：只做自动检查并明确标注“自动检查通过，人工复听未完成”。
 
@@ -204,7 +196,7 @@ MCP 只返回候选、授权和文件；Agent 决定是否继续、重试或停�
 6. 授权：每首曲目 `rights_status=verified`，许可证与哈希齐全。
 7. 结构：无同一章内碎换曲；单曲贯穿时 loop 接缝不可听出。
 8. 与画面/字幕：换曲不压关键数字与免责声明；不驱动字幕时间。
-9. 可替换性：每条 cue 有剪映检索关键词，便于后续替换。
+9. 候选状态：未下载的 Pixabay 候选与已授权的本地 track 分开记录，未下载候选不得出现在 `cues` 中。
 10. 重复审计：比较全片 cue 的 `track_id` 与源时间区间；逐段复听重复段落，确认不是因每段从曲头重播而造成机械重复，并在 `bgm-qc.json` 记录检测结果和例外理由。
 
 ## 参考文件
