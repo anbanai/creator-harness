@@ -206,11 +206,11 @@ Classify a Skill before editing it:
   these repositories.
   `skills/humanizer` points directly to the official `blader/humanizer`
   repository; business rules belong in the owning Agent or Skill.
-  `skills/seedance2-skill` and `skills/GPT-Image2-Skill` are read-only creative
-  references for the talking-head Agent; update them with
-  `make creative-references-update` and review the upstream gitlink diff before
-  committing. They do not grant access to their provider CLIs or APIs; image
-  creation remains on Anban MCP.
+  `skills/seedance2-skill` remains a read-only creative reference for the
+  talking-head Agent. The GPT Image prompt skills are maintained locally under
+  `skills/gpt-image` and `skills/get-prompt-from-image`; they provide prompt
+  methods only, and image creation remains on Anban MCP rather than a provider
+  CLI or API.
   `skills/ecommerce-visual-copywriting-skill` is the read-only method
   source for the ecommerce Agent; update it with
   `make ecommerce-upstream-update`, validate it with

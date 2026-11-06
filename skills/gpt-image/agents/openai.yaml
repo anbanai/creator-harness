@@ -1,0 +1,4 @@
+interface:
+  display_name: "GPT Image"
+  short_description: "Generate/edit GPT Image 2 and 2.5 visuals with model choice"
+  default_prompt: "Use $gpt-image to resolve my image model intent, consult references only when needed, and generate or edit through the registered image capability."

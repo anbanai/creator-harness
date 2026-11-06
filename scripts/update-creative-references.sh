@@ -40,7 +40,6 @@ update_submodule() {
 }
 
 update_submodule skills/seedance2-skill zh/SKILL.md
-update_submodule skills/GPT-Image2-Skill skills/gpt-image/SKILL.md
-git diff --submodule=log -- skills/seedance2-skill skills/GPT-Image2-Skill
+git diff --submodule=log -- skills/seedance2-skill
 make creative-references-check
 printf '%s\n' 'Review the upstream diffs before committing the resulting gitlink changes.'

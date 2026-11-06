@@ -1,3 +1,7 @@
+## 4.2.147
+
+- Flatten the GPT Image prompt skills into discoverable local `gpt-image` and `get-prompt-from-image` Skills under `skills/`, removing the nested upstream submodule path.
+
 ## 4.2.145
 
 - Vendor the Pixabay search and SFXMint Skills into the plugin tree and remove their upstream submodule/plugin dependencies from the `ip-explainer` audio workflow. Runtime availability of retrieval, download, and rights evidence remains explicit.

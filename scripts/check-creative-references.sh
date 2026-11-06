@@ -61,7 +61,6 @@ check_submodule() {
 }
 
 check_submodule skills/seedance2-skill https://github.com/dexhunter/seedance2-skill.git zh/SKILL.md
-check_submodule skills/GPT-Image2-Skill https://github.com/wuyoscar/GPT-Image2-Skill.git skills/gpt-image/SKILL.md
 
 for manifest in .claude-plugin/marketplace.json .claude-plugin/plugin.json .codex-plugin/plugin.json; do
   jq -e . "$manifest" >/dev/null

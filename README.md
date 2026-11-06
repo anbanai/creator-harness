@@ -69,7 +69,7 @@ claude plugin marketplace add ./harness
 claude plugin install --scope user anban@anbanai
 ```
 
-`plugin@marketplace` 中的 `anban` 是插件 ID，`anbanai` 是发布方/市场源。插件内的 MCP server key 固定为 `creator`；Agent 与 Skill 文档只使用裸 MCP 工具名（例如 `generate_image`），具体工具名前缀由 Claude Code 运行时处理。Agent 命名空间使用 `anban:<agent>`。
+`plugin@marketplace` 中的 `anban` 是插件 ID，`anbanai` 是发布方/市场源。插件内的 MCP server key 固定为 `creator` 和 `sfxmint`；Agent 与 Skill 文档只使用裸 MCP 工具名（例如 `generate_image`），具体工具名前缀由 Claude Code 运行时处理。Agent 命名空间使用 `anban:<agent>`。
 
 托管执行时，运行时为每次执行提供任务私有工作区、预先创建的 `output/`，并通过结构化运行时上下文提供 `TASK_ID`。Agent 与 Skill 只写入明确列出的 `output/<filename>`；不创建、发现、移动或重命名输出目录。
 
@@ -198,7 +198,7 @@ claude --verbose --agent anban:seednote 降噪耳机种草笔记
 | `humanizer` | [blader/humanizer](https://github.com/blader/humanizer) v2.8.2（MIT），以 `skills/humanizer` 嵌套 submodule 固定官方提交 | 不做 Anban 改编；官方仓库直接进入共享 Skill 树，Seednote/Article/电商约束归各业务 workflow；Codex 从递归初始化的本地 clone 安装 | 运行 `make humanizer-update` 手动推进上游 gitlink；审阅上游 diff、跑契约测试并升级两个 manifest 版本 |
 | 电商上游 SOP | [feichanggege/ecommerce-visual-copywriting-skill](https://github.com/feichanggege/ecommerce-visual-copywriting-skill)（MIT），以 `skills/ecommerce-visual-copywriting-skill` 嵌套 submodule 固定提交 | 只读引用上游 `SKILL.md`/`references/`/`scripts/`：证据账本、成交驱动力、Style Lock、Storyboard/执行卡、图内文案、五维质量门与宣称合规。Anban 只写落盘/零交互/成图验收适配层，不复制规则正文 | 运行 `make ecommerce-upstream-update` 推进上游 gitlink；审阅 diff、跑 `make ecommerce-upstream-check` 与契约测试后升级版本 |
 | `seedance2-skill` | [dexhunter/seedance2-skill](https://github.com/dexhunter/seedance2-skill)（MIT），位于 `skills/seedance2-skill` | talking-head 只读引用中文提示词方法；不是托管视频生成运行时 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
-| `GPT-Image2-Skill` | [wuyoscar/GPT-Image2-Skill](https://github.com/wuyoscar/GPT-Image2-Skill)（MIT），位于 `skills/GPT-Image2-Skill` | talking-head 只读引用提示词/Gallery 方法；禁止使用其 CLI/API，图像一律通过 Anban MCP `generate_image` 生成 | `make creative-references-update` 推进上游 gitlink并审阅差异 |
+| `gpt-image`、`get-prompt-from-image` | [wuyoscar/GPT-Image2-Skill](https://github.com/wuyoscar/GPT-Image2-Skill)（MIT），已提取为 `skills/gpt-image` 与 `skills/get-prompt-from-image` 本地技能 | talking-head 按需引用提示词/Gallery 方法；图像一律通过 Anban MCP `generate_image` 生成，本地技能不触发外部 CLI/API | 随本地 Skill 维护，变更时同步升级插件版本 |
 | `moments` | 内容拆解方法参考 [Caihui0127/caihui-moments-skill](https://github.com/Caihui0127/caihui-moments-skill) 的公开框架 | 产出 Anban 朋友圈图文素材包；不默认使用“彩卉”人设，不复制私有素材，不把参考 repo 作为运行时依赖 | 更新时只同步公开方法层；保持文本、语义比例配图和不伪造案例/数据红线 |
 | `article*`、`seednote*`、`ecommerce*`、`portrait-pose-variants`、`anban-setup`、`writers`、`article-research`、`seo-optimization`、`content-writing`、`short-video-cover` | Anban 原创业务 workflow；结构模式参考 [anthropics/skills](https://github.com/anthropics/skills)、[anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official)、[obra/superpowers](https://github.com/obra/superpowers) 和 [affaan-m/ecc](https://github.com/affaan-m/ecc) | 使用标准 `SKILL.md` + 一层 `references/`；案例是 Anban 场景原创，不复制外部措辞或业务流程 | 从 Anban 产品、MCP、server contract 更新；宿主差异放进薄适配器，不复制 Skill |
 

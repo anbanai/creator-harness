@@ -16,7 +16,7 @@ const rel = (path) => relative(root, path).replaceAll('\\', '/')
 // Read-only upstream submodules live directly under skills/ next to authored
 // Skills. Their Markdown is upstream-owned and distributed verbatim, so Anban
 // prompt, link, lifecycle and size lint does not apply to their files.
-const upstreamSkillRepos = new Set(['humanizer', 'seedance2-skill', 'GPT-Image2-Skill', 'motion-graphics', 'ecommerce-visual-copywriting-skill'])
+const upstreamSkillRepos = new Set(['humanizer', 'seedance2-skill', 'motion-graphics', 'ecommerce-visual-copywriting-skill'])
 const upstreamSkillNames = new Set()
 const isUpstreamSkill = (path) => {
   const [top, repo] = rel(path).split('/')
