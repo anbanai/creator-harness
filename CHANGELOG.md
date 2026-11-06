@@ -1,3 +1,7 @@
+## 4.2.148
+
+- Embed the SFXMint MCP endpoint in the Anban plugin and remove the standalone SFXMint and obsolete Pixabay plugin copies.
+
 ## 4.2.147
 
 - Flatten the GPT Image prompt skills into discoverable local `gpt-image` and `get-prompt-from-image` Skills under `skills/`, removing the nested upstream submodule path.

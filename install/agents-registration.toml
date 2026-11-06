@@ -16,6 +16,9 @@ max_threads = 6
 url = "https://creator.anbanai.com/mcp"
 bearer_token_env_var = "ANBAN_API_KEY"
 
+[mcp_servers.sfxmint]
+url = "https://sfxmint.com/mcp"
+
 [agents.wechat-article]
 description = "微信公众号图文全自动创作引擎（选题 → 草稿）"
 config_file = "~/.codex/agents/wechat-article.toml"

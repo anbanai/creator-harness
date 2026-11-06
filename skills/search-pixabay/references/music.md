@@ -79,10 +79,10 @@ https://pixabay.com/music/search/wedding/?mood=romantic
 
 **方案二（适中）**：
 ```
-https://pixabay.com/music/search/wedding/?mood=romantic&genre=wedding
+https://pixabay.com/music/search/wedding/?mood=romantic&genre=wedding&movement=elegant
 ```
 
 **方案三（最窄）**：
 ```
-https://pixabay.com/music/search/wedding/?mood=romantic&genre=wedding&movement=elegant
+https://pixabay.com/music/search/wedding/?mood=romantic&genre=wedding&movement=elegant&theme=music%20for%20videos
 ```

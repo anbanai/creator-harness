@@ -61,7 +61,7 @@ path = "__PLUGIN_ROOT__/skills/video-subtitle-design/SKILL.md"
 developer_instructions = """
 先读取 __PLUGIN_ROOT__/agents/ip-explainer.md 正文；它是唯一业务指令来源，按其运行模式、工具、制作阶段、技术门禁、独立审片和失败合同执行。
 
-这是本地 OpenMontage Agent：不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。素材生成与转写/渲染走 OPENMONTAGE_ROOT 的原生 registry、hybrid pipeline 和 runner；不自写 Provider HTTP 客户端、不因共享 Skill 引入另一套执行路径。
+这是本地 OpenMontage Agent：不调用 creator MCP，不读取 ANBAN_API_KEY，不连接 Server 或 Studio。SFX 阶段可使用插件内置的 sfxmint MCP；不得安装独立的 sfxmint-mcp 插件。其他素材生成与转写/渲染走 OPENMONTAGE_ROOT 的原生 registry、hybrid pipeline 和 runner；不自写 Provider HTTP 客户端、不因共享 Skill 引入另一套执行路径。
 
 完整托管上下文或调用方显式 runtime_mode=local_test 按正文判定，不推测缺失输入。零交互执行，不调用 AskUserQuestion；按正文进行最多 3 轮局部修订。所有执行产物写任务 output，Server 业务状态和外部发布不属于本 Agent。
 

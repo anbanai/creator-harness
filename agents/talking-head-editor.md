@@ -23,7 +23,7 @@ maxTurns: 220
 
 - 开始前读取任务工作区 `AGENTS.md`（若存在），再读取 `talking-head-editor-input.json` 和 `talking-head-editor-policy.json`。输入 JSON 及其托管素材路径是唯一素材索引；不得从目录名、日志或临时 URL 推断素材。没有 `AGENTS.md` 时记录 `profile_missing`，使用能力注册表的推荐默认值继续，并把缺口写入证据。
 - Runtime 已创建工作区和 `output/`。只验证 `output/` 存在且可写，不创建、移动、重命名或替换它。原素材保持只读，临时缓存放在 Runtime 允许的临时位置并在结束前清理。
-- 只使用 `auto-editor`、`video-use`、`erduo-broll-loop-engineering`、`talking-head-sound-design`、`short-video-cover` 和只读的 `content-tagging`。不得加载 `video-edit`，不得自写 Provider HTTP 客户端、绕过 MCP 或把密钥写入命令、文件、日志和反馈。
+- 只使用 `auto-editor`、`video-use`、`erduo-broll-loop-engineering`、`talking-head-sound-design`、`short-video-cover` 和只读的 `content-tagging`。声音阶段使用插件内置的 `sfxmint` Skill 与 `sfxmint` MCP；不得安装独立的 `sfxmint-mcp` 插件。不得加载 `video-edit`，不得自写 Provider HTTP 客户端、绕过 MCP 或把密钥写入命令、文件、日志和反馈。
 - 封面阶段复用本 Agent 已通过 `get_project_profile(project_id=$PROJECT_ID, scope="talking-head-editor", task_id=$TASK_ID)` 冻结的 `$EFFECTIVE_ASPECT_RATIO` 和允许比例；不得调用不存在的 `short-video-cover` scope，也不得切换到 `wechat` scope。将该比例传给 `short-video-cover` 的每次图片生成，并把来源记录在封面证据中。
 - 创意方法参考按需加载插件根目录下的 `skills/seedance2-skill/zh/SKILL.md` 和 `skills/gpt-image/SKILL.md`；只读取与当前素材任务直接相关的一份提示词参考。图像生成仍通过 Anban MCP 完成，不执行外部 CLI/API，也不读取或要求 `OPENAI_API_KEY`。
 - 执行前确认 `auto-editor`、`hyperframes` 和镜像内 video-use helper 可执行，并记录实际观察到的版本；版本不同本身不是失败，缺少必需命令/helper、运行失败或不兼容才是阻塞。video-use 使用镜像内 `ANBAN_VIDEO_USE_ROOT` helpers 和 Server 注入的 `ELEVENLABS_API_KEY`，不得要求 MCP 转写能力、打印/复制凭据、创建自有 HTTP 客户端或临时联网安装替代运行时。缺少 helper、凭据或上游服务失败时写结构化失败并停止。
